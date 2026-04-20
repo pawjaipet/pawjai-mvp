@@ -12,7 +12,8 @@
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
     "supabase:login": "supabase login",
-    "supabase:link": "supabase link --project-ref bdnyvcvkyepipdcygkvn"
+    "supabase:link": "supabase link --project-ref bdnyvcvkyepipdcygkvn",
+    "import:dogs": "node scripts/import-sheet-dogs.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
