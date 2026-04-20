@@ -1,0 +1,197 @@
+"use client";
+
+import { useRef, useState } from "react";
+import Link from "next/link";
+import { Share2, CalendarDays, Bookmark } from "lucide-react";
+import type { Dog, DogPhoto } from "@/types/database";
+
+export type SwipeDog = Dog & { photos: Pick<DogPhoto, "public_url" | "is_cover" | "sort_order">[] };
+
+function ageLabel(months: number | null) {
+  if (!months) return null;
+  if (months < 12) return `${months}mo`;
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  return m ? `${y}y ${m}mo` : `${y}y`;
+}
+
+const TAG_BEIGE = "bg-[#d6c8ad] text-black";
+const TAG_ROSE = "bg-[#cd8188] text-white";
+
+interface Props {
+  dog: SwipeDog;
+}
+
+export default function SwipeDogCard({ dog }: Props) {
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [imgIdx, setImgIdx] = useState(0);
+  const [tagsOpen, setTagsOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const photos = dog.photos.length
+    ? dog.photos
+    : [{ public_url: null, is_cover: true, sort_order: 0 }];
+
+  const orderedPhotos = [...photos].sort((a, b) => {
+    if (a.is_cover) return -1;
+    if (b.is_cover) return 1;
+    return a.sort_order - b.sort_order;
+  });
+
+  function onCarouselScroll() {
+    if (!carouselRef.current) return;
+    const idx = Math.round(carouselRef.current.scrollLeft / carouselRef.current.offsetWidth);
+    setImgIdx(idx);
+  }
+
+  function handleShare() {
+    if (navigator.share) {
+      navigator.share({ title: dog.name, url: `/dogs/${dog.id}` }).catch(() => {});
+    }
+  }
+
+  // Build collapsed tags
+  const collapsedTags: string[] = [
+    dog.breed ?? "Mixed",
+    ageLabel(dog.age_months) ?? "",
+    dog.gender === "unknown" ? "Unknown" : dog.gender === "male" ? "Male" : "Female",
+  ].filter(Boolean);
+
+  // Build expanded tags (row1 + row2)
+  const row1: string[] = [
+    dog.breed ?? "Mixed",
+    ageLabel(dog.age_months) ?? "",
+    dog.energy_level ? `${dog.energy_level.charAt(0).toUpperCase() + dog.energy_level.slice(1)} energy` : "",
+    dog.sterilized ? "Sterilized" : "",
+  ].filter(Boolean);
+
+  const row2: string[] = [
+    dog.gender === "unknown" ? "Unknown" : dog.gender === "male" ? "Male" : "Female",
+    dog.size ? dog.size.replace("_", " ") : "",
+    dog.weight_kg ? `${dog.weight_kg}kg` : "",
+    dog.good_with_kids ? "Good w/ kids" : "",
+    dog.good_with_dogs ? "Good w/ dogs" : "",
+    dog.good_with_cats ? "Good w/ cats" : "",
+    dog.house_trained ? "House trained" : "",
+  ].filter(Boolean);
+
+  return (
+    <div className="relative w-[370px]">
+      {/* Image carousel */}
+      <div
+        ref={carouselRef}
+        onScroll={onCarouselScroll}
+        className="flex overflow-x-auto snap-x snap-mandatory rounded-[22px] w-[370px]"
+        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
+      >
+        {orderedPhotos.map((p, i) => (
+          <Link key={i} href={`/dogs/${dog.id}`} className="flex-shrink-0 w-[370px] snap-center block">
+            <div className="h-[620px] rounded-[22px] w-[370px] overflow-hidden bg-[#d6c8ad]">
+              {p.public_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.public_url}
+                  alt={dog.name}
+                  className="w-full h-full object-cover"
+                  draggable={false}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-6xl select-none">🐾</div>
+              )}
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Dog name overlay — top left */}
+      <div className="absolute top-4 left-4 right-20 pointer-events-none z-10">
+        <p className="font-black text-[48px] leading-[0.95] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] whitespace-pre">
+          {dog.name}
+        </p>
+      </div>
+
+      {/* Image dots — above tags */}
+      {orderedPhotos.length > 1 && (
+        <div className="absolute bottom-[90px] left-0 right-0 flex justify-center pointer-events-none z-10">
+          <div className="bg-[rgba(214,200,173,0.5)] px-3 py-1.5 rounded-xl flex gap-2">
+            {orderedPhotos.map((_, i) => (
+              <div
+                key={i}
+                className={`h-2 w-2 rounded-full transition-colors ${i === imgIdx ? "bg-[#cd8188]" : "bg-[rgba(101,88,79,0.3)]"}`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tags overlay — bottom */}
+      <div className="absolute bottom-4 left-4 right-4 z-10">
+        {!tagsOpen ? (
+          <div className="flex gap-1 flex-wrap">
+            {collapsedTags.map((t) => (
+              <span key={t} className={`${TAG_BEIGE} text-sm font-semibold px-3.5 py-1.5 rounded-full whitespace-nowrap`}>{t}</span>
+            ))}
+            <button
+              onClick={() => setTagsOpen(true)}
+              className={`${TAG_ROSE} text-sm font-semibold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform`}
+            >
+              +
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            <div className="flex gap-1 w-max">
+              {row1.map((t) => (
+                <span key={t} className={`${TAG_BEIGE} text-sm font-semibold px-3.5 py-1.5 rounded-full whitespace-nowrap`}>{t}</span>
+              ))}
+              <button
+                onClick={() => setTagsOpen(false)}
+                className={`${TAG_ROSE} text-sm font-semibold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform`}
+              >
+                −
+              </button>
+            </div>
+            <div className="flex gap-1 w-max">
+              {row2.map((t) => (
+                <span key={t} className={`${TAG_BEIGE} text-sm font-semibold px-3.5 py-1.5 rounded-full whitespace-nowrap`}>{t}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Action buttons — right side */}
+      <div className="absolute right-4 top-1/2 -translate-y-[calc(50%-50px)] flex flex-col gap-4 z-10">
+        {[
+          { icon: <Share2 size={26} stroke="white" strokeWidth={2} />, onClick: handleShare, label: "Share" },
+          { icon: <CalendarDays size={26} stroke="white" strokeWidth={2} />, href: `/dogs/${dog.id}`, label: "Info" },
+          {
+            icon: <Bookmark size={26} stroke="white" fill={saved ? "white" : "none"} strokeWidth={2} />,
+            onClick: () => setSaved((s) => !s),
+            label: "Save",
+          },
+        ].map(({ icon, onClick, href, label }) =>
+          href ? (
+            <Link
+              key={label}
+              href={href}
+              className="bg-[#cd8188] w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+              aria-label={label}
+            >
+              {icon}
+            </Link>
+          ) : (
+            <button
+              key={label}
+              onClick={onClick}
+              className="bg-[#cd8188] w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+              aria-label={label}
+            >
+              {icon}
+            </button>
+          )
+        )}
+      </div>
+    </div>
+  );
+}

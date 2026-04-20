@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
+import { Montserrat } from "next/font/google";
 import "./globals.css";
 import BottomNavBar from "@/components/BottomNavBar";
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  variable: "--font-montserrat",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "PawJai — Find Your Perfect Companion",
@@ -9,9 +16,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="bg-gray-50 text-gray-900 antialiased">
-        <main className="min-h-screen pb-20 md:pb-0">{children}</main>
+    <html lang="en" className={montserrat.variable}>
+      <body className="bg-[#f5f0e8] text-[#65584f] antialiased font-[family-name:var(--font-montserrat)]">
+        <main className="min-h-screen pb-[70px]">{children}</main>
         <BottomNavBar />
       </body>
     </html>
