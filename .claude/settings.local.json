@@ -2,7 +2,17 @@
   "permissions": {
     "allow": [
       "mcp__mcp-registry__search_mcp_registry",
-      "mcp__plugin_design_figma__get_design_context"
+      "mcp__plugin_design_figma__get_design_context",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --no-import-alias --turbopack)",
+      "Bash(npm install *)",
+      "Bash(sudo chown *)",
+      "mcp__96b59bab-9681-4ba9-97d1-24bbaec99e22__list_projects",
+      "mcp__96b59bab-9681-4ba9-97d1-24bbaec99e22__get_project_url",
+      "mcp__96b59bab-9681-4ba9-97d1-24bbaec99e22__get_publishable_keys",
+      "mcp__plugin_design_figma__get_metadata",
+      "mcp__96b59bab-9681-4ba9-97d1-24bbaec99e22__apply_migration",
+      "mcp__96b59bab-9681-4ba9-97d1-24bbaec99e22__generate_typescript_types",
+      "Bash(npm run *)"
     ]
   }
 }
