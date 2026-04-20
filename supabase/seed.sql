@@ -1,0 +1,2 @@
+-- Seed data intentionally left empty for now.
+-- Add shelters, dogs, and questionnaire fixtures here once the frontend flows stabilize.
