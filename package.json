@@ -13,7 +13,8 @@
     "supabase:status": "supabase status",
     "supabase:login": "supabase login",
     "supabase:link": "supabase link --project-ref bdnyvcvkyepipdcygkvn",
-    "import:dogs": "node scripts/import-sheet-dogs.mjs"
+    "import:dogs": "node scripts/import-sheet-dogs.mjs",
+    "link:dog-photos": "node scripts/link-b2-dog-photos.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

@@ -95,8 +95,9 @@ async function ensureShelter(supabase, shelterName) {
     .from("shelters")
     .insert({
       name: shelterName,
-      description: "Imported from the Pawjai intake spreadsheet for dogs cared for by Sai Thong.",
-      shelter_type: "independent_rescue",
+      description:
+        "Imported from the Pawjai intake spreadsheet for dogs under The Voice Foundation, with caretaker details preserved from the source sheet.",
+      shelter_type: "animal_shelter",
     })
     .select("id")
     .single();
@@ -238,7 +239,8 @@ async function main() {
     return;
   }
 
-  const shelterName = process.env.PAWJAI_IMPORT_SHELTER_NAME ?? "สายทอง";
+  const shelterName =
+    process.env.PAWJAI_IMPORT_SHELTER_NAME ?? "The Voice Foundation";
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });

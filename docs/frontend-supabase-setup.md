@@ -16,12 +16,13 @@ Create `.env.local` from `.env.example` and fill in:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- or `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 The URL is already set to your project ref:
 
 - `https://bdnyvcvkyepipdcygkvn.supabase.co`
 
-You still need to paste the publishable key from the Supabase project's Connect dialog or API Keys page.
+You can use either the publishable key or the legacy anon key. The app now accepts both, with the publishable key preferred.
 
 ## CLI commands
 

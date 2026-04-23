@@ -27,14 +27,19 @@ Optional:
 
 - `PAWJAI_IMPORT_SHELTER_NAME`
 
-If no shelter name is provided, the importer uses `สายทอง`.
+If no shelter name is provided, the importer uses `The Voice Foundation`.
 
 ## Import behavior
 
 - creates the shelter if it does not already exist by name
 - upserts dogs by `(shelter_id, name)`
-- stores aliases and sheet photo captions in `dog_traits`
+- stores aliases, caretaker names, and sheet photo captions in `dog_traits`
 - stores direct OneDrive photo links in `dog_photos` using the external URL as both `storage_path` and `public_url`
+
+## Shelter mapping
+
+- shelter identity in Supabase: `The Voice Foundation`
+- caretaker preserved from the spreadsheet: `สายทอง`
 
 ## Important note
 
