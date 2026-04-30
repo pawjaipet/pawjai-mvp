@@ -6,7 +6,7 @@ import { Home, SlidersHorizontal, Calendar, User, MoreHorizontal } from "lucide-
 
 const TABS = [
   { href: "/swipe", label: "Home", Icon: Home },
-  { href: "/dogs", label: "Filter", Icon: SlidersHorizontal },
+  { href: "/filter", label: "Filter", Icon: SlidersHorizontal },
   { href: "/appointments", label: "Appointments", Icon: Calendar },
   { href: "/profile", label: "Profile", Icon: User },
   { href: "/more", label: "More", Icon: MoreHorizontal },
@@ -17,8 +17,8 @@ export default function BottomNavBar() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#d6c8ad] shadow-[0_-2px_10px_rgba(101,88,79,0.1)]"
-      style={{ maxWidth: 402, margin: "0 auto" }}
+      className="fixed bottom-0 z-50 bg-white border-t border-[#d6c8ad] shadow-[0_-2px_10px_rgba(101,88,79,0.1)]"
+      style={{ width: "100%", maxWidth: 402, left: "50%", transform: "translateX(-50%)" }}
     >
       <div className="flex items-center justify-around h-[70px] px-2">
         {TABS.map(({ href, label, Icon }) => {

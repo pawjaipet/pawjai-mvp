@@ -22,9 +22,9 @@ export default function SwipeFeed({ dogs }: { dogs: SwipeDog[] }) {
         className="absolute top-0 left-0 right-0 z-20 pointer-events-none h-[70px]"
         style={{ background: "linear-gradient(to bottom, #d6c8ad 0%, rgba(214,200,173,0.75) 39%, rgba(214,200,173,0) 100%)" }}
       >
-        <div className="pointer-events-auto flex items-center justify-center pt-5">
-          <Link href="/" className="block h-[40px]">
-            <span className="text-2xl font-black text-[#65584f] tracking-tight">PawJai</span>
+        <div className="pointer-events-auto flex items-center pl-[8px] pt-[39px]">
+          <Link href="/swipe" className="block h-[55px] w-[110px] relative">
+            <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
           </Link>
         </div>
       </div>

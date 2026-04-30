@@ -49,6 +49,64 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["adopters"]["Insert"]>
         Relationships: []
       }
+      adopter_preferences: {
+        Row: {
+          adopter_id: string
+          created_at: string
+          good_with_cats: boolean | null
+          good_with_dogs: boolean | null
+          good_with_kids: boolean | null
+          notes: string | null
+          preferred_energy_level: Database["public"]["Enums"]["dog_energy_level"] | null
+          preferred_size: Database["public"]["Enums"]["dog_size"] | null
+          updated_at: string
+        }
+        Insert: {
+          adopter_id: string
+          created_at?: string
+          good_with_cats?: boolean | null
+          good_with_dogs?: boolean | null
+          good_with_kids?: boolean | null
+          notes?: string | null
+          preferred_energy_level?: Database["public"]["Enums"]["dog_energy_level"] | null
+          preferred_size?: Database["public"]["Enums"]["dog_size"] | null
+          updated_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["adopter_preferences"]["Insert"]>
+        Relationships: []
+      }
+      appointments: {
+        Row: {
+          adopter_id: string
+          application_id: string | null
+          appointment_date: string
+          appointment_time: string
+          created_at: string
+          dog_id: string | null
+          id: string
+          shelter_id: string
+          shelter_note: string | null
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+          visitor_note: string | null
+        }
+        Insert: {
+          adopter_id: string
+          application_id?: string | null
+          appointment_date: string
+          appointment_time: string
+          created_at?: string
+          dog_id?: string | null
+          id?: string
+          shelter_id: string
+          shelter_note?: string | null
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+          visitor_note?: string | null
+        }
+        Update: Partial<Database["public"]["Tables"]["appointments"]["Insert"]>
+        Relationships: []
+      }
       dog_photos: {
         Row: {
           created_at: string
@@ -213,6 +271,20 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["shelters"]["Insert"]>
         Relationships: []
       }
+      wishlists: {
+        Row: {
+          adopter_id: string
+          created_at: string
+          dog_id: string
+        }
+        Insert: {
+          adopter_id: string
+          created_at?: string
+          dog_id: string
+        }
+        Update: Partial<Database["public"]["Tables"]["wishlists"]["Insert"]>
+        Relationships: []
+      }
     }
     Views: Record<never, never>
     Functions: Record<never, never>
@@ -238,6 +310,10 @@ export type DogPhoto = Database["public"]["Tables"]["dog_photos"]["Row"]
 export type DogTrait = Database["public"]["Tables"]["dog_traits"]["Row"]
 export type Shelter = Database["public"]["Tables"]["shelters"]["Row"]
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"]
+export type Adopter = Database["public"]["Tables"]["adopters"]["Row"]
+export type AdopterPreference = Database["public"]["Tables"]["adopter_preferences"]["Row"]
+export type Appointment = Database["public"]["Tables"]["appointments"]["Row"]
+export type Wishlist = Database["public"]["Tables"]["wishlists"]["Row"]
 
 export type DogWithCover = Dog & { cover_photo: string | null }
 

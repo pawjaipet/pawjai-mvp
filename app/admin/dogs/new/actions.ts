@@ -1,12 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { randomUUID } from "node:crypto";
 import type { Database } from "@/types/database";
 import {
   closeAdminGate,
   openAdminGate,
   validateAdminPassphrase,
 } from "@/utils/admin-auth";
+import {
+  extensionFromContentType,
+  uploadBufferToBackblaze,
+} from "@/utils/backblaze";
+import { fetchRemoteAsset } from "@/utils/onedrive";
+import { slugify } from "@/utils/slug";
 import { createAdminClient } from "@/utils/supabase/admin";
 import type { AdminGateState, CreateDogListingState } from "./form-state";
 
@@ -99,6 +106,48 @@ function normalizeTraitPairs(formData: FormData) {
   }
 
   return rows;
+}
+
+function guessExtensionFromUrl(url: string) {
+  try {
+    const pathname = new URL(url).pathname;
+    const match = pathname.match(/\.([a-zA-Z0-9]{2,5})$/);
+    return match?.[1]?.toLowerCase() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function uploadPhotoFromSourceUrl({
+  dogName,
+  photoIndex,
+  sourceUrl,
+}: {
+  dogName: string;
+  photoIndex: number;
+  sourceUrl: string;
+}) {
+  const response = await fetchRemoteAsset(sourceUrl);
+  const contentType = response.headers.get("content-type");
+
+  if (!contentType?.startsWith("image/")) {
+    throw new Error(
+      `Photo ${photoIndex + 1} did not resolve to an image file. Received ${contentType ?? "unknown content type"}.`,
+    );
+  }
+
+  const bytes = Buffer.from(await response.arrayBuffer());
+  const slug = slugify(dogName) || "dog";
+  const extension =
+    guessExtensionFromUrl(sourceUrl) ?? extensionFromContentType(contentType);
+  const fileName = `${slug}-${Date.now()}-${photoIndex + 1}-${randomUUID().slice(0, 8)}${extension ? `.${extension}` : ""}`;
+  const desiredPath = `pawjaidogs/${fileName}`;
+
+  return uploadBufferToBackblaze({
+    body: bytes,
+    contentType,
+    desiredPath,
+  });
 }
 
 export async function unlockAdminGateAction(
@@ -218,12 +267,33 @@ export async function createDogListingAction(
   }
 
   if (photoUrls.length > 0) {
-    const photoRows: DogPhotoInsert[] = photoUrls.map((url, index) => ({
+    const uploadedPhotos = [];
+
+    for (const [index, url] of photoUrls.entries()) {
+      try {
+        const uploaded = await uploadPhotoFromSourceUrl({
+          dogName: name,
+          photoIndex: index,
+          sourceUrl: url,
+        });
+        uploadedPhotos.push(uploaded);
+      } catch (error) {
+        return {
+          dogId: insertedDog.id,
+          message: `The dog was created, but photo ${index + 1} could not be moved from OneDrive to Backblaze: ${
+            error instanceof Error ? error.message : "Unknown upload error"
+          }`,
+          status: "error",
+        };
+      }
+    }
+
+    const photoRows: DogPhotoInsert[] = uploadedPhotos.map((photo, index) => ({
       dog_id: insertedDog.id,
       is_cover: index === 0,
-      public_url: url,
+      public_url: photo.publicUrl,
       sort_order: index,
-      storage_path: url,
+      storage_path: photo.storagePath,
     }));
 
     const { error: photoError } = await supabase.from("dog_photos").insert(photoRows);

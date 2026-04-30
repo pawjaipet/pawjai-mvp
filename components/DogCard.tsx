@@ -2,21 +2,8 @@ import Link from "next/link";
 import ImageWithFallback from "./ImageWithFallback";
 import type { DogWithCover } from "@/types/database";
 
-const SIZE_LABEL: Record<string, string> = {
-  small: "Small",
-  medium: "Medium",
-  large: "Large",
-  extra_large: "XL",
-};
-
-const ENERGY_COLOR: Record<string, string> = {
-  low: "bg-blue-100 text-blue-700",
-  medium: "bg-yellow-100 text-yellow-700",
-  high: "bg-red-100 text-red-700",
-};
-
 function ageLabel(months: number | null): string {
-  if (months === null) return "Age unknown";
+  if (months === null) return "";
   if (months < 12) return `${months}mo`;
   const y = Math.floor(months / 12);
   const m = months % 12;
@@ -27,37 +14,68 @@ export default function DogCard({ dog }: { dog: DogWithCover }) {
   return (
     <Link
       href={`/dogs/${dog.id}`}
-      className="group block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+      className="block rounded-[16px] overflow-hidden active:scale-95 transition-transform"
+      style={{ background: "white" }}
     >
-      <div className="relative h-52 bg-amber-50">
+      {/* Photo */}
+      <div className="relative h-[160px]" style={{ background: "#d6c8ad" }}>
         <ImageWithFallback
           src={dog.cover_photo}
           alt={dog.name}
           fill
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
+          className="object-cover"
         />
+        {/* Status badge */}
+        {dog.adoption_status !== "available" && (
+          <div className="absolute top-[8px] right-[8px] rounded-full px-[8px] py-[3px] text-[10px] font-semibold" style={{ background: "#65584f", color: "white", fontFamily: "Montserrat, sans-serif" }}>
+            {dog.adoption_status}
+          </div>
+        )}
       </div>
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold text-gray-900 text-lg leading-tight">{dog.name}</h3>
-          {dog.sterilized && (
-            <span className="shrink-0 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Sterilized</span>
-          )}
-        </div>
-        <p className="text-sm text-gray-500 mt-0.5">{dog.breed ?? "Mixed breed"}</p>
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-            {dog.gender === "unknown" ? "Unknown gender" : dog.gender === "male" ? "Male" : "Female"}
-          </span>
+
+      {/* Info */}
+      <div className="px-[12px] py-[10px]">
+        <h3
+          className="font-semibold text-[#65584f] text-[16px] leading-tight truncate"
+          style={{ fontFamily: "Montserrat, sans-serif" }}
+        >
+          {dog.name}
+        </h3>
+        <p
+          className="text-[12px] text-[#65584f]/60 mt-[2px] truncate"
+          style={{ fontFamily: "Montserrat, sans-serif" }}
+        >
+          {dog.breed ?? "Mixed breed"}
+        </p>
+
+        {/* Tags row */}
+        <div className="flex flex-wrap gap-[5px] mt-[8px]">
           {dog.age_months !== null && (
-            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{ageLabel(dog.age_months)}</span>
+            <span
+              className="text-[11px] rounded-full px-[8px] py-[2px]"
+              style={{ background: "#d6c8ad", color: "#65584f", fontFamily: "Montserrat, sans-serif" }}
+            >
+              {ageLabel(dog.age_months)}
+            </span>
           )}
-          {dog.size && (
-            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{SIZE_LABEL[dog.size]}</span>
+          {dog.gender && dog.gender !== "unknown" && (
+            <span
+              className="text-[11px] rounded-full px-[8px] py-[2px] capitalize"
+              style={{ background: "#d6c8ad", color: "#65584f", fontFamily: "Montserrat, sans-serif" }}
+            >
+              {dog.gender}
+            </span>
           )}
           {dog.energy_level && (
-            <span className={`text-xs px-2 py-0.5 rounded-full ${ENERGY_COLOR[dog.energy_level]}`}>
-              {dog.energy_level.charAt(0).toUpperCase() + dog.energy_level.slice(1)} energy
+            <span
+              className="text-[11px] rounded-full px-[8px] py-[2px] capitalize"
+              style={{
+                background: dog.energy_level === "high" ? "#cd8188" : "#d6c8ad",
+                color: dog.energy_level === "high" ? "white" : "#65584f",
+                fontFamily: "Montserrat, sans-serif",
+              }}
+            >
+              {dog.energy_level}
             </span>
           )}
         </div>

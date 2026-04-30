@@ -271,7 +271,7 @@ export default function DogListingForm({
 
       <Section
         title="Photos"
-        description="Paste image URLs in the exact order you want them shown. The first photo becomes the cover image."
+        description="Paste OneDrive or direct image URLs in the exact order you want them shown. Each image will be fetched server-side, uploaded into Backblaze under pawjaidogs, and then saved as the final listing photo."
       >
         <div className="space-y-4">
           {photoRows.map((value, index) => (
@@ -279,13 +279,17 @@ export default function DogListingForm({
               key={`photo-${index}`}
               label={`Photo ${index + 1}`}
               error={state.fieldErrors?.[`photo_url_${index}`]}
-              hint={index === 0 ? "This will become the cover image on the browse cards." : undefined}
+              hint={
+                index === 0
+                  ? "This will become the cover image on the browse cards."
+                  : "Public OneDrive share links are supported here too."
+              }
             >
               <input
                 name="photo_url"
                 defaultValue={value}
                 className={inputClass(state.fieldErrors?.[`photo_url_${index}`])}
-                placeholder="https://..."
+                placeholder="https://1drv.ms/... or direct image URL"
               />
             </Field>
           ))}
