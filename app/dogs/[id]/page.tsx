@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import ImageWithFallback from "@/components/ImageWithFallback";
-import type { DogPhoto } from "@/types/database";
+import type { DogPhoto, DogTrait } from "@/types/database";
 import { bookAppointment, toggleWishlist } from "./actions";
 
 function Badge({
@@ -64,8 +64,9 @@ export default async function DogProfilePage({
   const { data: dog } = await supabase.from("dogs").select("*").eq("id", id).single();
   if (!dog) notFound();
 
-  const [{ data: photosData }, { data: shelter }] = await Promise.all([
+  const [{ data: photosData }, { data: traitsData }, { data: shelter }] = await Promise.all([
     supabase.from("dog_photos").select("*").eq("dog_id", id).order("sort_order"),
+    supabase.from("dog_traits").select("*").eq("dog_id", id).order("created_at"),
     supabase
       .from("shelters")
       .select("name, hygiene_rating, professionalism_rating, province, district, phone_number, facebook_url")
@@ -74,7 +75,11 @@ export default async function DogProfilePage({
   ]);
 
   const photos: DogPhoto[] = photosData ?? [];
+  const traits: DogTrait[] = traitsData ?? [];
   const cover = photos.find((p) => p.is_cover) ?? photos[0] ?? null;
+  const personalityTraits = traits
+    .filter((trait) => trait.trait_type === "personality")
+    .map((trait) => trait.trait_value);
 
   let adopterId: string | null = null;
   let saved = false;
@@ -184,6 +189,9 @@ export default async function DogProfilePage({
 
         {/* Trait badges */}
         <div className="mt-[16px] flex flex-wrap gap-[6px]">
+          {personalityTraits.slice(0, 4).map((trait) => (
+            <Badge key={trait}>{trait}</Badge>
+          ))}
           {dog.sterilized && <Badge variant="dark">Sterilized</Badge>}
           {dog.energy_level && (
             <Badge variant={dog.energy_level === "high" ? "rose" : "beige"}>
@@ -208,6 +216,19 @@ export default async function DogProfilePage({
             <p className="text-[14px] text-[#65584f]/80 leading-relaxed whitespace-pre-wrap" style={{ fontFamily: "Montserrat, sans-serif" }}>
               {dog.background}
             </p>
+          </div>
+        )}
+
+        {personalityTraits.length > 0 && (
+          <div className="mt-[20px]">
+            <h2 className="text-[16px] font-semibold text-[#65584f] mb-[8px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
+              Personality
+            </h2>
+            <div className="flex flex-wrap gap-[6px]">
+              {personalityTraits.map((trait) => (
+                <Badge key={trait}>{trait}</Badge>
+              ))}
+            </div>
           </div>
         )}
 
@@ -334,6 +355,13 @@ export default async function DogProfilePage({
                   Request appointment
                 </button>
               </form>
+              <Link
+                href={`/schedule?dog=${encodeURIComponent(dog.name)}&shelter=${encodeURIComponent(shelter?.name ?? "")}&dogId=${dog.id}&shelterId=${dog.shelter_id}`}
+                className="block w-full text-center rounded-full py-[14px] font-semibold text-[15px] border-2 transition-all active:opacity-80"
+                style={{ borderColor: "#cd8188", color: "#cd8188", background: "white", fontFamily: "Montserrat, sans-serif" }}
+              >
+                Pick a time slot →
+              </Link>
             </>
           ) : (
             <Link

@@ -13,14 +13,16 @@ const SECTIONS = [
       { label: "My preferences",         href: "/filter",       icon: "🎯" },
       { label: "My wishlist",            href: "/profile",      icon: "❤️" },
       { label: "Appointments",           href: "/appointments", icon: "📅" },
+      { label: "My documents",           href: "/documents",    icon: "🪪" },
+      { label: "Messages",               href: "/messages",     icon: "💬" },
     ],
   },
   {
     title: "About PawJai",
     items: [
-      { label: "How adoption works",    href: "#", icon: "📖" },
-      { label: "Partner shelters",      href: "#", icon: "🏥" },
-      { label: "Contact us",            href: "#", icon: "✉️" },
+      { label: "How adoption works",    href: "/about",         icon: "📖" },
+      { label: "Partner shelters",      href: "/about#shelters", icon: "🏥" },
+      { label: "Contact us",            href: "/about#contact",  icon: "✉️" },
     ],
   },
 ] as const;

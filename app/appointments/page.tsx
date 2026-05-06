@@ -145,7 +145,7 @@ function PageShell({ children, message }: { children: React.ReactNode; message?:
 
       {/* Your Documents button */}
       <div className="px-[16px] py-[16px]">
-        <div className="w-full h-[48px] rounded-[12px] flex items-center justify-between px-[16px] shadow-md" style={{ background: "#cd8188" }}>
+        <a href="/documents" className="w-full h-[48px] rounded-[12px] flex items-center justify-between px-[16px] shadow-md" style={{ background: "#cd8188" }}>
           <div className="flex items-center gap-[12px]">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -158,7 +158,7 @@ function PageShell({ children, message }: { children: React.ReactNode; message?:
           <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
             <path d="M1 1L7 7L1 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-        </div>
+        </a>
       </div>
 
       {message && (
