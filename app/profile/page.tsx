@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { signOut } from "@/app/auth/actions";
 import { savePreferences, saveProfile } from "./actions";
 import { ensureAdopterForUser } from "@/utils/adopter";
@@ -14,11 +13,28 @@ export default async function ProfilePage({
 }) {
   const { message } = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect("/auth?message=Sign in to manage your profile.");
+  // No auth guard — show sign-in prompt instead
+  if (!user) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center min-h-screen px-[24px] text-center"
+        style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", fontFamily: "Montserrat, sans-serif" }}
+      >
+        <p className="text-[64px] mb-[16px]">🐾</p>
+        <p className="text-[24px] font-bold text-[#65584f] mb-[8px]">Your profile</p>
+        <p className="text-[14px] text-[#65584f]/60 mb-[24px]">Sign in to manage your profile, preferences, and wishlist</p>
+        <Link
+          href="/auth"
+          className="rounded-full px-[32px] py-[14px] text-white text-[15px] font-semibold"
+          style={{ background: "#cd8188" }}
+        >
+          Sign in / Create account
+        </Link>
+      </div>
+    );
+  }
 
   const adopter = await ensureAdopterForUser(supabase, user);
 

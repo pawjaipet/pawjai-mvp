@@ -1,8 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { redirect } from "next/navigation";
 import { ensureAdopterForUser } from "@/utils/adopter";
-import { formatAppointmentDateTime } from "@/utils/account-model";
 import { createClient } from "@/utils/supabase/server";
 
 export default async function AppointmentsPage({
@@ -12,11 +10,28 @@ export default async function AppointmentsPage({
 }) {
   const { message } = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect("/auth?message=Sign in to view appointments.");
+  // No auth guard — show empty state if not logged in
+  if (!user) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center min-h-screen px-[24px] text-center"
+        style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", fontFamily: "Montserrat, sans-serif" }}
+      >
+        <p className="text-[48px] mb-[16px]">📅</p>
+        <p className="text-[20px] font-bold text-[#65584f] mb-[8px]">Your appointments</p>
+        <p className="text-[14px] text-[#65584f]/60 mb-[24px]">Sign in to view and book shelter visits</p>
+        <Link
+          href="/auth"
+          className="rounded-full px-[32px] py-[12px] text-white text-[15px] font-semibold"
+          style={{ background: "#cd8188" }}
+        >
+          Sign in
+        </Link>
+      </div>
+    );
+  }
 
   const adopter = await ensureAdopterForUser(supabase, user);
   const { data: appointments } = await supabase

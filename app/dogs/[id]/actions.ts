@@ -6,14 +6,10 @@ import { ensureAdopterForUser } from "@/utils/adopter";
 import { optionalString } from "@/utils/account-model";
 import { createClient } from "@/utils/supabase/server";
 
-async function getSignedInAdopter() {
+async function getAdopter() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/auth?message=Sign in to save dogs and book appointments.");
-
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
   const adopter = await ensureAdopterForUser(supabase, user);
   return { adopter, supabase };
 }
@@ -21,18 +17,18 @@ async function getSignedInAdopter() {
 export async function toggleWishlist(formData: FormData) {
   const dogId = String(formData.get("dogId") ?? "");
   const isSaved = formData.get("isSaved") === "true";
-  const { adopter, supabase } = await getSignedInAdopter();
+  const ctx = await getAdopter();
+
+  if (!ctx) {
+    redirect(`/auth?message=${encodeURIComponent("Sign in to save dogs to your wishlist.")}`);
+  }
+
+  const { adopter, supabase } = ctx;
 
   if (isSaved) {
-    await supabase
-      .from("wishlists")
-      .delete()
-      .eq("adopter_id", adopter.id)
-      .eq("dog_id", dogId);
+    await supabase.from("wishlists").delete().eq("adopter_id", adopter.id).eq("dog_id", dogId);
   } else {
-    await supabase
-      .from("wishlists")
-      .upsert({ adopter_id: adopter.id, dog_id: dogId });
+    await supabase.from("wishlists").upsert({ adopter_id: adopter.id, dog_id: dogId });
   }
 
   revalidatePath(`/dogs/${dogId}`);
@@ -44,7 +40,14 @@ export async function bookAppointment(formData: FormData) {
   const appointmentDate = String(formData.get("appointmentDate") ?? "");
   const appointmentTime = String(formData.get("appointmentTime") ?? "");
   const visitorNote = optionalString(formData.get("visitorNote"));
-  const { adopter, supabase } = await getSignedInAdopter();
+
+  const ctx = await getAdopter();
+
+  if (!ctx) {
+    redirect(`/auth?message=${encodeURIComponent("Sign in to book a shelter visit.")}`);
+  }
+
+  const { adopter, supabase } = ctx;
 
   const { data: dog, error: dogError } = await supabase
     .from("dogs")
@@ -53,7 +56,7 @@ export async function bookAppointment(formData: FormData) {
     .single();
 
   if (dogError || !dog) {
-    redirect(`/dogs/${dogId}?message=${encodeURIComponent("We could not find that dog.")}`);
+    redirect(`/dogs/${dogId}?message=${encodeURIComponent("Could not find that dog.")}`);
   }
 
   const { error } = await supabase.from("appointments").insert({
@@ -70,5 +73,5 @@ export async function bookAppointment(formData: FormData) {
   }
 
   revalidatePath("/appointments");
-  redirect("/appointments?message=Appointment requested. The shelter can follow up by email.");
+  redirect("/appointments?message=Appointment requested. The shelter will follow up by email.");
 }
