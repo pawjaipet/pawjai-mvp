@@ -6,6 +6,8 @@ import { ensureAdopterForUser } from "@/utils/adopter";
 import { createClient } from "@/utils/supabase/server";
 import type { DogWithCover } from "@/types/database";
 
+const M = "Montserrat, sans-serif";
+
 export default async function ProfilePage({
   searchParams,
 }: {
@@ -15,23 +17,58 @@ export default async function ProfilePage({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // No auth guard — show sign-in prompt instead
   if (!user) {
     return (
       <div
-        className="flex flex-col items-center justify-center min-h-screen px-[24px] text-center"
-        style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", fontFamily: "Montserrat, sans-serif" }}
+        style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", minHeight: "100vh", fontFamily: M, background: "#F5F1E8" }}
+        className="flex flex-col"
       >
-        <p className="text-[64px] mb-[16px]">🐾</p>
-        <p className="text-[24px] font-bold text-[#65584f] mb-[8px]">Your profile</p>
-        <p className="text-[14px] text-[#65584f]/60 mb-[24px]">Sign in to manage your profile, preferences, and wishlist</p>
-        <Link
-          href="/auth"
-          className="rounded-full px-[32px] py-[14px] text-white text-[15px] font-semibold"
-          style={{ background: "#cd8188" }}
-        >
-          Sign in / Create account
-        </Link>
+        {/* Banner placeholder */}
+        <div className="w-full h-[285px] relative" style={{ background: "linear-gradient(135deg, #d6c8ad 0%, #c4b49a 60%, #b8a48a 100%)" }}>
+          {/* Avatar placeholder */}
+          <div
+            className="absolute left-[8px] size-[145px] rounded-full border-4 border-white flex items-center justify-center"
+            style={{ top: "154px", background: "#c4b49a" }}
+          >
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none">
+              <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12ZM12 14C8.66667 14 2 15.675 2 19V21H22V19C22 15.675 15.3333 14 12 14Z" fill="rgba(101,88,79,0.3)" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Name section */}
+        <div className="relative px-[16px] pt-[80px] pb-[20px]" style={{ background: "rgba(214,200,173,0.5)" }}>
+          <p style={{ fontFamily: M, fontSize: 36, color: "#65584f" }}>Guest</p>
+          <div className="flex gap-[8px] mt-[10px]">
+            <span className="border border-[#65584f] rounded-full px-[10px] py-[4px] text-[10px] text-[#65584f] bg-white" style={{ fontFamily: M }}>
+              Not signed in
+            </span>
+          </div>
+          <Link
+            href="/auth"
+            className="absolute right-[16px] top-[20px] rounded-[10px] px-[16px] py-[8px] text-[12px] font-semibold text-white"
+            style={{ background: "#cd8188", fontFamily: M }}
+          >
+            Sign in
+          </Link>
+        </div>
+
+        {/* Wishlist title */}
+        <p className="text-center text-[20px] font-semibold text-[#65584f] mt-[30px]" style={{ fontFamily: M }}>Wishlist</p>
+
+        {/* Empty wishlist */}
+        <div className="flex flex-col items-center mt-[20px] px-[16px]">
+          <p className="text-[16px] text-[#65584f]/50 text-center" style={{ fontFamily: M }}>
+            Your wishlist is empty. Start adding dogs you love!
+          </p>
+          <Link
+            href="/swipe"
+            className="mt-[20px] rounded-full px-[32px] py-[12px] text-white text-[14px] font-semibold"
+            style={{ background: "#cd8188", fontFamily: M }}
+          >
+            Browse Dogs
+          </Link>
+        </div>
       </div>
     );
   }
@@ -62,231 +99,106 @@ export default async function ProfilePage({
 
   return (
     <div
-      className="bg-white relative overflow-y-auto overflow-x-hidden"
-      style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", minHeight: "100vh", paddingBottom: "90px", scrollbarWidth: "none" }}
+      className="relative overflow-y-auto overflow-x-hidden"
+      style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", minHeight: "100vh", paddingBottom: "90px", scrollbarWidth: "none", background: "white" }}
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
-      {/* Cover photo header */}
-      <div className="relative h-[220px] w-full bg-gradient-to-br from-[#d6c8ad] to-[#c4b49a]">
-        {/* Sign out in top-right */}
-        <form action={signOut} className="absolute top-[14px] right-[12px] z-10">
-          <button
-            className="rounded-full px-[14px] py-[6px] text-[12px] font-semibold text-[#65584f] border border-[#65584f]/30 bg-white/70 backdrop-blur-sm"
-            style={{ fontFamily: "Montserrat, sans-serif" }}
-          >
-            Sign out
-          </button>
-        </form>
-
-        {/* Profile photo - overlapping cover */}
-        <div className="absolute -bottom-[50px] left-[16px] size-[100px] rounded-full overflow-hidden border-4 border-white bg-[#d6c8ad]">
-          <div className="flex items-center justify-center size-full">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-              <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12ZM12 14C8.66667 14 2 15.675 2 19V21H22V19C22 15.675 15.3333 14 12 14Z" fill="#65584f" fillOpacity="0.4" />
-            </svg>
-          </div>
+      {/* ── Banner (285px) — placeholder gradient where cover photo goes ── */}
+      <div
+        className="absolute left-0 top-0 w-full h-[285px]"
+        style={{ background: "linear-gradient(135deg, #d6c8ad 0%, #c4b49a 60%, #b8a48a 100%)" }}
+      >
+        {/* placeholder label */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-30">
+          <p className="text-[12px] font-semibold uppercase tracking-widest text-[#65584f]" style={{ fontFamily: M }}>
+            Cover photo
+          </p>
         </div>
       </div>
 
-      {/* Name section */}
-      <div className="bg-[rgba(214,200,173,0.5)] pt-[60px] pb-[16px] px-[16px] relative">
-        <p
-          className="text-[28px] text-[#65584f] leading-tight"
-          style={{ fontFamily: "Montserrat, sans-serif" }}
-        >
-          {displayName}
-        </p>
-        <p className="text-[12px] text-[#65584f]/60 mt-[2px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-          {user.email}
-        </p>
+      {/* ── Name section bg (101px, sits at y=285) ── */}
+      <div
+        className="absolute left-0 w-full h-[101px]"
+        style={{ top: 285, background: "rgba(214,200,173,0.5)" }}
+      />
 
-        {/* Badges */}
-        <div className="flex gap-[8px] mt-[10px] flex-wrap">
-          {["Member", adopter.id ? "Adopter" : null].filter(Boolean).map((badge) => (
-            <span
-              key={badge}
-              className="border border-[#65584f] rounded-[20px] px-[10px] py-[4px] text-[10px] text-[#65584f] bg-white"
-              style={{ fontFamily: "Montserrat, sans-serif" }}
-            >
-              {badge}
-            </span>
-          ))}
-        </div>
-
-        {/* Edit Profile / appointments link */}
-        <Link
-          href="/appointments"
-          className="absolute right-[12px] bottom-[16px] bg-[#cd8188] rounded-[10px] px-[14px] py-[6px]"
-        >
-          <span className="text-[12px] text-white font-semibold" style={{ fontFamily: "Montserrat, sans-serif" }}>
-            View appointments
-          </span>
-        </Link>
+      {/* ── Circular avatar (145×145, overlaps banner→name at y=154) ── */}
+      <div
+        className="absolute left-[8px] size-[145px] rounded-full border-[4px] border-white flex items-center justify-center overflow-hidden"
+        style={{ top: 154, background: "#c4b49a" }}
+      >
+        <svg width="72" height="72" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12ZM12 14C8.66667 14 2 15.675 2 19V21H22V19C22 15.675 15.3333 14 12 14Z"
+            fill="rgba(101,88,79,0.35)"
+          />
+        </svg>
       </div>
 
-      {message && (
-        <div className="mx-[16px] mt-[16px] rounded-[12px] bg-[#d6c8ad]/30 px-4 py-3 text-sm text-[#65584f]">
-          {message}
+      {/* ── Name (y=299) ── */}
+      <p
+        className="absolute left-[16px] w-[375px]"
+        style={{ top: 299, fontFamily: M, fontSize: 36, color: "#65584f", lineHeight: "normal" }}
+      >
+        {displayName}
+      </p>
+
+      {/* ── Edit Profile button (y=308, right) ── */}
+      <div className="absolute right-[16px]" style={{ top: 308 }}>
+        <div className="rounded-[10px] px-[16px] py-[8px]" style={{ background: "#cd8188" }}>
+          <p className="text-[12px] text-white text-center font-semibold" style={{ fontFamily: M }}>Edit Profile</p>
         </div>
-      )}
-
-      {/* Contact + preferences forms */}
-      <div className="px-[16px] mt-[20px] space-y-[16px]">
-        {/* Contact */}
-        <form action={saveProfile} className="bg-white rounded-[16px] border border-[#d6c8ad]/50 p-[16px] space-y-[12px] shadow-sm">
-          <h2 className="text-[16px] font-semibold text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-            Contact details
-          </h2>
-          <div>
-            <label className="block text-[12px] text-[#65584f]/70 mb-[4px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              Full name
-            </label>
-            <input
-              name="fullName"
-              defaultValue={profile?.full_name ?? ""}
-              className="w-full rounded-[12px] px-[14px] py-[12px] text-[14px] text-[#65584f] outline-none border-none"
-              style={{ background: "#d6c8ad", fontFamily: "Montserrat, sans-serif" }}
-            />
-          </div>
-          <div>
-            <label className="block text-[12px] text-[#65584f]/70 mb-[4px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              Phone
-            </label>
-            <input
-              name="phoneNumber"
-              defaultValue={profile?.phone_number ?? adopter.phone_number ?? ""}
-              className="w-full rounded-[12px] px-[14px] py-[12px] text-[14px] text-[#65584f] outline-none border-none"
-              style={{ background: "#d6c8ad", fontFamily: "Montserrat, sans-serif" }}
-            />
-          </div>
-          <button
-            className="w-full rounded-[16px] py-[12px] text-white font-semibold text-[15px] border-0 transition-all active:opacity-80"
-            style={{ background: "#cd8188", fontFamily: "Montserrat, sans-serif" }}
-          >
-            Save profile
-          </button>
-        </form>
-
-        {/* Preferences */}
-        <form action={savePreferences} className="bg-white rounded-[16px] border border-[#d6c8ad]/50 p-[16px] space-y-[12px] shadow-sm">
-          <h2 className="text-[16px] font-semibold text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-            Matching preferences
-          </h2>
-          <div className="grid grid-cols-2 gap-[10px]">
-            {[
-              { id: "preferredSize", label: "Size", name: "preferredSize", current: preferences?.preferred_size, opts: ["small", "medium", "large", "extra_large"] },
-              { id: "preferredEnergy", label: "Energy", name: "preferredEnergy", current: preferences?.preferred_energy_level, opts: ["low", "medium", "high"] },
-            ].map(({ id, label, name, current, opts }) => (
-              <div key={id}>
-                <label className="block text-[12px] text-[#65584f]/70 mb-[4px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                  {label}
-                </label>
-                <select
-                  id={id}
-                  name={name}
-                  defaultValue={current ?? ""}
-                  className="w-full rounded-[12px] px-[12px] py-[12px] text-[14px] text-[#65584f] outline-none border-none capitalize"
-                  style={{ background: "#d6c8ad", fontFamily: "Montserrat, sans-serif" }}
-                >
-                  <option value="">Any</option>
-                  {opts.map((o) => (
-                    <option key={o} value={o}>{o.replace("_", " ")}</option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
-          {[
-            ["goodWithKids", "Good with kids", preferences?.good_with_kids],
-            ["goodWithDogs", "Good with dogs", preferences?.good_with_dogs],
-            ["goodWithCats", "Good with cats", preferences?.good_with_cats],
-          ].map(([name, label, value]) => (
-            <label
-              key={String(name)}
-              className="flex items-center justify-between rounded-[12px] px-[14px] py-[12px]"
-              style={{ background: "#d6c8ad" }}
-            >
-              <span className="text-[14px] text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                {label}
-              </span>
-              <select
-                name={String(name)}
-                defaultValue={value == null ? "" : String(value)}
-                className="text-[13px] text-[#65584f] outline-none border-none bg-transparent"
-                style={{ fontFamily: "Montserrat, sans-serif" }}
-              >
-                <option value="">Any</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
-            </label>
-          ))}
-          <div>
-            <label className="block text-[12px] text-[#65584f]/70 mb-[4px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              Notes
-            </label>
-            <textarea
-              name="notes"
-              rows={3}
-              defaultValue={preferences?.notes ?? ""}
-              placeholder="Lifestyle, home setup, or traits you care about"
-              className="w-full rounded-[12px] px-[14px] py-[12px] text-[14px] text-[#65584f] outline-none border-none resize-none placeholder:text-[#65584f]/50"
-              style={{ background: "#d6c8ad", fontFamily: "Montserrat, sans-serif" }}
-            />
-          </div>
-          <button
-            className="w-full rounded-[16px] py-[12px] text-white font-semibold text-[15px] border-0 transition-all active:opacity-80"
-            style={{ background: "#65584f", fontFamily: "Montserrat, sans-serif" }}
-          >
-            Save preferences
-          </button>
-        </form>
       </div>
 
-      {/* Wishlist section */}
-      <div className="px-[16px] mt-[24px]">
-        <p
-          className="text-[20px] font-semibold text-[#65584f] text-center mb-[16px]"
-          style={{ fontFamily: "Montserrat, sans-serif" }}
-        >
-          Wishlist
-        </p>
+      {/* ── Badge pills (y=349) ── */}
+      <div className="absolute left-[16px] flex gap-[8px] flex-wrap" style={{ top: 349 }}>
+        {["First Adopter", "Member"].map((badge) => (
+          <div key={badge} className="bg-white rounded-full px-[10px] h-[25px] flex items-center border border-[#65584f]">
+            <p className="text-[10px] text-[#65584f] whitespace-nowrap" style={{ fontFamily: M }}>{badge}</p>
+          </div>
+        ))}
+      </div>
 
+      {/* ── Spacer so content starts below the absolute-positioned header area ── */}
+      <div style={{ height: 406 }} />
+
+      {/* ── Wishlist title (Figma: y=406, centered, w=375) ── */}
+      <p
+        className="font-semibold text-center text-[#65584f] text-[20px]"
+        style={{ fontFamily: M }}
+      >
+        Wishlist
+      </p>
+
+      {/* ── Wishlist grid (y=443) ── */}
+      <div className="px-[16px] mt-[16px]">
         {savedDogs.length ? (
           <div className="flex flex-wrap gap-[7px]">
             {savedDogs.map((dog) => (
               <Link
                 key={dog.id}
                 href={`/dogs/${dog.id}`}
-                className="h-[110px] w-[110px] rounded-[10px] overflow-hidden shrink-0 relative bg-[#d6c8ad] block active:scale-95 transition-transform"
+                className="block rounded-[10px] overflow-hidden active:scale-95 transition-transform"
+                style={{ width: 110, height: 110, background: "#d6c8ad", position: "relative", flexShrink: 0 }}
               >
                 {dog.cover_photo ? (
-                  <img
-                    src={dog.cover_photo}
-                    alt={dog.name}
-                    className="absolute inset-0 size-full object-cover"
-                  />
+                  <img src={dog.cover_photo} alt={dog.name} className="absolute inset-0 size-full object-cover" />
                 ) : (
-                  <div className="flex items-center justify-center size-full">
-                    <span className="text-2xl">🐾</span>
-                  </div>
+                  <div className="flex items-center justify-center size-full text-2xl">🐾</div>
                 )}
               </Link>
             ))}
           </div>
         ) : (
           <div className="py-[40px] text-center">
-            <p
-              className="text-[16px] text-[#65584f]/50"
-              style={{ fontFamily: "Montserrat, sans-serif" }}
-            >
+            <p className="text-[16px] text-[#65584f]/50" style={{ fontFamily: M }}>
               Your wishlist is empty. Start adding dogs you love!
             </p>
             <Link
               href="/swipe"
-              className="mt-[16px] inline-block rounded-[22px] px-[28px] py-[10px] text-white text-[14px] font-semibold"
-              style={{ background: "#cd8188", fontFamily: "Montserrat, sans-serif" }}
+              className="mt-[16px] inline-block rounded-full px-[28px] py-[10px] text-white text-[14px] font-semibold"
+              style={{ background: "#cd8188", fontFamily: M }}
             >
               Browse Dogs
             </Link>
@@ -294,27 +206,127 @@ export default async function ProfilePage({
         )}
       </div>
 
-      {/* Sticky gradient header — rendered last so it's on top */}
+      {/* ── Divider ── */}
+      <div className="mx-[16px] mt-[32px] h-[1px]" style={{ background: "rgba(214,200,173,0.6)" }} />
+
+      {/* ── Edit profile form ── */}
+      <div className="px-[16px] mt-[24px] space-y-[16px]">
+        {message && (
+          <div className="rounded-[12px] bg-[#d6c8ad]/30 px-4 py-3 text-[13px] text-[#65584f]">
+            {message}
+          </div>
+        )}
+
+        <form action={saveProfile} className="space-y-[12px]">
+          <p className="text-[14px] font-semibold text-[#65584f]/60 uppercase tracking-widest" style={{ fontFamily: M }}>Contact</p>
+          {[
+            { name: "fullName", label: "Full name", value: profile?.full_name ?? "", type: "text" },
+            { name: "phoneNumber", label: "Phone", value: profile?.phone_number ?? adopter.phone_number ?? "", type: "tel" },
+          ].map(({ name, label, value, type }) => (
+            <div key={name}>
+              <label className="block text-[12px] text-[#65584f]/60 mb-[4px]" style={{ fontFamily: M }}>{label}</label>
+              <input
+                name={name}
+                type={type}
+                defaultValue={value}
+                className="w-full rounded-[12px] px-[14px] py-[13px] text-[14px] text-[#65584f] outline-none border-none"
+                style={{ background: "#d6c8ad", fontFamily: M }}
+              />
+            </div>
+          ))}
+          <button
+            className="w-full rounded-full py-[13px] text-white font-semibold text-[15px] border-0"
+            style={{ background: "#cd8188", fontFamily: M }}
+          >
+            Save profile
+          </button>
+        </form>
+
+        <form action={savePreferences} className="space-y-[12px] pb-[8px]">
+          <p className="text-[14px] font-semibold text-[#65584f]/60 uppercase tracking-widest mt-[8px]" style={{ fontFamily: M }}>Preferences</p>
+          <div className="grid grid-cols-2 gap-[10px]">
+            <div>
+              <label className="block text-[12px] text-[#65584f]/60 mb-[4px]" style={{ fontFamily: M }}>Size</label>
+              <select
+                name="preferredSize"
+                defaultValue={preferences?.preferred_size ?? ""}
+                className="w-full rounded-[12px] px-[12px] py-[13px] text-[14px] text-[#65584f] outline-none border-none capitalize"
+                style={{ background: "#d6c8ad", fontFamily: M }}
+              >
+                <option value="">Any</option>
+                {["small", "medium", "large", "extra_large"].map((o) => (
+                  <option key={o} value={o}>{o.replace("_", " ")}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[12px] text-[#65584f]/60 mb-[4px]" style={{ fontFamily: M }}>Energy</label>
+              <select
+                name="preferredEnergy"
+                defaultValue={preferences?.preferred_energy_level ?? ""}
+                className="w-full rounded-[12px] px-[12px] py-[13px] text-[14px] text-[#65584f] outline-none border-none"
+                style={{ background: "#d6c8ad", fontFamily: M }}
+              >
+                <option value="">Any</option>
+                {["low", "medium", "high"].map((o) => (
+                  <option key={o} value={o}>{o}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {[
+            ["goodWithKids", "Good with kids", preferences?.good_with_kids],
+            ["goodWithDogs", "Good with dogs", preferences?.good_with_dogs],
+            ["goodWithCats", "Good with cats", preferences?.good_with_cats],
+          ].map(([name, label, value]) => (
+            <div
+              key={String(name)}
+              className="flex items-center justify-between rounded-[12px] px-[14px] py-[12px]"
+              style={{ background: "#d6c8ad" }}
+            >
+              <span className="text-[14px] text-[#65584f]" style={{ fontFamily: M }}>{label}</span>
+              <select
+                name={String(name)}
+                defaultValue={value == null ? "" : String(value)}
+                className="text-[13px] text-[#65584f] outline-none border-none bg-transparent"
+                style={{ fontFamily: M }}
+              >
+                <option value="">Any</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+          ))}
+          <button
+            className="w-full rounded-full py-[13px] text-white font-semibold text-[15px] border-0"
+            style={{ background: "#65584f", fontFamily: M }}
+          >
+            Save preferences
+          </button>
+        </form>
+
+        {/* Sign out */}
+        <form action={signOut}>
+          <button
+            className="w-full rounded-full py-[13px] text-[15px] font-semibold border-2"
+            style={{ background: "white", borderColor: "rgba(101,88,79,0.2)", color: "#65584f", fontFamily: M }}
+          >
+            Sign out
+          </button>
+        </form>
+      </div>
+
+      {/* ── Sticky gradient header with logo ── */}
       <div
         className="fixed top-0 z-20 pointer-events-none h-[94px]"
         style={{
-          width: "402px",
-          maxWidth: "100vw",
-          left: "50%",
-          transform: "translateX(-50%)",
-          background:
-            "linear-gradient(to bottom, #d6c8ad 0%, rgba(214,200,173,0.75) 38.942%, rgba(214,200,173,0) 100%)",
+          width: "402px", maxWidth: "100vw", left: "50%", transform: "translateX(-50%)",
+          background: "linear-gradient(to bottom, #d6c8ad 0%, rgba(214,200,173,0.75) 38.942%, rgba(214,200,173,0) 100%)",
         }}
       >
         <div className="pointer-events-auto absolute left-[8px] top-[39px]">
           <a href="/swipe" className="block h-[55px] w-[110px] relative">
-            <Image
-              src="/pawjai-logo.png"
-              alt="PawJai"
-              fill
-              className="object-contain object-left"
-              priority
-            />
+            <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain object-left" priority />
           </a>
         </div>
       </div>
