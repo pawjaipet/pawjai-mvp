@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { saveFilterPreferences } from "@/app/actions/preferences";
 
 // Questions matching Figma FilterPage.tsx exactly
 const questions = [
@@ -156,6 +157,7 @@ export default function FilterPage() {
   const [ageRange, setAgeRange] = useState<[number, number]>([2, 4]);
   const [isDragging, setIsDragging] = useState<"min" | "max" | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
+  const [, startTransition] = useTransition();
 
   const currentQ = questions[currentQuestion];
   const currentSelections = selectedAnswers[currentQuestion] ?? [];
@@ -199,14 +201,34 @@ export default function FilterPage() {
       setSelectedAnswers({ ...selectedAnswers, [currentQuestion]: [option] });
       setTimeout(() => {
         if (currentQuestion < questions.length - 1) setCurrentQuestion(currentQuestion + 1);
-        else router.push("/swipe");
+        else finishAndSave();
       }, 350);
     }
   };
 
+  const finishAndSave = () => {
+    // Map question indices to preference fields
+    const sizeQ = selectedAnswers[0] ?? [];         // Q0: size cards
+    const energyQ = selectedAnswers[3] ?? [];        // Q3: activity cards
+    const kidsQ = selectedAnswers[8] ?? [];          // Q8: kids
+    const dogsQ = selectedAnswers[6] ?? [];          // Q6: other dogs
+    const catsQ = selectedAnswers[7] ?? [];          // Q7: cats
+
+    startTransition(async () => {
+      await saveFilterPreferences({
+        sizes: sizeQ,
+        energyLevels: energyQ,
+        goodWithKids: kidsQ.includes("Kid-friendly") ? true : kidsQ.length > 0 ? false : null,
+        goodWithDogs: dogsQ.includes("Friendly and playful") ? true : dogsQ.length > 0 ? false : null,
+        goodWithCats: catsQ.includes("Cat-friendly") ? true : catsQ.length > 0 ? false : null,
+      });
+      router.push("/swipe");
+    });
+  };
+
   const handleContinue = () => {
     if (currentQuestion < questions.length - 1) setCurrentQuestion(currentQuestion + 1);
-    else router.push("/swipe");
+    else finishAndSave();
   };
 
   const handleBack = () => {

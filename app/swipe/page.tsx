@@ -4,6 +4,17 @@ import type { SwipeDog } from "@/components/SwipeDogCard";
 
 export const dynamic = "force-dynamic";
 
+function hasBackblazePhoto(dog: SwipeDog) {
+  return dog.photos.some((photo) => {
+    if (!photo.public_url) return false;
+    try {
+      return new URL(photo.public_url).hostname.includes("backblazeb2.com");
+    } catch {
+      return false;
+    }
+  });
+}
+
 async function getDogs(): Promise<SwipeDog[]> {
   const supabase = await createClient();
 
@@ -28,10 +39,39 @@ async function getDogs(): Promise<SwipeDog[]> {
     photoMap.get(p.dog_id)!.push(p);
   }
 
-  return dogs.map((d) => ({ ...d, photos: photoMap.get(d.id) ?? [] }));
+  return dogs
+    .map((d) => ({ ...d, photos: photoMap.get(d.id) ?? [] }))
+    .sort((a, b) => {
+      const aUploaded = hasBackblazePhoto(a);
+      const bUploaded = hasBackblazePhoto(b);
+      if (aUploaded !== bUploaded) return aUploaded ? -1 : 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
 }
 
 export default async function SwipePage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   const dogs = await getDogs();
-  return <SwipeFeed dogs={dogs} />;
+
+  // Fetch saved dog IDs for this user
+  let savedIds: string[] = [];
+  if (user) {
+    const { data: adopter } = await supabase
+      .from("adopters")
+      .select("id")
+      .eq("profile_id", user.id)
+      .maybeSingle();
+
+    if (adopter) {
+      const { data: wishlist } = await supabase
+        .from("wishlists")
+        .select("dog_id")
+        .eq("adopter_id", adopter.id);
+      savedIds = (wishlist ?? []).map((w) => w.dog_id);
+    }
+  }
+
+  return <SwipeFeed dogs={dogs} savedIds={savedIds} isLoggedIn={!!user} />;
 }

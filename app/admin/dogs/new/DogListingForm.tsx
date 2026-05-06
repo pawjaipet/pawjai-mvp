@@ -83,7 +83,7 @@ export default function DogListingForm({
   const [traitRows, setTraitRows] = useState(defaultTraitRows);
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form action={formAction} encType="multipart/form-data" className="space-y-6">
       <div className="rounded-[32px] bg-gradient-to-br from-[#fff6e8] via-[#fff1df] to-[#f9e4c0] p-7 shadow-[0_24px_60px_rgba(176,120,42,0.16)]">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
@@ -232,57 +232,180 @@ export default function DogListingForm({
       </Section>
 
       <Section
-        title="Behavior & Compatibility"
-        description="Quick-tap attributes for matching and filtering. These map directly to the current browsing experience."
+        title="Matching Template"
+        description="Fill this like the adopter questionnaire in reverse. These answers become the structured dog fields used for filtering and matching."
       >
         <div className="grid gap-5 md:grid-cols-2">
           <Field label="Energy level">
             <select name="energy_level" className={inputClass()} defaultValue="">
               <option value="">Not set yet</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
+              <option value="low">Low - relaxed, calm companion</option>
+              <option value="medium">Medium - daily walks and light play</option>
+              <option value="high">High - needs a lot of activity</option>
             </select>
           </Field>
 
-          <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
-            <p className="text-sm font-medium text-[#5b4d40]">Boolean traits</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {[
-                ["sterilized", "Sterilized"],
-                ["good_with_kids", "Good with kids"],
-                ["good_with_dogs", "Good with dogs"],
-                ["good_with_cats", "Good with cats"],
-                ["house_trained", "House trained"],
-                ["leash_trained", "Leash trained"],
-                ["human_friendly", "Human friendly"],
-                ["dog_friendly", "Dog friendly"],
-                ["animal_friendly", "Animal friendly"],
-              ].map(([name, label]) => (
-                <label key={name} className="flex items-center gap-3 rounded-2xl border border-[#f0e6d7] bg-white px-4 py-3 text-sm text-[#5b4d40]">
-                  <input type="checkbox" name={name} className="h-4 w-4 rounded border-[#d4c1a5] text-[#d69546] focus:ring-[#f6d7ad]" />
-                  <span>{label}</span>
-                </label>
-              ))}
-            </div>
+          <Field label="Training status">
+            <select name="training_preference_match" className={inputClass()} defaultValue="">
+              <option value="">Not set yet</option>
+              <option value="Well-trained dogs only">Well-trained dog</option>
+              <option value="Dogs still in training">Still in training</option>
+              <option value="Willing to train from scratch">Needs training from scratch</option>
+            </select>
+          </Field>
+
+          <Field label="People friendliness">
+            <select name="people_friendliness" className={inputClass()} defaultValue="">
+              <option value="">Not set yet</option>
+              <option value="Comfortable being petted by strangers">Comfortable being petted by strangers</option>
+              <option value="Takes time to get to know new people">Takes time with new people</option>
+              <option value="Only stick to their owner">Only sticks to their owner</option>
+            </select>
+          </Field>
+
+          <Field label="Good with people?">
+            <select name="human_friendly_value" className={inputClass()} defaultValue="">
+              <option value="">Not sure</option>
+              <option value="true">Yes</option>
+              <option value="false">No / needs careful introduction</option>
+            </select>
+          </Field>
+
+          <Field label="Friendliness to other dogs">
+            <select name="dog_social_style" className={inputClass()} defaultValue="">
+              <option value="">Not set yet</option>
+              <option value="Friendly and playful">Friendly and playful</option>
+              <option value="Okay with other dogs but not too social">Okay with dogs but not too social</option>
+              <option value="Prefer to be solo">Prefers to be solo</option>
+            </select>
+          </Field>
+
+          <Field label="Good with dogs?">
+            <select name="good_with_dogs_value" className={inputClass()} defaultValue="">
+              <option value="">Not sure</option>
+              <option value="true">Yes</option>
+              <option value="false">No / solo preferred</option>
+            </select>
+          </Field>
+
+          <Field label="Friendliness to cats">
+            <select name="cat_friendliness" className={inputClass()} defaultValue="">
+              <option value="">Not set yet</option>
+              <option value="Cat-friendly">Cat-friendly</option>
+              <option value="Not sure / No">Not sure / no</option>
+            </select>
+          </Field>
+
+          <Field label="Good with cats?">
+            <select name="good_with_cats_value" className={inputClass()} defaultValue="">
+              <option value="">Not sure</option>
+              <option value="true">Yes</option>
+              <option value="false">No / unknown</option>
+            </select>
+          </Field>
+
+          <Field label="Friendliness to kids under 4">
+            <select name="kid_friendliness" className={inputClass()} defaultValue="">
+              <option value="">Not set yet</option>
+              <option value="Kid-friendly">Kid-friendly</option>
+              <option value="Not sure / No">Not sure / no</option>
+            </select>
+          </Field>
+
+          <Field label="Good with kids?">
+            <select name="good_with_kids_value" className={inputClass()} defaultValue="">
+              <option value="">Not sure</option>
+              <option value="true">Yes</option>
+              <option value="false">No / unknown</option>
+            </select>
+          </Field>
+
+          <Field label="Special needs category">
+            <select name="special_needs_category" className={inputClass()} defaultValue="">
+              <option value="">No category selected</option>
+              <option value="Medical conditions">Medical conditions</option>
+              <option value="Behavioral challenges">Behavioral challenges</option>
+              <option value="Special diet requirements">Special diet requirements</option>
+              <option value="No special needs preferred">No special needs</option>
+            </select>
+          </Field>
+
+          <div className="md:col-span-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["sterilized", "Sterilized"],
+              ["house_trained", "House trained"],
+              ["leash_trained", "Leash trained"],
+              ["animal_friendly", "Animal friendly"],
+            ].map(([name, label]) => (
+              <label key={name} className="flex items-center gap-3 rounded-2xl border border-[#f0e6d7] bg-white px-4 py-3 text-sm text-[#5b4d40]">
+                <input type="checkbox" name={name} className="h-4 w-4 rounded border-[#d4c1a5] text-[#d69546] focus:ring-[#f6d7ad]" />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+
+          <div className="md:col-span-2">
+            <Field label="Personality and temperament">
+              <textarea
+                name="temperament"
+                rows={3}
+                className={inputClass()}
+                placeholder="Gentle, shy at first, playful after warming up, calm around adults."
+              />
+            </Field>
+          </div>
+
+          <div className="md:col-span-2">
+            <Field label="Ideal home">
+              <textarea
+                name="ideal_home"
+                rows={3}
+                className={inputClass()}
+                placeholder="Quiet home, patient adopter, no cats, daily walks, fenced outdoor space if possible."
+              />
+            </Field>
           </div>
         </div>
       </Section>
 
       <Section
         title="Photos"
-        description="Paste OneDrive or direct image URLs in the exact order you want them shown. Each image will be fetched server-side, uploaded into Backblaze under pawjaidogs, and then saved as the final listing photo."
+        description="Choose the workflow that is easiest for the team. Local folders are imported in filename order, browser files keep picker order, and URL rows are imported last. The first imported photo becomes the cover."
       >
         <div className="space-y-4">
+          <Field
+            label="Local folder inside pawjaidogs"
+            hint="Example: create pawjaidogs/maan with 01.jpg, 02.jpg, 03.jpg, then type maan here."
+          >
+            <input
+              name="local_photo_folder"
+              className={inputClass()}
+              placeholder="maan"
+            />
+          </Field>
+
+          <Field
+            label="Upload image files"
+            hint="Use this when the photos are on your computer. Backblaze receives the files directly."
+          >
+            <input
+              name="photo_files"
+              type="file"
+              accept="image/*"
+              multiple
+              className="w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] file:mr-4 file:rounded-full file:border-0 file:bg-[#d38a2c] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+            />
+          </Field>
+
           {photoRows.map((value, index) => (
             <Field
               key={`photo-${index}`}
-              label={`Photo ${index + 1}`}
+              label={`Photo URL ${index + 1}`}
               error={state.fieldErrors?.[`photo_url_${index}`]}
               hint={
                 index === 0
-                  ? "This will become the cover image on the browse cards."
-                  : "Public OneDrive share links are supported here too."
+                  ? "Use URL rows for direct public image URLs. OneDrive folder pages are less reliable than file upload or local folders."
+                  : undefined
               }
             >
               <input
@@ -317,7 +440,7 @@ export default function DogListingForm({
 
       <Section
         title="Custom Traits"
-        description="Use flexible label and value pairs for notes that do not belong in the core schema yet, like temperament, rescue source, or internal tags."
+        description="Optional extra labels for anything that does not fit the template above, like caretaker, rescue location, vaccine note, or internal tag."
       >
         <div className="space-y-4">
           {traitRows.map((row, index) => (
@@ -391,7 +514,7 @@ export default function DogListingForm({
           <div>
             <p className="text-sm font-semibold text-[#4f4338]">Ready to create this listing?</p>
             <p className="text-sm text-[#7a6d61]">
-              Photos and trait rows are optional, so you can save a draft early and refine it later.
+              Save as draft while details are incomplete, or choose available when the profile and cover image are ready.
             </p>
           </div>
           <button

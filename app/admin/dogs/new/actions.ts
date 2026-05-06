@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import fs from "node:fs/promises";
 import { randomUUID } from "node:crypto";
+import path from "node:path";
 import type { Database } from "@/types/database";
 import {
   closeAdminGate,
@@ -48,6 +50,13 @@ const DOG_ADOPTION_STATUSES = new Set<Database["public"]["Enums"]["dog_adoption_
   "unavailable",
 ]);
 
+const IMAGE_EXTENSIONS = new Set([".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"]);
+
+type UploadedPhoto = {
+  publicUrl: string;
+  storagePath: string;
+};
+
 function getString(formData: FormData, name: string) {
   const value = formData.get(name);
   return typeof value === "string" ? value.trim() : "";
@@ -68,6 +77,13 @@ function getOptionalNumber(formData: FormData, name: string) {
 
 function getBoolean(formData: FormData, name: string) {
   return formData.get(name) === "on";
+}
+
+function getOptionalBooleanValue(formData: FormData, name: string) {
+  const value = getString(formData, name);
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return null;
 }
 
 function getEnumValue<T extends string>(formData: FormData, name: string, allowed: Set<T>, fallback?: T) {
@@ -108,6 +124,27 @@ function normalizeTraitPairs(formData: FormData) {
   return rows;
 }
 
+function normalizeStructuredTraits(formData: FormData) {
+  const traits = [
+    ["training_preference_match", getOptionalString(formData, "training_preference_match")],
+    ["people_friendliness", getOptionalString(formData, "people_friendliness")],
+    ["dog_social_style", getOptionalString(formData, "dog_social_style")],
+    ["cat_friendliness", getOptionalString(formData, "cat_friendliness")],
+    ["kid_friendliness", getOptionalString(formData, "kid_friendliness")],
+    ["special_needs_category", getOptionalString(formData, "special_needs_category")],
+    ["temperament", getOptionalString(formData, "temperament")],
+    ["ideal_home", getOptionalString(formData, "ideal_home")],
+    ["intake_note", getOptionalString(formData, "intake_note")],
+  ];
+
+  return traits
+    .filter(([, traitValue]) => Boolean(traitValue))
+    .map(([traitType, traitValue]) => ({
+      traitType: traitType!,
+      traitValue: traitValue!,
+    }));
+}
+
 function guessExtensionFromUrl(url: string) {
   try {
     const pathname = new URL(url).pathname;
@@ -136,18 +173,102 @@ async function uploadPhotoFromSourceUrl({
     );
   }
 
-  const bytes = Buffer.from(await response.arrayBuffer());
   const slug = slugify(dogName) || "dog";
   const extension =
     guessExtensionFromUrl(sourceUrl) ?? extensionFromContentType(contentType);
-  const fileName = `${slug}-${Date.now()}-${photoIndex + 1}-${randomUUID().slice(0, 8)}${extension ? `.${extension}` : ""}`;
+
+  return uploadPhotoBuffer({
+    body: Buffer.from(await response.arrayBuffer()),
+    contentType,
+    dogName,
+    extension,
+    photoIndex,
+  });
+}
+
+async function uploadPhotoBuffer({
+  body,
+  contentType,
+  dogName,
+  extension,
+  photoIndex,
+}: {
+  body: Buffer;
+  contentType: string | null;
+  dogName: string;
+  extension: string | null;
+  photoIndex: number;
+}): Promise<UploadedPhoto> {
+  const slug = slugify(dogName) || "dog";
+  const normalizedExtension = extension?.replace(/^\./, "") || extensionFromContentType(contentType);
+  const fileName = `${slug}-${Date.now()}-${photoIndex + 1}-${randomUUID().slice(0, 8)}.${normalizedExtension}`;
   const desiredPath = `pawjaidogs/${fileName}`;
 
-  return uploadBufferToBackblaze({
-    body: bytes,
+  const uploaded = await uploadBufferToBackblaze({
+    body,
     contentType,
     desiredPath,
   });
+
+  return {
+    publicUrl: uploaded.publicUrl,
+    storagePath: uploaded.storagePath,
+  };
+}
+
+function normalizePhotoFiles(formData: FormData) {
+  return formData
+    .getAll("photo_files")
+    .filter((value): value is File => value instanceof File && value.size > 0);
+}
+
+async function readLocalPhotoFolder(folderInput: string) {
+  if (!folderInput) return [];
+
+  const repoRoot = process.cwd();
+  const baseDir = path.join(repoRoot, "pawjaidogs");
+  const requestedDir = path.resolve(baseDir, folderInput);
+  const normalizedBaseDir = path.resolve(baseDir);
+
+  if (requestedDir !== normalizedBaseDir && !requestedDir.startsWith(`${normalizedBaseDir}${path.sep}`)) {
+    throw new Error("Local photo folder must be inside the pawjaidogs directory.");
+  }
+
+  const entries = await fs.readdir(requestedDir, { withFileTypes: true });
+  const files = entries
+    .filter((entry) => entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
+    .map((entry) => path.join(requestedDir, entry.name))
+    .sort((a, b) => path.basename(a).localeCompare(path.basename(b), undefined, { numeric: true }));
+
+  if (files.length === 0) {
+    throw new Error("No image files were found in that folder.");
+  }
+
+  return Promise.all(
+    files.map(async (filePath) => ({
+      body: await fs.readFile(filePath),
+      contentType: contentTypeFromExtension(path.extname(filePath)),
+      extension: path.extname(filePath).replace(/^\./, ""),
+    })),
+  );
+}
+
+function contentTypeFromExtension(extension: string) {
+  switch (extension.toLowerCase()) {
+    case ".avif":
+      return "image/avif";
+    case ".gif":
+      return "image/gif";
+    case ".jpeg":
+    case ".jpg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
+    case ".webp":
+      return "image/webp";
+    default:
+      return "application/octet-stream";
+  }
 }
 
 export async function unlockAdminGateAction(
@@ -187,7 +308,12 @@ export async function createDogListingAction(
   const ageMonths = getOptionalNumber(formData, "age_months");
   const weightKg = getOptionalNumber(formData, "weight_kg");
   const photoUrls = normalizePhotoUrls(formData);
-  const traitPairs = normalizeTraitPairs(formData);
+  const photoFiles = normalizePhotoFiles(formData);
+  const localPhotoFolder = getString(formData, "local_photo_folder");
+  const traitPairs = [
+    ...normalizeStructuredTraits(formData),
+    ...normalizeTraitPairs(formData),
+  ];
 
   if (!name) {
     fieldErrors.name = "Dog name is required.";
@@ -214,6 +340,12 @@ export async function createDogListingAction(
     }
   }
 
+  for (const [index, file] of photoFiles.entries()) {
+    if (!file.type.startsWith("image/")) {
+      fieldErrors[`photo_file_${index}`] = `${file.name} is not an image file.`;
+    }
+  }
+
   for (const [index, pair] of traitPairs.entries()) {
     if (!pair.traitType || !pair.traitValue) {
       fieldErrors[`trait_${index}`] = "Each trait needs both a label and a value.";
@@ -228,20 +360,25 @@ export async function createDogListingAction(
     };
   }
 
+  const goodWithDogs = getOptionalBooleanValue(formData, "good_with_dogs_value");
+  const goodWithCats = getOptionalBooleanValue(formData, "good_with_cats_value");
+  const goodWithKids = getOptionalBooleanValue(formData, "good_with_kids_value");
+  const humanFriendly = getOptionalBooleanValue(formData, "human_friendly_value");
+
   const dogPayload: DogInsert = {
     adoption_status: getEnumValue(formData, "adoption_status", DOG_ADOPTION_STATUSES, "draft") ?? "draft",
     age_months: ageMonths,
     animal_friendly: getBoolean(formData, "animal_friendly"),
     background: getOptionalString(formData, "background"),
     breed: getOptionalString(formData, "breed"),
-    dog_friendly: getBoolean(formData, "dog_friendly"),
+    dog_friendly: goodWithDogs,
     energy_level: getEnumValue(formData, "energy_level", DOG_ENERGY_LEVELS) ?? null,
     gender: getEnumValue(formData, "gender", DOG_GENDERS, "unknown") ?? "unknown",
-    good_with_cats: getBoolean(formData, "good_with_cats"),
-    good_with_dogs: getBoolean(formData, "good_with_dogs"),
-    good_with_kids: getBoolean(formData, "good_with_kids"),
-    house_trained: getBoolean(formData, "house_trained"),
-    human_friendly: getBoolean(formData, "human_friendly"),
+    good_with_cats: goodWithCats,
+    good_with_dogs: goodWithDogs,
+    good_with_kids: goodWithKids,
+    house_trained: getOptionalBooleanValue(formData, "house_trained_value") ?? getBoolean(formData, "house_trained"),
+    human_friendly: humanFriendly,
     leash_trained: getBoolean(formData, "leash_trained"),
     name,
     shelter_id: shelterId,
@@ -266,21 +403,71 @@ export async function createDogListingAction(
     };
   }
 
-  if (photoUrls.length > 0) {
-    const uploadedPhotos = [];
+  if (photoUrls.length > 0 || photoFiles.length > 0 || localPhotoFolder) {
+    const uploadedPhotos: UploadedPhoto[] = [];
+    let photoIndex = 0;
+
+    if (localPhotoFolder) {
+      try {
+        const localPhotos = await readLocalPhotoFolder(localPhotoFolder);
+
+        for (const photo of localPhotos) {
+          const uploaded = await uploadPhotoBuffer({
+            body: photo.body,
+            contentType: photo.contentType,
+            dogName: name,
+            extension: photo.extension,
+            photoIndex,
+          });
+          uploadedPhotos.push(uploaded);
+          photoIndex += 1;
+        }
+      } catch (error) {
+        return {
+          dogId: insertedDog.id,
+          message: `The dog was created, but the local photo folder could not be imported: ${
+            error instanceof Error ? error.message : "Unknown folder import error"
+          }`,
+          status: "error",
+        };
+      }
+    }
+
+    for (const file of photoFiles) {
+      try {
+        const uploaded = await uploadPhotoBuffer({
+          body: Buffer.from(await file.arrayBuffer()),
+          contentType: file.type,
+          dogName: name,
+          extension: guessExtensionFromUrl(file.name) ?? extensionFromContentType(file.type),
+          photoIndex,
+        });
+        uploadedPhotos.push(uploaded);
+        photoIndex += 1;
+      } catch (error) {
+        return {
+          dogId: insertedDog.id,
+          message: `The dog was created, but ${file.name} could not be uploaded to Backblaze: ${
+            error instanceof Error ? error.message : "Unknown upload error"
+          }`,
+          status: "error",
+        };
+      }
+    }
 
     for (const [index, url] of photoUrls.entries()) {
       try {
         const uploaded = await uploadPhotoFromSourceUrl({
           dogName: name,
-          photoIndex: index,
+          photoIndex,
           sourceUrl: url,
         });
         uploadedPhotos.push(uploaded);
+        photoIndex += 1;
       } catch (error) {
         return {
           dogId: insertedDog.id,
-          message: `The dog was created, but photo ${index + 1} could not be moved from OneDrive to Backblaze: ${
+          message: `The dog was created, but photo URL ${index + 1} could not be moved to Backblaze: ${
             error instanceof Error ? error.message : "Unknown upload error"
           }`,
           status: "error",
