@@ -176,7 +176,7 @@ export default function SwipeDogCard({ dog, initialSaved, isLoggedIn }: Props) {
             ))}
             <button
               onClick={() => setTagsOpen(true)}
-              className={`${TAG_ROSE} text-[13px] font-semibold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform`}
+              className={`${TAG_ROSE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] active:scale-95 transition-transform`}
             >
               +
             </button>
@@ -189,7 +189,7 @@ export default function SwipeDogCard({ dog, initialSaved, isLoggedIn }: Props) {
               ))}
               <button
                 onClick={() => setTagsOpen(false)}
-                className={`${TAG_ROSE} text-[13px] font-semibold px-3.5 py-1.5 rounded-full active:scale-95 transition-transform`}
+                className={`${TAG_ROSE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] active:scale-95 transition-transform`}
               >
                 −
               </button>
