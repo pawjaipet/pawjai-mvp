@@ -32,8 +32,8 @@ export default function BottomNavBar() {
               <Icon
                 size={24}
                 className={`mb-1 transition-colors ${active ? "text-[#cd8188]" : "text-[#65584f]/60"}`}
-                strokeWidth={active ? 0 : 2}
-                fill={active ? "currentColor" : "none"}
+                strokeWidth={2}
+                aria-hidden="true"
               />
               <span className={`text-[11px] transition-colors ${active ? "text-[#cd8188] font-semibold" : "text-[#65584f]/60 font-medium"}`}>
                 {label}
