@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Share2, CalendarDays, Bookmark } from "lucide-react";
 import { toggleWishlistAction } from "@/app/actions/wishlist";
+import { useAuthModal } from "@/components/auth/AuthProvider";
 import type { Dog, DogPhoto, DogTrait } from "@/types/database";
 
 export type SwipeDog = Dog & {
@@ -34,6 +35,7 @@ export default function SwipeDogCard({ dog, initialSaved, isLoggedIn }: Props) {
   const [tagsOpen, setTagsOpen] = useState(false);
   const [saved, setSaved]       = useState(initialSaved);
   const [pending, startTransition] = useTransition();
+  const { openAuthModal } = useAuthModal();
 
   const photos = dog.photos.length
     ? dog.photos
@@ -64,7 +66,10 @@ export default function SwipeDogCard({ dog, initialSaved, isLoggedIn }: Props) {
 
   function handleBookmark() {
     if (!isLoggedIn) {
-      window.location.href = "/auth?message=Sign in to save dogs to your wishlist.";
+      openAuthModal({
+        nextPath: "/swipe",
+        reason: "Sign in to save dogs to your wishlist.",
+      });
       return;
     }
     const next = !saved;

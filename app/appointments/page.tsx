@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { createClient } from "@/utils/supabase/server";
 
@@ -16,7 +17,10 @@ export default async function AppointmentsPage({
 
   if (!user) {
     return (
-      <GuestView />
+      <ProtectedRouteGate
+        nextPath="/appointments"
+        reason="Sign in to view and manage your shelter visits."
+      />
     );
   }
 

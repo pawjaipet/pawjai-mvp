@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { createClient } from "@/utils/supabase/server";
 
 const M = "Montserrat, sans-serif";
@@ -40,25 +41,10 @@ export default async function MessagesPage() {
       </div>
 
       {!user ? (
-        /* Guest state */
-        <div className="flex flex-col items-center justify-center px-[20px] pt-[60px]">
-          <div className="w-[80px] h-[80px] rounded-full flex items-center justify-center mb-[16px]" style={{ background: "rgba(214,200,173,0.3)" }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#65584f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-          </div>
-          <p className="text-[18px] font-semibold text-[#65584f] text-center mb-[8px]" style={{ fontFamily: M }}>Your messages</p>
-          <p className="text-[14px] text-[#65584f]/60 text-center mb-[24px]" style={{ fontFamily: M }}>
-            Sign in to message shelters and track your adoption journey
-          </p>
-          <Link
-            href="/auth"
-            className="rounded-full px-[32px] py-[12px] text-white text-[15px] font-semibold"
-            style={{ background: "#cd8188", fontFamily: M }}
-          >
-            Sign in
-          </Link>
-        </div>
+        <ProtectedRouteGate
+          nextPath="/messages"
+          reason="Sign in to message shelters and track your adoption journey."
+        />
       ) : (
         <div className="px-[16px] pt-[16px] space-y-[2px]">
           {PLACEHOLDER_THREADS.map((thread) => (

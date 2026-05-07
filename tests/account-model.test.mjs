@@ -13,7 +13,12 @@ function loadAccountModel() {
     },
   });
   const module = { exports: {} };
-  new Script(outputText).runInNewContext({ exports: module.exports, module });
+  new Script(outputText).runInNewContext({
+    exports: module.exports,
+    module,
+    URL,
+    URLSearchParams,
+  });
   return module.exports;
 }
 
@@ -48,4 +53,24 @@ test("rejects weak credentials before auth calls", () => {
 test("builds readable appointment dates for saved bookings", () => {
   const { formatAppointmentDateTime } = loadAccountModel();
   assert.equal(formatAppointmentDateTime("2026-05-12", "14:30:00"), "May 12, 2026 at 2:30 PM");
+});
+
+test("classifies protected adopter routes", () => {
+  const { isAuthProtectedPath } = loadAccountModel();
+  assert.equal(isAuthProtectedPath("/swipe"), false);
+  assert.equal(isAuthProtectedPath("/dogs/abc"), false);
+  assert.equal(isAuthProtectedPath("/filter"), true);
+  assert.equal(isAuthProtectedPath("/messages/123"), true);
+  assert.equal(isAuthProtectedPath("/admin/dogs/new"), false);
+});
+
+test("sanitizes next paths for auth redirects", () => {
+  const { sanitizeNextPath, buildAuthPath } = loadAccountModel();
+  assert.equal(sanitizeNextPath("/appointments?message=hello"), "/appointments?message=hello");
+  assert.equal(sanitizeNextPath("https://evil.test/profile"), "/swipe");
+  assert.equal(sanitizeNextPath("//evil.test"), "/swipe");
+  assert.equal(
+    buildAuthPath({ nextPath: "/schedule?dogId=123", reason: "Sign in first" }),
+    "/auth?next=%2Fschedule%3FdogId%3D123&message=Sign+in+first",
+  );
 });

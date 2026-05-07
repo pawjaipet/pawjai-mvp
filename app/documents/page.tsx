@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useRef } from "react";
+import ClientAuthGate from "@/components/auth/ClientAuthGate";
 
 const M = "Montserrat, sans-serif";
 
@@ -88,6 +89,10 @@ export default function DocumentsPage() {
   const progress = (step / 3) * 100;
 
   return (
+    <ClientAuthGate
+      nextPath="/documents"
+      reason="Sign in to upload and manage adoption documents."
+    >
     <div
       className="relative overflow-y-auto overflow-x-hidden"
       style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", minHeight: "100vh", paddingBottom: "90px", background: "#F5F1E8", scrollbarWidth: "none", fontFamily: M }}
@@ -247,5 +252,6 @@ export default function DocumentsPage() {
         )}
       </div>
     </div>
+    </ClientAuthGate>
   );
 }

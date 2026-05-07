@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
+import { bookAppointment } from "@/app/dogs/[id]/actions";
+import ClientAuthGate from "@/components/auth/ClientAuthGate";
 
 const M = "Montserrat, sans-serif";
 
@@ -40,12 +42,15 @@ function ScheduleContent() {
   const [selectedDay,  setSelectedDay]  = useState<number | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [note, setNote]                 = useState("");
-  const [confirmed, setConfirmed]       = useState(false);
 
   const totalDays  = daysInMonth(viewYear, viewMonth);
   const firstDay   = firstDayOfMonth(viewYear, viewMonth);
   const todayDay   = today.getDate();
   const isCurrentMonth = viewYear === today.getFullYear() && viewMonth === today.getMonth();
+  const nextPath = `/schedule?${params.toString()}`;
+  const appointmentDate = selectedDay
+    ? `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(selectedDay).padStart(2, "0")}`
+    : "";
 
   function prevMonth() {
     if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
@@ -63,57 +68,11 @@ function ScheduleContent() {
     return day < todayDay;
   }
 
-  function handleConfirm() {
-    // In production: call server action to create appointment
-    setConfirmed(true);
-  }
-
-  if (confirmed && selectedDay && selectedTime) {
-    const dateStr = `${selectedDay} ${MONTH_NAMES[viewMonth]} ${viewYear + 543} BE`;
-    return (
-      <div className="pt-[100px] px-[16px] flex flex-col items-center text-center">
-        <div className="w-[90px] h-[90px] rounded-full flex items-center justify-center mb-[24px]" style={{ background: "#cd8188" }}>
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
-        <p className="font-bold text-[28px] text-[#65584f] mb-[10px]" style={{ fontFamily: M }}>Visit Booked!</p>
-        <p className="text-[14px] text-[#65584f]/70 mb-[28px] max-w-[280px]" style={{ fontFamily: M }}>
-          Your visit to meet {dogName} at {shelter} has been confirmed.
-        </p>
-        <div className="w-full rounded-[16px] overflow-hidden mb-[24px]" style={{ border: "1px solid #65584f" }}>
-          <div className="flex">
-            <div className="w-[100px] shrink-0 flex flex-col items-center justify-center py-[16px]" style={{ background: "#65584f" }}>
-              <p className="font-bold text-[48px] text-white leading-[1]" style={{ fontFamily: M }}>{selectedDay}</p>
-              <p className="text-[14px] text-white/90 mt-[4px]" style={{ fontFamily: M }}>{MONTH_NAMES[viewMonth]}</p>
-              <p className="text-[14px] text-white/90" style={{ fontFamily: M }}>{viewYear + 543} BE</p>
-            </div>
-            <div className="flex-1 p-[16px]">
-              <p className="text-[13px] text-[#65584f]/80 mb-[4px]" style={{ fontFamily: M }}>{shelter}</p>
-              <p className="text-[15px] font-bold text-[#65584f] mb-[8px]" style={{ fontFamily: M }}>{selectedTime}</p>
-              {note && <p className="text-[11px] text-[#65584f]/60 italic" style={{ fontFamily: M }}>"{note}"</p>}
-            </div>
-          </div>
-          <div className="px-[16px] py-[10px] flex items-center justify-between" style={{ background: "#cd8188" }}>
-            <p className="text-[13px] font-semibold text-white" style={{ fontFamily: M }}>{dogName}</p>
-            <span className="rounded-full px-[10px] py-[3px] text-[11px] font-semibold bg-white text-[#cd8188]" style={{ fontFamily: M }}>pending</span>
-          </div>
-        </div>
-        <Link
-          href="/appointments"
-          className="w-full rounded-full py-[15px] text-white font-bold text-[16px] text-center block active:scale-[0.98] transition-transform"
-          style={{ background: "#cd8188", fontFamily: M }}
-        >
-          View My Appointments
-        </Link>
-        <Link href="/swipe" className="mt-[12px] text-[14px] font-semibold text-[#65584f]/60" style={{ fontFamily: M }}>
-          Back to browsing
-        </Link>
-      </div>
-    );
-  }
-
   return (
+    <ClientAuthGate
+      nextPath={nextPath}
+      reason="Sign in to book and save shelter visits."
+    >
     <div className="pt-[100px] px-[16px]">
       {/* Back */}
       <div className="flex items-center gap-[10px] mb-[4px]">
@@ -225,15 +184,22 @@ function ScheduleContent() {
       )}
 
       {/* CTA */}
-      <button
-        disabled={!selectedDay || !selectedTime}
-        onClick={handleConfirm}
-        className="w-full rounded-full py-[15px] text-white font-bold text-[16px] transition-all active:scale-[0.98] disabled:opacity-40"
-        style={{ background: "#cd8188", fontFamily: M }}
-      >
-        Confirm Visit
-      </button>
+      <form action={bookAppointment}>
+        <input type="hidden" name="dogId" value={dogId} />
+        <input type="hidden" name="shelterId" value={shelterId} />
+        <input type="hidden" name="appointmentDate" value={appointmentDate} />
+        <input type="hidden" name="appointmentTime" value={selectedTime ?? ""} />
+        <input type="hidden" name="visitorNote" value={note} />
+        <button
+          disabled={!selectedDay || !selectedTime || !dogId}
+          className="w-full rounded-full py-[15px] text-white font-bold text-[16px] transition-all active:scale-[0.98] disabled:opacity-40"
+          style={{ background: "#cd8188", fontFamily: M }}
+        >
+          Confirm Visit
+        </button>
+      </form>
     </div>
+    </ClientAuthGate>
   );
 }
 

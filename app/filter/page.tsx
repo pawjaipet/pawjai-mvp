@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveFilterPreferences } from "@/app/actions/preferences";
+import ClientAuthGate from "@/components/auth/ClientAuthGate";
 
 // Questions matching Figma FilterPage.tsx exactly
 const questions = [
@@ -247,6 +248,10 @@ export default function FilterPage() {
   if (!currentQ) return null;
 
   return (
+    <ClientAuthGate
+      nextPath="/filter"
+      reason="Sign in to save your matching preferences."
+    >
     <div
       className="flex flex-col"
       style={{
@@ -452,5 +457,6 @@ export default function FilterPage() {
         </div>
       )}
     </div>
+    </ClientAuthGate>
   );
 }

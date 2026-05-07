@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { useParams } from "next/navigation";
+import ClientAuthGate from "@/components/auth/ClientAuthGate";
 
 const M = "Montserrat, sans-serif";
 
@@ -60,6 +61,10 @@ export default function ChatThreadPage() {
   }
 
   return (
+    <ClientAuthGate
+      nextPath={`/messages/${id}`}
+      reason="Sign in to continue your shelter conversation."
+    >
     <div
       className="flex flex-col"
       style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", height: "100dvh", background: "#F5F1E8", fontFamily: M }}
@@ -155,5 +160,6 @@ export default function ChatThreadPage() {
         </button>
       </div>
     </div>
+    </ClientAuthGate>
   );
 }

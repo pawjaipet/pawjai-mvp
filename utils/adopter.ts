@@ -12,6 +12,54 @@ function splitName(fullName: string | null | undefined) {
 }
 
 export async function ensureAdopterForUser(supabase: PawjaiClient, user: User) {
+  const fullName =
+    typeof user.user_metadata?.full_name === "string"
+      ? user.user_metadata.full_name
+      : typeof user.user_metadata?.name === "string"
+        ? user.user_metadata.name
+        : null;
+
+  const profilePictureUrl =
+    typeof user.user_metadata?.avatar_url === "string"
+      ? user.user_metadata.avatar_url
+      : null;
+  const { data: profile, error: profileFindError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileFindError) {
+    throw new Error(profileFindError.message);
+  }
+
+  if (profile) {
+    const { error: profileUpdateError } = await supabase
+      .from("profiles")
+      .update({
+        full_name: fullName,
+        profile_picture_url: profilePictureUrl,
+      })
+      .eq("id", user.id);
+
+    if (profileUpdateError) {
+      throw new Error(profileUpdateError.message);
+    }
+  } else {
+    const { error: profileInsertError } = await supabase
+      .from("profiles")
+      .insert({
+        full_name: fullName,
+        id: user.id,
+        profile_picture_url: profilePictureUrl,
+        role: "adopter",
+      });
+
+    if (profileInsertError) {
+      throw new Error(profileInsertError.message);
+    }
+  }
+
   const { data: existing, error: existingError } = await supabase
     .from("adopters")
     .select("*")
@@ -24,10 +72,6 @@ export async function ensureAdopterForUser(supabase: PawjaiClient, user: User) {
 
   if (existing) return existing;
 
-  const fullName =
-    typeof user.user_metadata?.full_name === "string"
-      ? user.user_metadata.full_name
-      : null;
   const { firstName, lastName } = splitName(fullName);
 
   const { data: adopter, error } = await supabase

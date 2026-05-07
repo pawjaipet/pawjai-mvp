@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { signOut } from "@/app/auth/actions";
 import { savePreferences, saveProfile } from "./actions";
+import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { createClient } from "@/utils/supabase/server";
 import type { DogWithCover } from "@/types/database";
@@ -19,57 +20,10 @@ export default async function ProfilePage({
 
   if (!user) {
     return (
-      <div
-        style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", minHeight: "100vh", fontFamily: M, background: "#F5F1E8" }}
-        className="flex flex-col"
-      >
-        {/* Banner placeholder */}
-        <div className="w-full h-[285px] relative" style={{ background: "linear-gradient(135deg, #d6c8ad 0%, #c4b49a 60%, #b8a48a 100%)" }}>
-          {/* Avatar placeholder */}
-          <div
-            className="absolute left-[8px] size-[145px] rounded-full border-4 border-white flex items-center justify-center"
-            style={{ top: "154px", background: "#c4b49a" }}
-          >
-            <svg width="60" height="60" viewBox="0 0 24 24" fill="none">
-              <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12ZM12 14C8.66667 14 2 15.675 2 19V21H22V19C22 15.675 15.3333 14 12 14Z" fill="rgba(101,88,79,0.3)" />
-            </svg>
-          </div>
-        </div>
-
-        {/* Name section */}
-        <div className="relative px-[16px] pt-[80px] pb-[20px]" style={{ background: "rgba(214,200,173,0.5)" }}>
-          <p style={{ fontFamily: M, fontSize: 36, color: "#65584f" }}>Guest</p>
-          <div className="flex gap-[8px] mt-[10px]">
-            <span className="border border-[#65584f] rounded-full px-[10px] py-[4px] text-[10px] text-[#65584f] bg-white" style={{ fontFamily: M }}>
-              Not signed in
-            </span>
-          </div>
-          <Link
-            href="/auth"
-            className="absolute right-[16px] top-[20px] rounded-[10px] px-[16px] py-[8px] text-[12px] font-semibold text-white"
-            style={{ background: "#cd8188", fontFamily: M }}
-          >
-            Sign in
-          </Link>
-        </div>
-
-        {/* Wishlist title */}
-        <p className="text-center text-[20px] font-semibold text-[#65584f] mt-[30px]" style={{ fontFamily: M }}>Wishlist</p>
-
-        {/* Empty wishlist */}
-        <div className="flex flex-col items-center mt-[20px] px-[16px]">
-          <p className="text-[16px] text-[#65584f]/50 text-center" style={{ fontFamily: M }}>
-            Your wishlist is empty. Start adding dogs you love!
-          </p>
-          <Link
-            href="/swipe"
-            className="mt-[20px] rounded-full px-[32px] py-[12px] text-white text-[14px] font-semibold"
-            style={{ background: "#cd8188", fontFamily: M }}
-          >
-            Browse Dogs
-          </Link>
-        </div>
-      </div>
+      <ProtectedRouteGate
+        nextPath="/profile"
+        reason="Sign in to view your profile, preferences, and wishlist."
+      />
     );
   }
 

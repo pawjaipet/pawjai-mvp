@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import ImageWithFallback from "@/components/ImageWithFallback";
+import AuthPromptButton from "@/components/auth/AuthPromptButton";
 import type { DogPhoto, DogTrait } from "@/types/database";
 import { bookAppointment, toggleWishlist } from "./actions";
 
@@ -367,13 +368,14 @@ export default async function DogProfilePage({
               </Link>
             </>
           ) : (
-            <Link
-              href="/auth"
+            <AuthPromptButton
+              nextPath={`/dogs/${dog.id}`}
+              reason="Sign in to save dogs and book shelter visits."
               className="block w-full text-center rounded-full py-[14px] text-white font-semibold text-[15px]"
               style={{ background: "#cd8188", fontFamily: "Montserrat, sans-serif" }}
             >
               Sign in to save and book
-            </Link>
+            </AuthPromptButton>
           )}
         </div>
       </div>
