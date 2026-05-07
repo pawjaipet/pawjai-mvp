@@ -21,10 +21,10 @@ export default async function MessagesPage() {
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
-      {/* Sticky beige header */}
-      <div className="sticky top-0 z-10 px-[16px] py-[20px]" style={{ background: "#d6c8ad" }}>
-        <h1 className="font-bold text-[32px] text-[#65584f] leading-[1.2]" style={{ fontFamily: M }}>Messages</h1>
-        <p className="text-[14px] text-[#65584f]/80 mt-[4px]" style={{ fontFamily: M }}>Your conversations with shelters</p>
+      {/* Dark header — matches Figma */}
+      <div className="sticky top-0 z-10 px-[16px] py-[20px] shrink-0" style={{ background: "#65584f" }}>
+        <h1 className="font-bold text-[32px] text-white leading-[1.2]" style={{ fontFamily: M }}>Messages</h1>
+        <p className="text-[14px] text-white/80 mt-[4px]" style={{ fontFamily: M }}>Your conversations with shelters</p>
       </div>
 
       {/* Gradient header with logo (fixed, on top) */}
@@ -67,14 +67,13 @@ export default async function MessagesPage() {
               href={`/messages/${thread.id}`}
               className="flex items-center gap-[14px] px-[4px] py-[14px] active:bg-[#d6c8ad]/20 transition-colors rounded-[12px]"
             >
-              {/* Avatar */}
-              <div className="shrink-0 w-[52px] h-[52px] rounded-full flex items-center justify-center relative" style={{ background: "#d6c8ad" }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#65584f" fillOpacity="0.3" />
-                  <polyline points="9 22 9 12 15 12 15 22" fill="#65584f" fillOpacity="0.3" stroke="none" />
+              {/* Thumbnail — 60×60px rounded-[10px] */}
+              <div className="shrink-0 w-[60px] h-[60px] rounded-[10px] overflow-hidden flex items-center justify-center relative" style={{ background: "#d6c8ad" }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#65584f" fillOpacity="0.35" />
                 </svg>
                 {thread.unread > 0 && (
-                  <span className="absolute top-0 right-0 w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background: "#cd8188" }}>
+                  <span className="absolute top-[-4px] right-[-4px] w-[20px] h-[20px] rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{ background: "#cd8188" }}>
                     {thread.unread}
                   </span>
                 )}
@@ -82,11 +81,11 @@ export default async function MessagesPage() {
 
               {/* Content */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-[2px]">
-                  <p className="font-semibold text-[14px] text-[#65584f] truncate" style={{ fontFamily: M }}>{thread.shelter}</p>
-                  <p className="text-[11px] text-[#65584f]/40 shrink-0 ml-2" style={{ fontFamily: M }}>{thread.time}</p>
+                <div className="flex items-start justify-between gap-[8px] mb-[4px]">
+                  <p className="font-semibold text-[16px] text-[#65584f] leading-[1.3] truncate" style={{ fontFamily: M }}>{thread.shelter}</p>
+                  <p className="text-[11px] text-[#65584f]/60 shrink-0" style={{ fontFamily: M }}>{thread.time}</p>
                 </div>
-                <p className={`text-[13px] truncate ${thread.unread > 0 ? "font-semibold text-[#65584f]" : "text-[#65584f]/60"}`} style={{ fontFamily: M }}>
+                <p className={`text-[14px] text-[#65584f]/80 leading-[1.3] truncate mb-[4px] ${thread.unread > 0 ? "font-semibold" : ""}`} style={{ fontFamily: M }}>
                   {thread.lastMsg}
                 </p>
               </div>

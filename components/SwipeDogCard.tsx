@@ -4,9 +4,12 @@ import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Share2, CalendarDays, Bookmark } from "lucide-react";
 import { toggleWishlistAction } from "@/app/actions/wishlist";
-import type { Dog, DogPhoto } from "@/types/database";
+import type { Dog, DogPhoto, DogTrait } from "@/types/database";
 
-export type SwipeDog = Dog & { photos: Pick<DogPhoto, "public_url" | "is_cover" | "sort_order">[] };
+export type SwipeDog = Dog & {
+  photos: Pick<DogPhoto, "public_url" | "is_cover" | "sort_order">[];
+  traits?: Pick<DogTrait, "trait_type" | "trait_value">[];
+};
 
 function ageLabel(months: number | null) {
   if (!months) return null;
@@ -16,7 +19,7 @@ function ageLabel(months: number | null) {
   return m ? `${y}y ${m}mo` : `${y}y`;
 }
 
-const TAG_BEIGE = "bg-[#d6c8ad] text-[#65584f]";
+const TAG_BEIGE = "bg-[#d6c8ad] text-black";
 const TAG_ROSE  = "bg-[#cd8188] text-white";
 
 interface Props {
@@ -41,6 +44,11 @@ export default function SwipeDogCard({ dog, initialSaved, isLoggedIn }: Props) {
     if (b.is_cover) return 1;
     return a.sort_order - b.sort_order;
   });
+  const personalityTags =
+    dog.traits
+      ?.filter((trait) => trait.trait_type === "personality")
+      .map((trait) => trait.trait_value)
+      .slice(0, 4) ?? [];
 
   function onCarouselScroll() {
     if (!carouselRef.current) return;
@@ -78,12 +86,14 @@ export default function SwipeDogCard({ dog, initialSaved, isLoggedIn }: Props) {
   const row1: string[] = [
     dog.breed ?? "Mixed",
     ageLabel(dog.age_months) ?? "",
+    ...personalityTags.slice(0, 2),
     dog.energy_level ? `${dog.energy_level.charAt(0).toUpperCase() + dog.energy_level.slice(1)} energy` : "",
     dog.sterilized ? "Sterilized" : "",
   ].filter(Boolean);
 
   const row2: string[] = [
     dog.gender === "unknown" ? "Unknown" : dog.gender === "male" ? "Male" : "Female",
+    ...personalityTags.slice(2),
     dog.size ? dog.size.replace("_", " ") : "",
     dog.weight_kg ? `${dog.weight_kg}kg` : "",
     dog.good_with_kids ? "Good w/ kids" : "",
@@ -120,20 +130,28 @@ export default function SwipeDogCard({ dog, initialSaved, isLoggedIn }: Props) {
         ))}
       </div>
 
-      {/* Dog name overlay */}
+      {/* Dog name + breed overlay */}
       <div className="absolute top-4 left-4 right-20 pointer-events-none z-10">
         <p
-          className="font-black text-[48px] leading-[0.95] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] whitespace-pre"
+          className="font-black text-[48px] leading-[0.95] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)] whitespace-pre"
           style={{ fontFamily: "Montserrat, sans-serif" }}
         >
           {dog.name}
         </p>
+        {dog.breed && (
+          <p
+            className="font-black text-[24px] leading-[0.95] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)] whitespace-pre mt-1"
+            style={{ fontFamily: "Montserrat, sans-serif" }}
+          >
+            {dog.breed}
+          </p>
+        )}
       </div>
 
       {/* Image dots */}
       {orderedPhotos.length > 1 && (
         <div className="absolute bottom-[90px] left-0 right-0 flex justify-center pointer-events-none z-10">
-          <div className="bg-[rgba(214,200,173,0.5)] px-3 py-1.5 rounded-xl flex gap-2">
+          <div className="bg-[rgba(214,200,173,0.5)] px-[12px] py-[6px] rounded-[12px] flex gap-[8px]">
             {orderedPhotos.map((_, i) => (
               <div
                 key={i}
@@ -149,7 +167,7 @@ export default function SwipeDogCard({ dog, initialSaved, isLoggedIn }: Props) {
         {!tagsOpen ? (
           <div className="flex gap-1.5 flex-wrap">
             {collapsedTags.map((t) => (
-              <span key={t} className={`${TAG_BEIGE} text-[13px] font-semibold px-3.5 py-1.5 rounded-full whitespace-nowrap`}>{t}</span>
+              <span key={t} className={`${TAG_BEIGE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] whitespace-nowrap`}>{t}</span>
             ))}
             <button
               onClick={() => setTagsOpen(true)}
@@ -162,7 +180,7 @@ export default function SwipeDogCard({ dog, initialSaved, isLoggedIn }: Props) {
           <div className="flex flex-col gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
             <div className="flex gap-1.5 w-max">
               {row1.map((t) => (
-                <span key={t} className={`${TAG_BEIGE} text-[13px] font-semibold px-3.5 py-1.5 rounded-full whitespace-nowrap`}>{t}</span>
+                <span key={t} className={`${TAG_BEIGE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] whitespace-nowrap`}>{t}</span>
               ))}
               <button
                 onClick={() => setTagsOpen(false)}
@@ -173,7 +191,7 @@ export default function SwipeDogCard({ dog, initialSaved, isLoggedIn }: Props) {
             </div>
             <div className="flex gap-1.5 w-max">
               {row2.map((t) => (
-                <span key={t} className={`${TAG_BEIGE} text-[13px] font-semibold px-3.5 py-1.5 rounded-full whitespace-nowrap`}>{t}</span>
+                <span key={t} className={`${TAG_BEIGE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] whitespace-nowrap`}>{t}</span>
               ))}
             </div>
           </div>

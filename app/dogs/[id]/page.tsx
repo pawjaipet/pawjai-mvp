@@ -116,13 +116,16 @@ export default async function DogProfilePage({
           className="object-cover"
           priority
         />
-        {/* Back button overlay */}
+        {/* Back button — rose, at top-[106px] matching Figma */}
         <Link
-          href="/dogs"
-          className="absolute top-[12px] left-[12px] z-10 flex items-center gap-[6px] rounded-full px-[12px] py-[6px] text-[13px] font-semibold"
-          style={{ background: "rgba(255,255,255,0.85)", color: "#65584f", fontFamily: "Montserrat, sans-serif" }}
+          href="/swipe"
+          className="absolute left-[12px] top-[106px] w-[35px] h-[35px] rounded-full flex items-center justify-center z-10 shadow-[0px_4px_6px_0px_rgba(0,0,0,0.1),0px_2px_4px_0px_rgba(0,0,0,0.1)] active:scale-95 transition-all"
+          style={{ background: "#cd8188" }}
+          aria-label="Back"
         >
-          ← Back
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+            <path d="M7 1L1 7L7 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </Link>
         {/* Wishlist button overlay */}
         {user && (

@@ -154,8 +154,8 @@ export default async function ProfilePage({
       {/* ── Badge pills (y=349) ── */}
       <div className="absolute left-[16px] flex gap-[8px] flex-wrap" style={{ top: 349 }}>
         {["First Adopter", "Member"].map((badge) => (
-          <div key={badge} className="bg-white rounded-full px-[10px] h-[25px] flex items-center border border-[#65584f]">
-            <p className="text-[10px] text-[#65584f] whitespace-nowrap" style={{ fontFamily: M }}>{badge}</p>
+          <div key={badge} className="bg-white rounded-[20px] px-[8px] py-[6px] h-[25px] flex items-center justify-center">
+            <p className="text-[10px] text-[#65584f] whitespace-nowrap text-center" style={{ fontFamily: M }}>{badge}</p>
           </div>
         ))}
       </div>

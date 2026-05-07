@@ -102,7 +102,7 @@ export default async function AppointmentsPage({
                     {dog ? `${dog.name}${dog.breed ? ` — ${dog.breed}` : ""}` : "Shelter visit"}
                   </p>
                   <span
-                    className="rounded-full px-[10px] py-[3px] text-[11px] font-semibold capitalize bg-white text-[#cd8188]"
+                    className="rounded-[14px] px-[16px] py-[6px] text-[12px] font-semibold capitalize bg-white text-[#cd8188]"
                     style={{ fontFamily: M }}
                   >
                     {appt.status.replace("_", " ")}
@@ -127,8 +127,8 @@ function PageShell({ children, message }: { children: React.ReactNode; message?:
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
-      {/* Beige sticky header — Figma AppointmentsPage header */}
-      <div className="sticky top-0 z-10 px-[16px] py-[20px]" style={{ background: "#d6c8ad" }}>
+      {/* White sticky header — matches Figma */}
+      <div className="sticky top-0 z-10 px-[16px] py-[20px] border-b border-[#d6c8ad]" style={{ background: "white" }}>
         <h1 className="font-bold text-[32px] text-[#65584f] leading-[1.2]" style={{ fontFamily: M }}>Appointments</h1>
         <p className="text-[14px] text-[#65584f]/80 mt-[4px]" style={{ fontFamily: M }}>Your upcoming shelter visits</p>
       </div>

@@ -266,33 +266,33 @@ export default function FilterPage() {
         />
       </div>
 
-      {/* Back button */}
-      <div className="px-[24px] pt-[20px]">
+      {/* Back button — rose pill matching Figma */}
+      <div className="px-[24px] pt-[24px] pb-[16px] flex items-center gap-[12px]">
         <button
           onClick={handleBack}
-          className="flex items-center gap-[8px] bg-transparent border-0 p-0 cursor-pointer"
+          className="flex items-center text-[#8B6F47] bg-[#cd8188] px-[16px] py-[8px] rounded-[20px] transition-all border-0 cursor-pointer"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M19 12H5M5 12L12 19M5 12L12 5"
-              stroke="#65584f"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginRight: 6 }}>
+            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
+          <span className="font-medium text-[14px] leading-[21px] text-white whitespace-nowrap" style={{ fontFamily: "Inter, sans-serif" }}>Back</span>
         </button>
+        <div className="flex items-center justify-between flex-1">
+          <span className="text-[11px] text-[rgba(101,88,79,0.6)] uppercase tracking-wide font-semibold" style={{ fontFamily: "Montserrat, sans-serif" }}>
+            {currentQuestion + 1} / {questions.length}
+          </span>
+          <span className="text-[11px] text-[#cd8188] font-semibold" style={{ fontFamily: "Montserrat, sans-serif" }}>
+            {Math.round(progressPercent)}%
+          </span>
+        </div>
       </div>
 
       {/* Question header */}
-      <div className="px-[24px] pt-[20px]">
-        <p className="text-[12px] font-semibold uppercase tracking-widest mb-[8px]" style={{ color: "#cd8188" }}>
-          {currentQuestion + 1} of {questions.length}
-        </p>
-        <h1 className="font-bold text-[22px] leading-[28px] mb-[6px]" style={{ color: "#65584f" }}>
+      <div className="px-[24px] pb-[16px]">
+        <h1 className="font-bold text-[20px] leading-[26px] mb-[6px] text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>
           {currentQ.question}
         </h1>
-        <p className="text-[13px]" style={{ color: "rgba(101,88,79,0.6)" }}>
+        <p className="text-[12px] text-[rgba(101,88,79,0.6)]" style={{ fontFamily: "Montserrat, sans-serif" }}>
           {currentQ.subtitle}
         </p>
       </div>
@@ -372,14 +372,14 @@ export default function FilterPage() {
               />
               {/* Min handle */}
               <div
-                className="absolute top-1/2 -translate-y-1/2 w-[26px] h-[26px] rounded-full cursor-grab shadow-lg border-[3px] border-white transition-transform hover:scale-110"
+                className="absolute top-1/2 -translate-y-1/2 w-[24px] h-[24px] rounded-full cursor-grab active:cursor-grabbing shadow-lg border-[3px] border-white transition-transform hover:scale-110"
                 style={{ left: `calc(${minPercent}% - 13px)`, background: "#cd8188" }}
                 onMouseDown={(e) => { e.preventDefault(); setIsDragging("min"); }}
                 onTouchStart={() => setIsDragging("min")}
               />
               {/* Max handle */}
               <div
-                className="absolute top-1/2 -translate-y-1/2 w-[26px] h-[26px] rounded-full cursor-grab shadow-lg border-[3px] border-white transition-transform hover:scale-110"
+                className="absolute top-1/2 -translate-y-1/2 w-[24px] h-[24px] rounded-full cursor-grab active:cursor-grabbing shadow-lg border-[3px] border-white transition-transform hover:scale-110"
                 style={{ left: `calc(${maxPercent}% - 13px)`, background: "#cd8188" }}
                 onMouseDown={(e) => { e.preventDefault(); setIsDragging("max"); }}
                 onTouchStart={() => setIsDragging("max")}
@@ -427,29 +427,24 @@ export default function FilterPage() {
       {/* Continue button — fixed above bottom nav, only for multi-select & slider */}
       {(currentQ.multiSelect || currentQ.type === "slider") && (
         <div
-          className="fixed max-w-[402px] w-full mx-auto px-[24px] pb-[100px] pt-[20px]"
+          className="fixed bottom-[80px] left-0 right-0 max-w-[402px] mx-auto pt-[24px] pb-[16px] px-[24px]"
           style={{
-            bottom: 0,
             left: "50%",
             transform: "translateX(-50%)",
-            background: "linear-gradient(to top, #F5F1E8 70%, rgba(245,241,232,0) 100%)",
+            background: "linear-gradient(to top, #F5F1E8 0%, #F5F1E8 60%, rgba(245,241,232,0) 100%)",
             pointerEvents: "none",
           }}
         >
           <button
             onClick={handleContinue}
             disabled={currentQ.multiSelect && currentSelections.length === 0}
-            className="w-full rounded-[16px] py-[15px] font-semibold text-[16px] border-0 cursor-pointer transition-all"
+            className="w-full rounded-[12px] px-[20px] py-[16px] border-[2px] cursor-pointer transition-all font-medium text-[15px]"
             style={{
-              background:
-                !currentQ.multiSelect || currentSelections.length > 0
-                  ? "#65584f"
-                  : "rgba(101,88,79,0.25)",
-              color:
-                !currentQ.multiSelect || currentSelections.length > 0
-                  ? "white"
-                  : "rgba(101,88,79,0.4)",
+              background: !currentQ.multiSelect || currentSelections.length > 0 ? "#65584f" : "rgba(101,88,79,0.15)",
+              borderColor: !currentQ.multiSelect || currentSelections.length > 0 ? "#65584f" : "rgba(101,88,79,0.15)",
+              color: !currentQ.multiSelect || currentSelections.length > 0 ? "white" : "rgba(101,88,79,0.3)",
               pointerEvents: "auto",
+              fontFamily: "Montserrat, sans-serif",
             }}
           >
             {currentQuestion === questions.length - 1 ? "Save & Finish" : "Continue"}

@@ -45,7 +45,7 @@ export default async function AuthPage({
         <div className="text-center mb-[8px]">
           <h1
             className="font-extrabold text-[48px] leading-[0.95] text-[#65584f]"
-            style={{ fontFamily: "Montserrat, sans-serif" }}
+            style={{ fontFamily: "Inter, sans-serif" }}
           >
             Sign Up
           </h1>
@@ -140,21 +140,25 @@ export default async function AuthPage({
             </div>
           </div>
 
-          {/* Buttons */}
-          <div className="flex gap-[12px] mb-[28px]">
-            <button
-              formAction={signIn}
-              className="flex-1 rounded-[16px] py-[14px] font-bold text-[18px] text-[#65584f] border-2 border-[#65584f] bg-white active:bg-[#d6c8ad] transition-all"
-              style={{ fontFamily: "Montserrat, sans-serif" }}
-            >
-              Sign In
-            </button>
+          {/* Primary CTA — centered rose pill */}
+          <div className="flex justify-center mb-[24px]">
             <button
               formAction={signUp}
-              className="flex-1 rounded-[16px] py-[14px] font-bold text-[18px] text-white border-0 active:bg-[#65584f] transition-all"
-              style={{ background: "#cd8188", fontFamily: "Montserrat, sans-serif" }}
+              className="bg-[#cd8188] px-[48px] py-[12px] rounded-[16px] cursor-pointer transition-all active:bg-[#65584f]"
             >
-              Sign Up
+              <span className="font-bold text-[24px] leading-[30px] text-white" style={{ fontFamily: "Inter, sans-serif" }}>
+                Continue
+              </span>
+            </button>
+          </div>
+          {/* Sign In link */}
+          <div className="text-center mb-[16px]">
+            <button
+              formAction={signIn}
+              className="text-[14px] text-[#65584f]/60 underline"
+              style={{ fontFamily: "Inter, sans-serif" }}
+            >
+              Already have an account? Sign in
             </button>
           </div>
         </form>
