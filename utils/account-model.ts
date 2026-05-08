@@ -1,6 +1,7 @@
 type AccountCredentialInput = {
   email: FormDataEntryValue | string | null;
   password: FormDataEntryValue | string | null;
+  confirmPassword?: FormDataEntryValue | string | null;
   fullName?: FormDataEntryValue | string | null;
 };
 
@@ -13,6 +14,7 @@ export type AccountCredentials = {
 export function parseAccountCredentials(input: AccountCredentialInput): AccountCredentials {
   const email = String(input.email ?? "").trim().toLowerCase();
   const password = String(input.password ?? "");
+  const confirmPassword = input.confirmPassword == null ? null : String(input.confirmPassword);
   const fullName = String(input.fullName ?? "").trim() || null;
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -21,6 +23,10 @@ export function parseAccountCredentials(input: AccountCredentialInput): AccountC
 
   if (password.length < 8) {
     throw new Error("Password must be at least 8 characters.");
+  }
+
+  if (confirmPassword !== null && password !== confirmPassword) {
+    throw new Error("Passwords do not match.");
   }
 
   return { email, password, fullName };

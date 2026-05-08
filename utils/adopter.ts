@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
+import { createAdminClient } from "@/utils/supabase/admin";
 
 type PawjaiClient = SupabaseClient<Database>;
 
@@ -12,6 +13,7 @@ function splitName(fullName: string | null | undefined) {
 }
 
 export async function ensureAdopterForUser(supabase: PawjaiClient, user: User) {
+  const admin = createAdminClient();
   const fullName =
     typeof user.user_metadata?.full_name === "string"
       ? user.user_metadata.full_name
@@ -23,7 +25,7 @@ export async function ensureAdopterForUser(supabase: PawjaiClient, user: User) {
     typeof user.user_metadata?.avatar_url === "string"
       ? user.user_metadata.avatar_url
       : null;
-  const { data: profile, error: profileFindError } = await supabase
+  const { data: profile, error: profileFindError } = await admin
     .from("profiles")
     .select("id")
     .eq("id", user.id)
@@ -34,19 +36,19 @@ export async function ensureAdopterForUser(supabase: PawjaiClient, user: User) {
   }
 
   if (profile) {
-    const { error: profileUpdateError } = await supabase
-      .from("profiles")
-      .update({
-        full_name: fullName,
-        profile_picture_url: profilePictureUrl,
-      })
-      .eq("id", user.id);
+    const profileUpdates: Database["public"]["Tables"]["profiles"]["Update"] = {};
+    if (fullName) profileUpdates.full_name = fullName;
+    if (profilePictureUrl) profileUpdates.profile_picture_url = profilePictureUrl;
+
+    const { error: profileUpdateError } = Object.keys(profileUpdates).length
+      ? await admin.from("profiles").update(profileUpdates).eq("id", user.id)
+      : { error: null };
 
     if (profileUpdateError) {
       throw new Error(profileUpdateError.message);
     }
   } else {
-    const { error: profileInsertError } = await supabase
+    const { error: profileInsertError } = await admin
       .from("profiles")
       .insert({
         full_name: fullName,
@@ -60,7 +62,7 @@ export async function ensureAdopterForUser(supabase: PawjaiClient, user: User) {
     }
   }
 
-  const { data: existing, error: existingError } = await supabase
+  const { data: existing, error: existingError } = await admin
     .from("adopters")
     .select("*")
     .eq("profile_id", user.id)
@@ -74,7 +76,7 @@ export async function ensureAdopterForUser(supabase: PawjaiClient, user: User) {
 
   const { firstName, lastName } = splitName(fullName);
 
-  const { data: adopter, error } = await supabase
+  const { data: adopter, error } = await admin
     .from("adopters")
     .insert({
       email: user.email ?? null,

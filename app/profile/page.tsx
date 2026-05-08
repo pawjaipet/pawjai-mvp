@@ -4,6 +4,7 @@ import { signOut } from "@/app/auth/actions";
 import { savePreferences, saveProfile } from "./actions";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { ensureAdopterForUser } from "@/utils/adopter";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import type { DogWithCover } from "@/types/database";
 
@@ -28,19 +29,20 @@ export default async function ProfilePage({
   }
 
   const adopter = await ensureAdopterForUser(supabase, user);
+  const admin = createAdminClient();
 
   const [{ data: profile }, { data: preferences }, { data: wishlist }] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).single(),
-    supabase.from("adopter_preferences").select("*").eq("adopter_id", adopter.id).maybeSingle(),
-    supabase.from("wishlists").select("dog_id").eq("adopter_id", adopter.id),
+    admin.from("profiles").select("*").eq("id", user.id).single(),
+    admin.from("adopter_preferences").select("*").eq("adopter_id", adopter.id).maybeSingle(),
+    admin.from("wishlists").select("dog_id").eq("adopter_id", adopter.id),
   ]);
 
   const dogIds = (wishlist ?? []).map((item) => item.dog_id);
   const { data: dogs } = dogIds.length
-    ? await supabase.from("dogs").select("*").in("id", dogIds)
+    ? await admin.from("dogs").select("*").in("id", dogIds)
     : { data: [] };
   const { data: photos } = dogIds.length
-    ? await supabase.from("dog_photos").select("dog_id, public_url").in("dog_id", dogIds).eq("is_cover", true)
+    ? await admin.from("dog_photos").select("dog_id, public_url").in("dog_id", dogIds).eq("is_cover", true)
     : { data: [] };
 
   const coverMap = new Map((photos ?? []).map((p) => [p.dog_id, p.public_url]));
@@ -49,7 +51,7 @@ export default async function ProfilePage({
     cover_photo: coverMap.get(dog.id) ?? null,
   }));
 
-  const displayName = profile?.full_name ?? user.email?.split("@")[0] ?? "User";
+  const displayName = profile?.full_name?.trim() || "Your profile";
 
   return (
     <div

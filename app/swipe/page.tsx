@@ -1,4 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
+import { ensureAdopterForUser } from "@/utils/adopter";
+import { createAdminClient } from "@/utils/supabase/admin";
 import SwipeFeed from "@/components/SwipeFeed";
 import type { SwipeDog } from "@/components/SwipeDogCard";
 
@@ -58,19 +60,13 @@ export default async function SwipePage() {
   // Fetch saved dog IDs for this user
   let savedIds: string[] = [];
   if (user) {
-    const { data: adopter } = await supabase
-      .from("adopters")
-      .select("id")
-      .eq("profile_id", user.id)
-      .maybeSingle();
-
-    if (adopter) {
-      const { data: wishlist } = await supabase
-        .from("wishlists")
-        .select("dog_id")
-        .eq("adopter_id", adopter.id);
-      savedIds = (wishlist ?? []).map((w) => w.dog_id);
-    }
+    const adopter = await ensureAdopterForUser(supabase, user);
+    const admin = createAdminClient();
+    const { data: wishlist } = await admin
+      .from("wishlists")
+      .select("dog_id")
+      .eq("adopter_id", adopter.id);
+    savedIds = (wishlist ?? []).map((w) => w.dog_id);
   }
 
   return <SwipeFeed dogs={dogs} savedIds={savedIds} isLoggedIn={!!user} />;

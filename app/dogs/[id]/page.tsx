@@ -2,6 +2,8 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import { ensureAdopterForUser } from "@/utils/adopter";
+import { createAdminClient } from "@/utils/supabase/admin";
 import ImageWithFallback from "@/components/ImageWithFallback";
 import AuthPromptButton from "@/components/auth/AuthPromptButton";
 import type { DogPhoto, DogTrait } from "@/types/database";
@@ -86,10 +88,11 @@ export default async function DogProfilePage({
   let saved = false;
 
   if (user) {
-    const { data: adopter } = await supabase.from("adopters").select("id").eq("profile_id", user.id).maybeSingle();
-    adopterId = adopter?.id ?? null;
+    const adopter = await ensureAdopterForUser(supabase, user);
+    const admin = createAdminClient();
+    adopterId = adopter.id;
     if (adopterId) {
-      const { data: wishlist } = await supabase
+      const { data: wishlist } = await admin
         .from("wishlists")
         .select("dog_id")
         .eq("adopter_id", adopterId)

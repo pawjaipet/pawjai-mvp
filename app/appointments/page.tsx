@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { ensureAdopterForUser } from "@/utils/adopter";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
 const M = "Montserrat, sans-serif";
@@ -25,7 +26,8 @@ export default async function AppointmentsPage({
   }
 
   const adopter = await ensureAdopterForUser(supabase, user);
-  const { data: appointments } = await supabase
+  const admin = createAdminClient();
+  const { data: appointments } = await admin
     .from("appointments")
     .select("*")
     .eq("adopter_id", adopter.id)
@@ -37,10 +39,10 @@ export default async function AppointmentsPage({
 
   const [{ data: dogs }, { data: shelters }] = await Promise.all([
     dogIds.length
-      ? supabase.from("dogs").select("id, name, breed").in("id", dogIds)
+      ? admin.from("dogs").select("id, name, breed").in("id", dogIds)
       : Promise.resolve({ data: [] }),
     shelterIds.length
-      ? supabase.from("shelters").select("id, name, phone_number, district, province").in("id", shelterIds)
+      ? admin.from("shelters").select("id, name, phone_number, district, province").in("id", shelterIds)
       : Promise.resolve({ data: [] }),
   ]);
 

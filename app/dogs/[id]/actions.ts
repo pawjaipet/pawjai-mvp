@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { optionalString } from "@/utils/account-model";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
 async function getAdopter() {
@@ -23,12 +24,13 @@ export async function toggleWishlist(formData: FormData) {
     redirect(`/auth?message=${encodeURIComponent("Sign in to save dogs to your wishlist.")}`);
   }
 
-  const { adopter, supabase } = ctx;
+  const { adopter } = ctx;
+  const admin = createAdminClient();
 
   if (isSaved) {
-    await supabase.from("wishlists").delete().eq("adopter_id", adopter.id).eq("dog_id", dogId);
+    await admin.from("wishlists").delete().eq("adopter_id", adopter.id).eq("dog_id", dogId);
   } else {
-    await supabase.from("wishlists").upsert({ adopter_id: adopter.id, dog_id: dogId });
+    await admin.from("wishlists").upsert({ adopter_id: adopter.id, dog_id: dogId });
   }
 
   revalidatePath(`/dogs/${dogId}`);
@@ -47,9 +49,10 @@ export async function bookAppointment(formData: FormData) {
     redirect(`/auth?message=${encodeURIComponent("Sign in to book a shelter visit.")}`);
   }
 
-  const { adopter, supabase } = ctx;
+  const { adopter } = ctx;
+  const admin = createAdminClient();
 
-  const { data: dog, error: dogError } = await supabase
+  const { data: dog, error: dogError } = await admin
     .from("dogs")
     .select("id, shelter_id")
     .eq("id", dogId)
@@ -59,7 +62,7 @@ export async function bookAppointment(formData: FormData) {
     redirect(`/dogs/${dogId}?message=${encodeURIComponent("Could not find that dog.")}`);
   }
 
-  const { error } = await supabase.from("appointments").insert({
+  const { error } = await admin.from("appointments").insert({
     adopter_id: adopter.id,
     appointment_date: appointmentDate,
     appointment_time: appointmentTime,

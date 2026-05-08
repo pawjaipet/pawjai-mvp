@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { optionalBoolean, optionalString } from "@/utils/account-model";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import type { Database } from "@/types/database";
 
@@ -22,10 +23,11 @@ export async function saveProfile(formData: FormData) {
   if (!user) redirect("/auth");
 
   const adopter = await ensureAdopterForUser(supabase, user);
+  const admin = createAdminClient();
   const fullName = optionalString(formData.get("fullName"));
   const phoneNumber = optionalString(formData.get("phoneNumber"));
 
-  await supabase
+  await admin
     .from("profiles")
     .update({
       full_name: fullName,
@@ -33,7 +35,7 @@ export async function saveProfile(formData: FormData) {
     })
     .eq("id", user.id);
 
-  await supabase
+  await admin
     .from("adopters")
     .update({
       email: user.email ?? adopter.email,
@@ -54,10 +56,11 @@ export async function savePreferences(formData: FormData) {
   if (!user) redirect("/auth");
 
   const adopter = await ensureAdopterForUser(supabase, user);
+  const admin = createAdminClient();
   const size = optionalString(formData.get("preferredSize"));
   const energy = optionalString(formData.get("preferredEnergy"));
 
-  await supabase.from("adopter_preferences").upsert({
+  await admin.from("adopter_preferences").upsert({
     adopter_id: adopter.id,
     good_with_cats: optionalBoolean(formData.get("goodWithCats")),
     good_with_dogs: optionalBoolean(formData.get("goodWithDogs")),

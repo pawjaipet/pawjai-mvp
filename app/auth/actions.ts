@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { buildAuthPath, parseAccountCredentials, sanitizeNextPath } from "@/utils/account-model";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
 function authRedirect(message: string, nextPath: string): never {
@@ -60,7 +61,7 @@ export async function signUp(formData: FormData) {
     credentials = parseAccountCredentials({
       email: formData.get("email"),
       password: formData.get("password"),
-      fullName: formData.get("fullName"),
+      confirmPassword: formData.get("confirmPassword"),
     });
   } catch (error) {
     authRedirect(error instanceof Error ? error.message : "Please check your details.", nextPath);
@@ -71,7 +72,7 @@ export async function signUp(formData: FormData) {
     password: credentials.password,
     options: {
       data: {
-        full_name: credentials.fullName,
+        full_name: null,
       },
     },
   });
@@ -87,6 +88,49 @@ export async function signUp(formData: FormData) {
   }
 
   authRedirect("Check your email to confirm your account, then sign in.", nextPath);
+}
+
+export async function createPasswordAccount(
+  formData: FormData,
+): Promise<{ ok: true; email: string } | { ok: false; error: string }> {
+  let credentials;
+
+  try {
+    credentials = parseAccountCredentials({
+      email: formData.get("email"),
+      password: formData.get("password"),
+      confirmPassword: formData.get("confirmPassword"),
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Please check your details.",
+    };
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin.auth.admin.createUser({
+    email: credentials.email,
+    password: credentials.password,
+    email_confirm: true,
+    user_metadata: {
+      full_name: null,
+    },
+  });
+
+  if (error || !data.user) {
+    const message = error?.message ?? "We could not create your account.";
+    return {
+      ok: false,
+      error: /already|registered|exists/i.test(message)
+        ? "That email already has an account. Try logging in."
+        : message,
+    };
+  }
+
+  await ensureAdopterForUser(admin, data.user);
+  revalidatePath("/", "layout");
+  return { ok: true, email: credentials.email };
 }
 
 export async function signInWithGoogle(formData: FormData) {
@@ -107,6 +151,26 @@ export async function signInWithGoogle(formData: FormData) {
   }
 
   redirect(data.url);
+}
+
+export async function ensureCurrentUserProfile(): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { ok: false, error: "Please sign in again." };
+  }
+
+  try {
+    await ensureAdopterForUser(supabase, user);
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "We could not prepare your account.",
+    };
+  }
 }
 
 export async function signOut() {

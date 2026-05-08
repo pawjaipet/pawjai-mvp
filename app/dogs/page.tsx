@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import SwipePage from "../swipe/page";
 
-export default function DogsPage() {
-  redirect("/filter");
-}
+export const dynamic = "force-dynamic";
+
+export default SwipePage;

@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveFilterPreferences } from "@/app/actions/preferences";
+import { getSavedFilterPreferences, saveFilterPreferences } from "@/app/actions/preferences";
 import ClientAuthGate from "@/components/auth/ClientAuthGate";
+import { createClient } from "@/utils/supabase/client";
 
 // Questions matching Figma FilterPage.tsx exactly
 const questions = [
@@ -159,6 +160,31 @@ export default function FilterPage() {
   const [isDragging, setIsDragging] = useState<"min" | "max" | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    let active = true;
+    const supabase = createClient();
+
+    async function loadSavedPreferences() {
+      const saved = await getSavedFilterPreferences();
+      if (active && saved) setSelectedAnswers((current) => ({ ...current, ...saved }));
+    }
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) void loadSavedPreferences();
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) void loadSavedPreferences();
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const currentQ = questions[currentQuestion];
   const currentSelections = selectedAnswers[currentQuestion] ?? [];

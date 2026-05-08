@@ -50,6 +50,19 @@ test("rejects weak credentials before auth calls", () => {
   );
 });
 
+test("rejects mismatched sign up passwords", () => {
+  const { parseAccountCredentials } = loadAccountModel();
+  assert.throws(
+    () =>
+      parseAccountCredentials({
+        email: "user@example.com",
+        password: "password123",
+        confirmPassword: "password456",
+      }),
+    /Passwords do not match/i,
+  );
+});
+
 test("builds readable appointment dates for saved bookings", () => {
   const { formatAppointmentDateTime } = loadAccountModel();
   assert.equal(formatAppointmentDateTime("2026-05-12", "14:30:00"), "May 12, 2026 at 2:30 PM");
