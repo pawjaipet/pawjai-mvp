@@ -139,6 +139,30 @@ const questions = [
   },
   {
     id: 10,
+    question: "What about their protectiveness?",
+    subtitle: "You can choose multiple",
+    type: "cards" as const,
+    multiSelect: true,
+    options: [
+      { label: "Very chill - not reactive", description: "Rarely barks or reacts to disturbance" },
+      { label: "Barks to alert, but not aggressive", description: "Will bark to alert you, but friendly" },
+      { label: "Highly protective", description: "Very protective of home and family" },
+    ],
+  },
+  {
+    id: 11,
+    question: "How would you like the dog to show affection?",
+    subtitle: "You can choose multiple",
+    type: "cards" as const,
+    multiSelect: true,
+    options: [
+      { label: "Very cuddly and affectionate", description: "Loves to be close and seeks attention often" },
+      { label: "Subtle", description: "Express love in gentle, quiet ways" },
+      { label: "Independent", description: "Enjoys independence but loyal" },
+    ],
+  },
+  {
+    id: 12,
     question: "Any special needs you're willing to accommodate?",
     subtitle: "You can choose multiple",
     type: "bubbles" as const,
@@ -308,10 +332,7 @@ export default function FilterPage() {
           </svg>
           <span className="font-medium text-[14px] leading-[21px] text-white whitespace-nowrap" style={{ fontFamily: "Inter, sans-serif" }}>Back</span>
         </button>
-        <div className="flex items-center justify-between flex-1">
-          <span className="text-[11px] text-[rgba(101,88,79,0.6)] uppercase tracking-wide font-semibold" style={{ fontFamily: "Montserrat, sans-serif" }}>
-            {currentQuestion + 1} / {questions.length}
-          </span>
+        <div className="flex items-center justify-end flex-1">
           <span className="text-[11px] text-[#cd8188] font-semibold" style={{ fontFamily: "Montserrat, sans-serif" }}>
             {Math.round(progressPercent)}%
           </span>

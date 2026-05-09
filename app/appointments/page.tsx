@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -175,20 +174,6 @@ function PageShell({ children, message }: { children: React.ReactNode; message?:
 
       <div className="px-[16px] pb-[20px]">{children}</div>
 
-      {/* Sticky gradient header with logo */}
-      <div
-        className="fixed top-0 z-20 pointer-events-none h-[94px]"
-        style={{
-          width: "402px", maxWidth: "100vw", left: "50%", transform: "translateX(-50%)",
-          background: "linear-gradient(to bottom, #d6c8ad 0%, rgba(214,200,173,0.75) 38.942%, rgba(214,200,173,0) 100%)",
-        }}
-      >
-        <div className="pointer-events-auto absolute left-[8px] top-[39px]">
-          <a href="/swipe" className="block h-[55px] w-[110px] relative">
-            <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain object-left" priority />
-          </a>
-        </div>
-      </div>
     </div>
   );
 }
