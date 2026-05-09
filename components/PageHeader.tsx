@@ -15,7 +15,7 @@ export default function PageHeader() {
       }}
     >
       <div className="pointer-events-auto absolute left-[8px] top-[39px] flex items-center">
-        <Link href="/swipe" className="block h-[55px] w-[110px] relative">
+        <Link href="/" className="block h-[55px] w-[110px] relative">
           <Image
             src="/pawjai-logo.png"
             alt="PawJai"

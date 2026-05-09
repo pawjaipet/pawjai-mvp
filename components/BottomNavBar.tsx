@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Home, SlidersHorizontal, Calendar, User, MoreHorizontal } from "lucide-react";
 
 const TABS = [
-  { href: "/swipe", label: "Home", Icon: Home },
+  { href: "/", label: "Home", Icon: Home },
   { href: "/filter", label: "Filter", Icon: SlidersHorizontal },
   { href: "/appointments", label: "Appointments", Icon: Calendar },
   { href: "/profile", label: "Profile", Icon: User },
@@ -22,7 +22,7 @@ export default function BottomNavBar() {
     >
       <div className="flex items-center justify-around h-[70px] px-2">
         {TABS.map(({ href, label, Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + "/");
+          const active = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
               key={href}

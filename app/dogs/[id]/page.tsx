@@ -122,7 +122,7 @@ export default async function DogProfilePage({
         />
         {/* Back button — rose, at top-[106px] matching Figma */}
         <Link
-          href="/swipe"
+          href="/"
           className="absolute left-[12px] top-[106px] w-[35px] h-[35px] rounded-full flex items-center justify-center z-10 shadow-[0px_4px_6px_0px_rgba(0,0,0,0.1),0px_2px_4px_0px_rgba(0,0,0,0.1)] active:scale-95 transition-all"
           style={{ background: "#cd8188" }}
           aria-label="Back"
@@ -396,7 +396,7 @@ export default async function DogProfilePage({
         }}
       >
         <div className="pointer-events-auto absolute left-[8px] top-[39px]">
-          <a href="/swipe" className="block h-[55px] w-[110px] relative">
+          <a href="/" className="block h-[55px] w-[110px] relative">
             <Image
               src="/pawjai-logo.png"
               alt="PawJai"

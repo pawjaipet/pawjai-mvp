@@ -76,7 +76,7 @@ function ScheduleContent() {
     <div className="pt-[100px] px-[16px]">
       {/* Back */}
       <div className="flex items-center gap-[10px] mb-[4px]">
-        <Link href={dogId ? `/dogs/${dogId}` : "/swipe"} className="w-[36px] h-[36px] rounded-full flex items-center justify-center active:scale-95 transition-transform shrink-0" style={{ background: "#d6c8ad" }}>
+        <Link href={dogId ? `/dogs/${dogId}` : "/"} className="w-[36px] h-[36px] rounded-full flex items-center justify-center active:scale-95 transition-transform shrink-0" style={{ background: "#d6c8ad" }}>
           <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
             <path d="M7 1L1 7L7 13" stroke="#65584f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -217,7 +217,7 @@ export default function SchedulePage() {
         style={{ width: "402px", maxWidth: "100vw", left: "50%", transform: "translateX(-50%)", background: "linear-gradient(to bottom, #d6c8ad 0%, rgba(214,200,173,0.75) 38.942%, rgba(214,200,173,0) 100%)" }}
       >
         <div className="pointer-events-auto absolute left-[8px] top-[39px]">
-          <Link href="/swipe" className="block h-[55px] w-[110px] relative">
+          <Link href="/" className="block h-[55px] w-[110px] relative">
             <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain object-left" priority />
           </Link>
         </div>

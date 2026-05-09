@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function SwipePage() {
+export default function HomeAlias() {
   redirect("/");
 }

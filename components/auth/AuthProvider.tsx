@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (options?: OpenAuthModalOptions) => {
       const currentPath =
         typeof window === "undefined"
-          ? "/swipe"
+          ? "/"
           : `${window.location.pathname}${window.location.search}${window.location.hash}`;
       setModal({
         isOpen: true,

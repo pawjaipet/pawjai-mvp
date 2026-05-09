@@ -392,7 +392,7 @@ export default function DocumentsPage() {
               >
                 View Appointments
               </Link>
-              <Link href="/swipe" className="mt-[14px] text-[14px] font-semibold text-[#65584f]/50" style={{ fontFamily: M }}>
+              <Link href="/" className="mt-[14px] text-[14px] font-semibold text-[#65584f]/50" style={{ fontFamily: M }}>
                 Back to browsing
               </Link>
             </div>

@@ -42,7 +42,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
         className="bg-gradient-to-b from-[#d6c8ad] h-[70px] pointer-events-auto shrink-0 to-[rgba(214,200,173,0)] via-[38.942%] via-[rgba(214,200,173,0.75)] w-full z-20"
       >
         <div className="absolute flex items-center justify-center inset-x-[8px] top-[20px]">
-          <Link href="/swipe" className="block h-[55px] w-[110px] relative">
+          <Link href="/" className="block h-[55px] w-[110px] relative">
             <img
               src="/pawjai-logo.png"
               alt="PawJai"

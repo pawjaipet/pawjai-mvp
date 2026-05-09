@@ -86,7 +86,7 @@ export default function ChatThreadPage() {
           <p className="text-[11px] text-[#65584f]/50" style={{ fontFamily: M }}>Partner shelter</p>
         </div>
         <div className="w-[40px] h-[40px] rounded-full flex items-center justify-center" style={{ background: "rgba(101,88,79,0.15)" }}>
-          <Link href="/swipe" className="block">
+          <Link href="/" className="block">
             <div className="w-[36px] h-[36px] relative">
               <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain" />
             </div>

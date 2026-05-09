@@ -273,7 +273,7 @@ export default function FilterPage() {
         goodWithDogs: dogsQ.includes("Friendly and playful") ? true : dogsQ.length > 0 ? false : null,
         goodWithCats: catsQ.includes("Cat-friendly") ? true : catsQ.length > 0 ? false : null,
       });
-      router.push("/swipe");
+      router.push("/");
     });
   };
 
@@ -284,7 +284,7 @@ export default function FilterPage() {
 
   const handleBack = () => {
     if (currentQuestion > 0) setCurrentQuestion(currentQuestion - 1);
-    else router.push("/swipe");
+    else router.push("/");
   };
 
   const getAgeLabel = (min: number, max: number) => {

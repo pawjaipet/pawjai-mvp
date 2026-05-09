@@ -10,10 +10,6 @@ import {
   openAdminGate,
   validateAdminPassphrase,
 } from "@/utils/admin-auth";
-import {
-  extensionFromContentType,
-  uploadBufferToBackblaze,
-} from "@/utils/backblaze";
 import { fetchRemoteAsset } from "@/utils/onedrive";
 import { slugify } from "@/utils/slug";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -51,6 +47,7 @@ const DOG_ADOPTION_STATUSES = new Set<Database["public"]["Enums"]["dog_adoption_
 ]);
 
 const IMAGE_EXTENSIONS = new Set([".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"]);
+const DOG_PHOTOS_BUCKET = "dog-photos";
 
 type UploadedPhoto = {
   publicUrl: string;
@@ -65,6 +62,13 @@ function getString(formData: FormData, name: string) {
 function getOptionalString(formData: FormData, name: string) {
   const value = getString(formData, name);
   return value.length > 0 ? value : null;
+}
+
+function getStringValues(formData: FormData, name: string) {
+  return formData
+    .getAll(name)
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
 }
 
 function getOptionalNumber(formData: FormData, name: string) {
@@ -93,6 +97,25 @@ function getEnumValue<T extends string>(formData: FormData, name: string, allowe
   }
 
   return fallback ?? null;
+}
+
+function extensionFromContentType(contentType: string | null) {
+  const type = contentType?.split(";")[0]?.trim().toLowerCase();
+
+  switch (type) {
+    case "image/jpeg":
+      return "jpg";
+    case "image/png":
+      return "png";
+    case "image/webp":
+      return "webp";
+    case "image/gif":
+      return "gif";
+    case "image/avif":
+      return "avif";
+    default:
+      return "bin";
+  }
 }
 
 function normalizePhotoUrls(formData: FormData) {
@@ -129,20 +152,29 @@ function normalizeStructuredTraits(formData: FormData) {
     ["training_preference_match", getOptionalString(formData, "training_preference_match")],
     ["people_friendliness", getOptionalString(formData, "people_friendliness")],
     ["dog_social_style", getOptionalString(formData, "dog_social_style")],
-    ["cat_friendliness", getOptionalString(formData, "cat_friendliness")],
-    ["kid_friendliness", getOptionalString(formData, "kid_friendliness")],
-    ["special_needs_category", getOptionalString(formData, "special_needs_category")],
-    ["temperament", getOptionalString(formData, "temperament")],
-    ["ideal_home", getOptionalString(formData, "ideal_home")],
     ["intake_note", getOptionalString(formData, "intake_note")],
   ];
 
-  return traits
+  const structuredTraits = traits
     .filter(([, traitValue]) => Boolean(traitValue))
     .map(([traitType, traitValue]) => ({
       traitType: traitType!,
       traitValue: traitValue!,
     }));
+
+  const personalityTraits = getStringValues(formData, "personality_tag").map((traitValue) => ({
+    traitType: "personality",
+    traitValue,
+  }));
+
+  const careTraits = getStringValues(formData, "care_tag")
+    .filter((traitValue) => traitValue !== "No medical needs")
+    .map((traitValue) => ({
+      traitType: "medical_needs",
+      traitValue,
+    }));
+
+  return [...structuredTraits, ...personalityTraits, ...careTraits];
 }
 
 function guessExtensionFromUrl(url: string) {
@@ -159,10 +191,12 @@ async function uploadPhotoFromSourceUrl({
   dogName,
   photoIndex,
   sourceUrl,
+  supabase,
 }: {
   dogName: string;
   photoIndex: number;
   sourceUrl: string;
+  supabase: ReturnType<typeof createAdminClient>;
 }) {
   const response = await fetchRemoteAsset(sourceUrl);
   const contentType = response.headers.get("content-type");
@@ -183,6 +217,7 @@ async function uploadPhotoFromSourceUrl({
     dogName,
     extension,
     photoIndex,
+    supabase,
   });
 }
 
@@ -192,27 +227,35 @@ async function uploadPhotoBuffer({
   dogName,
   extension,
   photoIndex,
+  supabase,
 }: {
   body: Buffer;
   contentType: string | null;
   dogName: string;
   extension: string | null;
   photoIndex: number;
+  supabase: ReturnType<typeof createAdminClient>;
 }): Promise<UploadedPhoto> {
   const slug = slugify(dogName) || "dog";
   const normalizedExtension = extension?.replace(/^\./, "") || extensionFromContentType(contentType);
   const fileName = `${slug}-${Date.now()}-${photoIndex + 1}-${randomUUID().slice(0, 8)}.${normalizedExtension}`;
   const desiredPath = `pawjaidogs/${fileName}`;
+  const resolvedContentType = contentType?.split(";")[0]?.trim() || "application/octet-stream";
 
-  const uploaded = await uploadBufferToBackblaze({
-    body,
-    contentType,
-    desiredPath,
+  const { error: uploadError } = await supabase.storage.from(DOG_PHOTOS_BUCKET).upload(desiredPath, body, {
+    contentType: resolvedContentType,
+    upsert: true,
   });
 
+  if (uploadError) {
+    throw new Error(`Supabase photo upload failed: ${uploadError.message}`);
+  }
+
+  const { data } = supabase.storage.from(DOG_PHOTOS_BUCKET).getPublicUrl(desiredPath);
+
   return {
-    publicUrl: uploaded.publicUrl,
-    storagePath: uploaded.storagePath,
+    publicUrl: data.publicUrl,
+    storagePath: desiredPath,
   };
 }
 
@@ -310,6 +353,7 @@ export async function createDogListingAction(
   const photoUrls = normalizePhotoUrls(formData);
   const photoFiles = normalizePhotoFiles(formData);
   const localPhotoFolder = getString(formData, "local_photo_folder");
+  const careTags = getStringValues(formData, "care_tag");
   const traitPairs = [
     ...normalizeStructuredTraits(formData),
     ...normalizeTraitPairs(formData),
@@ -360,10 +404,28 @@ export async function createDogListingAction(
     };
   }
 
-  const goodWithDogs = getOptionalBooleanValue(formData, "good_with_dogs_value");
+  const dogSocialStyle = getOptionalString(formData, "dog_social_style");
+  const peopleFriendliness = getOptionalString(formData, "people_friendliness");
+  const goodWithDogs =
+    getOptionalBooleanValue(formData, "good_with_dogs_value") ??
+    (dogSocialStyle === "Friendly and playful"
+      ? true
+      : dogSocialStyle === "Prefer to be solo"
+        ? false
+        : null);
   const goodWithCats = getOptionalBooleanValue(formData, "good_with_cats_value");
   const goodWithKids = getOptionalBooleanValue(formData, "good_with_kids_value");
-  const humanFriendly = getOptionalBooleanValue(formData, "human_friendly_value");
+  const humanFriendly =
+    getOptionalBooleanValue(formData, "human_friendly_value") ??
+    (peopleFriendliness === "Comfortable being petted by strangers"
+      ? true
+      : peopleFriendliness
+        ? false
+        : null);
+  const visibleCareTags = careTags.filter((tag) => tag !== "No medical needs");
+  const specialNeeds =
+    getOptionalString(formData, "special_needs") ??
+    (visibleCareTags.length > 0 ? visibleCareTags.join(", ") : null);
 
   const dogPayload: DogInsert = {
     adoption_status: getEnumValue(formData, "adoption_status", DOG_ADOPTION_STATUSES, "draft") ?? "draft",
@@ -383,7 +445,7 @@ export async function createDogListingAction(
     name,
     shelter_id: shelterId,
     size: getEnumValue(formData, "size", DOG_SIZES) ?? null,
-    special_needs: getOptionalString(formData, "special_needs"),
+    special_needs: specialNeeds,
     sterilized: getBoolean(formData, "sterilized"),
     weight_kg: weightKg,
   };
@@ -418,6 +480,7 @@ export async function createDogListingAction(
             dogName: name,
             extension: photo.extension,
             photoIndex,
+            supabase,
           });
           uploadedPhotos.push(uploaded);
           photoIndex += 1;
@@ -441,13 +504,14 @@ export async function createDogListingAction(
           dogName: name,
           extension: guessExtensionFromUrl(file.name) ?? extensionFromContentType(file.type),
           photoIndex,
+          supabase,
         });
         uploadedPhotos.push(uploaded);
         photoIndex += 1;
       } catch (error) {
         return {
           dogId: insertedDog.id,
-          message: `The dog was created, but ${file.name} could not be uploaded to Backblaze: ${
+          message: `The dog was created, but ${file.name} could not be uploaded to public photo storage: ${
             error instanceof Error ? error.message : "Unknown upload error"
           }`,
           status: "error",
@@ -461,13 +525,14 @@ export async function createDogListingAction(
           dogName: name,
           photoIndex,
           sourceUrl: url,
+          supabase,
         });
         uploadedPhotos.push(uploaded);
         photoIndex += 1;
       } catch (error) {
         return {
           dogId: insertedDog.id,
-          message: `The dog was created, but photo URL ${index + 1} could not be moved to Backblaze: ${
+          message: `The dog was created, but photo URL ${index + 1} could not be moved to public photo storage: ${
             error instanceof Error ? error.message : "Unknown upload error"
           }`,
           status: "error",
@@ -514,7 +579,7 @@ export async function createDogListingAction(
 
   revalidatePath("/");
   revalidatePath("/dogs");
-  revalidatePath("/swipe");
+  revalidatePath("/");
   revalidatePath("/admin/dogs/new");
   revalidatePath(`/dogs/${insertedDog.id}`);
 

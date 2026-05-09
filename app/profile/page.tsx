@@ -152,7 +152,7 @@ export default async function ProfilePage({
               Your wishlist is empty. Start adding dogs you love!
             </p>
             <Link
-              href="/swipe"
+              href="/"
               className="mt-[16px] inline-block rounded-full px-[28px] py-[10px] text-white text-[14px] font-semibold"
               style={{ background: "#cd8188", fontFamily: M }}
             >
@@ -281,7 +281,7 @@ export default async function ProfilePage({
         }}
       >
         <div className="pointer-events-auto absolute left-[8px] top-[39px]">
-          <a href="/swipe" className="block h-[55px] w-[110px] relative">
+          <a href="/" className="block h-[55px] w-[110px] relative">
             <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain object-left" priority />
           </a>
         </div>
