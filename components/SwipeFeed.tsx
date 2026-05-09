@@ -14,13 +14,16 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [cardDims, setCardDims] = useState({ width: 370, height: 620 });
+  const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     function measure() {
       const vw = Math.min(window.innerWidth, 402);
       const vh = window.innerHeight;
       const width = Math.min(370, vw - 32);          // 16px padding each side
-      const height = Math.max(560, vh - 160);         // header 70 + nav 70 + padding 20
+      // Snap section = vh - 70 (header). Card lives inside, must clear bottom nav (70).
+      // Subtract: header 70 + nav 70 + safe padding 30 = 170. Cap at 720 so badges visible.
+      const height = Math.max(540, Math.min(720, vh - 170));
       setCardDims({ width, height });
     }
     measure();
@@ -30,6 +33,14 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
 
   function scrollToTop() {
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleFeedScroll() {
+    if (!containerRef.current) return;
+    const sectionHeight = containerRef.current.clientHeight;
+    if (sectionHeight <= 0) return;
+    const nextIndex = Math.round(containerRef.current.scrollTop / sectionHeight);
+    setActiveIndex(Math.min(Math.max(nextIndex, 0), Math.max(dogs.length - 1, 0)));
   }
 
   return (
@@ -87,13 +98,14 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
       {/* Snap scroll container */}
       <div
         ref={containerRef}
+        onScroll={handleFeedScroll}
         className="flex-1 overflow-y-scroll overflow-x-hidden snap-y snap-mandatory"
         style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
       >
         <style>{`.snap-mandatory::-webkit-scrollbar{display:none}`}</style>
 
         {dogs.length === 0 && (
-          <div className="snap-start flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ minHeight: "calc(100dvh - 70px)" }}>
+          <div className="snap-start flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ minHeight: "calc(100dvh - 140px)" }}>
             <p className="text-6xl">🐾</p>
             <p className="text-xl font-bold text-[#65584f]">No dogs available yet</p>
             <p className="text-sm text-[#65584f]/60">Shelters are getting ready — check back soon!</p>
@@ -105,7 +117,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
             key={dog.id}
             className="snap-start flex items-center justify-center px-[16px]"
             style={{
-              minHeight: "calc(100dvh - 70px)",
+              minHeight: "calc(100dvh - 140px)",
               paddingTop: idx === 0 ? 10 : 0,
               scrollSnapStop: "always",
             }}
@@ -113,6 +125,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
             <SwipeDogCard
               dog={dog}
               initialSaved={savedIds.includes(dog.id)}
+              isActive={idx === activeIndex}
               isLoggedIn={isLoggedIn}
               cardWidth={cardDims.width}
               cardHeight={cardDims.height}
@@ -124,7 +137,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
         {dogs.length > 0 && (
           <div
             className="snap-start flex flex-col items-center justify-center gap-5 px-6 text-center"
-            style={{ minHeight: "calc(100dvh - 70px)", scrollSnapStop: "always" }}
+            style={{ minHeight: "calc(100dvh - 140px)", scrollSnapStop: "always" }}
           >
             <p className="font-['Montserrat',sans-serif] text-[18px] font-semibold text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>You&apos;ve seen them all!</p>
             <p className="text-[14px] text-[#65584f]/60" style={{ fontFamily: "Montserrat, sans-serif" }}>All available dogs are shown above.</p>

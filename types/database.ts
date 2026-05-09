@@ -203,6 +203,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          cover_photo_url: string | null
           created_at: string
           full_name: string | null
           id: string
@@ -212,6 +213,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cover_photo_url?: string | null
           created_at?: string
           full_name?: string | null
           id: string
