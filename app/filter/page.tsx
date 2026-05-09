@@ -458,8 +458,10 @@ export default function FilterPage() {
       {/* Continue button — fixed above bottom nav, only for multi-select & slider */}
       {(currentQ.multiSelect || currentQ.type === "slider") && (
         <div
-          className="fixed bottom-[80px] left-0 right-0 max-w-[402px] mx-auto pt-[24px] pb-[16px] px-[24px]"
+          className="fixed bottom-[70px] pt-[24px] pb-[16px] px-[24px]"
           style={{
+            width: "402px",
+            maxWidth: "100vw",
             left: "50%",
             transform: "translateX(-50%)",
             background: "linear-gradient(to top, #F5F1E8 0%, #F5F1E8 60%, rgba(245,241,232,0) 100%)",
