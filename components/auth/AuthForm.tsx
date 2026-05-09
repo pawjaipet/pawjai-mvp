@@ -3,7 +3,7 @@
 import Image from "next/image";
 import type { FormEvent } from "react";
 import { useState, useTransition } from "react";
-import { createPasswordAccount, ensureCurrentUserProfile } from "@/app/auth/actions";
+import { ensureCurrentUserProfile } from "@/app/auth/actions";
 import { parseAccountCredentials, sanitizeNextPath } from "@/utils/account-model";
 import { createClient } from "@/utils/supabase/client";
 
@@ -54,27 +54,42 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
     const supabase = createClient();
 
     if (isSignup) {
-      const account = await createPasswordAccount(formData);
+      const callbackUrl = new URL("/auth/callback", window.location.origin);
+      callbackUrl.searchParams.set("next", safeNextPath);
 
-      if (!account.ok) {
-        setLocalMessage(account.error);
+      const { data, error } = await supabase.auth.signUp({
+        email: credentials.email,
+        password: credentials.password,
+        options: {
+          data: { full_name: null },
+          emailRedirectTo: callbackUrl.toString(),
+        },
+      });
+
+      if (error) {
+        setLocalMessage(error.message);
+        return;
+      }
+
+      if (!data.session) {
+        setLocalMessage("Check your email to verify your account, then come back to sign in.");
+        return;
+      }
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
+
+      if (error) {
+        setLocalMessage(error.message);
         return;
       }
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: credentials.email,
-      password: credentials.password,
-    });
-
-    if (error) {
-      setLocalMessage(error.message);
-      return;
-    }
-
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      setLocalMessage("Check your email to confirm your account, then sign in.");
+      setLocalMessage("Check your email to verify your account, then come back to sign in.");
       return;
     }
 

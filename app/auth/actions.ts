@@ -5,7 +5,6 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { buildAuthPath, parseAccountCredentials, sanitizeNextPath } from "@/utils/account-model";
-import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
 function authRedirect(message: string, nextPath: string): never {
@@ -67,6 +66,9 @@ export async function signUp(formData: FormData) {
     authRedirect(error instanceof Error ? error.message : "Please check your details.", nextPath);
   }
 
+  const callbackUrl = new URL("/auth/callback", await getRequestOrigin());
+  callbackUrl.searchParams.set("next", nextPath);
+
   const { data, error } = await supabase.auth.signUp({
     email: credentials.email,
     password: credentials.password,
@@ -74,6 +76,7 @@ export async function signUp(formData: FormData) {
       data: {
         full_name: null,
       },
+      emailRedirectTo: callbackUrl.toString(),
     },
   });
 
@@ -87,50 +90,7 @@ export async function signUp(formData: FormData) {
     redirect(nextPath);
   }
 
-  authRedirect("Check your email to confirm your account, then sign in.", nextPath);
-}
-
-export async function createPasswordAccount(
-  formData: FormData,
-): Promise<{ ok: true; email: string } | { ok: false; error: string }> {
-  let credentials;
-
-  try {
-    credentials = parseAccountCredentials({
-      email: formData.get("email"),
-      password: formData.get("password"),
-      confirmPassword: formData.get("confirmPassword"),
-    });
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Please check your details.",
-    };
-  }
-
-  const admin = createAdminClient();
-  const { data, error } = await admin.auth.admin.createUser({
-    email: credentials.email,
-    password: credentials.password,
-    email_confirm: true,
-    user_metadata: {
-      full_name: null,
-    },
-  });
-
-  if (error || !data.user) {
-    const message = error?.message ?? "We could not create your account.";
-    return {
-      ok: false,
-      error: /already|registered|exists/i.test(message)
-        ? "That email already has an account. Try logging in."
-        : message,
-    };
-  }
-
-  await ensureAdopterForUser(admin, data.user);
-  revalidatePath("/", "layout");
-  return { ok: true, email: credentials.email };
+  authRedirect("Check your email to verify your account, then sign in.", nextPath);
 }
 
 export async function signInWithGoogle(formData: FormData) {
