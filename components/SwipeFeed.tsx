@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import SwipeDogCard, { type SwipeDog } from "./SwipeDogCard";
 
 interface Props {
@@ -13,6 +13,20 @@ interface Props {
 export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [cardDims, setCardDims] = useState({ width: 370, height: 620 });
+
+  useEffect(() => {
+    function measure() {
+      const vw = Math.min(window.innerWidth, 402);
+      const vh = window.innerHeight;
+      const width = Math.min(370, vw - 32);          // 16px padding each side
+      const height = Math.max(560, vh - 160);         // header 70 + nav 70 + padding 20
+      setCardDims({ width, height });
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
   function scrollToTop() {
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -27,7 +41,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
       <div
         className="bg-gradient-to-b from-[#d6c8ad] h-[70px] pointer-events-auto shrink-0 to-[rgba(214,200,173,0)] via-[38.942%] via-[rgba(214,200,173,0.75)] w-full z-20"
       >
-        <div className="absolute content-stretch flex items-center justify-center left-[8px] top-[20px] w-[386px]">
+        <div className="absolute flex items-center justify-center inset-x-[8px] top-[20px]">
           <Link href="/swipe" className="block h-[55px] w-[110px] relative">
             <img
               src="/pawjai-logo.png"
@@ -79,7 +93,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
         <style>{`.snap-mandatory::-webkit-scrollbar{display:none}`}</style>
 
         {dogs.length === 0 && (
-          <div className="snap-start h-full min-h-[calc(100vh-70px)] flex flex-col items-center justify-center gap-4 px-8 text-center">
+          <div className="snap-start flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ minHeight: "calc(100dvh - 70px)" }}>
             <p className="text-6xl">🐾</p>
             <p className="text-xl font-bold text-[#65584f]">No dogs available yet</p>
             <p className="text-sm text-[#65584f]/60">Shelters are getting ready — check back soon!</p>
@@ -89,13 +103,19 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
         {dogs.map((dog, idx) => (
           <div
             key={dog.id}
-            className={`snap-start h-full ${idx === 0 ? "min-h-[calc(100vh-74px)] flex items-start justify-center px-[16px] pt-[10px]" : "min-h-[calc(100vh-108px)] flex items-center justify-center px-[16px]"}`}
-            style={{ scrollSnapStop: "always" }}
+            className="snap-start flex items-center justify-center px-[16px]"
+            style={{
+              minHeight: "calc(100dvh - 70px)",
+              paddingTop: idx === 0 ? 10 : 0,
+              scrollSnapStop: "always",
+            }}
           >
             <SwipeDogCard
               dog={dog}
               initialSaved={savedIds.includes(dog.id)}
               isLoggedIn={isLoggedIn}
+              cardWidth={cardDims.width}
+              cardHeight={cardDims.height}
             />
           </div>
         ))}
@@ -104,7 +124,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
         {dogs.length > 0 && (
           <div
             className="snap-start flex flex-col items-center justify-center gap-5 px-6 text-center"
-            style={{ minHeight: "100dvh", scrollSnapStop: "always" }}
+            style={{ minHeight: "calc(100dvh - 70px)", scrollSnapStop: "always" }}
           >
             <p className="font-['Montserrat',sans-serif] text-[18px] font-semibold text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>You&apos;ve seen them all!</p>
             <p className="text-[14px] text-[#65584f]/60" style={{ fontFamily: "Montserrat, sans-serif" }}>All available dogs are shown above.</p>

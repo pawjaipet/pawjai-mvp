@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState, useRef } from "react";
 import ClientAuthGate from "@/components/auth/ClientAuthGate";
@@ -91,17 +90,17 @@ function UploadBox({ label, file, onChange }: { label: string; file: File | null
 
 // ─── State types ─────────────────────────────────────────────────────────────
 type StateA = { fullName: string; dateOfBirth: string; idNumber: string; address: string; occupation: string; phone: string; idFile: File | null };
-type StateB = { hadPetsBefore: string; currentPets: string; petExperience: string; reason: string };
-type StateC = { homeType: string; ownRent: string; yardSpace: string; landlordPermission: string; householdMembers: string; allergies: string };
-type StateD = { commitment: string; timeAvailable: string; financialReady: string; emergency: string; agreement: boolean };
+type StateB = { hadPetsBefore: string; rescueCareExp: string; currentPets: string; petExperience: string; reason: string };
+type StateC = { homeType: string; ownRent: string; yardSpace: string; landlordPermission: string; householdMembers: string; allergies: string; homePhotos: File | null; otherPets: string[]; travelPlan: string };
+type StateD = { bondingPlan: string[]; timeAvailable: string; financialReady: string; emergency: string; patienceAwareness: string; behaviorResponse: string; traumaResponse: string; agreement: boolean };
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function DocumentsPage() {
   const [section, setSection] = useState<Section>("A");
   const [a, setA] = useState<StateA>({ fullName: "", dateOfBirth: "", idNumber: "", address: "", occupation: "", phone: "", idFile: null });
-  const [b, setB] = useState<StateB>({ hadPetsBefore: "", currentPets: "", petExperience: "", reason: "" });
-  const [c, setC] = useState<StateC>({ homeType: "", ownRent: "", yardSpace: "", landlordPermission: "", householdMembers: "", allergies: "" });
-  const [d, setD] = useState<StateD>({ commitment: "", timeAvailable: "", financialReady: "", emergency: "", agreement: false });
+  const [b, setB] = useState<StateB>({ hadPetsBefore: "", rescueCareExp: "", currentPets: "", petExperience: "", reason: "" });
+  const [c, setC] = useState<StateC>({ homeType: "", ownRent: "", yardSpace: "", landlordPermission: "", householdMembers: "", allergies: "", homePhotos: null, otherPets: [], travelPlan: "" });
+  const [d, setD] = useState<StateD>({ bondingPlan: [], timeAvailable: "", financialReady: "", emergency: "", patienceAwareness: "", behaviorResponse: "", traumaResponse: "", agreement: false });
 
   const sectionIdx = section === "done" ? 4 : SECTIONS.indexOf(section as Exclude<Section, "done">);
   const meta = section !== "done" ? SECTION_META[section as Exclude<Section, "done">] : null;
@@ -214,6 +213,13 @@ export default function DocumentsPage() {
                   ))}
                 </div>
               </Block>
+              <Block question="Have you ever cared for a rescue or stray dog before?">
+                <div className="space-y-[10px]">
+                  {["Yes", "No", "I have volunteered at a shelter"].map((opt) => (
+                    <ChoiceBtn key={opt} selected={b.rescueCareExp === opt} onClick={() => setB({ ...b, rescueCareExp: opt })}>{opt}</ChoiceBtn>
+                  ))}
+                </div>
+              </Block>
               <Block question="Do you currently have any pets?">
                 <input type="text" className={inputCls} placeholder="Type here" value={b.currentPets} onChange={(e) => setB({ ...b, currentPets: e.target.value })} style={{ fontFamily: M }} />
               </Block>
@@ -261,6 +267,26 @@ export default function DocumentsPage() {
               <Block question="Are there any allergies in the household?">
                 <textarea rows={3} className={`${inputCls} resize-none`} placeholder="Type here" value={c.allergies} onChange={(e) => setC({ ...c, allergies: e.target.value })} style={{ fontFamily: M }} />
               </Block>
+              <UploadBox label="Upload clear photos of your home environment / pet designated areas" file={c.homePhotos} onChange={(f) => setC({ ...c, homePhotos: f })} />
+              <Block question="Are there other pets in your home?">
+                <div className="space-y-[10px]">
+                  {["None", "Dog(s)", "Cat(s)", "Other animals"].map((opt) => {
+                    const selected = c.otherPets.includes(opt);
+                    return (
+                      <ChoiceBtn key={opt} selected={selected} onClick={() => {
+                        setC({ ...c, otherPets: selected ? c.otherPets.filter((x) => x !== opt) : [...c.otherPets, opt] });
+                      }}>{opt}</ChoiceBtn>
+                    );
+                  })}
+                </div>
+              </Block>
+              <Block question="What will happen to your dog when you travel?">
+                <div className="space-y-[10px]">
+                  {["I'll take them with me", "I have family / sitter support", "Pet hotel"].map((opt) => (
+                    <ChoiceBtn key={opt} selected={c.travelPlan === opt} onClick={() => setC({ ...c, travelPlan: opt })}>{opt}</ChoiceBtn>
+                  ))}
+                </div>
+              </Block>
             </>
           )}
 
@@ -268,7 +294,16 @@ export default function DocumentsPage() {
           {section === "D" && (
             <>
               <Block question="How do you plan to bond with your new dog?">
-                <textarea rows={4} className={`${inputCls} resize-none`} placeholder="Type here" value={d.commitment} onChange={(e) => setD({ ...d, commitment: e.target.value })} style={{ fontFamily: M }} />
+                <div className="space-y-[10px]">
+                  {["Regular walks and playtime", "Training and learning together", "Spending quality time at home"].map((opt) => {
+                    const selected = d.bondingPlan.includes(opt);
+                    return (
+                      <ChoiceBtn key={opt} selected={selected} onClick={() => {
+                        setD({ ...d, bondingPlan: selected ? d.bondingPlan.filter((x) => x !== opt) : [...d.bondingPlan, opt] });
+                      }}>{opt}</ChoiceBtn>
+                    );
+                  })}
+                </div>
               </Block>
               <Block question="How much time can you dedicate to your dog daily?">
                 <input type="text" className={inputCls} placeholder="eg. 2–3 hours for walks and play" value={d.timeAvailable} onChange={(e) => setD({ ...d, timeAvailable: e.target.value })} style={{ fontFamily: M }} />
@@ -282,6 +317,44 @@ export default function DocumentsPage() {
               </Block>
               <Block question="What will you do if you can't care for the dog anymore?">
                 <textarea rows={4} className={`${inputCls} resize-none`} placeholder="Type here" value={d.emergency} onChange={(e) => setD({ ...d, emergency: e.target.value })} style={{ fontFamily: M }} />
+              </Block>
+              <Block question="Do you understand that some shelter dogs may need weeks or months to fully trust you and adjust?">
+                <div className="space-y-[10px]">
+                  {[
+                    "Yes, I'm ready to be patient",
+                    "I understand, but I hope it doesn't take long",
+                    "I need more information",
+                    "I'm not sure",
+                  ].map((opt) => (
+                    <ChoiceBtn key={opt} selected={d.patienceAwareness === opt} onClick={() => setD({ ...d, patienceAwareness: opt })}>{opt}</ChoiceBtn>
+                  ))}
+                </div>
+              </Block>
+              <Block question="If your adopted dog chews shoes, furniture, or barks too much, how would you respond?">
+                <div className="space-y-[10px]">
+                  {[
+                    "Use positive training and redirect behavior",
+                    "Give them more toys and attention",
+                    "Seek professional trainer help",
+                    "I don't know yet",
+                  ].map((opt) => (
+                    <ChoiceBtn key={opt} selected={d.behaviorResponse === opt} onClick={() => setD({ ...d, behaviorResponse: opt })}>{opt}</ChoiceBtn>
+                  ))}
+                </div>
+              </Block>
+              <Block question="If the dog shows trauma-related behavior (fear, anxiety, aggression), how would you handle it?">
+                <div className="space-y-[10px]">
+                  {[
+                    "Work with a behaviorist or trainer",
+                    "Give them time and space to heal",
+                    "Learn about trauma recovery in dogs",
+                    "Seek advice from the shelter",
+                    "Be patient and consistent",
+                    "I'm not prepared for this",
+                  ].map((opt) => (
+                    <ChoiceBtn key={opt} selected={d.traumaResponse === opt} onClick={() => setD({ ...d, traumaResponse: opt })}>{opt}</ChoiceBtn>
+                  ))}
+                </div>
               </Block>
               {/* Agreement */}
               <div className="mb-[28px]">

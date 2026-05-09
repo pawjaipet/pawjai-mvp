@@ -27,9 +27,11 @@ interface Props {
   dog: SwipeDog;
   initialSaved: boolean;
   isLoggedIn: boolean;
+  cardWidth?: number;
+  cardHeight?: number;
 }
 
-export default function SwipeDogCard({ dog, initialSaved, isLoggedIn }: Props) {
+export default function SwipeDogCard({ dog, initialSaved, isLoggedIn, cardWidth = 370, cardHeight = 620 }: Props) {
   const carouselRef = useRef<HTMLDivElement>(null);
   const [imgIdx, setImgIdx]     = useState(0);
   const [tagsOpen, setTagsOpen] = useState(false);
@@ -108,17 +110,17 @@ export default function SwipeDogCard({ dog, initialSaved, isLoggedIn }: Props) {
   ].filter(Boolean);
 
   return (
-    <div className="relative w-[370px]">
+    <div className="relative" style={{ width: cardWidth }}>
       {/* Image carousel */}
       <div
         ref={carouselRef}
         onScroll={onCarouselScroll}
-        className="flex overflow-x-auto snap-x snap-mandatory rounded-[22px] w-[370px]"
-        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
+        className="flex overflow-x-auto snap-x snap-mandatory rounded-[22px]"
+        style={{ width: cardWidth, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
       >
         {orderedPhotos.map((p, i) => (
-          <Link key={i} href={`/dogs/${dog.id}`} className="flex-shrink-0 w-[370px] snap-center block">
-            <div className="h-[620px] rounded-[22px] w-[370px] overflow-hidden bg-[#d6c8ad]">
+          <Link key={i} href={`/dogs/${dog.id}`} className="snap-center block flex-shrink-0" style={{ width: cardWidth }}>
+            <div className="rounded-[22px] overflow-hidden bg-[#d6c8ad]" style={{ height: cardHeight, width: cardWidth }}>
               {p.public_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
