@@ -65,6 +65,28 @@ const questions = [
       { label: "Border Collie" },
       { label: "Bulldog" },
       { label: "Akita" },
+      { label: "Cavalier King Charles Spaniel" },
+      { label: "Havanese" },
+      { label: "Shetland Sheepdog" },
+      { label: "Bernese Mountain Dog" },
+      { label: "English Springer Spaniel" },
+      { label: "Brittany" },
+      { label: "Cocker Spaniel" },
+      { label: "Mastiff" },
+      { label: "Cane Corso" },
+      { label: "West Highland White Terrier" },
+      { label: "Basset Hound" },
+      { label: "Vizsla" },
+      { label: "Newfoundland" },
+      { label: "Rhodesian Ridgeback" },
+      { label: "Belgian Malinois" },
+      { label: "Bloodhound" },
+      { label: "Bull Terrier" },
+      { label: "Chesapeake Bay Retriever" },
+      { label: "Weimaraner" },
+      { label: "Collie" },
+      { label: "Saint Bernard" },
+      { label: "Whippet" },
     ],
   },
   {
@@ -81,64 +103,6 @@ const questions = [
   },
   {
     id: 5,
-    question: "Do you want trained dogs?",
-    subtitle: "Select one",
-    type: "cards" as const,
-    multiSelect: false,
-    options: [
-      { label: "Well-trained dogs only" },
-      { label: "Dogs still in training" },
-      { label: "Willing to train from scratch" },
-    ],
-  },
-  {
-    id: 6,
-    question: "Friendliness to people?",
-    subtitle: "Choose one",
-    type: "cards" as const,
-    multiSelect: false,
-    options: [
-      { label: "Comfortable being petted by strangers" },
-      { label: "Takes time to get to know new people" },
-      { label: "Only stick to their owner" },
-    ],
-  },
-  {
-    id: 7,
-    question: "Friendliness to other dogs?",
-    subtitle: "Choose one",
-    type: "cards" as const,
-    multiSelect: false,
-    options: [
-      { label: "Friendly and playful" },
-      { label: "Okay with other dogs but not too social" },
-      { label: "Prefer to be solo" },
-    ],
-  },
-  {
-    id: 8,
-    question: "Friendliness to cats?",
-    subtitle: "Choose one",
-    type: "cards" as const,
-    multiSelect: false,
-    options: [
-      { label: "Cat-friendly" },
-      { label: "Not sure / No" },
-    ],
-  },
-  {
-    id: 9,
-    question: "Friendliness to kids (under 4)?",
-    subtitle: "Choose one",
-    type: "cards" as const,
-    multiSelect: false,
-    options: [
-      { label: "Kid-friendly" },
-      { label: "Not sure / No" },
-    ],
-  },
-  {
-    id: 10,
     question: "What about their protectiveness?",
     subtitle: "You can choose multiple",
     type: "cards" as const,
@@ -150,7 +114,7 @@ const questions = [
     ],
   },
   {
-    id: 11,
+    id: 6,
     question: "How would you like the dog to show affection?",
     subtitle: "You can choose multiple",
     type: "cards" as const,
@@ -159,6 +123,64 @@ const questions = [
       { label: "Very cuddly and affectionate", description: "Loves to be close and seeks attention often" },
       { label: "Subtle", description: "Express love in gentle, quiet ways" },
       { label: "Independent", description: "Enjoys independence but loyal" },
+    ],
+  },
+  {
+    id: 7,
+    question: "Do you want trained dogs?",
+    subtitle: "Select one",
+    type: "cards" as const,
+    multiSelect: false,
+    options: [
+      { label: "Well-trained dogs only" },
+      { label: "Dogs still in training" },
+      { label: "Willing to train from scratch" },
+    ],
+  },
+  {
+    id: 8,
+    question: "Friendliness to people?",
+    subtitle: "Choose one",
+    type: "cards" as const,
+    multiSelect: false,
+    options: [
+      { label: "Comfortable being petted by strangers" },
+      { label: "Takes time to get to know new people" },
+      { label: "Only stick to their owner" },
+    ],
+  },
+  {
+    id: 9,
+    question: "Friendliness to other dogs?",
+    subtitle: "Choose one",
+    type: "cards" as const,
+    multiSelect: false,
+    options: [
+      { label: "Friendly and playful" },
+      { label: "Okay with other dogs but not too social" },
+      { label: "Prefer to be solo" },
+    ],
+  },
+  {
+    id: 10,
+    question: "Friendliness to cats?",
+    subtitle: "Choose one",
+    type: "cards" as const,
+    multiSelect: false,
+    options: [
+      { label: "Cat-friendly" },
+      { label: "Not sure / No" },
+    ],
+  },
+  {
+    id: 11,
+    question: "Friendliness to kids (under 4)?",
+    subtitle: "Choose one",
+    type: "cards" as const,
+    multiSelect: false,
+    options: [
+      { label: "Kid-friendly" },
+      { label: "Not sure / No" },
     ],
   },
   {
@@ -261,9 +283,9 @@ export default function FilterPage() {
     // Map question indices to preference fields
     const sizeQ = selectedAnswers[0] ?? [];         // Q0: size cards
     const energyQ = selectedAnswers[3] ?? [];        // Q3: activity cards
-    const kidsQ = selectedAnswers[8] ?? [];          // Q8: kids
-    const dogsQ = selectedAnswers[6] ?? [];          // Q6: other dogs
-    const catsQ = selectedAnswers[7] ?? [];          // Q7: cats
+    const kidsQ = selectedAnswers[10] ?? [];         // Q10: kids
+    const dogsQ = selectedAnswers[8] ?? [];          // Q8: other dogs
+    const catsQ = selectedAnswers[9] ?? [];          // Q9: cats
 
     startTransition(async () => {
       await saveFilterPreferences({
