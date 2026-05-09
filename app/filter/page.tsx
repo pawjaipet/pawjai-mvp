@@ -249,11 +249,11 @@ export default function FilterPage() {
           : [...current, option],
       });
     } else {
-      setSelectedAnswers({ ...selectedAnswers, [currentQuestion]: [option] });
-      setTimeout(() => {
-        if (currentQuestion < questions.length - 1) setCurrentQuestion(currentQuestion + 1);
-        else finishAndSave();
-      }, 350);
+      // Single-select: toggle selection, no auto-advance — user presses Continue
+      setSelectedAnswers({
+        ...selectedAnswers,
+        [currentQuestion]: current.includes(option) ? [] : [option],
+      });
     }
   };
 
@@ -321,22 +321,11 @@ export default function FilterPage() {
         />
       </div>
 
-      {/* Back button — rose pill matching Figma */}
-      <div className="px-[24px] pt-[24px] pb-[16px] flex items-center gap-[12px]">
-        <button
-          onClick={handleBack}
-          className="flex items-center text-[#8B6F47] bg-[#cd8188] px-[16px] py-[8px] rounded-[20px] transition-all border-0 cursor-pointer"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginRight: 6 }}>
-            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span className="font-medium text-[14px] leading-[21px] text-white whitespace-nowrap" style={{ fontFamily: "Inter, sans-serif" }}>Back</span>
-        </button>
-        <div className="flex items-center justify-end flex-1">
-          <span className="text-[11px] text-[#cd8188] font-semibold" style={{ fontFamily: "Montserrat, sans-serif" }}>
-            {Math.round(progressPercent)}%
-          </span>
-        </div>
+      {/* Progress % header */}
+      <div className="px-[24px] pt-[20px] pb-[16px] flex items-center justify-end">
+        <span className="text-[11px] text-[#cd8188] font-semibold" style={{ fontFamily: "Montserrat, sans-serif" }}>
+          {Math.round(progressPercent)}%
+        </span>
       </div>
 
       {/* Question header */}
@@ -476,35 +465,45 @@ export default function FilterPage() {
         )}
       </div>
 
-      {/* Continue button — fixed above bottom nav, only for multi-select & slider */}
-      {(currentQ.multiSelect || currentQ.type === "slider") && (
-        <div
-          className="fixed bottom-[70px] pt-[24px] pb-[16px] px-[24px]"
+      {/* Back + Continue — always visible above bottom nav */}
+      <div
+        className="fixed bottom-[70px] pt-[24px] pb-[16px] px-[24px] flex gap-[12px]"
+        style={{
+          width: "402px",
+          maxWidth: "100vw",
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "linear-gradient(to top, #F5F1E8 0%, #F5F1E8 60%, rgba(245,241,232,0) 100%)",
+          pointerEvents: "none",
+        }}
+      >
+        {/* Back */}
+        <button
+          onClick={handleBack}
+          className="shrink-0 w-[52px] h-[52px] rounded-[12px] flex items-center justify-center transition-all active:scale-95"
+          style={{ border: "2px solid #cd8188", background: "transparent", pointerEvents: "auto" }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="#cd8188" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        {/* Continue / Save */}
+        <button
+          onClick={handleContinue}
+          className="flex-1 h-[52px] rounded-[12px] flex items-center justify-center gap-[8px] text-[15px] font-bold transition-all active:scale-[0.98]"
           style={{
-            width: "402px",
-            maxWidth: "100vw",
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "linear-gradient(to top, #F5F1E8 0%, #F5F1E8 60%, rgba(245,241,232,0) 100%)",
-            pointerEvents: "none",
+            background: "#65584f",
+            color: "white",
+            pointerEvents: "auto",
+            fontFamily: "Montserrat, sans-serif",
           }}
         >
-          <button
-            onClick={handleContinue}
-            disabled={currentQ.multiSelect && currentSelections.length === 0}
-            className="w-full rounded-[12px] px-[20px] py-[16px] border-[2px] cursor-pointer transition-all font-medium text-[15px]"
-            style={{
-              background: !currentQ.multiSelect || currentSelections.length > 0 ? "#65584f" : "rgba(101,88,79,0.15)",
-              borderColor: !currentQ.multiSelect || currentSelections.length > 0 ? "#65584f" : "rgba(101,88,79,0.15)",
-              color: !currentQ.multiSelect || currentSelections.length > 0 ? "white" : "rgba(101,88,79,0.3)",
-              pointerEvents: "auto",
-              fontFamily: "Montserrat, sans-serif",
-            }}
-          >
-            {currentQuestion === questions.length - 1 ? "Save & Finish" : "Continue"}
-          </button>
-        </div>
-      )}
+          {currentQuestion === questions.length - 1 ? "Save & Finish" : "Continue"}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
     </div>
     </ClientAuthGate>
   );
