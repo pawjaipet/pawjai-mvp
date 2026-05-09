@@ -19,11 +19,12 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
   useEffect(() => {
     function measure() {
       const vw = Math.min(window.innerWidth, 402);
-      const vh = window.innerHeight;
-      const width = Math.min(370, vw - 32);          // 16px padding each side
-      // Snap section = vh - 70 (header). Card lives inside, must clear bottom nav (70).
-      // Subtract: header 70 + nav 70 + safe padding 30 = 170. Cap at 720 so badges visible.
-      const height = Math.max(540, Math.min(720, vh - 170));
+      const vh = window.innerHeight;          // visible viewport (excludes Safari chrome)
+      const width = Math.min(370, vw - 32);   // 16px padding each side
+      // Section = vh - 140 (header 70 + nav 70). Card = section - 20 (10px each side).
+      // Hard cap 720 so very tall devices don't get giant cards.
+      const sectionHeight = vh - 140;
+      const height = Math.max(500, Math.min(720, sectionHeight - 20));
       setCardDims({ width, height });
     }
     measure();
@@ -45,8 +46,8 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
 
   return (
     <div
-      className="relative flex flex-col bg-white h-screen overflow-hidden"
-      style={{ width: 402, maxWidth: "100vw", margin: "0 auto" }}
+      className="relative flex flex-col bg-white overflow-hidden"
+      style={{ width: 402, maxWidth: "100vw", margin: "0 auto", height: "100dvh" }}
     >
       {/* Swipe page header — 70px, logo centered, hamburger right */}
       <div
