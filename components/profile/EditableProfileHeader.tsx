@@ -1,17 +1,26 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Camera, Check, X, Pencil } from "lucide-react";
+import { Camera, Check, X, Pencil, Award, Gift, Star } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { updateProfile } from "@/app/profile/actions";
 
 const M = "Montserrat, sans-serif";
+
+type BadgeId = "first_adopter" | "top_donater" | "premium_user";
+
+const BADGE_CONFIG: Record<BadgeId, { label: string; Icon: LucideIcon; variant: "outline" | "filled" }> = {
+  first_adopter: { label: "First Adopter", Icon: Award, variant: "outline" },
+  top_donater: { label: "Top Donater", Icon: Gift, variant: "outline" },
+  premium_user: { label: "Premium User", Icon: Star, variant: "filled" },
+};
 
 interface Props {
   initialNickname: string;
   initialFullName: string;
   initialAvatarUrl: string | null;
   initialCoverUrl: string | null;
-  badges: string[];
+  badges: BadgeId[];
 }
 
 export default function EditableProfileHeader({
@@ -71,6 +80,7 @@ export default function EditableProfileHeader({
   }
 
   const displayNickname = name.trim() ? name.trim().split(" ")[0] : initialNickname;
+  const AVATAR_SIZE = 150;
 
   return (
     <>
@@ -90,11 +100,11 @@ export default function EditableProfileHeader({
         className="hidden"
       />
 
-      {/* ── Banner ── */}
+      {/* ── Banner — full bleed ── */}
       <div
         className="w-full relative overflow-hidden"
         style={{
-          height: 260,
+          height: 300,
           background: coverPreview
             ? undefined
             : "linear-gradient(135deg, #e8dfd0 0%, #d6c8ad 50%, #c9b99e 100%)",
@@ -109,8 +119,8 @@ export default function EditableProfileHeader({
           />
         )}
         {!coverPreview && (
-          <div className="absolute right-[-20px] bottom-[-20px] opacity-[0.08]">
-            <svg width="200" height="200" viewBox="0 0 100 100" fill="#65584f">
+          <div className="absolute right-[-20px] bottom-[40px] opacity-[0.10]">
+            <svg width="220" height="220" viewBox="0 0 100 100" fill="#65584f">
               <ellipse cx="50" cy="75" rx="22" ry="18" />
               <ellipse cx="20" cy="55" rx="10" ry="13" />
               <ellipse cx="80" cy="55" rx="10" ry="13" />
@@ -120,12 +130,48 @@ export default function EditableProfileHeader({
           </div>
         )}
 
-        {/* Change cover overlay — only in edit mode */}
+        {/* PawJai logo — top-left, larger */}
+        {!editing && (
+          <div
+            className="absolute top-[16px] left-[14px] z-20 pointer-events-none"
+            style={{
+              width: 140,
+              height: 70,
+              filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.20))",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/pawjai-logo.png"
+              alt="PawJai"
+              className="w-full h-full object-contain object-left"
+            />
+          </div>
+        )}
+
+        {/* Floating Edit pencil — top-right of banner (hidden when editing) */}
+        {!editing && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="absolute top-[14px] right-[14px] w-[40px] h-[40px] rounded-full flex items-center justify-center transition-all active:scale-90 z-20"
+            style={{
+              background: "rgba(255,255,255,0.92)",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
+              backdropFilter: "blur(8px)",
+            }}
+            aria-label="Edit profile"
+          >
+            <Pencil size={16} stroke="#65584f" strokeWidth={2.2} />
+          </button>
+        )}
+
+        {/* Cover change overlay — only in edit mode */}
         {editing && (
           <button
             type="button"
             onClick={() => coverInputRef.current?.click()}
-            className="absolute inset-0 flex items-center justify-center transition-all"
+            className="absolute inset-0 flex items-center justify-center transition-all z-10"
             style={{ background: "rgba(0,0,0,0.35)" }}
           >
             <div className="flex flex-col items-center gap-2">
@@ -141,42 +187,25 @@ export default function EditableProfileHeader({
             </div>
           </button>
         )}
-
-        {/* Gradient fade at bottom */}
-        <div
-          className="absolute bottom-0 left-0 right-0 h-[80px] pointer-events-none"
-          style={{ background: "linear-gradient(to bottom, transparent, rgba(245,241,232,0.6))" }}
-        />
       </div>
 
-      {/* ── White card panel ── */}
-      <div
-        className="mx-[12px] rounded-[20px] px-[20px] pt-[16px] pb-[20px]"
-        style={{
-          marginTop: -20,
-          background: "white",
-          boxShadow: "0 4px 24px rgba(101,88,79,0.10)",
-          position: "relative",
-          zIndex: 10,
-        }}
-      >
-        {/* Avatar — overlapping banner */}
+      {/* ── Centered avatar + name + badges ── */}
+      <div className="relative flex flex-col items-center px-[20px]" style={{ marginTop: -(AVATAR_SIZE / 2) }}>
+        {/* Avatar */}
         <div
-          className="absolute rounded-full border-[4px] border-white overflow-hidden flex items-center justify-center"
+          className="relative rounded-full border-[5px] border-white overflow-hidden flex items-center justify-center"
           style={{
-            top: -54,
-            left: 20,
-            width: 100,
-            height: 100,
+            width: AVATAR_SIZE,
+            height: AVATAR_SIZE,
             background: "linear-gradient(135deg, #d6c8ad 0%, #c4b49a 100%)",
-            boxShadow: "0 4px 16px rgba(101,88,79,0.18)",
+            boxShadow: "0 6px 20px rgba(101,88,79,0.20)",
           }}
         >
           {avatarPreview ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={avatarPreview} alt={displayNickname} className="w-full h-full object-cover" />
           ) : (
-            <svg width="46" height="46" viewBox="0 0 24 24" fill="none">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
               <path
                 d="M12 12C14.76 12 17 9.76 17 7C17 4.24 14.76 2 12 2C9.24 2 7 4.24 7 7C7 9.76 9.24 12 12 12ZM12 14C8.67 14 2 15.68 2 19V21H22V19C22 15.68 15.33 14 12 14Z"
                 fill="rgba(101,88,79,0.4)"
@@ -184,7 +213,6 @@ export default function EditableProfileHeader({
             </svg>
           )}
 
-          {/* Camera overlay — only in edit mode */}
           {editing && (
             <button
               type="button"
@@ -192,47 +220,7 @@ export default function EditableProfileHeader({
               className="absolute inset-0 flex items-center justify-center"
               style={{ background: "rgba(0,0,0,0.45)" }}
             >
-              <Camera size={22} stroke="white" strokeWidth={2} />
-            </button>
-          )}
-        </div>
-
-        {/* Top-right action buttons */}
-        <div className="flex justify-end gap-[8px]" style={{ minHeight: 40 }}>
-          {editing ? (
-            <>
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={pending}
-                className="rounded-[10px] px-[12px] py-[9px] text-[13px] font-semibold flex items-center gap-1 transition-all active:scale-95 disabled:opacity-50"
-                style={{
-                  background: "white",
-                  border: "1.5px solid rgba(101,88,79,0.2)",
-                  color: "#65584f",
-                  fontFamily: M,
-                }}
-              >
-                <X size={14} /> Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={pending}
-                className="rounded-[10px] px-[14px] py-[9px] text-[13px] font-semibold text-white flex items-center gap-1 transition-all active:scale-95 disabled:opacity-60"
-                style={{ background: "#cd8188", fontFamily: M }}
-              >
-                <Check size={14} /> {pending ? "Saving…" : "Save"}
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="rounded-[10px] px-[16px] py-[9px] text-[13px] font-semibold text-white flex items-center gap-[6px] transition-all active:scale-95"
-              style={{ background: "#cd8188", fontFamily: M }}
-            >
-              <Pencil size={13} /> Edit Profile
+              <Camera size={28} stroke="white" strokeWidth={2} />
             </button>
           )}
         </div>
@@ -245,40 +233,79 @@ export default function EditableProfileHeader({
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
             maxLength={60}
-            className="w-full text-[28px] font-bold leading-tight outline-none rounded-[8px] px-[10px] py-[4px] -ml-[10px] mt-[4px]"
+            className="mt-[18px] w-full max-w-[300px] text-center text-[34px] font-bold leading-tight outline-none rounded-[10px] px-[12px] py-[6px]"
             style={{
               color: "#65584f",
               fontFamily: M,
-              background: "rgba(214,200,173,0.25)",
+              background: "rgba(255,255,255,0.85)",
               border: "1.5px solid rgba(205,129,136,0.4)",
             }}
           />
         ) : (
           <h1
-            className="text-[32px] font-bold leading-tight"
-            style={{ color: "#65584f", fontFamily: M, marginTop: 4 }}
+            className="mt-[18px] text-[40px] font-bold leading-none text-center"
+            style={{ color: "#65584f", fontFamily: M }}
           >
             {displayNickname}
           </h1>
         )}
 
-        {/* Badges — blank if none */}
-        <div className="flex gap-[8px] flex-wrap mt-[10px]" style={{ minHeight: 30 }}>
-          {badges.map((badge) => (
-            <span
-              key={badge}
-              className="rounded-full px-[14px] py-[5px] text-[12px] font-medium"
+        {/* Badges — centered, blank space if none */}
+        <div className="flex flex-wrap gap-[10px] justify-center mt-[18px]" style={{ minHeight: 40 }}>
+          {badges.map((id) => {
+            const cfg = BADGE_CONFIG[id];
+            if (!cfg) return null;
+            const { label, Icon, variant } = cfg;
+            const isFilled = variant === "filled";
+            return (
+              <div
+                key={id}
+                className="inline-flex items-center gap-[8px] rounded-full px-[16px] py-[8px]"
+                style={{
+                  background: isFilled ? "#cd8188" : "white",
+                  border: isFilled ? "none" : "1.5px solid rgba(101,88,79,0.18)",
+                  color: isFilled ? "white" : "#65584f",
+                  boxShadow: isFilled
+                    ? "0 4px 14px rgba(205,129,136,0.30)"
+                    : "0 2px 8px rgba(101,88,79,0.06)",
+                  fontFamily: M,
+                }}
+              >
+                <Icon size={16} stroke={isFilled ? "white" : "#cd8188"} strokeWidth={2.2} />
+                <span className="text-[14px] font-semibold whitespace-nowrap">{label}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Save / Cancel — only in edit mode */}
+        {editing && (
+          <div className="flex gap-[10px] mt-[18px] w-full max-w-[300px]">
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={pending}
+              className="flex-1 rounded-[12px] py-[12px] text-[14px] font-semibold flex items-center justify-center gap-[6px] transition-all active:scale-[0.98] disabled:opacity-50"
               style={{
-                border: "1.5px solid rgba(101,88,79,0.25)",
+                background: "white",
+                border: "1.5px solid rgba(101,88,79,0.2)",
                 color: "#65584f",
                 fontFamily: M,
-                background: "transparent",
               }}
             >
-              {badge}
-            </span>
-          ))}
-        </div>
+              <X size={15} /> Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={pending}
+              className="flex-1 rounded-[12px] py-[12px] text-[14px] font-semibold text-white flex items-center justify-center gap-[6px] transition-all active:scale-[0.98] disabled:opacity-60"
+              style={{ background: "#cd8188", fontFamily: M }}
+            >
+              <Check size={15} /> {pending ? "Saving…" : "Save"}
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

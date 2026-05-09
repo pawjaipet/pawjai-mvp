@@ -51,7 +51,12 @@ export default async function ProfilePage() {
   }));
 
   const nickname = getNickname(profile?.full_name, user.email ?? "");
-  const badges: string[] = [];
+  // TODO: derive from DB once badge tracking exists. Empty = blank space.
+  const badges: ("first_adopter" | "top_donater" | "premium_user")[] = [
+    "first_adopter",
+    "top_donater",
+    "premium_user",
+  ];
 
   return (
     <div
