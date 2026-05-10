@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import SwipeDogCard, { type SwipeDog } from "./SwipeDogCard";
+
+// Figma exact: 370 x 620. Hard-coded as default. Responsive sizing later.
+const CARD_W = 370;
+const CARD_H = 620;
 
 interface Props {
   dogs: SwipeDog[];
@@ -13,24 +17,7 @@ interface Props {
 export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [cardDims, setCardDims] = useState({ width: 370, height: 620 });
   const [activeIndex, setActiveIndex] = useState(0);
-
-  useEffect(() => {
-    function measure() {
-      const vw = Math.min(window.innerWidth, 402);
-      const vh = window.innerHeight;          // visible viewport (excludes Safari chrome)
-      const width = Math.min(370, vw - 32);   // 16px padding each side
-      // Section = vh - 140 (header 70 + nav 70). Card = section - 20 (10px each side).
-      // Hard cap 720 so very tall devices don't get giant cards.
-      const sectionHeight = vh - 140;
-      const height = Math.max(500, Math.min(720, sectionHeight - 20));
-      setCardDims({ width, height });
-    }
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, []);
 
   function scrollToTop() {
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -46,8 +33,8 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
 
   return (
     <div
-      className="relative flex flex-col bg-white overflow-hidden"
-      style={{ width: 402, maxWidth: "100vw", margin: "0 auto", height: "100dvh" }}
+      className="relative flex flex-col bg-white h-screen overflow-hidden"
+      style={{ width: 402, maxWidth: "100vw", margin: "0 auto" }}
     >
       {/* Swipe page header — 70px, logo centered, hamburger right */}
       <div
@@ -106,7 +93,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
         <style>{`.snap-mandatory::-webkit-scrollbar{display:none}`}</style>
 
         {dogs.length === 0 && (
-          <div className="snap-start flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ minHeight: "calc(100dvh - 140px)" }}>
+          <div className="snap-start flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ minHeight: "calc(100vh - 74px)" }}>
             <p className="text-6xl">🐾</p>
             <p className="text-xl font-bold text-[#65584f]">No dogs available yet</p>
             <p className="text-sm text-[#65584f]/60">Shelters are getting ready — check back soon!</p>
@@ -116,10 +103,9 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
         {dogs.map((dog, idx) => (
           <div
             key={dog.id}
-            className="snap-start flex items-center justify-center px-[16px]"
+            className="snap-start flex items-start justify-center px-[16px] pt-[10px]"
             style={{
-              minHeight: "calc(100dvh - 140px)",
-              paddingTop: idx === 0 ? 10 : 0,
+              minHeight: "calc(100vh - 74px)",
               scrollSnapStop: "always",
             }}
           >
@@ -128,8 +114,8 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
               initialSaved={savedIds.includes(dog.id)}
               isActive={idx === activeIndex}
               isLoggedIn={isLoggedIn}
-              cardWidth={cardDims.width}
-              cardHeight={cardDims.height}
+              cardWidth={CARD_W}
+              cardHeight={CARD_H}
             />
           </div>
         ))}
@@ -138,7 +124,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
         {dogs.length > 0 && (
           <div
             className="snap-start flex flex-col items-center justify-center gap-5 px-6 text-center"
-            style={{ minHeight: "calc(100dvh - 140px)", scrollSnapStop: "always" }}
+            style={{ minHeight: "calc(100vh - 74px)", scrollSnapStop: "always" }}
           >
             <p className="font-['Montserrat',sans-serif] text-[18px] font-semibold text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>You&apos;ve seen them all!</p>
             <p className="text-[14px] text-[#65584f]/60" style={{ fontFamily: "Montserrat, sans-serif" }}>All available dogs are shown above.</p>

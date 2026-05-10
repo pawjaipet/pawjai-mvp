@@ -10,6 +10,7 @@ import type { Dog, DogPhoto, DogTrait } from "@/types/database";
 export type SwipeDog = Dog & {
   photos: Pick<DogPhoto, "public_url" | "is_cover" | "sort_order">[];
   traits?: Pick<DogTrait, "trait_type" | "trait_value">[];
+  video?: { poster_url: string | null; public_url: string } | null;
 };
 
 function ageLabel(months: number | null) {
@@ -20,18 +21,20 @@ function ageLabel(months: number | null) {
   return m ? `${y}y ${m}mo` : `${y}y`;
 }
 
-const TAG_BEIGE = "bg-[#d6c8ad] text-black";
-const TAG_ROSE  = "bg-[#cd8188] text-white";
+// Subtle shadow so beige tags stay visible on placeholder beige background
+const TAG_BEIGE = "bg-[#d6c8ad] text-black shadow-[0_1px_4px_rgba(0,0,0,0.18)]";
+const TAG_ROSE  = "bg-[#cd8188] text-white shadow-[0_1px_4px_rgba(0,0,0,0.18)]";
 
 interface Props {
   dog: SwipeDog;
   initialSaved: boolean;
   isLoggedIn: boolean;
+  isActive?: boolean;
   cardWidth?: number;
   cardHeight?: number;
 }
 
-export default function SwipeDogCard({ dog, initialSaved, isLoggedIn, cardWidth = 370, cardHeight = 620 }: Props) {
+export default function SwipeDogCard({ dog, initialSaved, isLoggedIn, isActive = true, cardWidth = 370, cardHeight = 620 }: Props) {
   const carouselRef = useRef<HTMLDivElement>(null);
   const [imgIdx, setImgIdx]     = useState(0);
   const [tagsOpen, setTagsOpen] = useState(false);
@@ -121,7 +124,18 @@ export default function SwipeDogCard({ dog, initialSaved, isLoggedIn, cardWidth 
         {orderedPhotos.map((p, i) => (
           <Link key={i} href={`/dogs/${dog.id}`} className="snap-center block flex-shrink-0" style={{ width: cardWidth }}>
             <div className="rounded-[22px] overflow-hidden bg-[#d6c8ad]" style={{ height: cardHeight, width: cardWidth }}>
-              {p.public_url ? (
+              {i === 0 && dog.video?.public_url && isActive ? (
+                <video
+                  src={dog.video.public_url}
+                  poster={dog.video.poster_url ?? p.public_url ?? undefined}
+                  className="h-full w-full object-cover"
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                  preload="metadata"
+                />
+              ) : p.public_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={p.public_url}
