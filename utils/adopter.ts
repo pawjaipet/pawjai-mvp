@@ -1,8 +1,16 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import type { Database } from "@/types/database";
+import type { AdopterDocument, AdopterProfile, Database } from "@/types/database";
 import { createAdminClient } from "@/utils/supabase/admin";
 
 type PawjaiClient = SupabaseClient<Database>;
+type VerificationStatus = Database["public"]["Enums"]["adopter_verification_status"];
+
+export type AdopterVerificationSnapshot = {
+  adopter: Database["public"]["Tables"]["adopters"]["Row"];
+  documents: Pick<AdopterDocument, "created_at" | "document_type" | "id" | "original_file_name">[];
+  profile: AdopterProfile | null;
+  status: VerificationStatus;
+};
 
 function splitName(fullName: string | null | undefined) {
   const parts = (fullName ?? "").trim().split(/\s+/).filter(Boolean);
@@ -92,4 +100,36 @@ export async function ensureAdopterForUser(supabase: PawjaiClient, user: User) {
   }
 
   return adopter;
+}
+
+export async function getAdopterVerificationSnapshot(supabase: PawjaiClient, user: User): Promise<AdopterVerificationSnapshot> {
+  const adopter = await ensureAdopterForUser(supabase, user);
+  const admin = createAdminClient();
+
+  const [{ data: profile }, { data: documents }] = await Promise.all([
+    admin
+      .from("adopter_profiles")
+      .select("*")
+      .eq("adopter_id", adopter.id)
+      .maybeSingle(),
+    admin
+      .from("adopter_documents")
+      .select("id, document_type, original_file_name, created_at")
+      .eq("adopter_id", adopter.id)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  return {
+    adopter,
+    documents: documents ?? [],
+    profile: profile ?? null,
+    status: adopter.verification_status,
+  };
+}
+
+export function canBookAppointment(snapshot: Pick<AdopterVerificationSnapshot, "profile" | "status">) {
+  return (
+    (snapshot.status === "submitted" || snapshot.status === "approved")
+    && Boolean(snapshot.profile?.completed_at)
+  );
 }

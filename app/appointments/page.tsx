@@ -1,6 +1,6 @@
 import Link from "next/link";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
-import { ensureAdopterForUser } from "@/utils/adopter";
+import { canBookAppointment, ensureAdopterForUser, getAdopterVerificationSnapshot } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -24,7 +24,8 @@ export default async function AppointmentsPage({
     );
   }
 
-  const adopter = await ensureAdopterForUser(supabase, user);
+  const verification = await getAdopterVerificationSnapshot(supabase, user);
+  const adopter = verification.adopter;
   const admin = createAdminClient();
   const { data: appointments } = await admin
     .from("appointments")
@@ -49,7 +50,7 @@ export default async function AppointmentsPage({
   const shelterMap = new Map((shelters ?? []).map((s) => [s.id, s]));
 
   return (
-    <PageShell message={message}>
+    <PageShell message={message} canBook={canBookAppointment(verification)} verificationStatus={verification.status}>
       {(appointments ?? []).length === 0 ? (
         <EmptyState />
       ) : (
@@ -124,7 +125,17 @@ export default async function AppointmentsPage({
 
 /* ─── sub-components ─────────────────────────────────────────────────── */
 
-function PageShell({ children, message }: { children: React.ReactNode; message?: string }) {
+function PageShell({
+  canBook,
+  children,
+  message,
+  verificationStatus,
+}: {
+  canBook: boolean;
+  children: React.ReactNode;
+  message?: string;
+  verificationStatus: string;
+}) {
   return (
     <div
       className="relative overflow-y-auto"
@@ -150,7 +161,7 @@ function PageShell({ children, message }: { children: React.ReactNode; message?:
 
       {/* Your Documents button */}
       <div className="px-[16px] py-[16px]">
-        <a href="/documents" className="w-full h-[48px] rounded-[12px] flex items-center justify-between px-[16px] shadow-md" style={{ background: "#cd8188" }}>
+        <a href="/documents" className="w-full h-[56px] rounded-[12px] flex items-center justify-between px-[16px] shadow-md" style={{ background: "#cd8188" }}>
           <div className="flex items-center gap-[12px]">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -158,7 +169,14 @@ function PageShell({ children, message }: { children: React.ReactNode; message?:
               <line x1="16" y1="13" x2="8" y2="13" />
               <line x1="16" y1="17" x2="8" y2="17" />
             </svg>
-            <p className="text-[16px] font-semibold text-white" style={{ fontFamily: M }}>Your Documents</p>
+            <div>
+              <p className="text-[16px] font-semibold text-white" style={{ fontFamily: M }}>
+                {canBook ? "Your Verification" : "Complete Verification"}
+              </p>
+              <p className="text-[11px] text-white/80" style={{ fontFamily: M }}>
+                {canBook ? `Status: ${verificationStatus.replace("_", " ")}` : "Finish once to unlock bookings"}
+              </p>
+            </div>
           </div>
           <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
             <path d="M1 1L7 7L1 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -206,7 +224,7 @@ function EmptyState() {
 
 function GuestView() {
   return (
-    <PageShell>
+    <PageShell canBook={false} verificationStatus="not_started">
       <div className="flex flex-col items-center justify-center py-[60px] px-[20px]">
         <div className="w-[80px] h-[80px] rounded-full flex items-center justify-center mb-[16px]" style={{ background: "rgba(214,200,173,0.3)" }}>
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#65584f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

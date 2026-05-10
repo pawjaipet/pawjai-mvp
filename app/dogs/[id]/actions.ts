@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ensureAdopterForUser } from "@/utils/adopter";
+import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adopter";
 import { optionalString } from "@/utils/account-model";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
@@ -12,7 +13,7 @@ async function getAdopter() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
   const adopter = await ensureAdopterForUser(supabase, user);
-  return { adopter, supabase };
+  return { adopter, supabase, user };
 }
 
 export async function toggleWishlist(formData: FormData) {
@@ -24,7 +25,13 @@ export async function toggleWishlist(formData: FormData) {
     redirect(`/auth?message=${encodeURIComponent("Sign in to save dogs to your wishlist.")}`);
   }
 
-  const { adopter } = ctx;
+  const { adopter, supabase, user } = ctx;
+  const verification = await getAdopterVerificationSnapshot(supabase, user);
+
+  if (!canBookAppointment(verification)) {
+    redirect(`/documents?message=${encodeURIComponent("Complete your verification details once before booking shelter visits.")}`);
+  }
+
   const admin = createAdminClient();
 
   if (isSaved) {

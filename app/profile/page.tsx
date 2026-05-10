@@ -3,7 +3,7 @@ import { Settings } from "lucide-react";
 import { signOut } from "@/app/auth/actions";
 import EditableProfileHeader from "@/components/profile/EditableProfileHeader";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
-import { ensureAdopterForUser } from "@/utils/adopter";
+import { canBookAppointment, ensureAdopterForUser, getAdopterVerificationSnapshot } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import type { DogWithCover } from "@/types/database";
@@ -28,7 +28,8 @@ export default async function ProfilePage() {
     );
   }
 
-  const adopter = await ensureAdopterForUser(supabase, user);
+  const verification = await getAdopterVerificationSnapshot(supabase, user);
+  const adopter = verification.adopter;
   const admin = createAdminClient();
 
   const [{ data: profile }, { data: wishlist }] = await Promise.all([
@@ -40,14 +41,15 @@ export default async function ProfilePage() {
   const { data: dogs } = dogIds.length
     ? await admin.from("dogs").select("*").in("id", dogIds)
     : { data: [] };
-  const { data: photos } = dogIds.length
-    ? await admin.from("dog_photos").select("dog_id, public_url").in("dog_id", dogIds).eq("is_cover", true)
+  const coverPhotoIds = (dogs ?? []).map((dog) => dog.cover_photo_id).filter(Boolean) as string[];
+  const { data: photos } = coverPhotoIds.length
+    ? await admin.from("dog_photos").select("id, public_url").in("id", coverPhotoIds)
     : { data: [] };
 
-  const coverMap = new Map((photos ?? []).map((p) => [p.dog_id, p.public_url]));
+  const coverMap = new Map((photos ?? []).map((p) => [p.id, p.public_url]));
   const savedDogs: DogWithCover[] = (dogs ?? []).map((dog) => ({
     ...dog,
-    cover_photo: coverMap.get(dog.id) ?? null,
+    cover_photo: dog.cover_photo_id ? (coverMap.get(dog.cover_photo_id) ?? null) : null,
   }));
 
   const nickname = getNickname(profile?.full_name, user.email ?? "");
@@ -81,6 +83,31 @@ export default async function ProfilePage() {
         initialCoverUrl={profile?.cover_photo_url ?? null}
         badges={badges}
       />
+
+      <div className="mt-[20px] px-[16px]">
+        <Link
+          href="/documents"
+          className="block rounded-[20px] px-[18px] py-[16px]"
+          style={{ background: "white", boxShadow: "0 2px 12px rgba(101,88,79,0.07)" }}
+        >
+          <p className="text-[12px] uppercase tracking-[0.16em] text-[#65584f]/45" style={{ fontFamily: M }}>
+            Verification
+          </p>
+          <div className="mt-[8px] flex items-center justify-between gap-[16px]">
+            <div>
+              <p className="text-[16px] font-semibold text-[#65584f]" style={{ fontFamily: M }}>
+                {canBookAppointment(verification) ? "Ready for shelter visits" : "Complete once to unlock booking"}
+              </p>
+              <p className="mt-[4px] text-[13px] text-[#65584f]/60" style={{ fontFamily: M }}>
+                Status: {verification.status.replace("_", " ")}
+              </p>
+            </div>
+            <span className="text-[13px] font-semibold text-[#cd8188]" style={{ fontFamily: M }}>
+              Manage →
+            </span>
+          </div>
+        </Link>
+      </div>
 
       {/* ── Wishlist section ── */}
       <div className="mt-[28px] px-[16px]">

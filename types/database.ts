@@ -14,9 +14,11 @@ export type Database = {
           address_line: string | null
           country: string | null
           created_at: string
+          date_of_birth: string | null
           district: string | null
           email: string | null
           first_name: string | null
+          government_id_number: string | null
           id: string
           id_passport_url: string | null
           last_name: string | null
@@ -26,15 +28,20 @@ export type Database = {
           profile_id: string
           province: string | null
           subdistrict: string | null
+          verification_reviewed_at: string | null
+          verification_status: Database["public"]["Enums"]["adopter_verification_status"]
+          verification_submitted_at: string | null
           updated_at: string
         }
         Insert: {
           address_line?: string | null
           country?: string | null
           created_at?: string
+          date_of_birth?: string | null
           district?: string | null
           email?: string | null
           first_name?: string | null
+          government_id_number?: string | null
           id?: string
           id_passport_url?: string | null
           last_name?: string | null
@@ -44,9 +51,36 @@ export type Database = {
           profile_id: string
           province?: string | null
           subdistrict?: string | null
+          verification_reviewed_at?: string | null
+          verification_status?: Database["public"]["Enums"]["adopter_verification_status"]
+          verification_submitted_at?: string | null
           updated_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["adopters"]["Insert"]>
+        Relationships: []
+      }
+      adopter_documents: {
+        Row: {
+          adopter_id: string
+          bucket_id: string
+          created_at: string
+          document_type: Database["public"]["Enums"]["adopter_document_type"]
+          id: string
+          mime_type: string | null
+          original_file_name: string | null
+          storage_path: string
+        }
+        Insert: {
+          adopter_id: string
+          bucket_id?: string
+          created_at?: string
+          document_type: Database["public"]["Enums"]["adopter_document_type"]
+          id?: string
+          mime_type?: string | null
+          original_file_name?: string | null
+          storage_path: string
+        }
+        Update: Partial<Database["public"]["Tables"]["adopter_documents"]["Insert"]>
         Relationships: []
       }
       adopter_preferences: {
@@ -73,6 +107,64 @@ export type Database = {
           updated_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["adopter_preferences"]["Insert"]>
+        Relationships: []
+      }
+      adopter_profiles: {
+        Row: {
+          adopter_id: string
+          adoption_reason: string | null
+          agreement_accepted: boolean
+          behavior_response: string | null
+          bonding_plan: Json
+          completed_at: string | null
+          created_at: string
+          current_pets: string | null
+          daily_time_available: string | null
+          dog_experience: string | null
+          emergency_plan: string | null
+          financial_preparedness: string | null
+          had_pets_before: boolean | null
+          home_ownership: string | null
+          household_allergies: string | null
+          household_member_count: number | null
+          housing_type: string | null
+          landlord_permission: string | null
+          other_pets: Json
+          patience_awareness: string | null
+          rescue_dog_experience: string | null
+          trauma_response: string | null
+          travel_plan: string | null
+          updated_at: string
+          yard_space: string | null
+        }
+        Insert: {
+          adopter_id: string
+          adoption_reason?: string | null
+          agreement_accepted?: boolean
+          behavior_response?: string | null
+          bonding_plan?: Json
+          completed_at?: string | null
+          created_at?: string
+          current_pets?: string | null
+          daily_time_available?: string | null
+          dog_experience?: string | null
+          emergency_plan?: string | null
+          financial_preparedness?: string | null
+          had_pets_before?: boolean | null
+          home_ownership?: string | null
+          household_allergies?: string | null
+          household_member_count?: number | null
+          housing_type?: string | null
+          landlord_permission?: string | null
+          other_pets?: Json
+          patience_awareness?: string | null
+          rescue_dog_experience?: string | null
+          trauma_response?: string | null
+          travel_plan?: string | null
+          updated_at?: string
+          yard_space?: string | null
+        }
+        Update: Partial<Database["public"]["Tables"]["adopter_profiles"]["Insert"]>
         Relationships: []
       }
       appointments: {
@@ -163,6 +255,7 @@ export type Database = {
           good_with_kids: boolean | null
           house_trained: boolean | null
           human_friendly: boolean | null
+          cover_photo_id: string | null
           id: string
           leash_trained: boolean | null
           name: string
@@ -188,6 +281,7 @@ export type Database = {
           good_with_kids?: boolean | null
           house_trained?: boolean | null
           human_friendly?: boolean | null
+          cover_photo_id?: string | null
           id?: string
           leash_trained?: boolean | null
           name: string
@@ -292,6 +386,8 @@ export type Database = {
     Functions: Record<never, never>
     Enums: {
       app_role: "adopter" | "shelter_admin" | "admin"
+      adopter_document_type: "id_copy" | "house_image" | "income_statement" | "other"
+      adopter_verification_status: "not_started" | "submitted" | "approved" | "needs_updates"
       dog_adoption_status: "draft" | "available" | "reserved" | "adopted" | "unavailable"
       dog_energy_level: "low" | "medium" | "high"
       dog_gender: "male" | "female" | "unknown"
@@ -313,7 +409,9 @@ export type DogTrait = Database["public"]["Tables"]["dog_traits"]["Row"]
 export type Shelter = Database["public"]["Tables"]["shelters"]["Row"]
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 export type Adopter = Database["public"]["Tables"]["adopters"]["Row"]
+export type AdopterDocument = Database["public"]["Tables"]["adopter_documents"]["Row"]
 export type AdopterPreference = Database["public"]["Tables"]["adopter_preferences"]["Row"]
+export type AdopterProfile = Database["public"]["Tables"]["adopter_profiles"]["Row"]
 export type Appointment = Database["public"]["Tables"]["appointments"]["Row"]
 export type Wishlist = Database["public"]["Tables"]["wishlists"]["Row"]
 
