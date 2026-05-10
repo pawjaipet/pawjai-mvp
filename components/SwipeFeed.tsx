@@ -36,15 +36,17 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn }: Props) {
       <div
         className="bg-gradient-to-b from-[#d6c8ad] h-[70px] pointer-events-auto shrink-0 to-[rgba(214,200,173,0)] via-[38.942%] via-[rgba(214,200,173,0.75)] w-full z-20"
       >
-        <div className="absolute flex items-center justify-center inset-x-[8px] top-[20px]">
-          <Link href="/" className="block h-[55px] w-[110px] relative">
-            <img
-              src="/pawjai-logo.png"
-              alt="PawJai"
-              className="h-full w-full object-contain object-center"
-            />
-          </Link>
-        </div>
+        <Link
+          href="/"
+          className="absolute left-[14px] top-[16px] block h-[60px] w-[140px]"
+          style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.06))" }}
+        >
+          <img
+            src="/pawjai-logo.png"
+            alt="PawJai"
+            className="h-full w-full object-contain object-left"
+          />
+        </Link>
         {/* Hamburger menu */}
         <button
           onClick={() => setMenuOpen((o) => !o)}
