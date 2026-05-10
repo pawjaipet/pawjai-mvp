@@ -65,16 +65,19 @@ export async function getSavedFilterPreferences(): Promise<SavedFilterAnswers | 
   const size = sizeLabel(preferences.preferred_size);
   const energy = energyLabel(preferences.preferred_energy_level);
 
+  // Question indices match current filter page order:
+  // 0=Size, 1=Age, 2=Breed, 3=Activity, 4=Protect, 5=Affection,
+  // 6=Training, 7=People, 8=Dogs, 9=Cats, 10=Kids, 11=Special
   if (size) answers[0] = [size];
   if (energy) answers[3] = [energy];
   if (preferences.good_with_dogs !== null) {
-    answers[6] = [preferences.good_with_dogs ? "Friendly and playful" : "Prefer to be solo"];
+    answers[8] = [preferences.good_with_dogs ? "Friendly and playful" : "Prefer to be solo"];
   }
   if (preferences.good_with_cats !== null) {
-    answers[7] = [preferences.good_with_cats ? "Cat-friendly" : "Not sure / No"];
+    answers[9] = [preferences.good_with_cats ? "Cat-friendly" : "Not sure / No"];
   }
   if (preferences.good_with_kids !== null) {
-    answers[8] = [preferences.good_with_kids ? "Kid-friendly" : "Not sure / No"];
+    answers[10] = [preferences.good_with_kids ? "Kid-friendly" : "Not sure / No"];
   }
 
   return Object.keys(answers).length ? answers : null;
