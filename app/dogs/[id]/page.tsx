@@ -1,64 +1,53 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { Calendar, ShieldCheck, Heart } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
-import { ensureAdopterForUser } from "@/utils/adopter";
+import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
-import ImageWithFallback from "@/components/ImageWithFallback";
 import AuthPromptButton from "@/components/auth/AuthPromptButton";
+import DogPhotoGallery from "@/components/dogs/DogPhotoGallery";
 import type { DogPhoto, DogTrait } from "@/types/database";
-import { bookAppointment, toggleWishlist } from "./actions";
+import { toggleWishlist } from "./actions";
 
-function Badge({
-  children,
-  variant = "beige",
-}: {
-  children: React.ReactNode;
-  variant?: "beige" | "rose" | "dark" | "brown";
-}) {
-  const styles = {
-    beige: { background: "#d6c8ad", color: "#65584f" },
-    rose: { background: "#cd8188", color: "white" },
-    dark: { background: "#65584f", color: "white" },
-    brown: { background: "rgba(101,88,79,0.12)", color: "#65584f" },
-  };
-  return (
-    <span
-      className="inline-block text-[12px] font-medium px-[10px] py-[4px] rounded-full"
-      style={{ fontFamily: "Montserrat, sans-serif", ...styles[variant] }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function StarRating({ value }: { value: number | null }) {
-  if (!value) return <span className="text-[#65584f]/40 text-sm" style={{ fontFamily: "Montserrat, sans-serif" }}>No rating</span>;
-  return (
-    <span className="text-sm text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-      {"★".repeat(value)}{"☆".repeat(5 - value)}
-      <span className="ml-1 text-[#65584f]/50">({value}/5)</span>
-    </span>
-  );
-}
+const M = "Montserrat, sans-serif";
+const BG = "#F5F1E8";
 
 function ageLabel(months: number | null): string {
   if (months === null) return "Unknown";
   if (months < 12) return `${months} months`;
   const y = Math.floor(months / 12);
   const m = months % 12;
-  return m > 0 ? `${y} yr ${m} mo` : `${y} year${y > 1 ? "s" : ""}`;
+  return m > 0 ? `${y} yr ${m} mo` : `${y} Year${y > 1 ? "s" : ""} Old`;
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      className="rounded-[16px] px-[16px] py-[14px]"
+      style={{ background: "#e6dcc4" }}
+    >
+      <p
+        className="text-[11px] uppercase tracking-[0.12em] text-[#65584f]/55 font-semibold"
+        style={{ fontFamily: M }}
+      >
+        {label}
+      </p>
+      <p
+        className="mt-[4px] text-[18px] font-bold text-[#65584f] capitalize"
+        style={{ fontFamily: M }}
+      >
+        {value}
+      </p>
+    </div>
+  );
 }
 
 export default async function DogProfilePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ message?: string }>;
 }) {
   const { id } = await params;
-  const { message } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -79,347 +68,256 @@ export default async function DogProfilePage({
 
   const photos: DogPhoto[] = photosData ?? [];
   const traits: DogTrait[] = traitsData ?? [];
-  const coverVideoUrl = traits.find((trait) => trait.trait_type === "cover_video_url")?.trait_value;
-  const coverVideoPosterUrl = traits.find((trait) => trait.trait_type === "cover_video_poster_url")?.trait_value;
-  const cover = photos.find((p) => p.is_cover) ?? photos[0] ?? null;
-  const personalityTraits = traits
-    .filter((trait) => trait.trait_type === "personality")
-    .map((trait) => trait.trait_value);
+  const coverVideoUrl = traits.find((t) => t.trait_type === "cover_video_url")?.trait_value ?? null;
+  const coverVideoPosterUrl = traits.find((t) => t.trait_type === "cover_video_poster_url")?.trait_value ?? null;
 
-  let adopterId: string | null = null;
+  // Order: cover photo first, then by sort_order
+  const orderedPhotos = [...photos].sort((a, b) => {
+    const aCover = a.id === dog.cover_photo_id ? -1 : 0;
+    const bCover = b.id === dog.cover_photo_id ? -1 : 0;
+    if (aCover !== bCover) return aCover - bCover;
+    return a.sort_order - b.sort_order;
+  });
+
+  const personalityTraits = traits
+    .filter((t) => t.trait_type === "personality")
+    .map((t) => t.trait_value);
+
+  let canRequestAppointment = false;
   let saved = false;
 
   if (user) {
-    const adopter = await ensureAdopterForUser(supabase, user);
+    const verification = await getAdopterVerificationSnapshot(supabase, user);
+    canRequestAppointment = canBookAppointment(verification);
+    const adopter = verification.adopter;
     const admin = createAdminClient();
-    adopterId = adopter.id;
-    if (adopterId) {
-      const { data: wishlist } = await admin
-        .from("wishlists")
-        .select("dog_id")
-        .eq("adopter_id", adopterId)
-        .eq("dog_id", id)
-        .maybeSingle();
-      saved = Boolean(wishlist);
-    }
+    const { data: wishlist } = await admin
+      .from("wishlists")
+      .select("dog_id")
+      .eq("adopter_id", adopter.id)
+      .eq("dog_id", id)
+      .maybeSingle();
+    saved = Boolean(wishlist);
   }
 
-  const minDate = new Date().toISOString().slice(0, 10);
+  const genderLabel = dog.gender === "unknown" ? "Unknown" : dog.gender === "male" ? "Male" : "Female";
+  const sizeLabel = dog.size ? dog.size.replace("_", " ") : "Unknown";
 
   return (
     <div
-      className="bg-white relative overflow-y-auto overflow-x-hidden"
-      style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", minHeight: "100vh", paddingBottom: "90px", scrollbarWidth: "none" }}
+      className="relative overflow-y-auto overflow-x-hidden"
+      style={{
+        width: "402px",
+        maxWidth: "100vw",
+        margin: "0 auto",
+        minHeight: "100dvh",
+        paddingBottom: "90px",
+        scrollbarWidth: "none",
+        background: BG,
+        fontFamily: M,
+      }}
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
-      {/* Cover photo */}
-      <div className="relative h-[300px] md:h-[360px]" style={{ background: "#d6c8ad" }}>
-        {coverVideoUrl ? (
-          <video
-            src={coverVideoUrl}
-            poster={coverVideoPosterUrl ?? cover?.public_url ?? undefined}
-            className="h-full w-full object-cover"
-            muted
-            loop
-            playsInline
-            autoPlay
-            preload="metadata"
-          />
-        ) : (
-          <ImageWithFallback
-            src={cover?.public_url}
-            alt={dog.name}
-            fill
-            className="object-cover"
-            priority
-          />
-        )}
-        {/* Back button — rose, at top-[106px] matching Figma */}
+      {/* Hero photo + thumbnails */}
+      <div className="relative">
+        <DogPhotoGallery
+          photos={orderedPhotos.map((p) => ({ id: p.id, public_url: p.public_url }))}
+          dogName={dog.name}
+          videoUrl={coverVideoUrl}
+          videoPosterUrl={coverVideoPosterUrl}
+        />
+
+        {/* Back button — floating top-left */}
         <Link
           href="/"
-          className="absolute left-[12px] top-[106px] w-[35px] h-[35px] rounded-full flex items-center justify-center z-10 shadow-[0px_4px_6px_0px_rgba(0,0,0,0.1),0px_2px_4px_0px_rgba(0,0,0,0.1)] active:scale-95 transition-all"
+          className="absolute left-[14px] top-[14px] w-[44px] h-[44px] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-all z-10"
           style={{ background: "#cd8188" }}
           aria-label="Back"
         >
-          <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
-            <path d="M7 1L1 7L7 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="white" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </Link>
-        {/* Wishlist button overlay */}
+
+        {/* Wishlist heart — floating top-right */}
         {user && (
-          <form action={toggleWishlist} className="absolute top-[12px] right-[12px] z-10">
+          <form action={toggleWishlist} className="absolute right-[14px] top-[14px] z-10">
             <input type="hidden" name="dogId" value={dog.id} />
             <input type="hidden" name="isSaved" value={String(saved)} />
             <button
-              className="flex items-center justify-center w-[38px] h-[38px] rounded-full text-[18px]"
-              style={{ background: "rgba(255,255,255,0.85)" }}
+              type="submit"
+              className="w-[44px] h-[44px] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-all"
+              style={{ background: saved ? "#cd8188" : "rgba(255,255,255,0.92)" }}
+              aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
             >
-              {saved ? "❤️" : "🤍"}
+              <Heart
+                size={20}
+                stroke={saved ? "white" : "#cd8188"}
+                fill={saved ? "white" : "none"}
+                strokeWidth={2.2}
+              />
             </button>
           </form>
         )}
       </div>
 
-      {/* Photo strip */}
-      {photos.length > 1 && (
-        <div className="flex gap-[8px] mt-[10px] px-[16px] overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-          <style>{`.photo-strip::-webkit-scrollbar{display:none}`}</style>
-          {photos.map((p) => (
-            <div key={p.id} className="shrink-0 w-[72px] h-[72px] rounded-[10px] overflow-hidden" style={{ background: "#d6c8ad" }}>
-              <ImageWithFallback src={p.public_url} alt={dog.name} width={72} height={72} className="w-full h-full object-cover" />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Main info */}
-      <div className="px-[16px] mt-[16px]">
-        <div className="flex items-start justify-between gap-3">
-          <h1
-            className="text-[28px] font-bold text-[#65584f]"
-            style={{ fontFamily: "Montserrat, sans-serif" }}
+      {/* Main content */}
+      <div className="px-[20px] pt-[20px]">
+        {/* Name + breed */}
+        <h1
+          className="text-[32px] font-bold leading-tight text-[#65584f]"
+          style={{ fontFamily: M }}
+        >
+          {dog.name}
+        </h1>
+        {dog.breed && (
+          <p
+            className="text-[16px] text-[#65584f]/55 mt-[2px]"
+            style={{ fontFamily: M }}
           >
-            {dog.name}
-          </h1>
-          <Badge variant={dog.adoption_status === "available" ? "dark" : "brown"}>
-            {dog.adoption_status.charAt(0).toUpperCase() + dog.adoption_status.slice(1)}
-          </Badge>
-        </div>
-        <p className="text-[14px] text-[#65584f]/60 mt-[2px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-          {dog.breed ?? "Mixed breed"}
-        </p>
+            {dog.breed}
+          </p>
+        )}
 
-        {/* Quick stats */}
-        <div className="grid grid-cols-2 gap-[8px] mt-[16px]">
-          {[
-            { label: "Age", value: ageLabel(dog.age_months) },
-            { label: "Gender", value: dog.gender === "unknown" ? "Unknown" : dog.gender === "male" ? "Male" : "Female" },
-            { label: "Size", value: dog.size ? dog.size.replace("_", " ") : "Unknown" },
-            { label: "Weight", value: dog.weight_kg ? `${dog.weight_kg} kg` : "Unknown" },
-          ].map(({ label, value }) => (
-            <div key={label} className="rounded-[14px] p-[12px]" style={{ background: "#d6c8ad" }}>
-              <p className="text-[11px] text-[#65584f]/60 uppercase tracking-wide" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                {label}
-              </p>
-              <p className="font-semibold text-[#65584f] mt-[2px] capitalize text-[15px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                {value}
-              </p>
-            </div>
-          ))}
+        {/* 2x2 stats grid */}
+        <div className="grid grid-cols-2 gap-[10px] mt-[18px]">
+          <StatCard label="Age" value={ageLabel(dog.age_months)} />
+          <StatCard label="Gender" value={genderLabel} />
+          <StatCard label="Size" value={sizeLabel} />
+          <StatCard label="Weight" value={dog.weight_kg ? `${dog.weight_kg} Kg` : "Unknown"} />
         </div>
 
-        {/* Trait badges */}
-        <div className="mt-[16px] flex flex-wrap gap-[6px]">
-          {personalityTraits.slice(0, 4).map((trait) => (
-            <Badge key={trait}>{trait}</Badge>
-          ))}
-          {dog.sterilized && <Badge variant="dark">Sterilized</Badge>}
-          {dog.energy_level && (
-            <Badge variant={dog.energy_level === "high" ? "rose" : "beige"}>
-              {dog.energy_level.charAt(0).toUpperCase() + dog.energy_level.slice(1)} energy
-            </Badge>
-          )}
-          {dog.good_with_kids && <Badge variant="dark">Good with kids</Badge>}
-          {dog.good_with_dogs && <Badge variant="dark">Good with dogs</Badge>}
-          {dog.good_with_cats && <Badge variant="dark">Good with cats</Badge>}
-          {dog.house_trained && <Badge variant="beige">House trained</Badge>}
-          {dog.leash_trained && <Badge variant="beige">Leash trained</Badge>}
-          {dog.human_friendly && <Badge variant="beige">Human friendly</Badge>}
-          {dog.special_needs && <Badge variant="rose">Special needs</Badge>}
-        </div>
-
-        {/* Background */}
+        {/* About */}
         {dog.background && (
-          <div className="mt-[20px]">
-            <h2 className="text-[16px] font-semibold text-[#65584f] mb-[8px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
+          <div className="mt-[24px]">
+            <h2
+              className="text-[20px] font-bold text-[#65584f] mb-[10px]"
+              style={{ fontFamily: M }}
+            >
               About {dog.name}
             </h2>
-            <p className="text-[14px] text-[#65584f]/80 leading-relaxed whitespace-pre-wrap" style={{ fontFamily: "Montserrat, sans-serif" }}>
+            <p
+              className="text-[14px] text-[#65584f]/75 leading-relaxed whitespace-pre-wrap"
+              style={{ fontFamily: M }}
+            >
               {dog.background}
             </p>
           </div>
         )}
 
+        {/* Personality pills */}
         {personalityTraits.length > 0 && (
-          <div className="mt-[20px]">
-            <h2 className="text-[16px] font-semibold text-[#65584f] mb-[8px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              Personality
-            </h2>
-            <div className="flex flex-wrap gap-[6px]">
-              {personalityTraits.map((trait) => (
-                <Badge key={trait}>{trait}</Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Special needs */}
-        {dog.special_needs && (
-          <div className="mt-[12px] rounded-[14px] p-[14px] border border-[#cd8188]/40" style={{ background: "rgba(205,129,136,0.08)" }}>
-            <p className="text-[13px] font-semibold text-[#cd8188] mb-[4px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              Special needs
-            </p>
-            <p className="text-[13px] text-[#65584f]/80" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              {dog.special_needs}
-            </p>
-          </div>
-        )}
-
-        {/* Shelter */}
-        {shelter && (
-          <div className="mt-[20px] rounded-[16px] p-[16px] border border-[#d6c8ad]" style={{ background: "white" }}>
-            <h2 className="text-[16px] font-semibold text-[#65584f] mb-[10px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              Shelter
-            </h2>
-            <p className="font-semibold text-[#65584f] text-[15px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              {shelter.name}
-            </p>
-            {(shelter.district || shelter.province) && (
-              <p className="text-[13px] text-[#65584f]/60 mt-[2px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                {[shelter.district, shelter.province].filter(Boolean).join(", ")}
-              </p>
-            )}
-            <div className="mt-[10px] grid grid-cols-2 gap-[10px]">
-              <div>
-                <p className="text-[11px] text-[#65584f]/50 uppercase tracking-wide mb-[4px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                  Hygiene
-                </p>
-                <StarRating value={shelter.hygiene_rating} />
-              </div>
-              <div>
-                <p className="text-[11px] text-[#65584f]/50 uppercase tracking-wide mb-[4px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                  Professionalism
-                </p>
-                <StarRating value={shelter.professionalism_rating} />
-              </div>
-            </div>
-            {shelter.phone_number && (
-              <p className="text-[13px] text-[#65584f]/60 mt-[10px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                📞 {shelter.phone_number}
-              </p>
-            )}
-            {shelter.facebook_url && (
-              <a
-                href={shelter.facebook_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[13px] mt-[4px] block"
-                style={{ color: "#cd8188", fontFamily: "Montserrat, sans-serif" }}
+          <div className="mt-[16px] flex flex-wrap gap-[8px]">
+            {personalityTraits.map((trait) => (
+              <span
+                key={trait}
+                className="rounded-full px-[18px] py-[8px] text-[13px] font-semibold text-white"
+                style={{ background: "#65584f", fontFamily: M }}
               >
-                Facebook page →
-              </a>
-            )}
+                {trait}
+              </span>
+            ))}
           </div>
         )}
 
-        {/* CTAs */}
-        <div className="mt-[24px] space-y-[12px]">
-          {message && (
-            <div className="rounded-[12px] px-[16px] py-[12px] text-[14px] text-[#65584f]" style={{ background: "#d6c8ad" }}>
-              {message}
-            </div>
-          )}
+        {/* Special needs callout — always show, says None if empty */}
+        <div
+          className="mt-[20px] rounded-[16px] px-[18px] py-[14px]"
+          style={{ background: "rgba(205,129,136,0.12)" }}
+        >
+          <p
+            className="text-[13px] font-semibold text-[#cd8188]"
+            style={{ fontFamily: M }}
+          >
+            Special needs
+          </p>
+          <p
+            className="text-[15px] text-[#65584f] mt-[4px]"
+            style={{ fontFamily: M }}
+          >
+            {dog.special_needs?.trim() || "None"}
+          </p>
+        </div>
 
-          {user ? (
-            <>
-              <form action={bookAppointment} className="rounded-[16px] p-[16px] border border-[#d6c8ad] space-y-[12px]">
-                <input type="hidden" name="dogId" value={dog.id} />
-                <h2 className="text-[16px] font-semibold text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                  Book a visit
-                </h2>
-                <p className="text-[13px] text-[#65584f]/60" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                  Request a shelter appointment. Your email is saved for follow-up.
-                </p>
-                <div className="grid grid-cols-2 gap-[10px]">
-                  <div>
-                    <label className="block text-[12px] text-[#65584f]/70 mb-[4px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                      Date
-                    </label>
-                    <input
-                      name="appointmentDate"
-                      type="date"
-                      min={minDate}
-                      required
-                      className="w-full rounded-[12px] px-[12px] py-[12px] text-[14px] text-[#65584f] outline-none border-none"
-                      style={{ background: "#d6c8ad", fontFamily: "Montserrat, sans-serif" }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[12px] text-[#65584f]/70 mb-[4px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                      Time
-                    </label>
-                    <input
-                      name="appointmentTime"
-                      type="time"
-                      required
-                      className="w-full rounded-[12px] px-[12px] py-[12px] text-[14px] text-[#65584f] outline-none border-none"
-                      style={{ background: "#d6c8ad", fontFamily: "Montserrat, sans-serif" }}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[12px] text-[#65584f]/70 mb-[4px]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-                    Note
-                  </label>
-                  <textarea
-                    name="visitorNote"
-                    rows={3}
-                    placeholder="Anything the shelter should know?"
-                    className="w-full rounded-[12px] px-[12px] py-[12px] text-[14px] text-[#65584f] outline-none border-none resize-none placeholder:text-[#65584f]/40"
-                    style={{ background: "#d6c8ad", fontFamily: "Montserrat, sans-serif" }}
-                  />
-                </div>
-                <button
-                  className="w-full rounded-full py-[14px] text-white font-semibold text-[15px] border-0 transition-all active:opacity-80"
-                  style={{ background: "#cd8188", fontFamily: "Montserrat, sans-serif" }}
+        {/* Shelter card */}
+        {shelter && (
+          <div
+            className="mt-[20px] rounded-[20px] p-[16px] flex items-center gap-[14px]"
+            style={{ background: "white", boxShadow: "0 2px 12px rgba(101,88,79,0.08)" }}
+          >
+            {/* Logo placeholder */}
+            <div
+              className="shrink-0 w-[64px] h-[64px] rounded-[14px] flex items-center justify-center"
+              style={{ background: "#F5F1E8", border: "1.5px solid #d6c8ad" }}
+            >
+              <span className="text-[26px]">🏠</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p
+                className="text-[12px] uppercase tracking-[0.14em] text-[#65584f]/55 font-semibold"
+                style={{ fontFamily: M }}
+              >
+                Shelter
+              </p>
+              <p
+                className="text-[16px] font-bold text-[#65584f] truncate"
+                style={{ fontFamily: M }}
+              >
+                {shelter.name}
+              </p>
+              <div className="flex items-center gap-[5px] mt-[4px]">
+                <ShieldCheck size={14} stroke="#cd8188" strokeWidth={2.4} />
+                <span
+                  className="text-[12px] font-semibold text-[#cd8188]"
+                  style={{ fontFamily: M }}
                 >
-                  Request appointment
-                </button>
-              </form>
+                  Verified Shelter
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Appointment CTA */}
+        <div className="mt-[24px]">
+          {user ? (
+            canRequestAppointment ? (
               <Link
                 href={`/schedule?dog=${encodeURIComponent(dog.name)}&shelter=${encodeURIComponent(shelter?.name ?? "")}&dogId=${dog.id}&shelterId=${dog.shelter_id}`}
-                className="block w-full text-center rounded-full py-[14px] font-semibold text-[15px] border-2 transition-all active:opacity-80"
-                style={{ borderColor: "#cd8188", color: "#cd8188", background: "white", fontFamily: "Montserrat, sans-serif" }}
+                className="w-full rounded-full py-[16px] flex items-center justify-center gap-[10px] text-white font-bold text-[16px] transition-all active:scale-[0.98]"
+                style={{ background: "#cd8188", fontFamily: M, boxShadow: "0 6px 18px rgba(205,129,136,0.35)" }}
               >
-                Pick a time slot →
+                <Calendar size={20} stroke="white" strokeWidth={2.2} />
+                Make an Appointment
               </Link>
-            </>
+            ) : (
+              <div className="space-y-[10px]">
+                <Link
+                  href="/documents"
+                  className="block w-full rounded-full py-[16px] text-center text-white font-bold text-[16px] transition-all active:scale-[0.98]"
+                  style={{ background: "#cd8188", fontFamily: M, boxShadow: "0 6px 18px rgba(205,129,136,0.35)" }}
+                >
+                  Verify to book →
+                </Link>
+                <p
+                  className="text-[12px] text-[#65584f]/60 text-center"
+                  style={{ fontFamily: M }}
+                >
+                  Complete one-time verification, then book any visit instantly.
+                </p>
+              </div>
+            )
           ) : (
             <AuthPromptButton
               nextPath={`/dogs/${dog.id}`}
               reason="Sign in to save dogs and book shelter visits."
-              className="block w-full text-center rounded-full py-[14px] text-white font-semibold text-[15px]"
-              style={{ background: "#cd8188", fontFamily: "Montserrat, sans-serif" }}
+              className="block w-full text-center rounded-full py-[16px] text-white font-bold text-[16px] transition-all active:scale-[0.98]"
+              style={{ background: "#cd8188", fontFamily: M, boxShadow: "0 6px 18px rgba(205,129,136,0.35)" }}
             >
-              Sign in to save and book
+              Sign in to book a visit
             </AuthPromptButton>
           )}
-        </div>
-      </div>
-
-      {/* Sticky gradient header */}
-      <div
-        className="fixed top-0 z-20 pointer-events-none h-[94px]"
-        style={{
-          width: "402px",
-          maxWidth: "100vw",
-          left: "50%",
-          transform: "translateX(-50%)",
-          background:
-            "linear-gradient(to bottom, #d6c8ad 0%, rgba(214,200,173,0.75) 38.942%, rgba(214,200,173,0) 100%)",
-        }}
-      >
-        <div className="pointer-events-auto absolute left-[8px] top-[39px]">
-          <a href="/" className="block h-[55px] w-[110px] relative">
-            <Image
-              src="/pawjai-logo.png"
-              alt="PawJai"
-              fill
-              className="object-contain object-left"
-              priority
-            />
-          </a>
         </div>
       </div>
     </div>
