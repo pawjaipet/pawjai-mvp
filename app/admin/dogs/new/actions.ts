@@ -52,6 +52,7 @@ const DOG_ADOPTION_STATUSES = new Set<Database["public"]["Enums"]["dog_adoption_
 const IMAGE_EXTENSIONS = new Set([".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"]);
 const DOG_PHOTOS_BUCKET = "dog-photos";
 const DOG_MEDIA_MIME_TYPES = ["image/png", "image/jpeg", "image/webp", "video/mp4"];
+const DOG_STORAGE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_DOG_PHOTO_WIDTH = 1800;
 const MAX_DOG_PHOTO_HEIGHT = 2400;
 const DOG_PHOTO_JPEG_QUALITY = 78;
@@ -172,12 +173,32 @@ async function optimizeDogPhoto({
       extension: "jpg",
     };
   } catch {
+    const fallbackContentType = contentType?.split(";")[0]?.trim() || "application/octet-stream";
+
+    if (!DOG_STORAGE_IMAGE_MIME_TYPES.has(fallbackContentType)) {
+      throw new Error(
+        "This image format could not be converted to JPG. Please upload a JPG, PNG, or WEBP image instead.",
+      );
+    }
+
     return {
       body,
-      contentType: contentType?.split(";")[0]?.trim() || "application/octet-stream",
+      contentType: fallbackContentType,
       extension: extension?.replace(/^\./, "") || extensionFromContentType(contentType),
     };
   }
+}
+
+function isHeicFile(file: File) {
+  const normalizedType = file.type.split(";")[0]?.trim().toLowerCase();
+  const normalizedName = file.name.toLowerCase();
+
+  return (
+    normalizedType === "image/heic" ||
+    normalizedType === "image/heif" ||
+    normalizedName.endsWith(".heic") ||
+    normalizedName.endsWith(".heif")
+  );
 }
 
 function normalizePhotoUrls(formData: FormData) {
@@ -625,7 +646,9 @@ export async function createDogListingAction(
   }
 
   for (const [index, file] of photoFiles.entries()) {
-    if (!file.type.startsWith("image/")) {
+    if (isHeicFile(file)) {
+      fieldErrors[`photo_file_${index}`] = `${file.name} is a HEIC photo. Please convert/export it as JPG first.`;
+    } else if (!file.type.startsWith("image/")) {
       fieldErrors[`photo_file_${index}`] = `${file.name} is not an image file.`;
     }
   }

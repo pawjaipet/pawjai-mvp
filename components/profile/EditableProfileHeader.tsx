@@ -217,13 +217,24 @@ export default function EditableProfileHeader({
             <button
               type="button"
               onClick={() => avatarInputRef.current?.click()}
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ background: "rgba(0,0,0,0.45)" }}
+              className="absolute inset-0 flex flex-col items-center justify-center gap-[4px]"
+              style={{ background: "rgba(0,0,0,0.55)" }}
+              aria-label="Change profile photo"
             >
-              <Camera size={28} stroke="white" strokeWidth={2} />
+              <Camera size={28} stroke="white" strokeWidth={2.2} />
+              <span className="text-white text-[10px] font-semibold leading-none" style={{ fontFamily: M }}>
+                Change
+              </span>
             </button>
           )}
         </div>
+
+        {/* Edit-mode hint — clarifies both upload zones */}
+        {editing && (
+          <p className="mt-[10px] text-[12px] text-[#65584f]/65 text-center" style={{ fontFamily: M }}>
+            Tap photo or banner to upload
+          </p>
+        )}
 
         {/* Name */}
         {editing ? (

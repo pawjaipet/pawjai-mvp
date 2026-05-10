@@ -14,8 +14,8 @@ export default function PageHeader() {
           "linear-gradient(to bottom, #d6c8ad 0%, rgba(214,200,173,0.75) 38.942%, rgba(214,200,173,0) 100%)",
       }}
     >
-      <div className="pointer-events-auto absolute left-[8px] top-[39px] flex items-center">
-        <Link href="/" className="block h-[55px] w-[110px] relative">
+      <div className="pointer-events-auto absolute left-[14px] top-[34px] flex items-center">
+        <Link href="/" className="block h-[60px] w-[140px] relative" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.06))" }}>
           <Image
             src="/pawjai-logo.png"
             alt="PawJai"

@@ -3,6 +3,7 @@ import { ensureAdopterForUser } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
 import SwipeFeed from "@/components/SwipeFeed";
 import type { SwipeDog } from "@/components/SwipeDogCard";
+import { fetchActiveAds } from "@/utils/ads";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +84,7 @@ export default async function HomePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const dogs = await getDogs();
+  const [dogs, ads] = await Promise.all([getDogs(), fetchActiveAds()]);
 
   let savedIds: string[] = [];
   if (user) {
@@ -96,5 +97,5 @@ export default async function HomePage() {
     savedIds = (wishlist ?? []).map((w) => w.dog_id);
   }
 
-  return <SwipeFeed dogs={dogs} savedIds={savedIds} isLoggedIn={!!user} />;
+  return <SwipeFeed dogs={dogs} savedIds={savedIds} isLoggedIn={!!user} ads={ads} />;
 }

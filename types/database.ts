@@ -9,6 +9,34 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ads: {
+        Row: {
+          id: string
+          company_name: string
+          contact_info: string | null
+          image_url: string
+          click_url: string
+          start_date: string
+          end_date: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          company_name: string
+          contact_info?: string | null
+          image_url: string
+          click_url: string
+          start_date: string
+          end_date: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["ads"]["Insert"]>
+        Relationships: []
+      }
       adopters: {
         Row: {
           address_line: string | null

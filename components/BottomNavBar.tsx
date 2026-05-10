@@ -15,6 +15,10 @@ const TABS = [
 export default function BottomNavBar() {
   const pathname = usePathname();
 
+  if (pathname.startsWith("/admin")) {
+    return null;
+  }
+
   return (
     <nav
       className="fixed bottom-0 z-50 bg-white border-t border-[#d6c8ad] shadow-[0_-2px_10px_rgba(101,88,79,0.1)]"
