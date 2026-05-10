@@ -7,10 +7,11 @@ import AdCard from "./AdCard";
 import type { Ad } from "@/utils/ads";
 import { buildSwipeFeed, isActiveDogFeedItem } from "@/utils/swipe-feed-model";
 
-// Figma default 370 x 620. CSS clamp scales DOWN on small viewports so
-// card always fits inside section (header 70 + nav 70 + 20 padding = 160).
+// Match Figma site visible proportions (370 x 540, aspect ~1:1.46).
+// Photos / videos / ad images use object-cover so cropping handles
+// any source aspect ratio. CSS clamp scales DOWN on tiny viewports.
 const CARD_W = "min(370px, calc(100vw - 32px))";
-const CARD_H = "min(620px, calc(100dvh - 160px))";
+const CARD_H = "min(540px, calc(100dvh - 200px))";
 // Insert one ad slot every N dogs. Slot stays visible even if no ad in DB.
 const AD_EVERY = 3;
 
