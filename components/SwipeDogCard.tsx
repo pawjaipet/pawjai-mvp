@@ -30,11 +30,19 @@ interface Props {
   initialSaved: boolean;
   isLoggedIn: boolean;
   isActive?: boolean;
-  cardWidth?: number;
-  cardHeight?: number;
+  cardWidth?: number | string;
+  cardHeight?: number | string;
 }
 
-export default function SwipeDogCard({ dog, initialSaved, isLoggedIn, isActive = true, cardWidth = 370, cardHeight = 620 }: Props) {
+export default function SwipeDogCard({
+  dog,
+  initialSaved,
+  isLoggedIn,
+  isActive = true,
+  // CSS clamp: max Figma 370x620, shrinks on narrow viewports / small dvh
+  cardWidth = "min(370px, calc(100vw - 32px))",
+  cardHeight = "min(620px, calc(100dvh - 160px))",
+}: Props) {
   const carouselRef = useRef<HTMLDivElement>(null);
   const [imgIdx, setImgIdx]     = useState(0);
   const [tagsOpen, setTagsOpen] = useState(false);
