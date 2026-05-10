@@ -6,11 +6,12 @@ import type { SwipeDog } from "@/components/SwipeDogCard";
 
 export const dynamic = "force-dynamic";
 
-function hasBackblazePhoto(dog: SwipeDog) {
+function hasUploadedPhoto(dog: SwipeDog) {
   return dog.photos.some((photo) => {
     if (!photo.public_url) return false;
     try {
-      return new URL(photo.public_url).hostname.includes("backblazeb2.com");
+      const hostname = new URL(photo.public_url).hostname;
+      return hostname.includes("backblazeb2.com") || hostname.includes("supabase.co");
     } catch {
       return false;
     }
@@ -34,18 +35,45 @@ async function getDogs(): Promise<SwipeDog[]> {
     .select("dog_id, public_url, is_cover, sort_order")
     .in("dog_id", ids)
     .order("sort_order");
+  const { data: traits } = await supabase
+    .from("dog_traits")
+    .select("dog_id, trait_type, trait_value")
+    .in("dog_id", ids)
+    .order("created_at");
 
   const photoMap = new Map<string, { public_url: string | null; is_cover: boolean; sort_order: number }[]>();
   for (const p of photos ?? []) {
     if (!photoMap.has(p.dog_id)) photoMap.set(p.dog_id, []);
     photoMap.get(p.dog_id)!.push(p);
   }
+  const traitMap = new Map<string, { trait_type: string; trait_value: string }[]>();
+  for (const trait of traits ?? []) {
+    if (!traitMap.has(trait.dog_id)) traitMap.set(trait.dog_id, []);
+    traitMap.get(trait.dog_id)!.push({
+      trait_type: trait.trait_type,
+      trait_value: trait.trait_value,
+    });
+  }
+  const videoMap = new Map<string, { public_url: string; poster_url: string | null }>();
+  for (const [dogId, dogTraits] of traitMap) {
+    const publicUrl = dogTraits.find((trait) => trait.trait_type === "cover_video_url")?.trait_value;
+    if (!publicUrl) continue;
+    videoMap.set(dogId, {
+      public_url: publicUrl,
+      poster_url: dogTraits.find((trait) => trait.trait_type === "cover_video_poster_url")?.trait_value ?? null,
+    });
+  }
 
   return dogs
-    .map((d) => ({ ...d, photos: photoMap.get(d.id) ?? [] }))
+    .map((d) => ({
+      ...d,
+      photos: photoMap.get(d.id) ?? [],
+      traits: traitMap.get(d.id) ?? [],
+      video: videoMap.get(d.id) ?? null,
+    }))
     .sort((a, b) => {
-      const aUploaded = hasBackblazePhoto(a);
-      const bUploaded = hasBackblazePhoto(b);
+      const aUploaded = hasUploadedPhoto(a);
+      const bUploaded = hasUploadedPhoto(b);
       if (aUploaded !== bUploaded) return aUploaded ? -1 : 1;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });

@@ -79,6 +79,8 @@ export default async function DogProfilePage({
 
   const photos: DogPhoto[] = photosData ?? [];
   const traits: DogTrait[] = traitsData ?? [];
+  const coverVideoUrl = traits.find((trait) => trait.trait_type === "cover_video_url")?.trait_value;
+  const coverVideoPosterUrl = traits.find((trait) => trait.trait_type === "cover_video_poster_url")?.trait_value;
   const cover = photos.find((p) => p.is_cover) ?? photos[0] ?? null;
   const personalityTraits = traits
     .filter((trait) => trait.trait_type === "personality")
@@ -113,13 +115,26 @@ export default async function DogProfilePage({
 
       {/* Cover photo */}
       <div className="relative h-[300px] md:h-[360px]" style={{ background: "#d6c8ad" }}>
-        <ImageWithFallback
-          src={cover?.public_url}
-          alt={dog.name}
-          fill
-          className="object-cover"
-          priority
-        />
+        {coverVideoUrl ? (
+          <video
+            src={coverVideoUrl}
+            poster={coverVideoPosterUrl ?? cover?.public_url ?? undefined}
+            className="h-full w-full object-cover"
+            muted
+            loop
+            playsInline
+            autoPlay
+            preload="metadata"
+          />
+        ) : (
+          <ImageWithFallback
+            src={cover?.public_url}
+            alt={dog.name}
+            fill
+            className="object-cover"
+            priority
+          />
+        )}
         {/* Back button — rose, at top-[106px] matching Figma */}
         <Link
           href="/"

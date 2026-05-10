@@ -1,15 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
-import { randomUUID } from "node:crypto";
+import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import type { Database } from "@/types/database";
 import {
   closeAdminGate,
   openAdminGate,
   validateAdminPassphrase,
 } from "@/utils/admin-auth";
+import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { fetchRemoteAsset } from "@/utils/onedrive";
 import { slugify } from "@/utils/slug";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -48,8 +51,28 @@ const DOG_ADOPTION_STATUSES = new Set<Database["public"]["Enums"]["dog_adoption_
 
 const IMAGE_EXTENSIONS = new Set([".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"]);
 const DOG_PHOTOS_BUCKET = "dog-photos";
+const DOG_MEDIA_MIME_TYPES = ["image/png", "image/jpeg", "image/webp", "video/mp4"];
+const MAX_DOG_PHOTO_WIDTH = 1800;
+const MAX_DOG_PHOTO_HEIGHT = 2400;
+const DOG_PHOTO_JPEG_QUALITY = 78;
+const MAX_VIDEO_UPLOAD_BYTES = 100 * 1024 * 1024;
+const DOG_VIDEO_DURATION_SECONDS = 10;
+const execFileAsync = promisify(execFile);
 
 type UploadedPhoto = {
+  backblazeMirrorError?: string;
+  publicUrl: string;
+  storagePath: string;
+};
+
+type OptimizedPhoto = {
+  body: Buffer;
+  contentType: string;
+  extension: string;
+};
+
+type UploadedVideo = {
+  backblazeMirrorError?: string;
   publicUrl: string;
   storagePath: string;
 };
@@ -115,6 +138,45 @@ function extensionFromContentType(contentType: string | null) {
       return "avif";
     default:
       return "bin";
+  }
+}
+
+async function optimizeDogPhoto({
+  body,
+  contentType,
+  extension,
+}: {
+  body: Buffer;
+  contentType: string | null;
+  extension: string | null;
+}): Promise<OptimizedPhoto> {
+  try {
+    const { default: sharp } = await import("sharp");
+    const optimizedBody = await sharp(body, { failOn: "none" })
+      .rotate()
+      .resize({
+        fit: "inside",
+        height: MAX_DOG_PHOTO_HEIGHT,
+        width: MAX_DOG_PHOTO_WIDTH,
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        mozjpeg: true,
+        quality: DOG_PHOTO_JPEG_QUALITY,
+      })
+      .toBuffer();
+
+    return {
+      body: optimizedBody,
+      contentType: "image/jpeg",
+      extension: "jpg",
+    };
+  } catch {
+    return {
+      body,
+      contentType: contentType?.split(";")[0]?.trim() || "application/octet-stream",
+      extension: extension?.replace(/^\./, "") || extensionFromContentType(contentType),
+    };
   }
 }
 
@@ -187,13 +249,68 @@ function guessExtensionFromUrl(url: string) {
   }
 }
 
+function photoLetter(photoIndex: number) {
+  let index = photoIndex;
+  let label = "";
+
+  do {
+    label = String.fromCharCode(97 + (index % 26)) + label;
+    index = Math.floor(index / 26) - 1;
+  } while (index >= 0);
+
+  return label;
+}
+
+function buildDogPhotoPath({
+  dogName,
+  dogNumber,
+  extension,
+  photoIndex,
+}: {
+  dogName: string;
+  dogNumber: number;
+  extension: string | null;
+  photoIndex: number;
+}) {
+  const slug = slugify(dogName) || "dog";
+  const normalizedExtension = extension?.replace(/^\./, "") || "jpg";
+
+  return `pawjaidogs/${slug}-dog${dogNumber}-photo${photoLetter(photoIndex)}.${normalizedExtension}`;
+}
+
+function buildDogVideoPath({
+  dogName,
+  dogNumber,
+}: {
+  dogName: string;
+  dogNumber: number;
+}) {
+  const slug = slugify(dogName) || "dog";
+
+  return `pawjaidogs/${slug}-dog${dogNumber}-video.mp4`;
+}
+
+async function getNextDogNumber(supabase: ReturnType<typeof createAdminClient>) {
+  const { count, error } = await supabase
+    .from("dogs")
+    .select("id", { count: "exact", head: true });
+
+  if (error) {
+    return Date.now();
+  }
+
+  return (count ?? 0) + 1;
+}
+
 async function uploadPhotoFromSourceUrl({
   dogName,
+  dogNumber,
   photoIndex,
   sourceUrl,
   supabase,
 }: {
   dogName: string;
+  dogNumber: number;
   photoIndex: number;
   sourceUrl: string;
   supabase: ReturnType<typeof createAdminClient>;
@@ -207,7 +324,6 @@ async function uploadPhotoFromSourceUrl({
     );
   }
 
-  const slug = slugify(dogName) || "dog";
   const extension =
     guessExtensionFromUrl(sourceUrl) ?? extensionFromContentType(contentType);
 
@@ -215,6 +331,7 @@ async function uploadPhotoFromSourceUrl({
     body: Buffer.from(await response.arrayBuffer()),
     contentType,
     dogName,
+    dogNumber,
     extension,
     photoIndex,
     supabase,
@@ -225,6 +342,7 @@ async function uploadPhotoBuffer({
   body,
   contentType,
   dogName,
+  dogNumber,
   extension,
   photoIndex,
   supabase,
@@ -232,18 +350,25 @@ async function uploadPhotoBuffer({
   body: Buffer;
   contentType: string | null;
   dogName: string;
+  dogNumber: number;
   extension: string | null;
   photoIndex: number;
   supabase: ReturnType<typeof createAdminClient>;
 }): Promise<UploadedPhoto> {
-  const slug = slugify(dogName) || "dog";
-  const normalizedExtension = extension?.replace(/^\./, "") || extensionFromContentType(contentType);
-  const fileName = `${slug}-${Date.now()}-${photoIndex + 1}-${randomUUID().slice(0, 8)}.${normalizedExtension}`;
-  const desiredPath = `pawjaidogs/${fileName}`;
-  const resolvedContentType = contentType?.split(";")[0]?.trim() || "application/octet-stream";
+  const optimizedPhoto = await optimizeDogPhoto({
+    body,
+    contentType,
+    extension,
+  });
+  const desiredPath = buildDogPhotoPath({
+    dogName,
+    dogNumber,
+    extension: optimizedPhoto.extension,
+    photoIndex,
+  });
 
-  const { error: uploadError } = await supabase.storage.from(DOG_PHOTOS_BUCKET).upload(desiredPath, body, {
-    contentType: resolvedContentType,
+  const { error: uploadError } = await supabase.storage.from(DOG_PHOTOS_BUCKET).upload(desiredPath, optimizedPhoto.body, {
+    contentType: optimizedPhoto.contentType,
     upsert: true,
   });
 
@@ -252,8 +377,117 @@ async function uploadPhotoBuffer({
   }
 
   const { data } = supabase.storage.from(DOG_PHOTOS_BUCKET).getPublicUrl(desiredPath);
+  let backblazeMirrorError: string | undefined;
+
+  try {
+    await uploadBufferToBackblaze({
+      body: optimizedPhoto.body,
+      contentType: optimizedPhoto.contentType,
+      desiredPath,
+    });
+  } catch (error) {
+    backblazeMirrorError = error instanceof Error ? error.message : "Unknown Backblaze mirror error";
+  }
 
   return {
+    backblazeMirrorError,
+    publicUrl: data.publicUrl,
+    storagePath: desiredPath,
+  };
+}
+
+async function optimizeDogVideo(body: Buffer, contentType: string | null) {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pawjai-video-"));
+  const inputPath = path.join(tempDir, "input");
+  const outputPath = path.join(tempDir, "output.mp4");
+
+  try {
+    const ffmpegModule = await import("ffmpeg-static");
+    const ffmpegPath = ffmpegModule.default;
+
+    if (!ffmpegPath) {
+      if (contentType === "video/mp4") return body;
+      throw new Error("Video compression is unavailable on this machine.");
+    }
+
+    await fs.writeFile(inputPath, body);
+    await execFileAsync(ffmpegPath, [
+      "-y",
+      "-i",
+      inputPath,
+      "-t",
+      String(DOG_VIDEO_DURATION_SECONDS),
+      "-an",
+      "-vf",
+      "scale='if(gt(iw,ih),720,-2)':'if(gt(iw,ih),-2,720)'",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "28",
+      "-pix_fmt",
+      "yuv420p",
+      "-movflags",
+      "+faststart",
+      outputPath,
+    ]);
+
+    return fs.readFile(outputPath);
+  } finally {
+    await fs.rm(tempDir, { force: true, recursive: true });
+  }
+}
+
+async function uploadVideoFile({
+  dogName,
+  dogNumber,
+  file,
+  supabase,
+}: {
+  dogName: string;
+  dogNumber: number;
+  file: File;
+  supabase: ReturnType<typeof createAdminClient>;
+}): Promise<UploadedVideo> {
+  const body = Buffer.from(await file.arrayBuffer());
+  const optimizedBody = await optimizeDogVideo(body, file.type || null);
+  const desiredPath = buildDogVideoPath({ dogName, dogNumber });
+
+  const { error: bucketError } = await supabase.storage.updateBucket(DOG_PHOTOS_BUCKET, {
+    allowedMimeTypes: DOG_MEDIA_MIME_TYPES,
+    fileSizeLimit: "26214400",
+    public: true,
+  });
+
+  if (bucketError) {
+    throw new Error(`Supabase media bucket update failed: ${bucketError.message}`);
+  }
+
+  const { error: uploadError } = await supabase.storage.from(DOG_PHOTOS_BUCKET).upload(desiredPath, optimizedBody, {
+    contentType: "video/mp4",
+    upsert: true,
+  });
+
+  if (uploadError) {
+    throw new Error(`Supabase video upload failed: ${uploadError.message}`);
+  }
+
+  const { data } = supabase.storage.from(DOG_PHOTOS_BUCKET).getPublicUrl(desiredPath);
+  let backblazeMirrorError: string | undefined;
+
+  try {
+    await uploadBufferToBackblaze({
+      body: optimizedBody,
+      contentType: "video/mp4",
+      desiredPath,
+    });
+  } catch (error) {
+    backblazeMirrorError = error instanceof Error ? error.message : "Unknown Backblaze mirror error";
+  }
+
+  return {
+    backblazeMirrorError,
     publicUrl: data.publicUrl,
     storagePath: desiredPath,
   };
@@ -263,6 +497,11 @@ function normalizePhotoFiles(formData: FormData) {
   return formData
     .getAll("photo_files")
     .filter((value): value is File => value instanceof File && value.size > 0);
+}
+
+function getOptionalVideoFile(formData: FormData) {
+  const file = formData.get("video_file");
+  return file instanceof File && file.size > 0 ? file : null;
 }
 
 async function readLocalPhotoFolder(folderInput: string) {
@@ -352,6 +591,7 @@ export async function createDogListingAction(
   const weightKg = getOptionalNumber(formData, "weight_kg");
   const photoUrls = normalizePhotoUrls(formData);
   const photoFiles = normalizePhotoFiles(formData);
+  const videoFile = getOptionalVideoFile(formData);
   const localPhotoFolder = getString(formData, "local_photo_folder");
   const careTags = getStringValues(formData, "care_tag");
   const traitPairs = [
@@ -387,6 +627,14 @@ export async function createDogListingAction(
   for (const [index, file] of photoFiles.entries()) {
     if (!file.type.startsWith("image/")) {
       fieldErrors[`photo_file_${index}`] = `${file.name} is not an image file.`;
+    }
+  }
+
+  if (videoFile) {
+    if (!videoFile.type.startsWith("video/")) {
+      fieldErrors.video_file = `${videoFile.name} is not a video file.`;
+    } else if (videoFile.size > MAX_VIDEO_UPLOAD_BYTES) {
+      fieldErrors.video_file = "Please use a video under 100MB. It will be trimmed and compressed after upload.";
     }
   }
 
@@ -426,6 +674,7 @@ export async function createDogListingAction(
   const specialNeeds =
     getOptionalString(formData, "special_needs") ??
     (visibleCareTags.length > 0 ? visibleCareTags.join(", ") : null);
+  const dogNumber = await getNextDogNumber(supabase);
 
   const dogPayload: DogInsert = {
     adoption_status: getEnumValue(formData, "adoption_status", DOG_ADOPTION_STATUSES, "draft") ?? "draft",
@@ -465,8 +714,12 @@ export async function createDogListingAction(
     };
   }
 
+  let backblazeMirrorWarningCount = 0;
+  let coverPhotoUrl: string | null = null;
+
   if (photoUrls.length > 0 || photoFiles.length > 0 || localPhotoFolder) {
     const uploadedPhotos: UploadedPhoto[] = [];
+    const backblazeMirrorWarnings: string[] = [];
     let photoIndex = 0;
 
     if (localPhotoFolder) {
@@ -478,10 +731,14 @@ export async function createDogListingAction(
             body: photo.body,
             contentType: photo.contentType,
             dogName: name,
+            dogNumber,
             extension: photo.extension,
             photoIndex,
             supabase,
           });
+          if (uploaded.backblazeMirrorError) {
+            backblazeMirrorWarnings.push(`photo ${photoIndex + 1}: ${uploaded.backblazeMirrorError}`);
+          }
           uploadedPhotos.push(uploaded);
           photoIndex += 1;
         }
@@ -502,10 +759,14 @@ export async function createDogListingAction(
           body: Buffer.from(await file.arrayBuffer()),
           contentType: file.type,
           dogName: name,
+          dogNumber,
           extension: guessExtensionFromUrl(file.name) ?? extensionFromContentType(file.type),
           photoIndex,
           supabase,
         });
+        if (uploaded.backblazeMirrorError) {
+          backblazeMirrorWarnings.push(`${file.name}: ${uploaded.backblazeMirrorError}`);
+        }
         uploadedPhotos.push(uploaded);
         photoIndex += 1;
       } catch (error) {
@@ -523,10 +784,14 @@ export async function createDogListingAction(
       try {
         const uploaded = await uploadPhotoFromSourceUrl({
           dogName: name,
+          dogNumber,
           photoIndex,
           sourceUrl: url,
           supabase,
         });
+        if (uploaded.backblazeMirrorError) {
+          backblazeMirrorWarnings.push(`photo URL ${index + 1}: ${uploaded.backblazeMirrorError}`);
+        }
         uploadedPhotos.push(uploaded);
         photoIndex += 1;
       } catch (error) {
@@ -547,6 +812,7 @@ export async function createDogListingAction(
       sort_order: index,
       storage_path: photo.storagePath,
     }));
+    coverPhotoUrl = uploadedPhotos[0]?.publicUrl ?? null;
 
     const { error: photoError } = await supabase.from("dog_photos").insert(photoRows);
 
@@ -554,6 +820,63 @@ export async function createDogListingAction(
       return {
         dogId: insertedDog.id,
         message: `The dog was created, but saving the photos failed: ${photoError.message}`,
+        status: "error",
+      };
+    }
+
+    if (backblazeMirrorWarnings.length > 0) {
+      backblazeMirrorWarningCount = backblazeMirrorWarnings.length;
+    }
+  }
+
+  if (videoFile) {
+    try {
+      const uploadedVideo = await uploadVideoFile({
+        dogName: name,
+        dogNumber,
+        file: videoFile,
+        supabase,
+      });
+      const videoRows: DogTraitInsert[] = [
+        {
+          dog_id: insertedDog.id,
+          trait_type: "cover_video_url",
+          trait_value: uploadedVideo.publicUrl,
+        },
+        {
+          dog_id: insertedDog.id,
+          trait_type: "cover_video_storage_path",
+          trait_value: uploadedVideo.storagePath,
+        },
+      ];
+
+      if (coverPhotoUrl) {
+        videoRows.push({
+          dog_id: insertedDog.id,
+          trait_type: "cover_video_poster_url",
+          trait_value: coverPhotoUrl,
+        });
+      }
+
+      const { error: videoError } = await supabase.from("dog_traits").insert(videoRows);
+
+      if (videoError) {
+        return {
+          dogId: insertedDog.id,
+          message: `The dog was created, but saving the video metadata failed: ${videoError.message}`,
+          status: "error",
+        };
+      }
+
+      if (uploadedVideo.backblazeMirrorError) {
+        backblazeMirrorWarningCount += 1;
+      }
+    } catch (error) {
+      return {
+        dogId: insertedDog.id,
+        message: `The dog was created, but the video could not be compressed and uploaded: ${
+          error instanceof Error ? error.message : "Unknown video upload error"
+        }`,
         status: "error",
       };
     }
@@ -585,7 +908,10 @@ export async function createDogListingAction(
 
   return {
     dogId: insertedDog.id,
-    message: "Dog listing created successfully.",
+    message:
+      backblazeMirrorWarningCount > 0
+        ? `Dog listing created and photos saved to Supabase. Backblaze mirror needs attention for ${backblazeMirrorWarningCount} photo(s).`
+        : "Dog listing created successfully.",
     status: "success",
   };
 }

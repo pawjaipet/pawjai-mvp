@@ -422,8 +422,8 @@ export default function DogListingForm({
       </Section>
 
       <Section
-        title="Photos"
-        description="Choose the workflow that is easiest for the team. Local folders are imported in filename order, browser files keep picker order, and URL rows are imported last. The first imported photo becomes the cover."
+        title="Photos and optional video"
+        description="Choose the workflow that is easiest for the team. The first imported photo becomes the fallback cover. You can also test one short video loop for the active swipe card."
       >
         <div className="space-y-4">
           <Field
@@ -447,6 +447,19 @@ export default function DogListingForm({
               accept="image/*"
               multiple
               className="w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] file:mr-4 file:rounded-full file:border-0 file:bg-[#d38a2c] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+            />
+          </Field>
+
+          <Field
+            label="Optional cover video"
+            error={state.fieldErrors?.video_file}
+            hint="Upload one short clip if you have it. PawJai trims to the first 10 seconds, removes audio, compresses to MP4, and only loads it for the active dog card."
+          >
+            <input
+              name="video_file"
+              type="file"
+              accept="video/*"
+              className="w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] file:mr-4 file:rounded-full file:border-0 file:bg-[#cd8188] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
             />
           </Field>
 
