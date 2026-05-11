@@ -12,7 +12,8 @@ import { buildSwipeFeed, isActiveDogFeedItem } from "@/utils/swipe-feed-model";
 // any source aspect ratio. CSS clamp scales DOWN on tiny viewports.
 const CARD_W = "min(370px, calc(100vw - 32px))";
 const CARD_H = "min(540px, calc(100dvh - 200px))";
-// Insert one ad slot every N dogs. Slot stays visible even if no ad in DB.
+// Insert one live ad after every N dogs. The server shuffles active ads
+// daily so limited slots rotate fairly when ad inventory is larger.
 const AD_EVERY = 3;
 
 interface Props {

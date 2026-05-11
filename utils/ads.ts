@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
+import { shuffleAdsForDate } from "@/utils/ad-rotation";
 
 export interface Ad {
   id: string;
@@ -16,12 +17,15 @@ export async function fetchActiveAds(): Promise<Ad[]> {
     .select("id, image_url, company_name, click_url")
     .eq("is_active", true)
     .lte("start_date", today)
-    .gte("end_date", today);
+    .gte("end_date", today)
+    .order("company_name", { ascending: true });
 
-  return (data ?? []).map((row) => ({
+  const ads = (data ?? []).map((row) => ({
     id: row.id,
     imageUrl: row.image_url,
     companyName: row.company_name,
     clickUrl: row.click_url,
   }));
+
+  return shuffleAdsForDate(ads, today);
 }
