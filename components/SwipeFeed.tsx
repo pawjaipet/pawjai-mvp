@@ -25,7 +25,6 @@ interface Props {
 
 export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [] }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const feed = buildSwipeFeed(dogs, ads, AD_EVERY);
@@ -47,7 +46,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [] }: Prop
       className="relative flex flex-col bg-white overflow-hidden"
       style={{ width: 402, maxWidth: "100vw", margin: "0 auto", height: "100dvh" }}
     >
-      {/* Swipe page header — 70px, logo top-left, hamburger right */}
+      {/* Swipe page header — 70px, logo top-left only */}
       <div
         className="bg-gradient-to-b from-[#d6c8ad] h-[70px] pointer-events-auto shrink-0 to-[rgba(214,200,173,0)] via-[38.942%] via-[rgba(214,200,173,0.75)] w-full z-20"
       >
@@ -62,39 +61,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [] }: Prop
             className="h-full w-full object-contain object-left"
           />
         </Link>
-        {/* Hamburger menu */}
-        <button
-          onClick={() => setMenuOpen((o) => !o)}
-          className="absolute right-[16px] top-[27px] h-[16px] w-[20px] flex flex-col justify-between cursor-pointer z-30"
-          aria-label="Menu"
-        >
-          <span className="absolute bg-[#65584f] h-[2px] left-0 rounded-[10px] top-0 w-[20px]" />
-          <span className="absolute bg-[#65584f] h-[2px] left-0 rounded-[10px] top-[7px] w-[20px]" />
-          <span className="absolute bg-[#65584f] h-[2px] left-0 rounded-[10px] top-[14px] w-[20px]" />
-        </button>
       </div>
-
-      {/* Hamburger dropdown */}
-      {menuOpen && (
-        <div className="absolute top-[70px] right-[12px] z-50 bg-[#65584f] rounded-[12px] shadow-lg overflow-hidden">
-          {[
-            { label: "My wishlist", href: "/profile" },
-            { label: "Appointments", href: "/appointments" },
-            { label: "Preferences", href: "/filter" },
-            { label: "Messages", href: "/messages" },
-            { label: "More", href: "/more" },
-          ].map((item, i) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMenuOpen(false)}
-              className={`block px-[20px] py-[14px] text-white font-['Montserrat',sans-serif] text-[14px] hover:bg-[#524739] active:bg-[#524739] ${i > 0 ? "border-t border-white/10" : ""}`}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </div>
-      )}
 
       {/* Snap scroll container */}
       <div
