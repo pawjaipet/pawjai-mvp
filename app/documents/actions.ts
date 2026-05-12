@@ -5,7 +5,14 @@ import { createHash } from "node:crypto";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { ensureAdopterForUser } from "@/utils/adopter";
-import { collectHomePhotoFiles } from "@/utils/adopter-documents";
+import {
+  ALLOWED_DOCUMENT_MIME_TYPES,
+  collectHomePhotoFiles,
+  DOCUMENT_BUCKET,
+  MAX_DOCUMENT_BYTES,
+  MAX_HOME_PHOTOS,
+  parseUploadedDocumentMetadata,
+} from "@/utils/adopter-documents";
 import type { Database, Json } from "@/types/database";
 
 export type DocumentSubmissionState = {
@@ -18,14 +25,7 @@ export const initialDocumentSubmissionState: DocumentSubmissionState = {
   status: "idle",
 };
 
-const DOCUMENT_BUCKET = "adopter-documents";
-const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024;
-const ALLOWED_DOCUMENT_TYPES = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
+const ALLOWED_DOCUMENT_TYPES = new Set<string>(ALLOWED_DOCUMENT_MIME_TYPES);
 
 function parseBoolean(value: FormDataEntryValue | null) {
   if (value === "true") return true;
@@ -140,6 +140,17 @@ export async function submitVerificationDocuments(
     .eq("adopter_id", adopter.id);
 
   const idFile = formData.get("idFile");
+  const uploadedDocuments = parseUploadedDocumentMetadata(formData).filter((document) =>
+    document.storagePath.startsWith(`${user.id}/${adopter.id}/`)
+  );
+  const uploadedIdDocuments = uploadedDocuments.filter((document) => document.documentType === "id_copy");
+  const uploadedHomeDocuments = uploadedDocuments.filter((document) => document.documentType === "house_image");
+  if (uploadedHomeDocuments.length > MAX_HOME_PHOTOS) {
+    return {
+      message: `Please upload no more than ${MAX_HOME_PHOTOS} home environment files.`,
+      status: "error",
+    };
+  }
   const homePhotoResult = collectHomePhotoFiles(formData);
   if (homePhotoResult.error) {
     return {
@@ -151,14 +162,14 @@ export async function submitVerificationDocuments(
   const hasExistingId = (existingDocuments ?? []).some((doc) => doc.document_type === "id_copy");
   const hasExistingHome = (existingDocuments ?? []).some((doc) => doc.document_type === "house_image");
 
-  if (!(idFile instanceof File && idFile.size > 0) && !hasExistingId) {
+  if (!(idFile instanceof File && idFile.size > 0) && uploadedIdDocuments.length === 0 && !hasExistingId) {
     return {
       message: "Please upload an ID or passport file.",
       status: "error",
     };
   }
 
-  if (homePhotoFiles.length === 0 && !hasExistingHome) {
+  if (homePhotoFiles.length === 0 && uploadedHomeDocuments.length === 0 && !hasExistingHome) {
     return {
       message: "Please upload at least one home environment photo or PDF.",
       status: "error",
@@ -253,7 +264,37 @@ export async function submitVerificationDocuments(
   const documentRows: Database["public"]["Tables"]["adopter_documents"]["Insert"][] = [];
 
   try {
-    if (idFile instanceof File && idFile.size > 0) {
+    if (uploadedIdDocuments.length > 0) {
+      await admin.from("adopter_documents").delete().eq("adopter_id", adopter.id).eq("document_type", "id_copy");
+      const uploaded = uploadedIdDocuments.at(-1)!;
+      documentRows.push({
+        adopter_id: adopter.id,
+        document_type: "id_copy",
+        mime_type: uploaded.mimeType,
+        original_file_name: uploaded.originalFileName,
+        storage_path: uploaded.storagePath,
+      });
+    }
+
+    if (uploadedHomeDocuments.length > 0) {
+      await admin
+        .from("adopter_documents")
+        .delete()
+        .eq("adopter_id", adopter.id)
+        .eq("document_type", "house_image");
+
+      for (const uploaded of uploadedHomeDocuments) {
+        documentRows.push({
+          adopter_id: adopter.id,
+          document_type: "house_image",
+          mime_type: uploaded.mimeType,
+          original_file_name: uploaded.originalFileName,
+          storage_path: uploaded.storagePath,
+        });
+      }
+    }
+
+    if (uploadedIdDocuments.length === 0 && idFile instanceof File && idFile.size > 0) {
       const uploaded = await uploadDocumentFile({
         adopterId: adopter.id,
         documentType: "id_copy",
@@ -270,7 +311,7 @@ export async function submitVerificationDocuments(
       });
     }
 
-    if (homePhotoFiles.length > 0) {
+    if (homePhotoFiles.length > 0 && uploadedHomeDocuments.length === 0) {
       const uploadedHomePhotos: Awaited<ReturnType<typeof uploadDocumentFile>>[] = [];
       for (const file of homePhotoFiles) {
         const uploaded = await uploadDocumentFile({

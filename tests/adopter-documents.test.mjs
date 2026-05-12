@@ -51,3 +51,82 @@ test("rejects more than five home environment uploads", () => {
   assert.equal(result.files.length, 0);
   assert.match(result.error, /no more than 5/i);
 });
+
+test("replaces file fields with uploaded document metadata for server actions", () => {
+  const { setUploadedDocumentFields } = loadAdopterDocuments();
+  const formData = new FormData();
+  formData.append("idFile", imageFile("passport.jpg"));
+  formData.append("homePhotos", imageFile("living-room.jpg"));
+
+  setUploadedDocumentFields(formData, [
+    {
+      documentType: "id_copy",
+      mimeType: "image/jpeg",
+      originalFileName: "passport.jpg",
+      storagePath: "user/adopter/id_copy.jpg",
+    },
+    {
+      documentType: "house_image",
+      mimeType: "image/jpeg",
+      originalFileName: "living-room.jpg",
+      storagePath: "user/adopter/living-room.jpg",
+    },
+  ]);
+
+  assert.equal(formData.get("idFile"), null);
+  assert.deepEqual(formData.getAll("homePhotos"), []);
+  assert.deepEqual(JSON.parse(String(formData.get("uploadedDocuments"))), [
+    {
+      documentType: "id_copy",
+      mimeType: "image/jpeg",
+      originalFileName: "passport.jpg",
+      storagePath: "user/adopter/id_copy.jpg",
+    },
+    {
+      documentType: "house_image",
+      mimeType: "image/jpeg",
+      originalFileName: "living-room.jpg",
+      storagePath: "user/adopter/living-room.jpg",
+    },
+  ]);
+});
+
+test("parses uploaded document metadata and ignores invalid records", () => {
+  const { parseUploadedDocumentMetadata } = loadAdopterDocuments();
+  const formData = new FormData();
+  formData.set("uploadedDocuments", JSON.stringify([
+    {
+      documentType: "id_copy",
+      mimeType: "image/jpeg",
+      originalFileName: "passport.jpg",
+      storagePath: "user/adopter/id_copy.jpg",
+    },
+    {
+      documentType: "bad_type",
+      mimeType: "image/jpeg",
+      originalFileName: "bad.jpg",
+      storagePath: "user/adopter/bad.jpg",
+    },
+    {
+      documentType: "house_image",
+      mimeType: "application/pdf",
+      originalFileName: "home.pdf",
+      storagePath: "user/adopter/home.pdf",
+    },
+  ]));
+
+  assert.equal(JSON.stringify(parseUploadedDocumentMetadata(formData)), JSON.stringify([
+    {
+      documentType: "id_copy",
+      mimeType: "image/jpeg",
+      originalFileName: "passport.jpg",
+      storagePath: "user/adopter/id_copy.jpg",
+    },
+    {
+      documentType: "house_image",
+      mimeType: "application/pdf",
+      originalFileName: "home.pdf",
+      storagePath: "user/adopter/home.pdf",
+    },
+  ]));
+});

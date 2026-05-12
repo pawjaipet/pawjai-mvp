@@ -7,7 +7,15 @@ import {
   submitVerificationDocuments,
   type DocumentSubmissionState,
 } from "@/app/documents/actions";
-import { MAX_HOME_PHOTOS, syncVerificationFileFields } from "@/utils/adopter-documents";
+import {
+  ALLOWED_DOCUMENT_MIME_TYPES,
+  DOCUMENT_BUCKET,
+  MAX_DOCUMENT_BYTES,
+  MAX_HOME_PHOTOS,
+  setUploadedDocumentFields,
+  type UploadedAdopterDocument,
+} from "@/utils/adopter-documents";
+import { createClient as createBrowserClient } from "@/utils/supabase/client";
 
 const M = "Montserrat, sans-serif";
 
@@ -22,6 +30,7 @@ const SECTION_META = {
 } as const;
 
 type DocumentsInitialData = {
+  adopterId: string;
   existingHomeFileNames: string[];
   existingIdFileName: string | null;
   form: {
@@ -52,6 +61,7 @@ type DocumentsInitialData = {
     yardSpace: string;
     landlordPermission: string;
   };
+  userId: string;
   verificationStatus: string;
 };
 
@@ -274,6 +284,53 @@ function statusCopy(status: string) {
   }
 }
 
+function safeExtension(file: File) {
+  const fromName = file.name.split(".").pop()?.toLowerCase();
+  if (fromName && /^[a-z0-9]{2,5}$/.test(fromName)) return fromName;
+  if (file.type === "application/pdf") return "pdf";
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/webp") return "webp";
+  return "jpg";
+}
+
+async function uploadDocumentToStorage({
+  adopterId,
+  documentType,
+  file,
+  userId,
+}: {
+  adopterId: string;
+  documentType: UploadedAdopterDocument["documentType"];
+  file: File;
+  userId: string;
+}): Promise<UploadedAdopterDocument> {
+  if (!ALLOWED_DOCUMENT_MIME_TYPES.includes(file.type as (typeof ALLOWED_DOCUMENT_MIME_TYPES)[number])) {
+    throw new Error("Only JPG, PNG, WEBP, or PDF files are supported.");
+  }
+
+  if (file.size <= 0 || file.size > MAX_DOCUMENT_BYTES) {
+    throw new Error("Each document must be smaller than 15 MB.");
+  }
+
+  const storagePath = `${userId}/${adopterId}/${documentType}-${Date.now()}-${crypto.randomUUID()}.${safeExtension(file)}`;
+  const supabase = createBrowserClient();
+  const { error } = await supabase.storage.from(DOCUMENT_BUCKET).upload(storagePath, file, {
+    contentType: file.type,
+    upsert: false,
+  });
+
+  if (error) {
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+
+  return {
+    documentType,
+    mimeType: file.type,
+    originalFileName: file.name,
+    storagePath,
+  };
+}
+
 export default function DocumentsPageClient({ initialData }: { initialData: DocumentsInitialData }) {
   const [section, setSection] = useState<Section>("A");
   const [state, formAction, isPending] = useActionState<DocumentSubmissionState, FormData>(
@@ -281,6 +338,8 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
     initialDocumentSubmissionState,
   );
   const [isSubmittingFiles, startSubmitTransition] = useTransition();
+  const [clientSubmitError, setClientSubmitError] = useState<string | null>(null);
+  const [isUploadingDocuments, setIsUploadingDocuments] = useState(false);
   const [a, setA] = useState({
     address: initialData.form.address,
     dateOfBirth: initialData.form.dateOfBirth,
@@ -329,7 +388,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
   const PREV: Record<Section, Section | null> = { A: null, B: "A", C: "B", D: "C", done: "D" };
   const NEXT: Record<Exclude<Section, "done">, Section> = { A: "B", B: "C", C: "D", D: "done" };
 
-  const isSubmitting = isPending || isSubmittingFiles;
+  const isSubmitting = isPending || isSubmittingFiles || isUploadingDocuments;
   const canContinue =
     section === "A" ? a.fullName.trim() !== "" :
     section === "B" ? b.hadPetsBefore !== "" :
@@ -339,16 +398,41 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
 
   return (
     <form
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault();
+        setClientSubmitError(null);
         const formData = new FormData(event.currentTarget);
-        syncVerificationFileFields(formData, {
-          homePhotos: c.homePhotos,
-          idFile: a.idFile,
-        });
-        startSubmitTransition(() => {
-          formAction(formData);
-        });
+        try {
+          setIsUploadingDocuments(true);
+          const uploadedDocuments: UploadedAdopterDocument[] = [];
+
+          if (a.idFile) {
+            uploadedDocuments.push(await uploadDocumentToStorage({
+              adopterId: initialData.adopterId,
+              documentType: "id_copy",
+              file: a.idFile,
+              userId: initialData.userId,
+            }));
+          }
+
+          for (const file of c.homePhotos) {
+            uploadedDocuments.push(await uploadDocumentToStorage({
+              adopterId: initialData.adopterId,
+              documentType: "house_image",
+              file,
+              userId: initialData.userId,
+            }));
+          }
+
+          setUploadedDocumentFields(formData, uploadedDocuments);
+          setIsUploadingDocuments(false);
+          startSubmitTransition(() => {
+            formAction(formData);
+          });
+        } catch (error) {
+          setIsUploadingDocuments(false);
+          setClientSubmitError(error instanceof Error ? error.message : "Document upload failed.");
+        }
       }}
       className="relative overflow-y-auto overflow-x-hidden"
       style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", minHeight: "100vh", paddingBottom: "100px", background: "#F5F1E8", scrollbarWidth: "none", fontFamily: M }}
@@ -423,9 +507,9 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
           </div>
         )}
 
-        {state.message && section !== "done" && (
-          <div className={`mb-[16px] rounded-[14px] px-[16px] py-[12px] text-[13px] ${state.status === "error" ? "bg-[#f6dadd] text-[#8f4d56]" : "bg-[#dcebd8] text-[#4d6b48]"}`} style={{ fontFamily: M }}>
-            {state.message}
+        {(clientSubmitError || state.message) && section !== "done" && (
+          <div className={`mb-[16px] rounded-[14px] px-[16px] py-[12px] text-[13px] ${clientSubmitError || state.status === "error" ? "bg-[#f6dadd] text-[#8f4d56]" : "bg-[#dcebd8] text-[#4d6b48]"}`} style={{ fontFamily: M }}>
+            {clientSubmitError ?? state.message}
           </div>
         )}
 
@@ -709,7 +793,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
                 fontFamily: M,
               }}
             >
-              {isSubmitting ? "Submitting..." : "Submit"}
+              {isUploadingDocuments ? "Uploading..." : isSubmitting ? "Submitting..." : "Submit"}
             </button>
           ) : (
             <button
