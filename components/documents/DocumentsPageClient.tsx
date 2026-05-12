@@ -439,20 +439,22 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
-      <div className="px-[16px] pt-[20px] pb-[8px]">
-        {section !== "done" ? (
+      <div className="px-[14px] pt-[14px] pb-[8px] flex items-center justify-between">
+        <Link
+          href="/"
+          className="block h-[44px] w-[110px] active:scale-95 transition-transform"
+          aria-label="PawJai home"
+        >
+          <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
+        </Link>
+        {section !== "done" && (
           <Link
             href="/profile"
-            className="inline-flex items-center gap-[8px] rounded-full px-[16px] py-[10px] text-[13px] font-semibold text-white"
-            style={{ background: "#cd8188", fontFamily: M }}
+            className="text-[12px] font-bold rounded-full px-[14px] py-[8px]"
+            style={{ background: "#cd8188", color: "white", fontFamily: M }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M5 12L12 19M5 12L12 5" />
-            </svg>
-            Save and Back to Profile
+            Save & Exit
           </Link>
-        ) : (
-          <div className="h-[40px]" />
         )}
       </div>
 

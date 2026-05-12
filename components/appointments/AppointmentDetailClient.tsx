@@ -57,33 +57,22 @@ export default function AppointmentDetailClient({
         fontFamily: M,
       }}
     >
-      {/* ── Dark brown app bar ── */}
+      {/* ── Dark brown app bar with logo top-left ── */}
       <div
-        className="px-[16px] pt-[14px] pb-[14px] relative"
+        className="px-[14px] pt-[14px] pb-[14px] relative"
         style={{ background: "#65584f" }}
       >
-        {/* Paw icon top-left */}
-        <div className="absolute top-[8px] left-[10px]">
-          <svg width="20" height="20" viewBox="0 0 100 100" fill="#cd8188">
-            <ellipse cx="50" cy="75" rx="22" ry="18" />
-            <ellipse cx="20" cy="55" rx="10" ry="13" />
-            <ellipse cx="80" cy="55" rx="10" ry="13" />
-            <ellipse cx="35" cy="40" rx="9" ry="11" />
-            <ellipse cx="65" cy="40" rx="9" ry="11" />
-          </svg>
-        </div>
+        {/* Logo top-left — doubles as home link */}
+        <Link
+          href="/"
+          className="block h-[36px] w-[100px] mb-[12px] active:scale-95 transition-transform"
+          aria-label="PawJai home"
+          style={{ filter: "brightness(0) invert(1)" }}
+        >
+          <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
+        </Link>
 
-        <div className="flex items-center gap-[12px] mt-[18px]">
-          <Link
-            href="/appointments"
-            className="w-[36px] h-[36px] rounded-full flex items-center justify-center active:scale-95 transition-transform"
-            aria-label="Back"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M5 12L12 19M5 12L12 5" />
-            </svg>
-          </Link>
-
+        <div className="flex items-center gap-[12px]">
           <div className="w-[48px] h-[48px] rounded-[10px] overflow-hidden flex-shrink-0" style={{ background: "rgba(255,255,255,0.15)" }}>
             {dog?.coverUrl ? (
               <img src={dog.coverUrl} alt={dog.name} className="w-full h-full object-cover" />

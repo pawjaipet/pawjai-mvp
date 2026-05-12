@@ -128,16 +128,14 @@ export default async function DogProfilePage({
           videoPosterUrl={coverVideoPosterUrl}
         />
 
-        {/* Back button — floating top-left */}
+        {/* PawJai logo — floating top-left, doubles as back-home */}
         <Link
           href="/"
-          className="absolute left-[14px] top-[14px] w-[44px] h-[44px] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-all z-10"
-          style={{ background: "#cd8188" }}
-          aria-label="Back"
+          className="absolute left-[14px] top-[14px] block h-[52px] w-[130px] z-10 active:scale-95 transition-transform"
+          style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.30))" }}
+          aria-label="PawJai home"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="white" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
         </Link>
 
         {/* Wishlist heart — floating top-right */}

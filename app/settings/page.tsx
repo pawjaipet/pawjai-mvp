@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Bell, Lock, Globe, HelpCircle, Mail } from "lucide-react";
+import { Bell, Lock, Globe, HelpCircle, Mail } from "lucide-react";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { createClient } from "@/utils/supabase/server";
 
@@ -54,19 +54,19 @@ export default async function SettingsPage() {
         fontFamily: M,
       }}
     >
-      {/* Header */}
+      {/* Header — logo top-left as home link */}
       <div
-        className="sticky top-0 z-10 flex items-center gap-[12px] px-[16px] h-[56px]"
+        className="sticky top-0 z-10 flex items-center justify-between px-[14px] h-[64px]"
         style={{ background: "rgba(245,241,232,0.95)", backdropFilter: "blur(8px)" }}
       >
         <Link
-          href="/profile"
-          className="w-[40px] h-[40px] rounded-full flex items-center justify-center active:scale-95 transition-transform"
-          style={{ background: "white", boxShadow: "0 2px 8px rgba(101,88,79,0.08)" }}
+          href="/"
+          className="block h-[44px] w-[110px] active:scale-95 transition-transform"
+          aria-label="PawJai home"
         >
-          <ArrowLeft size={20} stroke="#65584f" strokeWidth={2.2} />
+          <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
         </Link>
-        <h1 className="text-[20px] font-bold" style={{ color: "#65584f" }}>Settings</h1>
+        <h1 className="text-[18px] font-bold" style={{ color: "#65584f" }}>Settings</h1>
       </div>
 
       {/* Account email */}
