@@ -52,6 +52,19 @@ test("rejects more than five home environment uploads", () => {
   assert.match(result.error, /no more than 5/i);
 });
 
+test("defaults document saves to final submit unless draft mode is requested", () => {
+  const { getVerificationSaveMode } = loadAdopterDocuments();
+  const formData = new FormData();
+
+  assert.equal(getVerificationSaveMode(formData), "submit");
+
+  formData.set("verificationSaveMode", "draft");
+  assert.equal(getVerificationSaveMode(formData), "draft");
+
+  formData.set("verificationSaveMode", "anything-else");
+  assert.equal(getVerificationSaveMode(formData), "submit");
+});
+
 test("replaces file fields with uploaded document metadata for server actions", () => {
   const { setUploadedDocumentFields } = loadAdopterDocuments();
   const formData = new FormData();

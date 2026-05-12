@@ -9,6 +9,7 @@ import {
   ALLOWED_DOCUMENT_MIME_TYPES,
   collectHomePhotoFiles,
   DOCUMENT_BUCKET,
+  getVerificationSaveMode,
   MAX_DOCUMENT_BYTES,
   MAX_HOME_PHOTOS,
   parseUploadedDocumentMetadata,
@@ -16,11 +17,13 @@ import {
 import type { Database, Json } from "@/types/database";
 
 export type DocumentSubmissionState = {
+  completed?: boolean;
   message: string | null;
   status: "idle" | "error" | "success";
 };
 
 export const initialDocumentSubmissionState: DocumentSubmissionState = {
+  completed: false,
   message: null,
   status: "idle",
 };
@@ -138,6 +141,8 @@ export async function submitVerificationDocuments(
     .from("adopter_documents")
     .select("id, document_type")
     .eq("adopter_id", adopter.id);
+  const saveMode = getVerificationSaveMode(formData);
+  const isFinalSubmit = saveMode === "submit";
 
   const idFile = formData.get("idFile");
   const uploadedDocuments = parseUploadedDocumentMetadata(formData).filter((document) =>
@@ -162,14 +167,14 @@ export async function submitVerificationDocuments(
   const hasExistingId = (existingDocuments ?? []).some((doc) => doc.document_type === "id_copy");
   const hasExistingHome = (existingDocuments ?? []).some((doc) => doc.document_type === "house_image");
 
-  if (!(idFile instanceof File && idFile.size > 0) && uploadedIdDocuments.length === 0 && !hasExistingId) {
+  if (isFinalSubmit && !(idFile instanceof File && idFile.size > 0) && uploadedIdDocuments.length === 0 && !hasExistingId) {
     return {
       message: "Please upload an ID or passport file.",
       status: "error",
     };
   }
 
-  if (homePhotoFiles.length === 0 && uploadedHomeDocuments.length === 0 && !hasExistingHome) {
+  if (isFinalSubmit && homePhotoFiles.length === 0 && uploadedHomeDocuments.length === 0 && !hasExistingHome) {
     return {
       message: "Please upload at least one home environment photo or PDF.",
       status: "error",
@@ -187,7 +192,7 @@ export async function submitVerificationDocuments(
   const bondingPlan = parseJsonArray(formData.get("bondingPlan"));
   const agreementAccepted = parseBoolean(formData.get("agreementAccepted")) === true;
 
-  if (!agreementAccepted) {
+  if (isFinalSubmit && !agreementAccepted) {
     return {
       message: "Please confirm the long-term commitment statement before submitting.",
       status: "error",
@@ -215,10 +220,12 @@ export async function submitVerificationDocuments(
     last_name: lastName,
     occupation,
     phone_number: phoneNumber,
-    verification_status: nextStatus,
-    verification_submitted_at:
-      adopter.verification_submitted_at ?? new Date().toISOString(),
   };
+  if (isFinalSubmit) {
+    adopterUpdates.verification_status = nextStatus;
+    adopterUpdates.verification_submitted_at =
+      adopter.verification_submitted_at ?? new Date().toISOString();
+  }
 
   await admin.from("adopters").update(adopterUpdates).eq("id", adopter.id);
 
@@ -228,7 +235,6 @@ export async function submitVerificationDocuments(
     agreement_accepted: agreementAccepted,
     behavior_response: parseString(formData.get("behaviorResponse")),
     bonding_plan: bondingPlan as Json,
-    completed_at: new Date().toISOString(),
     current_pets: null,
     daily_time_available: parseString(formData.get("timeAvailable")),
     dog_experience: parseString(formData.get("petExperience")),
@@ -252,6 +258,9 @@ export async function submitVerificationDocuments(
     travel_plan: parseString(formData.get("travelPlan")),
     yard_space: parseString(formData.get("yardSpace")),
   };
+  if (isFinalSubmit) {
+    profilePayload.completed_at = new Date().toISOString();
+  }
 
   const { error: profileError } = await admin.from("adopter_profiles").upsert(profilePayload);
   if (profileError) {
@@ -361,10 +370,12 @@ export async function submitVerificationDocuments(
   revalidatePath("/profile");
 
   return {
-    message:
-      nextStatus === "approved"
+    completed: isFinalSubmit,
+    message: isFinalSubmit
+      ? nextStatus === "approved"
         ? "Your verification details were updated successfully."
-        : "Your verification details were submitted successfully.",
+        : "Your verification details were submitted successfully."
+      : "Your progress was saved.",
     status: "success",
   };
 }

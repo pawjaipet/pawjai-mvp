@@ -9,6 +9,9 @@ export const ALLOWED_DOCUMENT_MIME_TYPES = [
 ] as const;
 
 const DOCUMENT_TYPES = new Set(["id_copy", "house_image", "income_statement", "other"]);
+const VERIFICATION_SAVE_MODES = new Set(["draft", "submit"]);
+
+export type VerificationSaveMode = "draft" | "submit";
 
 export type UploadedAdopterDocument = {
   documentType: "id_copy" | "house_image" | "income_statement" | "other";
@@ -60,6 +63,11 @@ export function collectHomePhotoFiles(formData: FormData) {
   }
 
   return { error: null, files };
+}
+
+export function getVerificationSaveMode(formData: FormData): VerificationSaveMode {
+  const mode = String(formData.get("verificationSaveMode") ?? "submit");
+  return VERIFICATION_SAVE_MODES.has(mode) ? mode as VerificationSaveMode : "submit";
 }
 
 function isUploadedAdopterDocument(value: unknown): value is UploadedAdopterDocument {

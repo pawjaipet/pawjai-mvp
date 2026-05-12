@@ -8,14 +8,9 @@ import {
   type DocumentSubmissionState,
 } from "@/app/documents/actions";
 import {
-  ALLOWED_DOCUMENT_MIME_TYPES,
-  DOCUMENT_BUCKET,
-  MAX_DOCUMENT_BYTES,
   MAX_HOME_PHOTOS,
-  setUploadedDocumentFields,
-  type UploadedAdopterDocument,
+  syncVerificationFileFields,
 } from "@/utils/adopter-documents";
-import { createClient as createBrowserClient } from "@/utils/supabase/client";
 
 const M = "Montserrat, sans-serif";
 
@@ -30,7 +25,6 @@ const SECTION_META = {
 } as const;
 
 type DocumentsInitialData = {
-  adopterId: string;
   existingHomeFileNames: string[];
   existingIdFileName: string | null;
   form: {
@@ -61,7 +55,6 @@ type DocumentsInitialData = {
     yardSpace: string;
     landlordPermission: string;
   };
-  userId: string;
   verificationStatus: string;
 };
 
@@ -284,54 +277,8 @@ function statusCopy(status: string) {
   }
 }
 
-function safeExtension(file: File) {
-  const fromName = file.name.split(".").pop()?.toLowerCase();
-  if (fromName && /^[a-z0-9]{2,5}$/.test(fromName)) return fromName;
-  if (file.type === "application/pdf") return "pdf";
-  if (file.type === "image/png") return "png";
-  if (file.type === "image/webp") return "webp";
-  return "jpg";
-}
-
-async function uploadDocumentToStorage({
-  adopterId,
-  documentType,
-  file,
-  userId,
-}: {
-  adopterId: string;
-  documentType: UploadedAdopterDocument["documentType"];
-  file: File;
-  userId: string;
-}): Promise<UploadedAdopterDocument> {
-  if (!ALLOWED_DOCUMENT_MIME_TYPES.includes(file.type as (typeof ALLOWED_DOCUMENT_MIME_TYPES)[number])) {
-    throw new Error("Only JPG, PNG, WEBP, or PDF files are supported.");
-  }
-
-  if (file.size <= 0 || file.size > MAX_DOCUMENT_BYTES) {
-    throw new Error("Each document must be smaller than 15 MB.");
-  }
-
-  const storagePath = `${userId}/${adopterId}/${documentType}-${Date.now()}-${crypto.randomUUID()}.${safeExtension(file)}`;
-  const supabase = createBrowserClient();
-  const { error } = await supabase.storage.from(DOCUMENT_BUCKET).upload(storagePath, file, {
-    contentType: file.type,
-    upsert: false,
-  });
-
-  if (error) {
-    throw new Error(`Upload failed: ${error.message}`);
-  }
-
-  return {
-    documentType,
-    mimeType: file.type,
-    originalFileName: file.name,
-    storagePath,
-  };
-}
-
 export default function DocumentsPageClient({ initialData }: { initialData: DocumentsInitialData }) {
+  const formRef = useRef<HTMLFormElement>(null);
   const [section, setSection] = useState<Section>("A");
   const [state, formAction, isPending] = useActionState<DocumentSubmissionState, FormData>(
     submitVerificationDocuments,
@@ -339,7 +286,6 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
   );
   const [isSubmittingFiles, startSubmitTransition] = useTransition();
   const [clientSubmitError, setClientSubmitError] = useState<string | null>(null);
-  const [isUploadingDocuments, setIsUploadingDocuments] = useState(false);
   const [a, setA] = useState({
     address: initialData.form.address,
     dateOfBirth: initialData.form.dateOfBirth,
@@ -378,17 +324,17 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
   });
 
   useEffect(() => {
-    if (state.status === "success") {
+    if (state.status === "success" && state.completed) {
       setSection("done");
     }
-  }, [state.status]);
+  }, [state.completed, state.status]);
 
   const sectionIdx = section === "done" ? 4 : SECTIONS.indexOf(section);
   const meta = section !== "done" ? SECTION_META[section] : null;
   const PREV: Record<Section, Section | null> = { A: null, B: "A", C: "B", D: "C", done: "D" };
   const NEXT: Record<Exclude<Section, "done">, Section> = { A: "B", B: "C", C: "D", D: "done" };
 
-  const isSubmitting = isPending || isSubmittingFiles || isUploadingDocuments;
+  const isSubmitting = isPending || isSubmittingFiles;
   const canContinue =
     section === "A" ? a.fullName.trim() !== "" :
     section === "B" ? b.hadPetsBefore !== "" :
@@ -396,43 +342,36 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
     section === "D" ? d.agreement :
     false;
 
+  function submitCurrentForm(saveMode: "draft" | "submit") {
+    if (!formRef.current) {
+      setClientSubmitError("The form is not ready yet. Please try again.");
+      return;
+    }
+
+    setClientSubmitError(null);
+    const formData = new FormData(formRef.current);
+    formData.set("verificationSaveMode", saveMode);
+    syncVerificationFileFields(formData, {
+      homePhotos: c.homePhotos,
+      idFile: a.idFile,
+    });
+
+    startSubmitTransition(() => {
+      formAction(formData);
+    });
+  }
+
+  function saveAndContinue(nextSection: Section) {
+    submitCurrentForm("draft");
+    setSection(nextSection);
+  }
+
   return (
     <form
-      onSubmit={async (event) => {
+      ref={formRef}
+      onSubmit={(event) => {
         event.preventDefault();
-        setClientSubmitError(null);
-        const formData = new FormData(event.currentTarget);
-        try {
-          setIsUploadingDocuments(true);
-          const uploadedDocuments: UploadedAdopterDocument[] = [];
-
-          if (a.idFile) {
-            uploadedDocuments.push(await uploadDocumentToStorage({
-              adopterId: initialData.adopterId,
-              documentType: "id_copy",
-              file: a.idFile,
-              userId: initialData.userId,
-            }));
-          }
-
-          for (const file of c.homePhotos) {
-            uploadedDocuments.push(await uploadDocumentToStorage({
-              adopterId: initialData.adopterId,
-              documentType: "house_image",
-              file,
-              userId: initialData.userId,
-            }));
-          }
-
-          setUploadedDocumentFields(formData, uploadedDocuments);
-          setIsUploadingDocuments(false);
-          startSubmitTransition(() => {
-            formAction(formData);
-          });
-        } catch (error) {
-          setIsUploadingDocuments(false);
-          setClientSubmitError(error instanceof Error ? error.message : "Document upload failed.");
-        }
+        submitCurrentForm("submit");
       }}
       className="relative overflow-y-auto overflow-x-hidden"
       style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", minHeight: "100vh", paddingBottom: "100px", background: "#F5F1E8", scrollbarWidth: "none", fontFamily: M }}
@@ -795,13 +734,13 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
                 fontFamily: M,
               }}
             >
-              {isUploadingDocuments ? "Uploading..." : isSubmitting ? "Submitting..." : "Submit"}
+              {isSubmitting ? "Submitting..." : "Submit"}
             </button>
           ) : (
             <button
               type="button"
               disabled={!canContinue || isSubmitting}
-              onClick={() => setSection(NEXT[section])}
+              onClick={() => saveAndContinue(NEXT[section])}
               className="flex h-[52px] flex-1 items-center justify-center gap-[8px] rounded-[14px] text-[15px] font-bold transition-all active:scale-[0.98] disabled:opacity-40"
               style={{
                 background: canContinue ? "#65584f" : "rgba(101,88,79,0.18)",

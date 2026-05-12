@@ -58,7 +58,6 @@ export default async function DocumentsPage() {
   return (
     <DocumentsPageClient
       initialData={{
-        adopterId: adopter.id,
         existingHomeFileNames,
         existingIdFileName: idDocument?.original_file_name ?? null,
         form: {
@@ -94,7 +93,6 @@ export default async function DocumentsPage() {
           travelPlan: profile?.travel_plan ?? "",
           yardSpace: profile?.yard_space ?? "",
         },
-        userId: user.id,
         verificationStatus: adopter.verification_status,
       }}
     />
