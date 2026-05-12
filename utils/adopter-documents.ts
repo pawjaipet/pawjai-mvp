@@ -9,6 +9,7 @@ export const ALLOWED_DOCUMENT_MIME_TYPES = [
 ] as const;
 
 const DOCUMENT_TYPES = new Set(["id_copy", "house_image", "income_statement", "other"]);
+const DOCUMENT_SECTIONS = ["A", "B", "C", "D"] as const;
 const VERIFICATION_SAVE_MODES = new Set(["draft", "submit"]);
 
 export type VerificationSaveMode = "draft" | "submit";
@@ -68,6 +69,24 @@ export function collectHomePhotoFiles(formData: FormData) {
 export function getVerificationSaveMode(formData: FormData): VerificationSaveMode {
   const mode = String(formData.get("verificationSaveMode") ?? "submit");
   return VERIFICATION_SAVE_MODES.has(mode) ? mode as VerificationSaveMode : "submit";
+}
+
+function joinSectionNumbers(numbers: number[]) {
+  if (numbers.length === 1) return String(numbers[0]);
+  if (numbers.length === 2) return `${numbers[0]} and ${numbers[1]}`;
+  return `${numbers.slice(0, -1).join(", ")}, and ${numbers.at(-1)}`;
+}
+
+export function getDocumentExitSaveSummary(section: string) {
+  const sectionIndex = DOCUMENT_SECTIONS.indexOf(section as (typeof DOCUMENT_SECTIONS)[number]);
+  if (sectionIndex <= 0) {
+    return "No sections have been saved yet.";
+  }
+
+  const savedSections = Array.from({ length: sectionIndex }, (_, index) => index + 1);
+  return `Sections ${joinSectionNumbers(savedSections)} are already saved. Changes in section ${
+    sectionIndex + 1
+  } will not be saved until you press Continue.`;
 }
 
 function isUploadedAdopterDocument(value: unknown): value is UploadedAdopterDocument {

@@ -65,6 +65,19 @@ test("defaults document saves to final submit unless draft mode is requested", (
   assert.equal(getVerificationSaveMode(formData), "submit");
 });
 
+test("describes which completed document sections are saved before exiting", () => {
+  const { getDocumentExitSaveSummary } = loadAdopterDocuments();
+
+  assert.equal(
+    getDocumentExitSaveSummary("A"),
+    "No sections have been saved yet.",
+  );
+  assert.equal(
+    getDocumentExitSaveSummary("C"),
+    "Sections 1 and 2 are already saved. Changes in section 3 will not be saved until you press Continue.",
+  );
+});
+
 test("replaces file fields with uploaded document metadata for server actions", () => {
   const { setUploadedDocumentFields } = loadAdopterDocuments();
   const formData = new FormData();

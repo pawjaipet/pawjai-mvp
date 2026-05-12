@@ -8,6 +8,7 @@ import {
   type DocumentSubmissionState,
 } from "@/app/documents/actions";
 import {
+  getDocumentExitSaveSummary,
   MAX_HOME_PHOTOS,
   syncVerificationFileFields,
 } from "@/utils/adopter-documents";
@@ -284,6 +285,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
     submitVerificationDocuments,
     initialDocumentSubmissionState,
   );
+  const [showExitWarning, setShowExitWarning] = useState(false);
   const [isSubmittingFiles, startSubmitTransition] = useTransition();
   const [clientSubmitError, setClientSubmitError] = useState<string | null>(null);
   const [a, setA] = useState({
@@ -341,6 +343,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
     section === "C" ? c.homeType !== "" && c.ownRent !== "" :
     section === "D" ? d.agreement :
     false;
+  const exitSaveSummary = getDocumentExitSaveSummary(section);
 
   function submitCurrentForm(saveMode: "draft" | "submit") {
     if (!formRef.current) {
@@ -387,15 +390,55 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
           <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
         </Link>
         {section !== "done" && (
-          <Link
-            href="/profile"
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => setShowExitWarning(true)}
             className="text-[12px] font-bold rounded-full px-[14px] py-[8px]"
-            style={{ background: "#cd8188", color: "white", fontFamily: M }}
+            style={{ background: "#cd8188", color: "white", fontFamily: M, opacity: isSubmitting ? 0.5 : 1 }}
           >
             Save & Exit
-          </Link>
+          </button>
         )}
       </div>
+
+      {showExitWarning && section !== "done" && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 px-[18px] pb-[22px] sm:items-center sm:pb-0">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="document-exit-title"
+            className="w-full max-w-[362px] rounded-[20px] bg-white px-[20px] py-[22px] shadow-[0_20px_60px_rgba(0,0,0,0.24)]"
+          >
+            <p id="document-exit-title" className="text-[20px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
+              Leave documents?
+            </p>
+            <p className="mt-[10px] text-[14px] leading-[1.55] text-[#65584f]/70" style={{ fontFamily: M }}>
+              {exitSaveSummary}
+            </p>
+            <p className="mt-[8px] text-[13px] leading-[1.5] text-[#65584f]/55" style={{ fontFamily: M }}>
+              Your completed sections stay saved so you only need to finish this process once.
+            </p>
+            <div className="mt-[20px] flex gap-[10px]">
+              <button
+                type="button"
+                onClick={() => setShowExitWarning(false)}
+                className="h-[48px] flex-1 rounded-[14px] text-[14px] font-bold"
+                style={{ background: "rgba(101,88,79,0.1)", color: "#65584f", fontFamily: M }}
+              >
+                Keep editing
+              </button>
+              <Link
+                href="/profile"
+                className="flex h-[48px] flex-1 items-center justify-center rounded-[14px] text-[14px] font-bold text-white"
+                style={{ background: "#cd8188", fontFamily: M }}
+              >
+                Exit
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {section !== "done" && (
         <div className="px-[20px] pb-[8px]">
