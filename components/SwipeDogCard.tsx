@@ -159,17 +159,17 @@ export default function SwipeDogCard({
         ))}
       </div>
 
-      {/* Dog name + breed overlay */}
+      {/* Dog name + breed overlay — wraps when long */}
       <div className="absolute top-4 left-4 right-20 pointer-events-none z-10">
         <p
-          className="font-black text-[48px] leading-[0.95] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)] whitespace-pre"
+          className="font-black text-[36px] leading-[1.0] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] break-words"
           style={{ fontFamily: "Montserrat, sans-serif" }}
         >
           {dog.name}
         </p>
         {dog.breed && (
           <p
-            className="font-black text-[24px] leading-[0.95] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)] whitespace-pre mt-1"
+            className="font-black text-[18px] leading-[1.1] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] break-words mt-[6px]"
             style={{ fontFamily: "Montserrat, sans-serif" }}
           >
             {dog.breed}
