@@ -301,8 +301,8 @@ export default async function DogProfilePage({
                   Verify to book →
                 </Link>
                 <p
-                  className="text-[12px] text-[#65584f]/60 text-center"
-                  style={{ fontFamily: M }}
+                  className="text-[13px] text-center font-bold"
+                  style={{ fontFamily: M, color: "#cd8188" }}
                 >
                   Complete one-time verification, then book any visit instantly.
                 </p>

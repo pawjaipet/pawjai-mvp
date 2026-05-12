@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { ensureAdopterForUser } from "@/utils/adopter";
+import { collectHomePhotoFiles } from "@/utils/adopter-documents";
 import type { Database, Json } from "@/types/database";
 
 export type DocumentSubmissionState = {
@@ -139,7 +140,14 @@ export async function submitVerificationDocuments(
     .eq("adopter_id", adopter.id);
 
   const idFile = formData.get("idFile");
-  const homePhotos = formData.get("homePhotos");
+  const homePhotoResult = collectHomePhotoFiles(formData);
+  if (homePhotoResult.error) {
+    return {
+      message: homePhotoResult.error,
+      status: "error",
+    };
+  }
+  const homePhotoFiles = homePhotoResult.files;
   const hasExistingId = (existingDocuments ?? []).some((doc) => doc.document_type === "id_copy");
   const hasExistingHome = (existingDocuments ?? []).some((doc) => doc.document_type === "house_image");
 
@@ -150,7 +158,7 @@ export async function submitVerificationDocuments(
     };
   }
 
-  if (!(homePhotos instanceof File && homePhotos.size > 0) && !hasExistingHome) {
+  if (homePhotoFiles.length === 0 && !hasExistingHome) {
     return {
       message: "Please upload at least one home environment photo or PDF.",
       status: "error",
@@ -210,7 +218,7 @@ export async function submitVerificationDocuments(
     behavior_response: parseString(formData.get("behaviorResponse")),
     bonding_plan: bondingPlan as Json,
     completed_at: new Date().toISOString(),
-    current_pets: parseString(formData.get("currentPets")),
+    current_pets: null,
     daily_time_available: parseString(formData.get("timeAvailable")),
     dog_experience: parseString(formData.get("petExperience")),
     emergency_plan: parseString(formData.get("emergency")),
@@ -262,21 +270,32 @@ export async function submitVerificationDocuments(
       });
     }
 
-    if (homePhotos instanceof File && homePhotos.size > 0) {
-      const uploaded = await uploadDocumentFile({
-        adopterId: adopter.id,
-        documentType: "house_image",
-        file: homePhotos,
-        userId: user.id,
-      });
-      await admin.from("adopter_documents").delete().eq("adopter_id", adopter.id).eq("document_type", "house_image");
-      documentRows.push({
-        adopter_id: adopter.id,
-        document_type: "house_image",
-        mime_type: uploaded.mimeType,
-        original_file_name: uploaded.originalFileName,
-        storage_path: uploaded.storagePath,
-      });
+    if (homePhotoFiles.length > 0) {
+      const uploadedHomePhotos: Awaited<ReturnType<typeof uploadDocumentFile>>[] = [];
+      for (const file of homePhotoFiles) {
+        const uploaded = await uploadDocumentFile({
+          adopterId: adopter.id,
+          documentType: "house_image",
+          file,
+          userId: user.id,
+        });
+        uploadedHomePhotos.push(uploaded);
+      }
+      // Replace prior set with new set
+      await admin
+        .from("adopter_documents")
+        .delete()
+        .eq("adopter_id", adopter.id)
+        .eq("document_type", "house_image");
+      for (const uploaded of uploadedHomePhotos) {
+        documentRows.push({
+          adopter_id: adopter.id,
+          document_type: "house_image",
+          mime_type: uploaded.mimeType,
+          original_file_name: uploaded.originalFileName,
+          storage_path: uploaded.storagePath,
+        });
+      }
     }
   } catch (error) {
     return {

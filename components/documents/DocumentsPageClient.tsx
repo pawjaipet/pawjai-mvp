@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import {
   initialDocumentSubmissionState,
   submitVerificationDocuments,
   type DocumentSubmissionState,
 } from "@/app/documents/actions";
+import { MAX_HOME_PHOTOS, syncVerificationFileFields } from "@/utils/adopter-documents";
 
 const M = "Montserrat, sans-serif";
 
@@ -21,7 +22,7 @@ const SECTION_META = {
 } as const;
 
 type DocumentsInitialData = {
-  existingHomeFileName: string | null;
+  existingHomeFileNames: string[];
   existingIdFileName: string | null;
   form: {
     address: string;
@@ -29,7 +30,6 @@ type DocumentsInitialData = {
     allergies: string;
     behaviorResponse: string;
     bondingPlan: string[];
-    currentPets: string;
     dateOfBirth: string;
     emergency: string;
     financialReady: string;
@@ -150,6 +150,113 @@ function UploadBox({
   );
 }
 
+function MultiUploadBox({
+  existingLabels,
+  files,
+  label,
+  max,
+  name,
+  onChange,
+}: {
+  existingLabels: string[];
+  files: File[];
+  label: string;
+  max: number;
+  name: string;
+  onChange: (files: File[]) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const totalSelected = files.length;
+  const remaining = Math.max(0, max - totalSelected);
+
+  function removeFile(idx: number) {
+    onChange(files.filter((_, i) => i !== idx));
+  }
+
+  return (
+    <div className="mb-[28px]">
+      <QuestionLabel>{label}</QuestionLabel>
+      <p className="mb-[10px] text-[13px] text-[#65584f]/55" style={{ fontFamily: M }}>
+        Up to {max} files · JPG, PNG, WEBP, or PDF
+      </p>
+      <div className="space-y-[10px]">
+        {files.map((file, idx) => (
+          <div
+            key={`${file.name}-${idx}`}
+            className="flex items-center justify-between gap-[12px] rounded-[14px] bg-white px-[18px] py-[14px]"
+            style={{ border: "2px solid #cd8188" }}
+          >
+            <div className="flex items-center gap-[12px] min-w-0">
+              <div className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-full" style={{ background: "#cd8188" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+              <p className="truncate text-[13px] font-semibold text-[#cd8188]" style={{ fontFamily: M }}>{file.name}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => removeFile(idx)}
+              className="flex-shrink-0 rounded-full px-[10px] py-[4px] text-[11px] font-semibold"
+              style={{ background: "rgba(101,88,79,0.1)", color: "#65584f", fontFamily: M }}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+
+        {files.length === 0 && existingLabels.length > 0 && (
+          <div className="rounded-[14px] bg-white px-[18px] py-[12px]" style={{ border: "2px solid rgba(205,129,136,0.4)" }}>
+            <p className="text-[11px] uppercase tracking-widest text-[#65584f]/45 mb-[4px]" style={{ fontFamily: M }}>
+              Previously uploaded
+            </p>
+            {existingLabels.map((name) => (
+              <p key={name} className="truncate text-[13px] text-[#65584f]" style={{ fontFamily: M }}>{name}</p>
+            ))}
+            <p className="mt-[6px] text-[11px] text-[#65584f]/45" style={{ fontFamily: M }}>Adding new files will replace these on submit.</p>
+          </div>
+        )}
+
+        {remaining > 0 && (
+          <button
+            type="button"
+            onClick={() => ref.current?.click()}
+            className="flex w-full flex-col items-center justify-center gap-[8px] rounded-[14px] bg-white py-[24px] transition-all active:scale-[0.98]"
+            style={{ border: "2px dashed rgba(101,88,79,0.2)" }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#65584f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <p className="text-[13px] font-semibold text-[#65584f]/50" style={{ fontFamily: M }}>
+              {files.length === 0
+                ? existingLabels.length > 0
+                  ? "Upload replacement files"
+                  : "Click to upload files"
+                : `Add more (${remaining} left)`}
+            </p>
+          </button>
+        )}
+      </div>
+      <input
+        ref={ref}
+        name={name}
+        type="file"
+        accept="image/*,.pdf"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const picked = Array.from(e.target.files ?? []);
+          if (picked.length === 0) return;
+          const next = [...files, ...picked].slice(0, max);
+          onChange(next);
+          // Allow re-picking same file later
+          if (ref.current) ref.current.value = "";
+        }}
+      />
+    </div>
+  );
+}
+
 function SectionWrapper({ active, children }: { active: boolean; children: React.ReactNode }) {
   return <div className={active ? "block" : "hidden"}>{children}</div>;
 }
@@ -173,6 +280,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
     submitVerificationDocuments,
     initialDocumentSubmissionState,
   );
+  const [isSubmittingFiles, startSubmitTransition] = useTransition();
   const [a, setA] = useState({
     address: initialData.form.address,
     dateOfBirth: initialData.form.dateOfBirth,
@@ -183,7 +291,6 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
     phone: initialData.form.phone,
   });
   const [b, setB] = useState({
-    currentPets: initialData.form.currentPets,
     hadPetsBefore: initialData.form.hadPetsBefore,
     petExperience: initialData.form.petExperience,
     reason: initialData.form.reason,
@@ -191,7 +298,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
   });
   const [c, setC] = useState({
     allergies: initialData.form.allergies,
-    homePhotos: null as File | null,
+    homePhotos: [] as File[],
     homeType: initialData.form.homeType,
     householdMembers: initialData.form.householdMembers,
     landlordPermission: initialData.form.landlordPermission,
@@ -222,6 +329,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
   const PREV: Record<Section, Section | null> = { A: null, B: "A", C: "B", D: "C", done: "D" };
   const NEXT: Record<Exclude<Section, "done">, Section> = { A: "B", B: "C", C: "D", D: "done" };
 
+  const isSubmitting = isPending || isSubmittingFiles;
   const canContinue =
     section === "A" ? a.fullName.trim() !== "" :
     section === "B" ? b.hadPetsBefore !== "" :
@@ -231,7 +339,17 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
 
   return (
     <form
-      action={formAction}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        syncVerificationFileFields(formData, {
+          homePhotos: c.homePhotos,
+          idFile: a.idFile,
+        });
+        startSubmitTransition(() => {
+          formAction(formData);
+        });
+      }}
       className="relative overflow-y-auto overflow-x-hidden"
       style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", minHeight: "100vh", paddingBottom: "100px", background: "#F5F1E8", scrollbarWidth: "none", fontFamily: M }}
     >
@@ -350,9 +468,6 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
               ))}
             </div>
           </Block>
-          <Block question="Do you currently have any pets?">
-            <input name="currentPets" type="text" className={inputCls} placeholder="Type here" value={b.currentPets} onChange={(e) => setB({ ...b, currentPets: e.target.value })} style={{ fontFamily: M }} />
-          </Block>
           <Block question="Describe your experience with dogs">
             <textarea name="petExperience" rows={4} className={`${inputCls} resize-none`} placeholder="Type here" value={b.petExperience} onChange={(e) => setB({ ...b, petExperience: e.target.value })} style={{ fontFamily: M }} />
           </Block>
@@ -399,7 +514,14 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
           <Block question="Are there any allergies in the household?">
             <textarea name="allergies" rows={3} className={`${inputCls} resize-none`} placeholder="Type here" value={c.allergies} onChange={(e) => setC({ ...c, allergies: e.target.value })} style={{ fontFamily: M }} />
           </Block>
-          <UploadBox existingLabel={initialData.existingHomeFileName} file={c.homePhotos} label="Upload clear photos of your home environment / pet designated areas" name="homePhotos" onChange={(f) => setC({ ...c, homePhotos: f })} />
+          <MultiUploadBox
+            existingLabels={initialData.existingHomeFileNames}
+            files={c.homePhotos}
+            label="Upload clear photos of your home environment / pet designated areas"
+            max={MAX_HOME_PHOTOS}
+            name="homePhotos"
+            onChange={(files) => setC({ ...c, homePhotos: files })}
+          />
           <Block question="Are there other pets in your home?">
             <div className="space-y-[10px]">
               {["None", "Dog(s)", "Cat(s)", "Other animals"].map((opt) => {
@@ -567,7 +689,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
               const prev = PREV[section];
               if (prev) setSection(prev);
             }}
-            disabled={!PREV[section] || isPending}
+            disabled={!PREV[section] || isSubmitting}
             className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] transition-all active:scale-95 disabled:opacity-25"
             style={{ border: "2px solid #65584f", background: "transparent", pointerEvents: "auto" }}
           >
@@ -578,7 +700,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
           {section === "D" ? (
             <button
               type="submit"
-              disabled={!canContinue || isPending}
+              disabled={!canContinue || isSubmitting}
               className="flex h-[52px] flex-1 items-center justify-center gap-[8px] rounded-[14px] text-[15px] font-bold transition-all active:scale-[0.98] disabled:opacity-40"
               style={{
                 background: canContinue ? "#65584f" : "rgba(101,88,79,0.18)",
@@ -587,12 +709,12 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
                 fontFamily: M,
               }}
             >
-              {isPending ? "Submitting…" : "Submit"}
+              {isSubmitting ? "Submitting..." : "Submit"}
             </button>
           ) : (
             <button
               type="button"
-              disabled={!canContinue || isPending}
+              disabled={!canContinue || isSubmitting}
               onClick={() => setSection(NEXT[section])}
               className="flex h-[52px] flex-1 items-center justify-center gap-[8px] rounded-[14px] text-[15px] font-bold transition-all active:scale-[0.98] disabled:opacity-40"
               style={{

@@ -45,7 +45,10 @@ export default async function DocumentsPage() {
   ]);
 
   const idDocument = (documents ?? []).find((doc) => doc.document_type === "id_copy");
-  const homeDocument = (documents ?? []).find((doc) => doc.document_type === "house_image");
+  const homeDocuments = (documents ?? []).filter((doc) => doc.document_type === "house_image");
+  const existingHomeFileNames = homeDocuments
+    .map((doc) => doc.original_file_name)
+    .filter((name): name is string => Boolean(name));
 
   const fullName =
     accountProfile?.full_name
@@ -55,7 +58,7 @@ export default async function DocumentsPage() {
   return (
     <DocumentsPageClient
       initialData={{
-        existingHomeFileName: homeDocument?.original_file_name ?? null,
+        existingHomeFileNames,
         existingIdFileName: idDocument?.original_file_name ?? null,
         form: {
           address: adopter.address_line ?? "",
@@ -63,7 +66,6 @@ export default async function DocumentsPage() {
           allergies: profile?.household_allergies ?? "",
           behaviorResponse: profile?.behavior_response ?? "",
           bondingPlan: Array.isArray(profile?.bonding_plan) ? profile!.bonding_plan.map((item) => String(item)) : [],
-          currentPets: profile?.current_pets ?? "",
           dateOfBirth: adopter.date_of_birth ?? "",
           emergency: profile?.emergency_plan ?? "",
           financialReady: profile?.financial_preparedness ?? "",
