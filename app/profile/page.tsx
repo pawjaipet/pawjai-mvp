@@ -109,19 +109,16 @@ export default async function ProfilePage() {
         </Link>
       </div>
 
-      {/* ── Wishlist section ── */}
-      <div className="mt-[28px] px-[16px]">
-        <div className="flex items-center justify-between mb-[16px]">
-          <h2
-            className="text-[18px] font-bold"
-            style={{ color: "#65584f", fontFamily: M }}
-          >
+      {/* ── Wishlist section — horizontal scroll, Figma style ── */}
+      <div className="mt-[28px]">
+        <div className="flex items-center justify-between mb-[14px] px-[16px]">
+          <h2 className="text-[22px] font-bold" style={{ color: "#65584f", fontFamily: M }}>
             Wishlist
           </h2>
           {savedDogs.length > 0 && (
             <span
-              className="rounded-full px-[12px] py-[4px] text-[12px] font-semibold"
-              style={{ background: "rgba(205,129,136,0.12)", color: "#cd8188", fontFamily: M }}
+              className="rounded-full px-[14px] py-[5px] text-[13px] font-semibold"
+              style={{ background: "rgba(214,200,173,0.45)", color: "#65584f", fontFamily: M }}
             >
               {savedDogs.length} {savedDogs.length === 1 ? "dog" : "dogs"}
             </span>
@@ -130,15 +127,21 @@ export default async function ProfilePage() {
 
         {savedDogs.length > 0 ? (
           <div
-            className="grid gap-[8px]"
-            style={{ gridTemplateColumns: "repeat(3, 1fr)" }}
+            className="flex gap-[12px] overflow-x-auto px-[16px] pb-[6px]"
+            style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
           >
             {savedDogs.map((dog) => (
               <Link
                 key={dog.id}
                 href={`/dogs/${dog.id}`}
-                className="block rounded-[14px] overflow-hidden active:scale-[0.96] transition-transform"
-                style={{ aspectRatio: "1", background: "#d6c8ad", position: "relative" }}
+                className="block rounded-[18px] overflow-hidden active:scale-[0.97] transition-transform flex-shrink-0"
+                style={{
+                  width: 175,
+                  height: 175,
+                  background: "white",
+                  boxShadow: "0 4px 14px rgba(101,88,79,0.10)",
+                  position: "relative",
+                }}
               >
                 {dog.cover_photo ? (
                   <img
@@ -147,13 +150,26 @@ export default async function ProfilePage() {
                     className="absolute inset-0 w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="flex items-center justify-center w-full h-full text-3xl">🐾</div>
+                  <div className="absolute inset-0 flex items-center justify-center text-3xl bg-[#d6c8ad]">🐾</div>
                 )}
+                {/* Heart badge top-right */}
                 <div
-                  className="absolute bottom-0 left-0 right-0 px-[8px] py-[6px]"
-                  style={{ background: "linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 100%)" }}
+                  className="absolute top-[10px] right-[10px] w-[34px] h-[34px] rounded-full flex items-center justify-center"
+                  style={{ background: "white", boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }}
                 >
-                  <p className="text-white text-[11px] font-semibold truncate" style={{ fontFamily: M }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#cd8188">
+                    <path d="M12 21s-7-4.35-9.5-9.5C.5 7 4 3 8 3c2 0 3.5 1 4 2 .5-1 2-2 4-2 4 0 7.5 4 5.5 8.5C19 16.65 12 21 12 21z" />
+                  </svg>
+                </div>
+                {/* Name strip at bottom — white card style */}
+                <div
+                  className="absolute bottom-0 left-0 right-0 px-[12px] py-[10px]"
+                  style={{ background: "white" }}
+                >
+                  <p
+                    className="text-[14px] font-bold truncate"
+                    style={{ color: "#65584f", fontFamily: M }}
+                  >
                     {dog.name}
                   </p>
                 </div>
@@ -162,7 +178,7 @@ export default async function ProfilePage() {
           </div>
         ) : (
           <div
-            className="rounded-[20px] flex flex-col items-center justify-center py-[48px] px-[24px] text-center"
+            className="mx-[16px] rounded-[20px] flex flex-col items-center justify-center py-[48px] px-[24px] text-center"
             style={{ background: "white", boxShadow: "0 2px 12px rgba(101,88,79,0.07)" }}
           >
             <p className="text-[40px] mb-[12px]">🐾</p>
@@ -181,6 +197,33 @@ export default async function ProfilePage() {
             </Link>
           </div>
         )}
+      </div>
+
+      {/* ── My Adopted Pets tile ── */}
+      <div className="mt-[28px] px-[16px]">
+        <Link
+          href="/adopted"
+          className="block rounded-[18px] px-[18px] py-[18px] flex items-center gap-[14px] active:scale-[0.98] transition-transform"
+          style={{ background: "white", boxShadow: "0 2px 12px rgba(101,88,79,0.08)" }}
+        >
+          <div
+            className="w-[48px] h-[48px] rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(205,129,136,0.14)" }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#cd8188">
+              <path d="M12 21s-7-4.35-9.5-9.5C.5 7 4 3 8 3c2 0 3.5 1 4 2 .5-1 2-2 4-2 4 0 7.5 4 5.5 8.5C19 16.65 12 21 12 21z" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[16px] font-bold" style={{ color: "#65584f", fontFamily: M }}>
+              My Adopted Pets
+            </p>
+            <p className="text-[13px] mt-[2px]" style={{ color: "rgba(101,88,79,0.6)", fontFamily: M }}>
+              Chat with your adopted companions
+            </p>
+          </div>
+          <span className="text-[#65584f]/35 text-[20px]">›</span>
+        </Link>
       </div>
 
       {/* ── Settings + Sign out ── */}

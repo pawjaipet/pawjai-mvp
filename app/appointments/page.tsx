@@ -63,58 +63,59 @@ export default async function AppointmentsPage({
             const month = date.toLocaleString("en-US", { month: "long" });
             const year  = date.getFullYear() + 543;
 
+            const timeLabel = appt.appointment_time
+              ? new Date(`1970-01-01T${appt.appointment_time}`).toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })
+              : "";
+
             return (
-              <div key={appt.id} className="border border-[#65584f] rounded-[12px] overflow-hidden">
-                {/* Date sidebar + details */}
+              <Link
+                key={appt.id}
+                href={`/appointments/${appt.id}`}
+                className="block rounded-[14px] overflow-hidden active:scale-[0.99] transition-transform"
+                style={{ boxShadow: "0 2px 10px rgba(101,88,79,0.10)" }}
+              >
                 <div className="flex">
-                  {/* Dark date sidebar */}
-                  <div className="w-[100px] shrink-0 flex flex-col items-center justify-center py-[16px]" style={{ background: "#65584f" }}>
-                    <p className="font-bold text-[48px] text-white leading-[1]" style={{ fontFamily: M }}>{day}</p>
-                    <p className="text-[14px] text-white/90 mt-[4px]" style={{ fontFamily: M }}>{month}</p>
-                    <p className="text-[14px] text-white/90" style={{ fontFamily: M }}>{year} BE</p>
+                  <div className="w-[112px] shrink-0 flex flex-col items-center justify-center py-[20px]" style={{ background: "#65584f" }}>
+                    <p className="font-bold text-[44px] text-white leading-[1]" style={{ fontFamily: M }}>{day}</p>
+                    <p className="text-[14px] text-white/85 mt-[4px]" style={{ fontFamily: M }}>{month}</p>
+                    <p className="text-[13px] text-white/70" style={{ fontFamily: M }}>{year} BE</p>
                   </div>
 
-                  {/* Details */}
-                  <div className="flex-1 p-[16px]">
-                    <p className="text-[13px] text-[#65584f]/80 mb-[4px]" style={{ fontFamily: M }}>
+                  <div className="flex-1 px-[16px] py-[16px] bg-white">
+                    {timeLabel && (
+                      <p className="font-bold text-[20px] text-[#65584f] leading-[1.1]" style={{ fontFamily: M }}>
+                        {timeLabel}
+                      </p>
+                    )}
+                    <p className="mt-[4px] text-[14px] font-semibold text-[#65584f]/85" style={{ fontFamily: M }}>
                       {shelter?.name ?? "Shelter"}
                     </p>
                     {(shelter?.district || shelter?.province) && (
-                      <p className="text-[11px] text-[#65584f]/60 mb-[8px]" style={{ fontFamily: M }}>
+                      <p className="mt-[6px] text-[12px] text-[#65584f]/55 leading-[1.4]" style={{ fontFamily: M }}>
                         {[shelter.district, shelter.province].filter(Boolean).join(", ")}
-                      </p>
-                    )}
-                    {appt.appointment_time && (
-                      <p className="text-[12px] font-semibold text-[#65584f] mb-[4px]" style={{ fontFamily: M }}>
-                        {appt.appointment_time}
-                      </p>
-                    )}
-                    {shelter?.phone_number && (
-                      <p className="text-[11px] text-[#cd8188] font-semibold" style={{ fontFamily: M }}>
-                        📞 {shelter.phone_number}
-                      </p>
-                    )}
-                    {appt.visitor_note && (
-                      <p className="text-[11px] text-[#65584f]/60 mt-[6px] italic" style={{ fontFamily: M }}>
-                        "{appt.visitor_note}"
                       </p>
                     )}
                   </div>
                 </div>
 
-                {/* Dog info / status banner */}
-                <div className="px-[16px] py-[10px] flex items-center justify-between" style={{ background: "#cd8188" }}>
-                  <p className="text-[13px] font-semibold text-white" style={{ fontFamily: M }}>
-                    {dog ? `${dog.name}${dog.breed ? ` — ${dog.breed}` : ""}` : "Shelter visit"}
+                <div className="px-[18px] py-[12px] flex items-center justify-between" style={{ background: "#cd8188" }}>
+                  <p className="text-[14px] font-bold text-white truncate" style={{ fontFamily: M }}>
+                    {dog ? `${dog.name}${dog.breed ? ` - ${dog.breed}` : ""}` : "Shelter visit"}
                   </p>
                   <span
-                    className="rounded-[14px] px-[16px] py-[6px] text-[12px] font-semibold capitalize bg-white text-[#cd8188]"
-                    style={{ fontFamily: M }}
+                    className="ml-[12px] rounded-full px-[14px] py-[6px] text-[12px] font-bold flex items-center gap-[6px] flex-shrink-0"
+                    style={{ background: "white", color: "#cd8188", fontFamily: M }}
                   >
-                    {appt.status.replace("_", " ")}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cd8188" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    Message
                   </span>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -143,10 +144,13 @@ function PageShell({
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
-      {/* White sticky header — matches Figma */}
-      <div className="sticky top-0 z-10 px-[16px] py-[20px] border-b border-[#d6c8ad]" style={{ background: "white" }}>
-        <h1 className="font-bold text-[32px] text-[#65584f] leading-[1.2]" style={{ fontFamily: M }}>Appointments</h1>
-        <p className="text-[14px] text-[#65584f]/80 mt-[4px]" style={{ fontFamily: M }}>Your upcoming shelter visits</p>
+      {/* Beige header with PAWJAI logo — matches Figma */}
+      <div className="px-[16px] pt-[14px] pb-[24px]" style={{ background: "#d6c8ad" }}>
+        <Link href="/" className="block h-[44px] w-[110px] mb-[18px]">
+          <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
+        </Link>
+        <h1 className="font-bold text-[34px] text-[#65584f] leading-[1.1]" style={{ fontFamily: M }}>Appointments</h1>
+        <p className="text-[14px] text-[#65584f]/75 mt-[4px]" style={{ fontFamily: M }}>Your upcoming shelter visits</p>
       </div>
 
       {/* UPCOMING / PAST tabs */}
@@ -159,29 +163,29 @@ function PageShell({
         </button>
       </div>
 
-      {/* Your Documents button */}
-      <div className="px-[16px] py-[16px]">
-        <a href="/documents" className="w-full h-[56px] rounded-[12px] flex items-center justify-between px-[16px] shadow-md" style={{ background: "#cd8188" }}>
-          <div className="flex items-center gap-[12px]">
+      {/* Your Documents pink pill — matches Figma */}
+      <div className="px-[16px] py-[18px]">
+        <Link href="/documents" className="w-full h-[58px] rounded-[14px] flex items-center justify-between px-[18px]" style={{ background: "#cd8188", boxShadow: "0 4px 14px rgba(205,129,136,0.30)" }}>
+          <div className="flex items-center gap-[14px]">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
               <line x1="16" y1="13" x2="8" y2="13" />
               <line x1="16" y1="17" x2="8" y2="17" />
             </svg>
-            <div>
-              <p className="text-[16px] font-semibold text-white" style={{ fontFamily: M }}>
-                {canBook ? "Your Verification" : "Complete Verification"}
-              </p>
-              <p className="text-[11px] text-white/80" style={{ fontFamily: M }}>
-                {canBook ? `Status: ${verificationStatus.replace("_", " ")}` : "Finish once to unlock bookings"}
-              </p>
-            </div>
+            <p className="text-[18px] font-bold text-white" style={{ fontFamily: M }}>
+              Your Documents
+            </p>
           </div>
-          <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
-            <path d="M1 1L7 7L1 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <svg width="9" height="15" viewBox="0 0 8 14" fill="none">
+            <path d="M1 1L7 7L1 13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-        </a>
+        </Link>
+        {!canBook && (
+          <p className="mt-[8px] text-[12px] font-semibold text-center" style={{ color: "#cd8188", fontFamily: M }}>
+            Complete verification to unlock bookings · status: {verificationStatus.replace("_", " ")}
+          </p>
+        )}
       </div>
 
       {message && (
