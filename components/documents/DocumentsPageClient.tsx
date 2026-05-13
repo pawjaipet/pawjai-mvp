@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import {
   initialDocumentSubmissionState,
@@ -279,6 +280,10 @@ function statusCopy(status: string) {
 }
 
 export default function DocumentsPageClient({ initialData }: { initialData: DocumentsInitialData }) {
+  const searchParams = useSearchParams();
+  // Sanitize next param to allow only same-origin paths
+  const rawNext = searchParams.get("next") ?? "";
+  const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "";
   const formRef = useRef<HTMLFormElement>(null);
   const [section, setSection] = useState<Section>("A");
   const [state, formAction, isPending] = useActionState<DocumentSubmissionState, FormData>(
@@ -726,13 +731,13 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
               {state.message ?? "Your verification details were saved successfully. You can update them later whenever something changes."}
             </p>
             <Link
-              href="/appointments"
+              href={nextPath || "/appointments"}
               className="block w-full rounded-full py-[15px] text-center text-[16px] font-bold text-white transition-all active:scale-[0.98]"
               style={{ background: "#cd8188", fontFamily: M }}
             >
-              View Appointments
+              {nextPath.startsWith("/schedule") ? "Continue booking" : "View Appointments"}
             </Link>
-            <Link href="/dogs" className="mt-[14px] text-[14px] font-semibold text-[#65584f]/50" style={{ fontFamily: M }}>
+            <Link href="/" className="mt-[14px] text-[14px] font-semibold text-[#65584f]/50" style={{ fontFamily: M }}>
               Back to browsing
             </Link>
           </div>

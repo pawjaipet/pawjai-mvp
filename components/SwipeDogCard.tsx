@@ -237,9 +237,9 @@ export default function SwipeDogCard({
           <Share2 size={24} stroke="white" strokeWidth={2} />
         </button>
         <Link
-          href={`/dogs/${dog.id}`}
+          href={`/schedule/${dog.id}`}
           className="bg-[#cd8188] w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-          aria-label="View profile"
+          aria-label="Book appointment"
         >
           <CalendarDays size={24} stroke="white" strokeWidth={2} />
         </Link>

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Calendar, ShieldCheck, Heart } from "lucide-react";
+import { Calendar, ShieldCheck, Bookmark } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -83,6 +83,27 @@ export default async function DogProfilePage({
     .filter((t) => t.trait_type === "personality")
     .map((t) => t.trait_value);
 
+  // Fallback tags derived from structured dog attributes so every profile
+  // shows pills, even when an admin hasn't filled out personality_tag yet.
+  function deriveFallbackTags(): string[] {
+    const tags: string[] = [];
+    if (dog.energy_level === "low") tags.push("Calm");
+    if (dog.energy_level === "medium") tags.push("Easy-going");
+    if (dog.energy_level === "high") tags.push("Energetic");
+    if (dog.house_trained) tags.push("House-trained");
+    if (dog.leash_trained) tags.push("Leash-trained");
+    if (dog.good_with_kids) tags.push("Good with kids");
+    if (dog.good_with_dogs) tags.push("Dog-friendly");
+    if (dog.good_with_cats) tags.push("Cat-friendly");
+    if (dog.human_friendly) tags.push("People-friendly");
+    if (dog.sterilized) tags.push("Sterilized");
+    // Always at least one tag so the row never collapses
+    if (tags.length === 0) tags.push("Looking for a home");
+    return tags.slice(0, 5);
+  }
+
+  const displayTags = personalityTraits.length > 0 ? personalityTraits : deriveFallbackTags();
+
   let canRequestAppointment = false;
   let saved = false;
 
@@ -138,20 +159,20 @@ export default async function DogProfilePage({
           <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
         </Link>
 
-        {/* Wishlist heart — floating top-right */}
+        {/* Wishlist save (bookmark) — floating top-right, matches swipe card */}
         {user && (
           <form action={toggleWishlist} className="absolute right-[14px] top-[14px] z-10">
             <input type="hidden" name="dogId" value={dog.id} />
             <input type="hidden" name="isSaved" value={String(saved)} />
             <button
               type="submit"
-              className="w-[44px] h-[44px] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-all"
-              style={{ background: saved ? "#cd8188" : "rgba(255,255,255,0.92)" }}
-              aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
+              className="w-[48px] h-[48px] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-all"
+              style={{ background: "#cd8188" }}
+              aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
             >
-              <Heart
-                size={20}
-                stroke={saved ? "white" : "#cd8188"}
+              <Bookmark
+                size={22}
+                stroke="white"
                 fill={saved ? "white" : "none"}
                 strokeWidth={2.2}
               />
@@ -204,20 +225,18 @@ export default async function DogProfilePage({
           </div>
         )}
 
-        {/* Personality pills */}
-        {personalityTraits.length > 0 && (
-          <div className="mt-[16px] flex flex-wrap gap-[8px]">
-            {personalityTraits.map((trait) => (
-              <span
-                key={trait}
-                className="rounded-full px-[18px] py-[8px] text-[13px] font-semibold text-white"
-                style={{ background: "#65584f", fontFamily: M }}
-              >
-                {trait}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* Personality pills — always shown (falls back to derived tags) */}
+        <div className="mt-[16px] flex flex-wrap gap-[8px]">
+          {displayTags.map((trait) => (
+            <span
+              key={trait}
+              className="rounded-full px-[18px] py-[8px] text-[13px] font-semibold text-white"
+              style={{ background: "#65584f", fontFamily: M }}
+            >
+              {trait}
+            </span>
+          ))}
+        </div>
 
         {/* Special needs callout — always show, says None if empty */}
         <div
