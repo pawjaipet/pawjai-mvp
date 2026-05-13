@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import {
   initialDocumentSubmissionState,
@@ -281,6 +281,7 @@ function statusCopy(status: string) {
 
 export default function DocumentsPageClient({ initialData }: { initialData: DocumentsInitialData }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   // Sanitize next param to allow only same-origin paths
   const rawNext = searchParams.get("next") ?? "";
   const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "";
@@ -374,6 +375,13 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
     setSection(nextSection);
   }
 
+  function saveAndExit() {
+    submitCurrentForm("draft");
+    setShowExitWarning(false);
+    // Allow the server action transition to enqueue before navigating
+    setTimeout(() => router.push("/profile"), 50);
+  }
+
   return (
     <form
       ref={formRef}
@@ -433,13 +441,15 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
               >
                 Keep editing
               </button>
-              <Link
-                href="/profile"
-                className="flex h-[48px] flex-1 items-center justify-center rounded-[14px] text-[14px] font-bold text-white"
+              <button
+                type="button"
+                onClick={saveAndExit}
+                disabled={isSubmitting}
+                className="flex h-[48px] flex-1 items-center justify-center rounded-[14px] text-[14px] font-bold text-white disabled:opacity-60"
                 style={{ background: "#cd8188", fontFamily: M }}
               >
-                Exit
-              </Link>
+                Save & Exit
+              </button>
             </div>
           </div>
         </div>
