@@ -96,6 +96,54 @@ function inputClass(error?: string) {
   }`;
 }
 
+function fileInputClass(error?: string, accent = "file:bg-[#d38a2c]") {
+  return `w-full rounded-2xl border px-4 py-3 text-sm text-[#4f4338] file:mr-4 file:rounded-full file:border-0 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white ${
+    error ? "border-[#d94b41] bg-[#fff4f2]" : "border-[#e7dbc8] bg-[#fffdfa]"
+  } ${accent}`;
+}
+
+const fieldErrorLabels: Record<string, string> = {
+  age_months: "Age in months",
+  name: "Dog name",
+  shelter_id: "Shelter",
+  video_file: "Optional cover video",
+  weight_kg: "Weight in kg",
+};
+
+function formatFieldErrorLabel(key: string) {
+  if (fieldErrorLabels[key]) return fieldErrorLabels[key];
+
+  const photoFileMatch = key.match(/^photo_file_(\d+)$/);
+  if (photoFileMatch) return `Uploaded photo ${Number(photoFileMatch[1]) + 1}`;
+
+  const photoUrlMatch = key.match(/^photo_url_(\d+)$/);
+  if (photoUrlMatch) return `Photo URL ${Number(photoUrlMatch[1]) + 1}`;
+
+  const traitMatch = key.match(/^trait_(\d+)$/);
+  if (traitMatch) return `Custom trait ${Number(traitMatch[1]) + 1}`;
+
+  return key.replaceAll("_", " ");
+}
+
+function ErrorSummary({ errors }: { errors?: Record<string, string> }) {
+  const entries = Object.entries(errors ?? {});
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="mb-5 rounded-2xl border border-[#f1c4c0] bg-[#fff5f4] px-5 py-4 text-sm text-[#9f2d24]">
+      <p className="font-semibold">Please fix these fields first:</p>
+      <ul className="mt-3 list-disc space-y-1 pl-5">
+        {entries.map(([key, error]) => (
+          <li key={key}>
+            <span className="font-medium">{formatFieldErrorLabel(key)}:</span> {error}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function ChoiceCards({
   name,
   options,
@@ -151,6 +199,7 @@ export default function DogListingForm({
     initialCreateDogListingState,
   );
   const [photoRows, setPhotoRows] = useState(defaultPhotoRows);
+  const defaultShelterId = shelters.length === 1 ? shelters[0].id : "";
 
   return (
     <form action={formAction} className="space-y-6">
@@ -206,13 +255,14 @@ export default function DogListingForm({
         title="Core Listing"
         description="These are the fields the team will touch most often when turning a rescue profile into a public listing."
       >
+        <ErrorSummary errors={state.fieldErrors} />
         <div className="grid gap-5 md:grid-cols-2">
           <Field label="Dog name" error={state.fieldErrors?.name}>
             <input name="name" className={inputClass(state.fieldErrors?.name)} placeholder="Mali" />
           </Field>
 
           <Field label="Shelter" error={state.fieldErrors?.shelter_id}>
-            <select name="shelter_id" className={inputClass(state.fieldErrors?.shelter_id)} defaultValue="">
+            <select name="shelter_id" className={inputClass(state.fieldErrors?.shelter_id)} defaultValue={defaultShelterId}>
               <option value="" disabled>
                 Select a shelter
               </option>
@@ -439,6 +489,7 @@ export default function DogListingForm({
 
           <Field
             label="Upload image files"
+            error={Object.entries(state.fieldErrors ?? {}).find(([key]) => key.startsWith("photo_file_"))?.[1]}
             hint="Use this when the photos are on your computer. Photos are uploaded to public dog photo storage."
           >
             <input
@@ -446,7 +497,10 @@ export default function DogListingForm({
               type="file"
               accept="image/*"
               multiple
-              className="w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] file:mr-4 file:rounded-full file:border-0 file:bg-[#d38a2c] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+              className={fileInputClass(
+                Object.keys(state.fieldErrors ?? {}).some((key) => key.startsWith("photo_file_")) ? "error" : undefined,
+                "file:bg-[#d38a2c]",
+              )}
             />
           </Field>
 
@@ -459,7 +513,7 @@ export default function DogListingForm({
               name="video_file"
               type="file"
               accept="video/*"
-              className="w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] file:mr-4 file:rounded-full file:border-0 file:bg-[#cd8188] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+              className={fileInputClass(state.fieldErrors?.video_file, "file:bg-[#cd8188]")}
             />
           </Field>
 

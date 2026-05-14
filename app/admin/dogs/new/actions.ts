@@ -670,7 +670,7 @@ export async function createDogListingAction(
   if (Object.keys(fieldErrors).length > 0) {
     return {
       fieldErrors,
-      message: "Please fix the highlighted fields and try again.",
+      message: "Please fix the listed fields and try again.",
       status: "error",
     };
   }
