@@ -85,24 +85,24 @@ export default async function DogProfilePage({
 
   // Fallback tags derived from structured dog attributes so every profile
   // shows pills, even when an admin hasn't filled out personality_tag yet.
-  function deriveFallbackTags(): string[] {
+  function deriveFallbackTags(currentDog: NonNullable<typeof dog>): string[] {
     const tags: string[] = [];
-    if (dog.energy_level === "low") tags.push("Calm");
-    if (dog.energy_level === "medium") tags.push("Easy-going");
-    if (dog.energy_level === "high") tags.push("Energetic");
-    if (dog.house_trained) tags.push("House-trained");
-    if (dog.leash_trained) tags.push("Leash-trained");
-    if (dog.good_with_kids) tags.push("Good with kids");
-    if (dog.good_with_dogs) tags.push("Dog-friendly");
-    if (dog.good_with_cats) tags.push("Cat-friendly");
-    if (dog.human_friendly) tags.push("People-friendly");
-    if (dog.sterilized) tags.push("Sterilized");
+    if (currentDog.energy_level === "low") tags.push("Calm");
+    if (currentDog.energy_level === "medium") tags.push("Easy-going");
+    if (currentDog.energy_level === "high") tags.push("Energetic");
+    if (currentDog.house_trained) tags.push("House-trained");
+    if (currentDog.leash_trained) tags.push("Leash-trained");
+    if (currentDog.good_with_kids) tags.push("Good with kids");
+    if (currentDog.good_with_dogs) tags.push("Dog-friendly");
+    if (currentDog.good_with_cats) tags.push("Cat-friendly");
+    if (currentDog.human_friendly) tags.push("People-friendly");
+    if (currentDog.sterilized) tags.push("Sterilized");
     // Always at least one tag so the row never collapses
     if (tags.length === 0) tags.push("Looking for a home");
     return tags.slice(0, 5);
   }
 
-  const displayTags = personalityTraits.length > 0 ? personalityTraits : deriveFallbackTags();
+  const displayTags = personalityTraits.length > 0 ? personalityTraits : deriveFallbackTags(dog);
 
   let canRequestAppointment = false;
   let saved = false;
