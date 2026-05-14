@@ -15,18 +15,7 @@ import {
   parseUploadedDocumentMetadata,
 } from "@/utils/adopter-documents";
 import type { Database, Json } from "@/types/database";
-
-export type DocumentSubmissionState = {
-  completed?: boolean;
-  message: string | null;
-  status: "idle" | "error" | "success";
-};
-
-export const initialDocumentSubmissionState: DocumentSubmissionState = {
-  completed: false,
-  message: null,
-  status: "idle",
-};
+import type { DocumentSubmissionState } from "./state";
 
 const ALLOWED_DOCUMENT_TYPES = new Set<string>(ALLOWED_DOCUMENT_MIME_TYPES);
 

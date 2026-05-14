@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { submitVerificationDocuments } from "@/app/documents/actions";
 import {
   initialDocumentSubmissionState,
-  submitVerificationDocuments,
   type DocumentSubmissionState,
-} from "@/app/documents/actions";
+} from "@/app/documents/state";
 import {
   getDocumentExitSaveSummary,
   MAX_HOME_PHOTOS,
