@@ -84,7 +84,10 @@ export function getDocumentExitSaveSummary(section: string) {
   }
 
   const savedSections = Array.from({ length: sectionIndex }, (_, index) => index + 1);
-  return `Sections ${joinSectionNumbers(savedSections)} are already saved. Changes in section ${
+  const savedCopy = savedSections.length === 1
+    ? `Section ${savedSections[0]} is`
+    : `Sections ${joinSectionNumbers(savedSections)} are`;
+  return `${savedCopy} already saved. Changes in section ${
     sectionIndex + 1
   } will not be saved until you press Continue.`;
 }

@@ -375,11 +375,9 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
     setSection(nextSection);
   }
 
-  function saveAndExit() {
-    submitCurrentForm("draft");
+  function exitWithoutSavingCurrentSection() {
     setShowExitWarning(false);
-    // Allow the server action transition to enqueue before navigating
-    setTimeout(() => router.push("/profile"), 50);
+    router.push("/profile");
   }
 
   return (
@@ -443,7 +441,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
               </button>
               <button
                 type="button"
-                onClick={saveAndExit}
+                onClick={exitWithoutSavingCurrentSection}
                 disabled={isSubmitting}
                 className="flex h-[48px] flex-1 items-center justify-center rounded-[14px] text-[14px] font-bold text-white disabled:opacity-60"
                 style={{ background: "#cd8188", fontFamily: M }}

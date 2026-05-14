@@ -73,6 +73,10 @@ test("describes which completed document sections are saved before exiting", () 
     "No sections have been saved yet.",
   );
   assert.equal(
+    getDocumentExitSaveSummary("B"),
+    "Section 1 is already saved. Changes in section 2 will not be saved until you press Continue.",
+  );
+  assert.equal(
     getDocumentExitSaveSummary("C"),
     "Sections 1 and 2 are already saved. Changes in section 3 will not be saved until you press Continue.",
   );
