@@ -52,7 +52,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [] }: Prop
       >
         <Link
           href="/"
-          className="absolute left-[14px] top-[14px] block h-[60px] w-[140px]"
+          className="absolute left-[14px] top-[3px] block h-[65px] w-[65px]"
           style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.06))" }}
         >
           <img

@@ -152,7 +152,7 @@ export default async function DogProfilePage({
         {/* PawJai logo — floating top-left, doubles as back-home */}
         <Link
           href="/"
-          className="absolute left-[14px] top-[14px] block h-[52px] w-[130px] z-10 active:scale-95 transition-transform"
+          className="absolute left-[14px] top-[10px] block h-[72px] w-[72px] z-10 active:scale-95 transition-transform"
           style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.30))" }}
           aria-label="PawJai home"
         >

@@ -135,8 +135,8 @@ export default function EditableProfileHeader({
           <div
             className="absolute top-[16px] left-[14px] z-20 pointer-events-none"
             style={{
-              width: 140,
-              height: 70,
+              width: 80,
+              height: 80,
               filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.20))",
             }}
           >

@@ -65,7 +65,7 @@ export default function AppointmentDetailClient({
         {/* Logo top-left — doubles as home link */}
         <Link
           href="/"
-          className="block h-[36px] w-[100px] mb-[12px] active:scale-95 transition-transform"
+          className="block h-[52px] w-[52px] mb-[12px] active:scale-95 transition-transform"
           aria-label="PawJai home"
           style={{ filter: "brightness(0) invert(1)" }}
         >

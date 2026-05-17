@@ -397,7 +397,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
       <div className="px-[14px] pt-[14px] pb-[8px] flex items-center justify-between">
         <Link
           href="/"
-          className="block h-[44px] w-[110px] active:scale-95 transition-transform"
+          className="block h-[60px] w-[60px] active:scale-95 transition-transform"
           aria-label="PawJai home"
         >
           <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />

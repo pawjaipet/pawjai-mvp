@@ -193,7 +193,7 @@ function PageShell({
 
       {/* Beige header with PAWJAI logo — matches Figma */}
       <div className="px-[16px] pt-[14px] pb-[24px]" style={{ background: "#d6c8ad" }}>
-        <Link href="/" className="block h-[44px] w-[110px] mb-[18px]">
+        <Link href="/" className="block h-[60px] w-[60px] mb-[18px]">
           <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
         </Link>
         <h1 className="font-bold text-[34px] text-[#65584f] leading-[1.1]" style={{ fontFamily: M }}>Appointments</h1>

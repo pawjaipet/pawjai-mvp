@@ -61,7 +61,7 @@ export default async function SettingsPage() {
       >
         <Link
           href="/"
-          className="block h-[44px] w-[110px] active:scale-95 transition-transform"
+          className="block h-[56px] w-[56px] active:scale-95 transition-transform"
           aria-label="PawJai home"
         >
           <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
