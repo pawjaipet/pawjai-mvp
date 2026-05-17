@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { parseAdDateRange } from "@/utils/ad-date-range";
+import { isAdminGateOpen } from "@/utils/admin-auth";
 
 function randomHex(bytes = 4) {
   return Math.floor(Math.random() * 16 ** (bytes * 2))
@@ -12,6 +13,10 @@ function randomHex(bytes = 4) {
 }
 
 export async function createAdAction(_prev: { error?: string; success?: string } | undefined, formData: FormData) {
+  if (!(await isAdminGateOpen())) {
+    return { error: "Admin password required." };
+  }
+
   const companyName = (formData.get("company_name") as string)?.trim();
   const contactInfo = (formData.get("contact_info") as string)?.trim() || null;
   const clickUrl = (formData.get("click_url") as string)?.trim();
@@ -61,6 +66,10 @@ export async function createAdAction(_prev: { error?: string; success?: string }
 }
 
 export async function deleteAdAction(id: string) {
+  if (!(await isAdminGateOpen())) {
+    return;
+  }
+
   const supabase = createAdminClient();
   await supabase.from("ads").delete().eq("id", id);
   revalidatePath("/admin/ads");
@@ -68,6 +77,10 @@ export async function deleteAdAction(id: string) {
 }
 
 export async function toggleAdAction(id: string, isActive: boolean) {
+  if (!(await isAdminGateOpen())) {
+    return;
+  }
+
   const supabase = createAdminClient();
   await supabase.from("ads").update({ is_active: isActive }).eq("id", id);
   revalidatePath("/admin/ads");
@@ -75,6 +88,10 @@ export async function toggleAdAction(id: string, isActive: boolean) {
 }
 
 export async function updateAdDatesAction(id: string, startDateValue: string, endDateValue: string) {
+  if (!(await isAdminGateOpen())) {
+    return { error: "Admin password required." };
+  }
+
   let dateRange: ReturnType<typeof parseAdDateRange>;
   try {
     dateRange = parseAdDateRange(startDateValue, endDateValue);
