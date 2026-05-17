@@ -49,7 +49,7 @@ const DOG_ADOPTION_STATUSES = new Set<Database["public"]["Enums"]["dog_adoption_
   "unavailable",
 ]);
 
-const IMAGE_EXTENSIONS = new Set([".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"]);
+const IMAGE_EXTENSIONS = new Set([".avif", ".gif", ".heic", ".heif", ".jpeg", ".jpg", ".png", ".webp"]);
 const DOG_PHOTOS_BUCKET = "dog-photos";
 const DOG_MEDIA_MIME_TYPES = ["image/png", "image/jpeg", "image/webp", "video/mp4"];
 const DOG_STORAGE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -137,8 +137,55 @@ function extensionFromContentType(contentType: string | null) {
       return "gif";
     case "image/avif":
       return "avif";
+    case "image/heic":
+      return "heic";
+    case "image/heif":
+      return "heif";
     default:
       return "bin";
+  }
+}
+
+function isHeicImage(contentType: string | null, extension: string | null) {
+  const normalizedType = contentType?.split(";")[0]?.trim().toLowerCase();
+  const normalizedExtension = extension?.replace(/^\./, "").toLowerCase();
+
+  return (
+    normalizedType === "image/heic" ||
+    normalizedType === "image/heif" ||
+    normalizedExtension === "heic" ||
+    normalizedExtension === "heif"
+  );
+}
+
+async function convertHeicToJpeg(body: Buffer) {
+  try {
+    const heicConvert = (await import("heic-convert")).default;
+    const jpeg = await heicConvert({
+      buffer: body as unknown as ArrayBufferLike,
+      format: "JPEG",
+      quality: DOG_PHOTO_JPEG_QUALITY / 100,
+    });
+
+    return Buffer.from(jpeg);
+  } catch (heicConvertError) {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pawjai-heic-"));
+    const inputPath = path.join(tempDir, "input.heic");
+    const outputPath = path.join(tempDir, "output.jpg");
+
+    try {
+      await fs.writeFile(inputPath, body);
+      await execFileAsync("/usr/bin/sips", ["-s", "format", "jpeg", inputPath, "--out", outputPath]);
+      return await fs.readFile(outputPath);
+    } catch {
+      throw new Error(
+        `This HEIC photo could not be converted to JPG. Please try a different export of the same photo. ${
+          heicConvertError instanceof Error ? heicConvertError.message : ""
+        }`,
+      );
+    } finally {
+      await fs.rm(tempDir, { force: true, recursive: true });
+    }
   }
 }
 
@@ -151,9 +198,14 @@ async function optimizeDogPhoto({
   contentType: string | null;
   extension: string | null;
 }): Promise<OptimizedPhoto> {
+  const isHeic = isHeicImage(contentType, extension);
+  const sourceBody = isHeic ? await convertHeicToJpeg(body) : body;
+  const sourceContentType = isHeic ? "image/jpeg" : contentType;
+  const sourceExtension = isHeic ? "jpg" : extension;
+
   try {
     const { default: sharp } = await import("sharp");
-    const optimizedBody = await sharp(body, { failOn: "none" })
+    const optimizedBody = await sharp(sourceBody, { failOn: "none" })
       .rotate()
       .resize({
         fit: "inside",
@@ -173,7 +225,7 @@ async function optimizeDogPhoto({
       extension: "jpg",
     };
   } catch {
-    const fallbackContentType = contentType?.split(";")[0]?.trim() || "application/octet-stream";
+    const fallbackContentType = sourceContentType?.split(";")[0]?.trim() || "application/octet-stream";
 
     if (!DOG_STORAGE_IMAGE_MIME_TYPES.has(fallbackContentType)) {
       throw new Error(
@@ -182,9 +234,9 @@ async function optimizeDogPhoto({
     }
 
     return {
-      body,
+      body: sourceBody,
       contentType: fallbackContentType,
-      extension: extension?.replace(/^\./, "") || extensionFromContentType(contentType),
+      extension: sourceExtension?.replace(/^\./, "") || extensionFromContentType(sourceContentType),
     };
   }
 }
@@ -249,6 +301,14 @@ function normalizeStructuredTraits(formData: FormData) {
     traitType: "personality",
     traitValue,
   }));
+  const customPersonalityTraits = getStringValues(formData, "custom_personality_tags")
+    .flatMap((traitValue) => traitValue.split(/[\n,]+/))
+    .map((traitValue) => traitValue.trim())
+    .filter(Boolean)
+    .map((traitValue) => ({
+      traitType: "personality",
+      traitValue,
+    }));
 
   const careTraits = getStringValues(formData, "care_tag")
     .filter((traitValue) => traitValue !== "No medical needs")
@@ -257,7 +317,7 @@ function normalizeStructuredTraits(formData: FormData) {
       traitValue,
     }));
 
-  return [...structuredTraits, ...personalityTraits, ...careTraits];
+  return [...structuredTraits, ...personalityTraits, ...customPersonalityTraits, ...careTraits];
 }
 
 function guessExtensionFromUrl(url: string) {
@@ -268,6 +328,11 @@ function guessExtensionFromUrl(url: string) {
   } catch {
     return null;
   }
+}
+
+function guessExtensionFromFileName(fileName: string) {
+  const extension = path.extname(fileName).replace(/^\./, "").toLowerCase();
+  return extension || null;
 }
 
 function photoLetter(photoIndex: number) {
@@ -293,10 +358,10 @@ function buildDogPhotoPath({
   extension: string | null;
   photoIndex: number;
 }) {
-  const slug = slugify(dogName) || "dog";
+  const slug = buildDogMediaBaseName(dogName, dogNumber);
   const normalizedExtension = extension?.replace(/^\./, "") || "jpg";
 
-  return `pawjaidogs/${slug}-dog${dogNumber}-photo${photoLetter(photoIndex)}.${normalizedExtension}`;
+  return `pawjaidogs/${slug}-photo${photoLetter(photoIndex)}.${normalizedExtension}`;
 }
 
 function buildDogVideoPath({
@@ -306,9 +371,20 @@ function buildDogVideoPath({
   dogName: string;
   dogNumber: number;
 }) {
-  const slug = slugify(dogName) || "dog";
+  const slug = buildDogMediaBaseName(dogName, dogNumber);
 
-  return `pawjaidogs/${slug}-dog${dogNumber}-video.mp4`;
+  return `pawjaidogs/${slug}-video.mp4`;
+}
+
+function buildDogMediaBaseName(dogName: string, dogNumber: number) {
+  const fullNameSlug = slugify(dogName);
+  if (fullNameSlug) return `${fullNameSlug}-dog${dogNumber}`;
+
+  const romanizedAlias = dogName.match(/\(([^)]+)\)/)?.[1];
+  const aliasSlug = romanizedAlias ? slugify(romanizedAlias) : "";
+  if (aliasSlug) return `${aliasSlug}-dog${dogNumber}`;
+
+  return `dog-${dogNumber}`;
 }
 
 async function getNextDogNumber(supabase: ReturnType<typeof createAdminClient>) {
@@ -562,6 +638,10 @@ function contentTypeFromExtension(extension: string) {
       return "image/avif";
     case ".gif":
       return "image/gif";
+    case ".heic":
+      return "image/heic";
+    case ".heif":
+      return "image/heif";
     case ".jpeg":
     case ".jpg":
       return "image/jpeg";
@@ -646,9 +726,7 @@ export async function createDogListingAction(
   }
 
   for (const [index, file] of photoFiles.entries()) {
-    if (isHeicFile(file)) {
-      fieldErrors[`photo_file_${index}`] = `${file.name} is a HEIC photo. Please convert/export it as JPG first.`;
-    } else if (!file.type.startsWith("image/")) {
+    if (!isHeicFile(file) && !file.type.startsWith("image/")) {
       fieldErrors[`photo_file_${index}`] = `${file.name} is not an image file.`;
     }
   }
@@ -783,7 +861,7 @@ export async function createDogListingAction(
           contentType: file.type,
           dogName: name,
           dogNumber,
-          extension: guessExtensionFromUrl(file.name) ?? extensionFromContentType(file.type),
+          extension: guessExtensionFromFileName(file.name) ?? extensionFromContentType(file.type),
           photoIndex,
           supabase,
         });
