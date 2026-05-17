@@ -125,14 +125,14 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-[14px] top-[14px] flex size-[34px] items-center justify-center rounded-full text-[#65584f] active:bg-[#d6c8ad]/40"
+          className="absolute right-[10px] top-[10px] flex size-[52px] items-center justify-center rounded-full text-[36px] text-[#65584f] active:bg-[#d6c8ad]/40"
           aria-label="Close"
         >
           ×
         </button>
       )}
 
-      <div className="mx-auto mb-[22px] h-[42px] w-[96px] relative">
+      <div className="mx-auto mb-[22px] h-[90px] w-[90px] relative">
         <Image src="/pawjai-logo.png" alt="PawJai" fill sizes="96px" className="object-contain" priority />
       </div>
 
