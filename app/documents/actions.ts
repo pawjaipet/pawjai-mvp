@@ -11,6 +11,7 @@ import {
   getDocumentFileKind,
   getStoredDocumentFileName,
   getVerificationSaveMode,
+  isHeicDocumentFile,
   MAX_DOCUMENT_BYTES,
   MAX_HOME_PHOTOS,
   parseUploadedDocumentMetadata,
@@ -58,6 +59,21 @@ function splitName(fullName: string | null) {
   };
 }
 
+async function convertHeicDocumentToJpeg(buffer: Buffer) {
+  try {
+    const heicConvert = (await import("heic-convert")).default;
+    const jpeg = await heicConvert({
+      buffer: buffer as unknown as ArrayBufferLike,
+      format: "JPEG",
+      quality: 0.82,
+    });
+
+    return Buffer.from(jpeg);
+  } catch {
+    throw new Error("We couldn't convert that HEIC photo. Please export it as JPG or upload a different photo.");
+  }
+}
+
 async function prepareDocumentUpload(file: File, kind: "image" | "pdf") {
   const sourceBuffer = Buffer.from(await file.arrayBuffer());
 
@@ -70,9 +86,13 @@ async function prepareDocumentUpload(file: File, kind: "image" | "pdf") {
     };
   }
 
+  const imageBuffer = isHeicDocumentFile(file)
+    ? await convertHeicDocumentToJpeg(sourceBuffer)
+    : sourceBuffer;
+
   try {
     const sharp = (await import("sharp")).default;
-    const buffer = await sharp(sourceBuffer, { failOn: "none" })
+    const buffer = await sharp(imageBuffer, { failOn: "none" })
       .rotate()
       .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 82, mozjpeg: true })

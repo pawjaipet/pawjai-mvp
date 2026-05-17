@@ -66,6 +66,15 @@ test("accepts heic and heif photos as document images", () => {
   assert.equal(getDocumentFileKind(fileWithType("notes.txt", "text/plain")), null);
 });
 
+test("identifies heic document files that need conversion", () => {
+  const { isHeicDocumentFile } = loadAdopterDocuments();
+
+  assert.equal(isHeicDocumentFile(fileWithType("home.heic", "")), true);
+  assert.equal(isHeicDocumentFile(fileWithType("home.HEIF", "application/octet-stream")), true);
+  assert.equal(isHeicDocumentFile(fileWithType("home.jpg", "image/jpeg")), false);
+  assert.equal(isHeicDocumentFile(fileWithType("lease.pdf", "application/pdf")), false);
+});
+
 test("renames uploaded image documents to compressed jpg names", () => {
   const { getStoredDocumentFileName } = loadAdopterDocuments();
 

@@ -47,6 +47,13 @@ export function getDocumentFileKind(file: File): "image" | "pdf" | null {
   return null;
 }
 
+export function isHeicDocumentFile(file: File) {
+  const mimeType = file.type.split(";")[0]?.trim().toLowerCase();
+  const extension = fileExtension(file);
+
+  return mimeType === "image/heic" || mimeType === "image/heif" || extension === "heic" || extension === "heif";
+}
+
 export function getStoredDocumentFileName(file: File) {
   const kind = getDocumentFileKind(file);
   if (kind === "image") return `${fileBaseName(file)}.jpg`;
