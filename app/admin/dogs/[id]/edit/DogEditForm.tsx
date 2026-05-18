@@ -1,0 +1,631 @@
+"use client";
+
+import Link from "next/link";
+import { useActionState } from "react";
+import type { Database, DogPhoto, DogTrait } from "@/types/database";
+import { deleteDogProfileAction, updateDogProfileAction } from "./actions";
+import { initialEditDogProfileState } from "./form-state";
+
+type Dog = Database["public"]["Tables"]["dogs"]["Row"];
+type ShelterOption = {
+  id: string;
+  name: string;
+};
+
+const personalityTags = [
+  "Happy",
+  "Lucky",
+  "Sweet",
+  "Playful",
+  "Adventurous",
+  "Curious",
+  "Cuddly",
+  "Smart",
+  "Gentle",
+  "Calm",
+  "Serene",
+  "Graceful",
+  "Brave",
+  "Social",
+  "Friendly",
+  "Loving",
+  "Funny",
+  "Goofy",
+  "Chill",
+  "Loyal",
+  "Independent",
+  "Affectionate",
+  "Protective",
+];
+
+const careTags = [
+  "No medical needs",
+  "Vaccinated",
+  "Spayed",
+  "Neutered",
+  "Special diet",
+  "Medication",
+  "Mobility support",
+  "Behavioral support",
+];
+
+const structuredTraitTypes = [
+  "training_preference_match",
+  "people_friendliness",
+  "dog_social_style",
+  "intake_note",
+];
+
+function Section({
+  title,
+  description,
+  children,
+}: {
+  children: React.ReactNode;
+  description: string;
+  title: string;
+}) {
+  return (
+    <section className="rounded-[28px] border border-[#eadfce] bg-white/90 p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+      <div className="mb-5">
+        <h2 className="text-xl font-semibold text-[#4f4338]">{title}</h2>
+        <p className="mt-1 text-sm leading-6 text-[#7a6d61]">{description}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Field({
+  children,
+  error,
+  hint,
+  label,
+}: {
+  children: React.ReactNode;
+  error?: string;
+  hint?: string;
+  label: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-[#5b4d40]">{label}</span>
+      {children}
+      {hint ? <span className="mt-2 block text-xs text-[#8c7d70]">{hint}</span> : null}
+      {error ? <span className="mt-2 block text-xs font-medium text-[#b42318]">{error}</span> : null}
+    </label>
+  );
+}
+
+function inputClass(error?: string) {
+  return `w-full rounded-2xl border px-4 py-3 text-sm text-[#4f4338] outline-none transition focus:border-[#d69546] focus:ring-4 focus:ring-[#f6d7ad]/50 ${
+    error ? "border-[#d94b41] bg-[#fff4f2]" : "border-[#e7dbc8] bg-[#fffdfa]"
+  }`;
+}
+
+function formatFieldErrorLabel(key: string) {
+  const labels: Record<string, string> = {
+    age_months: "Age in months",
+    dog_id: "Dog profile",
+    name: "Dog name",
+    shelter_id: "Shelter",
+    weight_kg: "Weight in kg",
+  };
+
+  return labels[key] ?? key.replaceAll("_", " ");
+}
+
+function ErrorSummary({ errors }: { errors?: Record<string, string> }) {
+  const entries = Object.entries(errors ?? {});
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="mb-5 rounded-2xl border border-[#f1c4c0] bg-[#fff5f4] px-5 py-4 text-sm text-[#9f2d24]">
+      <p className="font-semibold">Please fix these fields first:</p>
+      <ul className="mt-3 list-disc space-y-1 pl-5">
+        {entries.map(([key, error]) => (
+          <li key={key}>
+            <span className="font-medium">{formatFieldErrorLabel(key)}:</span> {error}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ChoiceCards({
+  defaultValue,
+  name,
+  options,
+}: {
+  defaultValue?: string | null;
+  name: string;
+  options: { description?: string; label: string; value: string }[];
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      {options.map((option) => (
+        <label key={option.value} className="cursor-pointer">
+          <input
+            className="peer sr-only"
+            defaultChecked={defaultValue === option.value}
+            name={name}
+            type="radio"
+            value={option.value}
+          />
+          <span className="block h-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#5b4d40] transition peer-checked:border-[#cd8188] peer-checked:bg-[#cd8188] peer-checked:text-white peer-focus-visible:ring-4 peer-focus-visible:ring-[#f3cbd0]">
+            <span className="block font-semibold">{option.label}</span>
+            {option.description ? (
+              <span className="mt-1 block text-xs opacity-75">{option.description}</span>
+            ) : null}
+          </span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function ChipCheckboxGroup({
+  name,
+  options,
+  selected,
+}: {
+  name: string;
+  options: string[];
+  selected: Set<string>;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => (
+        <label key={option} className="cursor-pointer">
+          <input
+            className="peer sr-only"
+            defaultChecked={selected.has(option)}
+            name={name}
+            type="checkbox"
+            value={option}
+          />
+          <span className="inline-flex rounded-full border border-[#d6c8ad] bg-white px-4 py-2 text-sm font-medium text-[#65584f] transition peer-checked:border-[#cd8188] peer-checked:bg-[#d6c8ad] peer-focus-visible:ring-4 peer-focus-visible:ring-[#f3cbd0]">
+            {option}
+          </span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function toBooleanSelectValue(value: boolean | null) {
+  if (value === true) return "true";
+  if (value === false) return "false";
+  return "";
+}
+
+function getTraitValue(traits: DogTrait[], type: string) {
+  return traits.find((trait) => trait.trait_type === type)?.trait_value ?? null;
+}
+
+function statusCopy(status: Dog["adoption_status"]) {
+  switch (status) {
+    case "available":
+      return "Visible on PawJai";
+    case "draft":
+      return "Hidden draft";
+    case "reserved":
+      return "Temporarily held";
+    case "adopted":
+      return "Adopted record";
+    case "unavailable":
+      return "Hidden from public browsing";
+    default:
+      return "Profile status";
+  }
+}
+
+export default function DogEditForm({
+  dog,
+  photos,
+  shelters,
+  traits,
+}: {
+  dog: Dog;
+  photos: DogPhoto[];
+  shelters: ShelterOption[];
+  traits: DogTrait[];
+}) {
+  const [state, formAction, pending] = useActionState(
+    updateDogProfileAction,
+    initialEditDogProfileState,
+  );
+  const personalityTraitValues = traits
+    .filter((trait) => trait.trait_type === "personality")
+    .map((trait) => trait.trait_value);
+  const selectedPersonalityTags = new Set(personalityTraitValues.filter((tag) => personalityTags.includes(tag)));
+  const customPersonalityTags = personalityTraitValues
+    .filter((tag) => !personalityTags.includes(tag))
+    .join(", ");
+  const selectedCareTags = new Set(
+    traits.filter((trait) => trait.trait_type === "medical_needs").map((trait) => trait.trait_value),
+  );
+  const sortedPhotos = [...photos].sort((a, b) => a.sort_order - b.sort_order);
+  const hiddenTraits = traits.filter(
+    (trait) =>
+      !structuredTraitTypes.includes(trait.trait_type) &&
+      trait.trait_type !== "personality" &&
+      trait.trait_type !== "medical_needs",
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-[32px] bg-gradient-to-br from-[#fff6e8] via-[#fff1df] to-[#f9e4c0] p-7 shadow-[0_24px_60px_rgba(176,120,42,0.16)]">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">
+              Manage Dog Profile
+            </p>
+            <h1 className="mt-3 text-4xl font-semibold leading-tight text-[#4f4338]">
+              Edit {dog.name} without losing the profile history.
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-[#6f6256]">
+              Update public details, refresh tags after care changes, or hide a listing from PawJai
+              while keeping the dog record in Supabase.
+            </p>
+          </div>
+          <div className="rounded-3xl border border-white/70 bg-white/80 p-5 text-sm text-[#6f6256]">
+            <p className="font-medium text-[#4f4338]">Current status</p>
+            <p className="mt-2 text-2xl font-semibold capitalize text-[#b77624]">{dog.adoption_status}</p>
+            <p className="mt-1 leading-6">{statusCopy(dog.adoption_status)}</p>
+          </div>
+        </div>
+      </div>
+
+      <form action={formAction} className="space-y-6">
+        <input type="hidden" name="dog_id" value={dog.id} />
+
+        <Section
+          title="Core Profile"
+          description="These are the details users see on the dog card and profile."
+        >
+          <ErrorSummary errors={state.fieldErrors} />
+          <div className="grid gap-5 md:grid-cols-2">
+            <Field label="Dog name" error={state.fieldErrors?.name}>
+              <input
+                name="name"
+                className={inputClass(state.fieldErrors?.name)}
+                defaultValue={dog.name}
+                placeholder="Mali"
+              />
+            </Field>
+
+            <Field label="Shelter" error={state.fieldErrors?.shelter_id}>
+              <select
+                name="shelter_id"
+                className={inputClass(state.fieldErrors?.shelter_id)}
+                defaultValue={dog.shelter_id}
+              >
+                {shelters.map((shelter) => (
+                  <option key={shelter.id} value={shelter.id}>
+                    {shelter.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Breed">
+              <input name="breed" className={inputClass()} defaultValue={dog.breed ?? ""} placeholder="Mixed breed" />
+            </Field>
+
+            <Field
+              label="Profile status"
+              hint="Use unavailable to remove a dog from public browsing without deleting the database record."
+            >
+              <select name="adoption_status" className={inputClass()} defaultValue={dog.adoption_status}>
+                <option value="draft">Draft</option>
+                <option value="available">Available</option>
+                <option value="reserved">Reserved</option>
+                <option value="adopted">Adopted</option>
+                <option value="unavailable">Unavailable</option>
+              </select>
+            </Field>
+
+            <Field label="Gender">
+              <select name="gender" className={inputClass()} defaultValue={dog.gender}>
+                <option value="unknown">Unknown</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </Field>
+
+            <Field label="Age in months" error={state.fieldErrors?.age_months}>
+              <input
+                name="age_months"
+                type="number"
+                min="0"
+                className={inputClass(state.fieldErrors?.age_months)}
+                defaultValue={dog.age_months ?? ""}
+                placeholder="36"
+              />
+            </Field>
+
+            <Field label="Weight in kg" error={state.fieldErrors?.weight_kg}>
+              <input
+                name="weight_kg"
+                type="number"
+                min="0"
+                step="0.1"
+                className={inputClass(state.fieldErrors?.weight_kg)}
+                defaultValue={dog.weight_kg ?? ""}
+                placeholder="18.5"
+              />
+            </Field>
+
+            <div className="md:col-span-2">
+              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Size</p>
+              <ChoiceCards
+                defaultValue={dog.size}
+                name="size"
+                options={[
+                  { label: "Small", value: "small", description: "Chihuahua, pug" },
+                  { label: "Medium", value: "medium", description: "Beagle, Thai mix" },
+                  { label: "Large", value: "large", description: "Ridgeback, labrador" },
+                ]}
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <Field label="My Story">
+                <textarea
+                  name="background"
+                  rows={5}
+                  className={inputClass()}
+                  defaultValue={dog.background ?? ""}
+                  placeholder="Short public story that appears on the dog profile."
+                />
+              </Field>
+            </div>
+
+            <div className="md:col-span-2">
+              <Field label="Medical needs shown on profile">
+                <textarea
+                  name="special_needs"
+                  rows={4}
+                  className={inputClass()}
+                  defaultValue={dog.special_needs ?? ""}
+                  placeholder="Example: None - vaccinated and neutered."
+                />
+              </Field>
+            </div>
+          </div>
+        </Section>
+
+        <Section
+          title="Public Matching Tags"
+          description="These tags become the beige bubbles on the browse card and dog profile."
+        >
+          <div className="space-y-8">
+            <div>
+              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">How active is this dog?</p>
+              <ChoiceCards
+                defaultValue={dog.energy_level}
+                name="energy_level"
+                options={[
+                  { label: "Low", value: "low", description: "Relaxed, calm companion" },
+                  { label: "Medium", value: "medium", description: "Daily walks and light play" },
+                  { label: "High", value: "high", description: "Needs a lot of activity" },
+                ]}
+              />
+            </div>
+
+            <div>
+              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Training status</p>
+              <ChoiceCards
+                defaultValue={getTraitValue(traits, "training_preference_match")}
+                name="training_preference_match"
+                options={[
+                  { label: "Well-trained", value: "Well-trained dogs only" },
+                  { label: "Still training", value: "Dogs still in training" },
+                  { label: "Needs basics", value: "Willing to train from scratch" },
+                ]}
+              />
+            </div>
+
+            <div>
+              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">People friendliness</p>
+              <ChoiceCards
+                defaultValue={getTraitValue(traits, "people_friendliness")}
+                name="people_friendliness"
+                options={[
+                  { label: "Social", value: "Comfortable being petted by strangers", description: "Comfortable with new people" },
+                  { label: "Slow warm-up", value: "Takes time to get to know new people", description: "Needs a patient intro" },
+                  { label: "Owner-focused", value: "Only stick to their owner", description: "Bonds closely with one person" },
+                ]}
+              />
+            </div>
+
+            <div>
+              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Friendliness to other dogs</p>
+              <ChoiceCards
+                defaultValue={getTraitValue(traits, "dog_social_style")}
+                name="dog_social_style"
+                options={[
+                  { label: "Friendly", value: "Friendly and playful" },
+                  { label: "Selective", value: "Okay with other dogs but not too social" },
+                  { label: "Solo dog", value: "Prefer to be solo" },
+                ]}
+              />
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <Field label="Good with dogs?">
+                <select name="good_with_dogs_value" className={inputClass()} defaultValue={toBooleanSelectValue(dog.good_with_dogs)}>
+                  <option value="">Not sure</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No / solo preferred</option>
+                </select>
+              </Field>
+
+              <Field label="Good with cats?">
+                <select name="good_with_cats_value" className={inputClass()} defaultValue={toBooleanSelectValue(dog.good_with_cats)}>
+                  <option value="">Not sure</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No / unknown</option>
+                </select>
+              </Field>
+
+              <Field label="Good with kids?">
+                <select name="good_with_kids_value" className={inputClass()} defaultValue={toBooleanSelectValue(dog.good_with_kids)}>
+                  <option value="">Not sure</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No / unknown</option>
+                </select>
+              </Field>
+
+              <Field label="House training">
+                <select name="house_trained_value" className={inputClass()} defaultValue={toBooleanSelectValue(dog.house_trained)}>
+                  <option value="">Not sure</option>
+                  <option value="true">House trained</option>
+                  <option value="false">Not house trained yet</option>
+                </select>
+              </Field>
+            </div>
+
+            <div>
+              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Public personality and description tags</p>
+              <p className="mb-4 text-sm leading-6 text-[#7a6d61]">
+                Pick the words users should see. Use Other when the dog needs a more specific word.
+              </p>
+              <ChipCheckboxGroup name="personality_tag" options={personalityTags} selected={selectedPersonalityTags} />
+              <div className="mt-4">
+                <Field label="Other personality tags" hint="Separate extra public tags with commas.">
+                  <input
+                    name="custom_personality_tags"
+                    className={inputClass()}
+                    defaultValue={customPersonalityTags}
+                    placeholder="Shy at first, Loves belly rubs"
+                  />
+                </Field>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Care and medical tags</p>
+              <ChipCheckboxGroup name="care_tag" options={careTags} selected={selectedCareTags} />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                ["sterilized", "Sterilized", dog.sterilized],
+                ["leash_trained", "Leash trained", dog.leash_trained],
+                ["animal_friendly", "Animal friendly", dog.animal_friendly],
+              ].map(([name, label, checked]) => (
+                <label
+                  key={name as string}
+                  className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#f0e6d7] bg-white px-4 py-3 text-sm text-[#5b4d40]"
+                >
+                  <input
+                    type="checkbox"
+                    name={name as string}
+                    defaultChecked={Boolean(checked)}
+                    className="h-4 w-4 rounded border-[#d4c1a5] text-[#d69546] focus:ring-[#f6d7ad]"
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </Section>
+
+        {state.message ? (
+          <div
+            className={`rounded-2xl border px-5 py-4 text-sm ${
+              state.status === "success"
+                ? "border-[#bfdcb5] bg-[#f1faee] text-[#2f6b33]"
+                : "border-[#f1c4c0] bg-[#fff5f4] text-[#9f2d24]"
+            }`}
+          >
+            {state.message}
+          </div>
+        ) : null}
+
+        <div className="sticky bottom-4 z-10 rounded-[28px] border border-[#eadfce] bg-white/95 p-4 shadow-[0_18px_42px_rgba(97,70,33,0.16)] backdrop-blur">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[#4f4338]">Save profile changes?</p>
+              <p className="text-sm text-[#7a6d61]">
+                This updates Supabase and refreshes the public dog profile.
+              </p>
+            </div>
+            <button
+              type="submit"
+              disabled={pending}
+              className="inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {pending ? "Saving changes..." : "Save changes"}
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <Section
+          title="Photos and Video"
+          description="Photo uploads stay managed by the onboarding tool for now. This panel helps admins confirm what is attached before editing profile text."
+        >
+          {sortedPhotos.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {sortedPhotos.map((photo, index) => (
+                <div key={photo.id} className="overflow-hidden rounded-2xl border border-[#eadfce] bg-[#fffdfa]">
+                  {photo.public_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={photo.public_url} alt={`${dog.name} photo ${index + 1}`} className="h-40 w-full object-cover" />
+                  ) : (
+                    <div className="flex h-40 items-center justify-center bg-[#e3d6bb] text-sm text-[#65584f]">
+                      No public URL
+                    </div>
+                  )}
+                  <div className="p-3 text-xs text-[#74685d]">
+                    Photo {index + 1}
+                    {photo.is_cover ? <span className="ml-2 font-semibold text-[#b77624]">Cover</span> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm leading-6 text-[#74685d]">No photos are attached yet.</p>
+          )}
+        </Section>
+
+        <section className="rounded-[28px] border border-[#f1c4c0] bg-[#fff7f5] p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+          <h2 className="text-xl font-semibold text-[#6d2a23]">Delete Duplicate Profile</h2>
+          <p className="mt-2 text-sm leading-6 text-[#7a4b45]">
+            Use this only for accidental duplicates or test profiles. It deletes this dog from
+            Supabase and removes attached public storage files when possible.
+          </p>
+          <form action={deleteDogProfileAction} className="mt-5">
+            <input type="hidden" name="dog_id" value={dog.id} />
+            <button
+              type="submit"
+              className="w-full rounded-full border border-[#d94b41] bg-[#b42318] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#8f1f18]"
+            >
+              Delete this duplicate dog
+            </button>
+          </form>
+          <Link
+            href={`/dogs/${dog.id}`}
+            className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+          >
+            Open public profile
+          </Link>
+        </section>
+      </div>
+
+      {hiddenTraits.length > 0 ? (
+        <section className="rounded-[28px] border border-[#eadfce] bg-white/90 p-6 text-sm leading-6 text-[#74685d]">
+          <h2 className="text-xl font-semibold text-[#4f4338]">Protected Metadata</h2>
+          <p className="mt-2">
+            Video metadata and other system traits are kept intact when this form updates profile tags.
+          </p>
+        </section>
+      ) : null}
+    </div>
+  );
+}

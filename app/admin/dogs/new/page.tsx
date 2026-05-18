@@ -85,12 +85,6 @@ export default async function NewAdminDogPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link
-            href="/dogs"
-            className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-medium text-[#5b4d40] transition hover:bg-[#faf4ec]"
-          >
-            View public dog listings
-          </Link>
           <form action={lockAdminGateAction}>
             <button
               type="submit"
@@ -132,10 +126,9 @@ export default async function NewAdminDogPage() {
                 </p>
               ) : (
                 formattedRecentDogs.map((dog) => (
-                  <Link
+                  <div
                     key={dog.id}
-                    href={`/dogs/${dog.id}`}
-                    className="block rounded-2xl border border-[#eee2d2] bg-[#fffdfa] p-4 transition hover:border-[#ddb784] hover:bg-[#fff7eb]"
+                    className="rounded-2xl border border-[#eee2d2] bg-[#fffdfa] p-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -152,7 +145,21 @@ export default async function NewAdminDogPage() {
                       </span>
                     </div>
                     <p className="mt-3 text-sm text-[#74685d]">{dog.shelter_name}</p>
-                  </Link>
+                    <div className="mt-4 flex gap-2">
+                      <Link
+                        href={`/onboarding/dogs/${dog.id}/edit`}
+                        className="inline-flex flex-1 items-center justify-center rounded-full bg-[#d38a2c] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#bf781f]"
+                      >
+                        Edit
+                      </Link>
+                      <Link
+                        href={`/dogs/${dog.id}`}
+                        className="inline-flex flex-1 items-center justify-center rounded-full border border-[#eadfce] bg-white px-3 py-2 text-xs font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+                      >
+                        Open
+                      </Link>
+                    </div>
+                  </div>
                 ))
               )}
             </div>
