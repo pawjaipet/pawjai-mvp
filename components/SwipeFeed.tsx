@@ -7,11 +7,8 @@ import AdCard from "./AdCard";
 import type { Ad } from "@/utils/ads";
 import { buildSwipeFeed, isActiveDogFeedItem } from "@/utils/swipe-feed-model";
 
-// Match Figma site visible proportions (370 x 540, aspect ~1:1.46).
-// Photos / videos / ad images use object-cover so cropping handles
-// any source aspect ratio. CSS clamp scales DOWN on tiny viewports.
 const CARD_W = "min(370px, calc(100vw - 32px))";
-const CARD_H = "min(540px, calc(100dvh - 200px))";
+const CARD_H = "min(560px, calc(100dvh - 230px))";
 // Insert one live ad after every N dogs. The server shuffles active ads
 // daily so limited slots rotate fairly when ad inventory is larger.
 const AD_EVERY = 3;
@@ -44,16 +41,16 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [] }: Prop
   return (
     <div
       className="relative flex flex-col bg-white overflow-hidden"
-      style={{ width: 402, maxWidth: "100vw", margin: "0 auto", height: "calc(100dvh - 104px)" }}
+      style={{ width: 402, maxWidth: "100vw", margin: "0 auto", height: "100dvh" }}
     >
-      {/* Header — push-down so card sits fully below with visible rounded corners */}
+      {/* Gradient header — push-down, card sits below */}
       <div
-        className="shrink-0 h-[100px] w-full z-20"
-        style={{ background: "linear-gradient(to bottom, #d6c8ad 0%, rgba(214,200,173,0.85) 70%, rgba(214,200,173,0) 100%)" }}
+        className="shrink-0 h-[130px] w-full z-20"
+        style={{ background: "linear-gradient(to bottom, #d6c8ad 0%, rgba(214,200,173,0.75) 38.942%, rgba(214,200,173,0) 100%)" }}
       >
         <Link
           href="/"
-          className="absolute left-[14px] top-[8px] block h-[85px] w-[85px]"
+          className="absolute left-[14px] top-[5px] block h-[120px] w-[160px]"
           style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.06))" }}
         >
           <img
@@ -74,7 +71,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [] }: Prop
         <style>{`.snap-mandatory::-webkit-scrollbar{display:none}`}</style>
 
         {dogs.length === 0 && (
-          <div className="snap-start flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ minHeight: "calc(100dvh - 104px)" }}>
+          <div className="snap-start flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ minHeight: "calc(100dvh - 134px)" }}>
             <p className="text-6xl">🐾</p>
             <p className="text-xl font-bold text-[#65584f]">No dogs available yet</p>
             <p className="text-sm text-[#65584f]/60">Shelters are getting ready — check back soon!</p>
@@ -86,7 +83,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [] }: Prop
             <div
               key={item.key}
               className="snap-start flex items-start justify-center px-[16px] pt-[10px]"
-              style={{ minHeight: "calc(100dvh - 104px)", scrollSnapStop: "always" }}
+              style={{ minHeight: "calc(100dvh - 134px)", scrollSnapStop: "always" }}
             >
               <AdCard ad={item.ad} cardWidth={CARD_W} cardHeight={CARD_H} />
             </div>
@@ -94,7 +91,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [] }: Prop
             <div
               key={item.dog.id}
               className="snap-start flex items-start justify-center px-[16px] pt-[10px]"
-              style={{ minHeight: "calc(100dvh - 104px)", scrollSnapStop: "always" }}
+              style={{ minHeight: "calc(100dvh - 134px)", scrollSnapStop: "always" }}
             >
               <SwipeDogCard
                 dog={item.dog}
@@ -112,7 +109,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [] }: Prop
         {dogs.length > 0 && (
           <div
             className="snap-start flex flex-col items-center justify-center gap-5 px-6 text-center"
-            style={{ minHeight: "calc(100dvh - 104px)", scrollSnapStop: "always" }}
+            style={{ minHeight: "calc(100dvh - 134px)", scrollSnapStop: "always" }}
           >
             <p className="font-['Montserrat',sans-serif] text-[18px] font-semibold text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>You&apos;ve seen them all!</p>
             <p className="text-[14px] text-[#65584f]/60" style={{ fontFamily: "Montserrat, sans-serif" }}>All available dogs are shown above.</p>
