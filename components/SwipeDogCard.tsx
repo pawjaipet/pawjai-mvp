@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, useLayoutEffect } from "react";
 import Link from "next/link";
 import { Share2, CalendarDays, Bookmark } from "lucide-react";
 import { toggleWishlistAction } from "@/app/actions/wishlist";
@@ -46,6 +46,8 @@ export default function SwipeDogCard({
   const carouselRef = useRef<HTMLDivElement>(null);
   const [imgIdx, setImgIdx]     = useState(0);
   const [tagsOpen, setTagsOpen] = useState(false);
+  const [visibleTagCount, setVisibleTagCount] = useState(10);
+  const collapsedRowRef = useRef<HTMLDivElement>(null);
   const [saved, setSaved]       = useState(initialSaved);
   const [pending, startTransition] = useTransition();
   const { openAuthModal } = useAuthModal();
@@ -64,6 +66,23 @@ export default function SwipeDogCard({
       ?.filter((trait) => trait.trait_type === "personality")
       .map((trait) => trait.trait_value)
       .slice(0, 4) ?? [];
+
+  useLayoutEffect(() => {
+    const row = collapsedRowRef.current;
+    if (!row) return;
+    const GAP = 6; // gap-1.5 = 6px
+    const PLUS_W = 48; // "+" pill approximate width
+    const available = row.offsetWidth - PLUS_W - GAP;
+    const spans = Array.from(row.querySelectorAll<HTMLElement>("[data-tag]"));
+    let used = 0, count = 0;
+    for (const span of spans) {
+      const add = (count > 0 ? GAP : 0) + span.offsetWidth;
+      if (used + add > available) break;
+      used += add;
+      count++;
+    }
+    setVisibleTagCount(Math.max(1, count));
+  }, []);
 
   function onCarouselScroll() {
     if (!carouselRef.current) return;
@@ -194,13 +213,17 @@ export default function SwipeDogCard({
       {/* Tags overlay */}
       <div className="absolute bottom-4 left-4 right-4 z-10">
         {!tagsOpen ? (
-          <div className="flex gap-1.5 flex-wrap">
-            {collapsedTags.map((t) => (
-              <span key={t} className={`${TAG_BEIGE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] whitespace-nowrap`}>{t}</span>
+          <div ref={collapsedRowRef} className="flex gap-1.5 items-center overflow-hidden">
+            {collapsedTags.map((t, i) => (
+              <span
+                key={t}
+                data-tag
+                className={`${TAG_BEIGE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] whitespace-nowrap shrink-0${i >= visibleTagCount ? " hidden" : ""}`}
+              >{t}</span>
             ))}
             <button
               onClick={() => setTagsOpen(true)}
-              className={`${TAG_ROSE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] active:scale-95 transition-transform`}
+              className={`${TAG_ROSE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] shrink-0 active:scale-95 transition-transform`}
             >
               +
             </button>
