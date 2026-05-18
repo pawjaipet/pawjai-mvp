@@ -595,10 +595,10 @@ export default function DogEditForm({
         </Section>
 
         <section className="rounded-[28px] border border-[#f1c4c0] bg-[#fff7f5] p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-          <h2 className="text-xl font-semibold text-[#6d2a23]">Delete Duplicate Profile</h2>
+          <h2 className="text-xl font-semibold text-[#6d2a23]">Delete Dog Profile</h2>
           <p className="mt-2 text-sm leading-6 text-[#7a4b45]">
-            Use this only for accidental duplicates or test profiles. It deletes this dog from
-            Supabase and removes attached public storage files when possible.
+            Use this only for accidental duplicates or test profiles. It permanently deletes this
+            dog from Supabase and removes attached public storage files when possible.
           </p>
           <form action={deleteDogProfileAction} className="mt-5">
             <input type="hidden" name="dog_id" value={dog.id} />
@@ -606,15 +606,9 @@ export default function DogEditForm({
               type="submit"
               className="w-full rounded-full border border-[#d94b41] bg-[#b42318] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#8f1f18]"
             >
-              Delete this duplicate dog
+              Delete this dog profile
             </button>
           </form>
-          <Link
-            href={`/dogs/${dog.id}`}
-            className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
-          >
-            Open public profile
-          </Link>
         </section>
       </div>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import {
@@ -9,7 +10,7 @@ import { initialAdminGateState } from "./form-state";
 import DogListingForm from "./DogListingForm";
 import AdminGateForm from "./AdminGateForm";
 
-type RecentDog = {
+type AdminDog = {
   id: string;
   adoption_status: string;
   created_at: string;
@@ -18,8 +19,119 @@ type RecentDog = {
   shelter_name: string;
 };
 
-export default async function NewAdminDogPage() {
+function TabLink({
+  active,
+  children,
+  href,
+}: {
+  active: boolean;
+  children: ReactNode;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold transition ${
+        active
+          ? "bg-[#d38a2c] text-white shadow-[0_10px_24px_rgba(179,111,31,0.22)]"
+          : "border border-[#eadfce] bg-white text-[#5b4d40] hover:bg-[#faf4ec]"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function DogListingCard({ dog }: { dog: AdminDog }) {
+  return (
+    <div className="rounded-2xl border border-[#eee2d2] bg-[#fffdfa] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold text-[#4f4338]">{dog.name}</p>
+          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#9a6b2a]">
+            {dog.adoption_status}
+          </p>
+        </div>
+        <span className="text-xs text-[#8d7f72]">
+          {new Date(dog.created_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          })}
+        </span>
+      </div>
+      <p className="mt-3 text-sm text-[#74685d]">{dog.shelter_name}</p>
+      <div className="mt-4 flex gap-2">
+        <Link
+          href={`/onboarding/dogs/${dog.id}/edit`}
+          className="inline-flex flex-1 items-center justify-center rounded-full bg-[#d38a2c] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#bf781f]"
+        >
+          Edit
+        </Link>
+        <Link
+          href={`/dogs/${dog.id}`}
+          className="inline-flex flex-1 items-center justify-center rounded-full border border-[#eadfce] bg-white px-3 py-2 text-xs font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+        >
+          Open
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function ListingsByShelter({
+  dogs,
+  shelters,
+}: {
+  dogs: AdminDog[];
+  shelters: { id: string; name: string }[];
+}) {
+  return (
+    <section className="rounded-[28px] border border-[#eadfce] bg-white/90 p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold text-[#4f4338]">All Dog Listings</h2>
+          <p className="mt-1 text-sm leading-6 text-[#7a6d61]">
+            Manage profiles by shelter. Use Open to preview the public dog page, or Edit to change
+            details, status, tags, and delete accidental duplicates.
+          </p>
+        </div>
+        <p className="rounded-full bg-[#f8ecd8] px-4 py-2 text-sm font-semibold text-[#9a6b2a]">
+          {dogs.length} profiles
+        </p>
+      </div>
+
+      <div className="mt-6 space-y-8">
+        {shelters.map((shelter) => {
+          const shelterDogs = dogs.filter((dog) => dog.shelter_id === shelter.id);
+          if (shelterDogs.length === 0) return null;
+
+          return (
+            <div key={shelter.id}>
+              <div className="mb-3 flex items-center justify-between gap-4 border-b border-[#eadfce] pb-3">
+                <h3 className="text-lg font-semibold text-[#4f4338]">{shelter.name}</h3>
+                <span className="text-sm text-[#8d7f72]">{shelterDogs.length} dogs</span>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {shelterDogs.map((dog) => (
+                  <DogListingCard key={dog.id} dog={dog} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+export default async function NewAdminDogPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ tab?: string }>;
+}) {
   const gateOpen = await isAdminGateOpen();
+  const resolvedSearchParams = await searchParams;
+  const activeTab = resolvedSearchParams?.tab === "listings" ? "listings" : "create";
 
   if (!gateOpen) {
     return (
@@ -33,13 +145,12 @@ export default async function NewAdminDogPage() {
   }
 
   const supabase = createAdminClient();
-  const [{ data: shelters }, { data: recentDogs }] = await Promise.all([
+  const [{ data: shelters }, { data: dogs }] = await Promise.all([
     supabase.from("shelters").select("id, name").order("name", { ascending: true }),
     supabase
       .from("dogs")
       .select("id, name, adoption_status, created_at, shelter_id")
-      .order("created_at", { ascending: false })
-      .limit(8),
+      .order("created_at", { ascending: false }),
   ]);
 
   if (!shelters || shelters.length === 0) {
@@ -63,8 +174,8 @@ export default async function NewAdminDogPage() {
 
   const shelterMap = new Map(shelters.map((shelter) => [shelter.id, shelter.name]));
 
-  const formattedRecentDogs: RecentDog[] =
-    recentDogs?.map((dog) => ({
+  const formattedDogs: AdminDog[] =
+    dogs?.map((dog) => ({
       adoption_status: dog.adoption_status,
       created_at: dog.created_at,
       id: dog.id,
@@ -85,6 +196,12 @@ export default async function NewAdminDogPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
+          <TabLink href="/onboarding" active={activeTab === "create"}>
+            Create dog
+          </TabLink>
+          <TabLink href="/onboarding?tab=listings" active={activeTab === "listings"}>
+            Manage listings
+          </TabLink>
           <form action={lockAdminGateAction}>
             <button
               type="submit"
@@ -96,76 +213,32 @@ export default async function NewAdminDogPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <DogListingForm shelters={shelters} />
+      {activeTab === "listings" ? (
+        <ListingsByShelter dogs={formattedDogs} shelters={shelters} />
+      ) : (
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <DogListingForm shelters={shelters} />
 
-        <aside className="space-y-6">
-          <section className="rounded-[28px] border border-[#eadfce] bg-white/90 p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-            <h2 className="text-xl font-semibold text-[#4f4338]">Onboarding Notes</h2>
-            <div className="mt-4 space-y-4 text-sm leading-6 text-[#74685d]">
-              <p>
-                Use <span className="font-semibold text-[#4f4338]">draft</span> for listings that
-                still need copy cleanup, medical review, or final photo ordering.
-              </p>
-              <p>
-                The first photo becomes the browse card cover, so place the strongest portrait first.
-              </p>
-              <p>
-                Custom trait pairs are flexible on purpose. We can formalize the most common ones
-                into structured fields later.
-              </p>
-            </div>
-          </section>
-
-          <section className="rounded-[28px] border border-[#eadfce] bg-white/90 p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-            <h2 className="text-xl font-semibold text-[#4f4338]">Recent Listings</h2>
-            <div className="mt-4 space-y-3">
-              {formattedRecentDogs.length === 0 ? (
-                <p className="text-sm leading-6 text-[#74685d]">
-                  No dogs have been added yet from this admin tool.
+          <aside className="space-y-6">
+            <section className="rounded-[28px] border border-[#eadfce] bg-white/90 p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+              <h2 className="text-xl font-semibold text-[#4f4338]">Onboarding Notes</h2>
+              <div className="mt-4 space-y-4 text-sm leading-6 text-[#74685d]">
+                <p>
+                  Use <span className="font-semibold text-[#4f4338]">draft</span> for listings that
+                  still need copy cleanup, medical review, or final photo ordering.
                 </p>
-              ) : (
-                formattedRecentDogs.map((dog) => (
-                  <div
-                    key={dog.id}
-                    className="rounded-2xl border border-[#eee2d2] bg-[#fffdfa] p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-[#4f4338]">{dog.name}</p>
-                        <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#9a6b2a]">
-                          {dog.adoption_status}
-                        </p>
-                      </div>
-                      <span className="text-xs text-[#8d7f72]">
-                        {new Date(dog.created_at).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                    </div>
-                    <p className="mt-3 text-sm text-[#74685d]">{dog.shelter_name}</p>
-                    <div className="mt-4 flex gap-2">
-                      <Link
-                        href={`/onboarding/dogs/${dog.id}/edit`}
-                        className="inline-flex flex-1 items-center justify-center rounded-full bg-[#d38a2c] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#bf781f]"
-                      >
-                        Edit
-                      </Link>
-                      <Link
-                        href={`/dogs/${dog.id}`}
-                        className="inline-flex flex-1 items-center justify-center rounded-full border border-[#eadfce] bg-white px-3 py-2 text-xs font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
-                      >
-                        Open
-                      </Link>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-        </aside>
-      </div>
+                <p>
+                  The first photo becomes the browse card cover, so place the strongest portrait first.
+                </p>
+                <p>
+                  Use <Link href="/onboarding?tab=listings" className="font-semibold text-[#b77624] underline underline-offset-4">Manage listings</Link>{" "}
+                  to edit existing dogs, preview profiles, or delete accidental duplicates.
+                </p>
+              </div>
+            </section>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }
