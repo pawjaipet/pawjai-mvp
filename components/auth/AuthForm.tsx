@@ -132,7 +132,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
         </button>
       )}
 
-      <div className="mx-auto mb-[22px] h-[90px] w-[90px] relative">
+      <div className="mx-auto mb-[22px] h-[120px] w-[120px] relative">
         <Image src="/pawjai-logo.png" alt="PawJai" fill sizes="96px" className="object-contain" priority />
       </div>
 
