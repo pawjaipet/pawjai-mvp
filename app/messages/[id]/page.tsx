@@ -2,13 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { Camera, ImageIcon, FileText } from "lucide-react";
 import ClientAuthGate from "@/components/auth/ClientAuthGate";
 
 const M = "Montserrat, sans-serif";
 
-type Msg = { id: number; text: string; from: "me" | "shelter"; time: string };
+type Msg = { id: number; text: string; from: "me" | "shelter"; time: string; imageUrl?: string };
 
 const SHELTER_NAMES: Record<string, string> = {
   "1": "Soi Dog Foundation",
@@ -44,6 +45,27 @@ export default function ChatThreadPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const libraryRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const closeSheet = useCallback(() => setSheetOpen(false), []);
+
+  function handleAttachment(files: FileList | null) {
+    if (!files?.length) return;
+    const file = files[0];
+    const now = new Date();
+    const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    if (file.type.startsWith("image/")) {
+      const url = URL.createObjectURL(file);
+      setMessages((prev) => [...prev, { id: Date.now(), text: `[Image: ${file.name}]`, from: "me", time, imageUrl: url }]);
+    } else {
+      setMessages((prev) => [...prev, { id: Date.now(), text: `📎 ${file.name}`, from: "me", time }]);
+    }
+    setSheetOpen(false);
+  }
+
   function send() {
     const text = input.trim();
     if (!text) return;
@@ -51,7 +73,6 @@ export default function ChatThreadPage() {
     const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
     setMessages((prev) => [...prev, { id: Date.now(), text, from: "me", time }]);
     setInput("");
-    // Simulate shelter response
     setTimeout(() => {
       setMessages((prev) => [
         ...prev,
@@ -67,7 +88,7 @@ export default function ChatThreadPage() {
     >
     <div
       className="flex flex-col"
-      style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", height: "100dvh", background: "#F5F1E8", fontFamily: M }}
+      style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", height: "calc(100dvh - 70px)", background: "#F5F1E8", fontFamily: M }}
     >
       {/* Header */}
       <div className="flex items-center gap-[12px] px-[16px] py-[14px] shrink-0" style={{ background: "#d6c8ad" }}>
@@ -116,7 +137,7 @@ export default function ChatThreadPage() {
             )}
             <div className="max-w-[72%]">
               <div
-                className="rounded-[18px] px-[14px] py-[10px] text-[14px]"
+                className="rounded-[18px] px-[14px] py-[10px] text-[14px] overflow-hidden"
                 style={{
                   background: msg.from === "me" ? "#cd8188" : "white",
                   color: msg.from === "me" ? "white" : "#65584f",
@@ -125,7 +146,11 @@ export default function ChatThreadPage() {
                   borderBottomLeftRadius: msg.from === "shelter" ? 4 : 18,
                 }}
               >
-                {msg.text}
+                {msg.imageUrl ? (
+                  <img src={msg.imageUrl} alt="" className="rounded-[12px] max-w-full max-h-[200px] object-cover" />
+                ) : (
+                  msg.text
+                )}
               </div>
               <p className={`text-[10px] mt-[3px] text-[#65584f]/40 ${msg.from === "me" ? "text-right" : "text-left"}`} style={{ fontFamily: M }}>
                 {msg.time}
@@ -136,8 +161,73 @@ export default function ChatThreadPage() {
         <div ref={bottomRef} />
       </div>
 
+      {/* Hidden file inputs */}
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleAttachment(e.target.files)} />
+      <input ref={libraryRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => handleAttachment(e.target.files)} />
+      <input ref={fileRef} type="file" className="hidden" onChange={(e) => handleAttachment(e.target.files)} />
+
+      {/* Attachment action sheet */}
+      {sheetOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={closeSheet}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="relative w-full animate-[slideUp_0.25s_ease-out]"
+            style={{ maxWidth: 402 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-[10px] mb-[8px] rounded-[14px] overflow-hidden" style={{ background: "white" }}>
+              <button
+                onClick={() => { cameraRef.current?.click(); }}
+                className="w-full flex items-center gap-[14px] px-[20px] py-[16px] text-[16px] font-medium text-[#65584f] active:bg-[#f5f1e8] transition-colors"
+                style={{ fontFamily: M, borderBottom: "1px solid rgba(214,200,173,0.4)" }}
+              >
+                <Camera size={22} className="text-[#cd8188]" />
+                Take Photo
+              </button>
+              <button
+                onClick={() => { libraryRef.current?.click(); }}
+                className="w-full flex items-center gap-[14px] px-[20px] py-[16px] text-[16px] font-medium text-[#65584f] active:bg-[#f5f1e8] transition-colors"
+                style={{ fontFamily: M, borderBottom: "1px solid rgba(214,200,173,0.4)" }}
+              >
+                <ImageIcon size={22} className="text-[#cd8188]" />
+                Choose from Library
+              </button>
+              <button
+                onClick={() => { fileRef.current?.click(); }}
+                className="w-full flex items-center gap-[14px] px-[20px] py-[16px] text-[16px] font-medium text-[#65584f] active:bg-[#f5f1e8] transition-colors"
+                style={{ fontFamily: M }}
+              >
+                <FileText size={22} className="text-[#cd8188]" />
+                Files
+              </button>
+            </div>
+            <div className="mx-[10px] mb-[10px]">
+              <button
+                onClick={closeSheet}
+                className="w-full rounded-[14px] py-[16px] text-[16px] font-bold text-[#cd8188] active:bg-[#f5f1e8] transition-colors"
+                style={{ fontFamily: M, background: "white" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+          <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+        </div>
+      )}
+
       {/* Input */}
       <div className="shrink-0 px-[16px] py-[12px] flex items-center gap-[10px]" style={{ background: "white", borderTop: "1px solid rgba(214,200,173,0.5)", paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}>
+        <button
+          onClick={() => setSheetOpen(true)}
+          className="w-[44px] h-[44px] rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95"
+          style={{ background: "#cd8188" }}
+          aria-label="Attach"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
         <input
           type="text"
           value={input}
