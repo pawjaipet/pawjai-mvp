@@ -178,8 +178,8 @@ export default function SwipeDogCard({
         ))}
       </div>
 
-      {/* Dog name + breed overlay — wraps when long */}
-      <div className="absolute top-4 left-4 right-20 pointer-events-none z-10">
+      {/* Dog name + breed overlay — pushed below logo gradient (~155px) */}
+      <div className="absolute top-[160px] left-4 right-20 pointer-events-none z-10">
         <p
           className="font-black text-[36px] leading-[1.0] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] break-words"
           style={{ fontFamily: "Montserrat, sans-serif" }}
