@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import { Camera, ImageIcon, FileText } from "lucide-react";
 
 const M = "Montserrat, sans-serif";
 
@@ -338,14 +339,18 @@ function DetailsTab({
 
 function MessagesTab({ dogName }: { dogName: string }) {
   const [draft, setDraft] = useState("");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const libraryRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const closeSheet = useCallback(() => setSheetOpen(false), []);
 
-  // Static demo conversation while real chat backend is wired
-  const messages = [
+  type ChatMsg = { from: string; text: string; time: string; read?: boolean; imageUrl?: string };
+  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
     {
       from: "shelter",
       text: `Hello! Thank you for booking an appointment to meet ${dogName}. We're excited to introduce you!`,
       time: "3:00 AM",
-      day: "TUESDAY, APR 7, 2026",
     },
     {
       from: "me",
@@ -358,25 +363,48 @@ function MessagesTab({ dogName }: { dogName: string }) {
       text: `Please bring your ID and any questions you may have. We'll show you around and introduce you to ${dogName}.`,
       time: "7:30 AM",
     },
-  ];
+  ]);
+
+  function handleAttachment(files: FileList | null) {
+    if (!files?.length) return;
+    const file = files[0];
+    const now = new Date();
+    const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    if (file.type.startsWith("image/")) {
+      const url = URL.createObjectURL(file);
+      setChatMessages((prev) => [...prev, { from: "me", text: `[Image: ${file.name}]`, time, imageUrl: url }]);
+    } else {
+      setChatMessages((prev) => [...prev, { from: "me", text: `📎 ${file.name}`, time }]);
+    }
+    setSheetOpen(false);
+  }
 
   return (
     <div className="flex flex-col" style={{ minHeight: "calc(100dvh - 240px)" }}>
+      {/* Hidden file inputs */}
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleAttachment(e.target.files)} />
+      <input ref={libraryRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => handleAttachment(e.target.files)} />
+      <input ref={fileRef} type="file" className="hidden" onChange={(e) => handleAttachment(e.target.files)} />
+
       <div className="flex-1 px-[16px] py-[20px] space-y-[16px] overflow-y-auto">
         <p className="text-center text-[11px] font-semibold tracking-[0.14em] text-[#65584f]/45" style={{ fontFamily: M }}>
           TUESDAY, APR 7, 2026
         </p>
-        {messages.map((msg, i) => (
+        {chatMessages.map((msg, i) => (
           <div key={i} className={`flex ${msg.from === "me" ? "justify-end" : "justify-start"}`}>
             <div className="max-w-[78%]">
               <div
-                className="rounded-[18px] px-[16px] py-[12px]"
+                className="rounded-[18px] px-[16px] py-[12px] overflow-hidden"
                 style={{
                   background: msg.from === "me" ? "#cd8188" : "#f5f0e8",
                   color: msg.from === "me" ? "white" : "#65584f",
                 }}
               >
-                <p className="text-[14px] leading-[1.45]" style={{ fontFamily: M }}>{msg.text}</p>
+                {msg.imageUrl ? (
+                  <img src={msg.imageUrl} alt="" className="rounded-[12px] max-w-full max-h-[200px] object-cover" />
+                ) : (
+                  <p className="text-[14px] leading-[1.45]" style={{ fontFamily: M }}>{msg.text}</p>
+                )}
               </div>
               <p
                 className={`text-[11px] mt-[4px] ${msg.from === "me" ? "text-right" : ""}`}
@@ -389,11 +417,61 @@ function MessagesTab({ dogName }: { dogName: string }) {
         ))}
       </div>
 
+      {/* Attachment action sheet */}
+      {sheetOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={closeSheet}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="relative w-full animate-[slideUp_0.25s_ease-out]"
+            style={{ maxWidth: 402 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-[10px] mb-[8px] rounded-[14px] overflow-hidden" style={{ background: "white" }}>
+              <button
+                onClick={() => { cameraRef.current?.click(); }}
+                className="w-full flex items-center gap-[14px] px-[20px] py-[16px] text-[16px] font-medium text-[#65584f] active:bg-[#f5f1e8] transition-colors"
+                style={{ fontFamily: M, borderBottom: "1px solid rgba(214,200,173,0.4)" }}
+              >
+                <Camera size={22} className="text-[#cd8188]" />
+                Take Photo
+              </button>
+              <button
+                onClick={() => { libraryRef.current?.click(); }}
+                className="w-full flex items-center gap-[14px] px-[20px] py-[16px] text-[16px] font-medium text-[#65584f] active:bg-[#f5f1e8] transition-colors"
+                style={{ fontFamily: M, borderBottom: "1px solid rgba(214,200,173,0.4)" }}
+              >
+                <ImageIcon size={22} className="text-[#cd8188]" />
+                Choose from Library
+              </button>
+              <button
+                onClick={() => { fileRef.current?.click(); }}
+                className="w-full flex items-center gap-[14px] px-[20px] py-[16px] text-[16px] font-medium text-[#65584f] active:bg-[#f5f1e8] transition-colors"
+                style={{ fontFamily: M }}
+              >
+                <FileText size={22} className="text-[#cd8188]" />
+                Files
+              </button>
+            </div>
+            <div className="mx-[10px] mb-[10px]">
+              <button
+                onClick={closeSheet}
+                className="w-full rounded-[14px] py-[16px] text-[16px] font-bold text-[#cd8188] active:bg-[#f5f1e8] transition-colors"
+                style={{ fontFamily: M, background: "white" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+          <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+        </div>
+      )}
+
       {/* Composer */}
       <div className="sticky bottom-[70px] flex items-center gap-[10px] px-[14px] py-[12px] bg-white border-t border-[#d6c8ad]/40">
         <button
           type="button"
-          className="w-[40px] h-[40px] rounded-full flex items-center justify-center flex-shrink-0"
+          onClick={() => setSheetOpen(true)}
+          className="w-[40px] h-[40px] rounded-full flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform"
           style={{ background: "#d6c8ad" }}
           aria-label="Attach"
         >
