@@ -6,10 +6,12 @@ import { Share2, CalendarDays, Bookmark } from "lucide-react";
 import { toggleWishlistAction } from "@/app/actions/wishlist";
 import { useAuthModal } from "@/components/auth/AuthProvider";
 import type { Dog, DogPhoto, DogTrait } from "@/types/database";
+import type { DogMediaItem } from "@/utils/dog-media";
 
 export type SwipeDog = Dog & {
   photos: Pick<DogPhoto, "public_url" | "is_cover" | "sort_order">[];
   traits?: Pick<DogTrait, "trait_type" | "trait_value">[];
+  media?: DogMediaItem[];
   video?: { poster_url: string | null; public_url: string } | null;
 };
 
@@ -61,6 +63,29 @@ export default function SwipeDogCard({
     if (b.is_cover) return 1;
     return a.sort_order - b.sort_order;
   });
+  const photoMedia = orderedPhotos.map((photo, index) => ({
+    id: `photo-${index}`,
+    isCover: photo.is_cover,
+    posterUrl: null,
+    publicUrl: photo.public_url,
+    sortOrder: photo.sort_order,
+    type: "photo" as const,
+  }));
+  const orderedMedia = dog.media?.length
+    ? dog.media
+    : dog.video?.public_url
+      ? [
+          {
+            id: "legacy-cover-video",
+            isCover: true,
+            posterUrl: dog.video.poster_url ?? photoMedia[0]?.publicUrl ?? null,
+            publicUrl: dog.video.public_url,
+            sortOrder: -1,
+            type: "video" as const,
+          },
+          ...photoMedia.map((photo, index) => ({ ...photo, isCover: false, sortOrder: index })),
+        ]
+      : photoMedia;
   const personalityTags =
     dog.traits
       ?.filter((trait) => trait.trait_type === "personality")
@@ -148,13 +173,13 @@ export default function SwipeDogCard({
         className="flex overflow-x-auto snap-x snap-mandatory rounded-[22px]"
         style={{ width: cardWidth, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
       >
-        {orderedPhotos.map((p, i) => (
-          <Link key={i} href={`/dogs/${dog.id}`} className="snap-center block flex-shrink-0" style={{ width: cardWidth }}>
+        {orderedMedia.map((item, i) => (
+          <Link key={item.id} href={`/dogs/${dog.id}`} className="snap-center block flex-shrink-0" style={{ width: cardWidth }}>
             <div className="rounded-[22px] overflow-hidden bg-[#d6c8ad]" style={{ height: cardHeight, width: cardWidth }}>
-              {i === 0 && dog.video?.public_url && isActive ? (
+              {item.type === "video" && item.publicUrl && isActive && i === imgIdx ? (
                 <video
-                  src={dog.video.public_url}
-                  poster={dog.video.poster_url ?? p.public_url ?? undefined}
+                  src={item.publicUrl}
+                  poster={item.posterUrl ?? undefined}
                   className="h-full w-full object-cover"
                   muted
                   loop
@@ -162,10 +187,18 @@ export default function SwipeDogCard({
                   autoPlay
                   preload="metadata"
                 />
-              ) : p.public_url ? (
+              ) : item.type === "video" && item.posterUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={p.public_url}
+                  src={item.posterUrl}
+                  alt={dog.name}
+                  className="w-full h-full object-cover"
+                  draggable={false}
+                />
+              ) : item.type === "photo" && item.publicUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={item.publicUrl}
                   alt={dog.name}
                   className="w-full h-full object-cover"
                   draggable={false}
@@ -197,10 +230,10 @@ export default function SwipeDogCard({
       </div>
 
       {/* Image dots */}
-      {orderedPhotos.length > 1 && (
+      {orderedMedia.length > 1 && (
         <div className="absolute bottom-[90px] left-0 right-0 flex justify-center pointer-events-none z-10">
           <div className="bg-[rgba(214,200,173,0.5)] px-[12px] py-[6px] rounded-[12px] flex gap-[8px]">
-            {orderedPhotos.map((_, i) => (
+            {orderedMedia.map((_, i) => (
               <div
                 key={i}
                 className={`h-2 w-2 rounded-full transition-colors ${i === imgIdx ? "bg-[#cd8188]" : "bg-[rgba(101,88,79,0.3)]"}`}

@@ -7,6 +7,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import AuthPromptButton from "@/components/auth/AuthPromptButton";
 import DogPhotoGallery from "@/components/dogs/DogPhotoGallery";
 import type { DogPhoto, DogTrait } from "@/types/database";
+import { buildDogMediaItems } from "@/utils/dog-media";
 import { toggleWishlist } from "./actions";
 
 const M = "Montserrat, sans-serif";
@@ -70,6 +71,7 @@ export default async function DogProfilePage({
   const traits: DogTrait[] = traitsData ?? [];
   const coverVideoUrl = traits.find((t) => t.trait_type === "cover_video_url")?.trait_value ?? null;
   const coverVideoPosterUrl = traits.find((t) => t.trait_type === "cover_video_poster_url")?.trait_value ?? null;
+  const mediaItems = buildDogMediaItems({ photos, traits });
 
   // Order: cover photo first, then by sort_order
   const orderedPhotos = [...photos].sort((a, b) => {
@@ -145,6 +147,7 @@ export default async function DogProfilePage({
         <DogPhotoGallery
           photos={orderedPhotos.map((p) => ({ id: p.id, public_url: p.public_url }))}
           dogName={dog.name}
+          media={mediaItems}
           videoUrl={coverVideoUrl}
           videoPosterUrl={coverVideoPosterUrl}
         />

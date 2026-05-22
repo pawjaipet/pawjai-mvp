@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { DogMediaItem } from "@/utils/dog-media";
 
 interface Photo {
   id: string;
@@ -10,23 +11,51 @@ interface Photo {
 interface Props {
   photos: Photo[];
   dogName: string;
+  media?: DogMediaItem[];
   videoUrl?: string | null;
   videoPosterUrl?: string | null;
 }
 
-export default function DogPhotoGallery({ photos, dogName, videoUrl, videoPosterUrl }: Props) {
+export default function DogPhotoGallery({ photos, dogName, media, videoUrl, videoPosterUrl }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
-  const active = photos[activeIdx] ?? null;
-  const showVideo = activeIdx === 0 && videoUrl;
+  const fallbackMedia: DogMediaItem[] = videoUrl
+    ? [
+        {
+          id: "legacy-cover-video",
+          isCover: true,
+          posterUrl: videoPosterUrl ?? photos[0]?.public_url ?? null,
+          publicUrl: videoUrl,
+          sortOrder: -1,
+          type: "video",
+        },
+        ...photos.map((photo, index) => ({
+          id: photo.id,
+          isCover: false,
+          posterUrl: null,
+          publicUrl: photo.public_url,
+          sortOrder: index,
+          type: "photo" as const,
+        })),
+      ]
+    : photos.map((photo, index) => ({
+        id: photo.id,
+        isCover: index === 0,
+        posterUrl: null,
+        publicUrl: photo.public_url,
+        sortOrder: index,
+        type: "photo" as const,
+      }));
+  const mediaItems = media?.length ? media : fallbackMedia;
+  const active = mediaItems[activeIdx] ?? null;
 
   return (
     <>
       {/* Hero photo / video — full bleed */}
       <div className="w-full relative" style={{ height: 360, background: "#d6c8ad" }}>
-        {showVideo ? (
+        {active?.type === "video" && active.publicUrl ? (
           <video
-            src={videoUrl ?? undefined}
-            poster={videoPosterUrl ?? active?.public_url ?? undefined}
+            src={active.publicUrl}
+            poster={active.posterUrl ?? undefined}
             className="w-full h-full object-cover"
             muted
             loop
@@ -34,10 +63,10 @@ export default function DogPhotoGallery({ photos, dogName, videoUrl, videoPoster
             autoPlay
             preload="metadata"
           />
-        ) : active?.public_url ? (
+        ) : active?.publicUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={active.public_url}
+            src={active.publicUrl}
             alt={dogName}
             className="w-full h-full object-cover"
           />
@@ -47,21 +76,21 @@ export default function DogPhotoGallery({ photos, dogName, videoUrl, videoPoster
       </div>
 
       {/* Thumbnails strip */}
-      {photos.length > 1 && (
+      {mediaItems.length > 1 && (
         <div className="bg-white px-[16px] py-[14px]">
           <div
             className="flex gap-[10px] overflow-x-auto"
             style={{ scrollbarWidth: "none" }}
           >
             <style>{`.dog-thumbs::-webkit-scrollbar{display:none}`}</style>
-            {photos.map((p, i) => {
+            {mediaItems.map((item, i) => {
               const isActive = i === activeIdx;
               return (
                 <button
-                  key={p.id}
+                  key={item.id}
                   type="button"
                   onClick={() => setActiveIdx(i)}
-                  className="shrink-0 rounded-[12px] overflow-hidden transition-all active:scale-95"
+                  className="relative shrink-0 rounded-[12px] overflow-hidden transition-all active:scale-95"
                   style={{
                     width: 84,
                     height: 84,
@@ -69,16 +98,21 @@ export default function DogPhotoGallery({ photos, dogName, videoUrl, videoPoster
                     background: "#d6c8ad",
                   }}
                 >
-                  {p.public_url ? (
+                  {item.publicUrl || item.posterUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={p.public_url}
+                      src={item.type === "video" ? item.posterUrl ?? item.publicUrl ?? "" : item.publicUrl ?? ""}
                       alt={`${dogName} ${i + 1}`}
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-2xl">🐾</div>
                   )}
+                  {item.type === "video" ? (
+                    <span className="absolute bottom-1 right-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white">
+                      Video
+                    </span>
+                  ) : null}
                 </button>
               );
             })}

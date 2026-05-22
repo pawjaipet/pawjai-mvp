@@ -4,11 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Database } from "@/types/database";
 import { isAdminGateOpen } from "@/utils/admin-auth";
+import { buildDogMediaItems, parseDogMediaManifest } from "@/utils/dog-media";
 import { createAdminClient } from "@/utils/supabase/admin";
 import type { EditDogProfileState } from "./form-state";
 
 type DogUpdate = Database["public"]["Tables"]["dogs"]["Update"];
 type DogTraitInsert = Database["public"]["Tables"]["dog_traits"]["Insert"];
+type SupabaseAdminClient = ReturnType<typeof createAdminClient>;
 
 const DOG_GENDERS = new Set<Database["public"]["Enums"]["dog_gender"]>([
   "female",
@@ -142,6 +144,143 @@ function revalidateDogManagementPaths(dogId: string) {
   revalidatePath(`/onboarding/dogs/${dogId}/edit`);
 }
 
+function getUniqueSubmittedOrder(values: string[]) {
+  const seen = new Set<string>();
+  const order: string[] = [];
+
+  for (const value of values) {
+    if (seen.has(value)) continue;
+    seen.add(value);
+    order.push(value);
+  }
+
+  return order;
+}
+
+async function updateDogMediaOrder({
+  coverMediaId,
+  dogId,
+  mediaOrderIds,
+  supabase,
+}: {
+  coverMediaId: string;
+  dogId: string;
+  mediaOrderIds: string[];
+  supabase: SupabaseAdminClient;
+}) {
+  if (mediaOrderIds.length === 0 && !coverMediaId) return;
+
+  const [{ data: photos, error: photosError }, { data: traits, error: traitsError }] = await Promise.all([
+    supabase.from("dog_photos").select("*").eq("dog_id", dogId).order("sort_order"),
+    supabase
+      .from("dog_traits")
+      .select("trait_type, trait_value")
+      .eq("dog_id", dogId)
+      .in("trait_type", ["media_manifest", "cover_video_url", "cover_video_storage_path", "cover_video_poster_url"]),
+  ]);
+
+  if (photosError) {
+    throw new Error(`Could not read current photos: ${photosError.message}`);
+  }
+  if (traitsError) {
+    throw new Error(`Could not read current media metadata: ${traitsError.message}`);
+  }
+
+  const currentItems = buildDogMediaItems({ photos: photos ?? [], traits: traits ?? [] });
+  if (currentItems.length === 0) return;
+
+  const currentById = new Map(currentItems.map((item) => [item.id, item]));
+  const validRequestedOrder = getUniqueSubmittedOrder(mediaOrderIds).filter((id) => currentById.has(id));
+  const remainingIds = currentItems
+    .map((item) => item.id)
+    .filter((id) => !validRequestedOrder.includes(id));
+  const finalOrderIds = [...validRequestedOrder, ...remainingIds];
+  const selectedCoverId = currentById.has(coverMediaId)
+    ? coverMediaId
+    : currentItems.find((item) => item.isCover)?.id ?? finalOrderIds[0];
+  const firstPhotoUrl =
+    currentItems.find((item) => item.type === "photo" && item.publicUrl)?.publicUrl ?? null;
+
+  const orderedItems = finalOrderIds.map((id, index) => {
+    const item = currentById.get(id)!;
+    return {
+      ...item,
+      isCover: id === selectedCoverId,
+      posterUrl:
+        item.type === "video"
+          ? item.posterUrl ?? firstPhotoUrl
+          : null,
+      sortOrder: index,
+    };
+  });
+
+  const photoUpdates = orderedItems
+    .filter((item) => item.type === "photo")
+    .map((item) =>
+      supabase
+        .from("dog_photos")
+        .update({
+          is_cover: item.isCover,
+          sort_order: item.sortOrder,
+        })
+        .eq("id", item.id)
+        .eq("dog_id", dogId),
+    );
+
+  const photoUpdateResults = await Promise.all(photoUpdates);
+  const failedPhotoUpdate = photoUpdateResults.find((result) => result.error);
+  if (failedPhotoUpdate?.error) {
+    throw new Error(`Could not save photo order: ${failedPhotoUpdate.error.message}`);
+  }
+
+  const { error: deleteMediaTraitsError } = await supabase
+    .from("dog_traits")
+    .delete()
+    .eq("dog_id", dogId)
+    .in("trait_type", ["media_manifest", "cover_video_url", "cover_video_storage_path", "cover_video_poster_url"]);
+
+  if (deleteMediaTraitsError) {
+    throw new Error(`Could not replace media metadata: ${deleteMediaTraitsError.message}`);
+  }
+
+  const mediaTraitRows: DogTraitInsert[] = [
+    {
+      dog_id: dogId,
+      trait_type: "media_manifest",
+      trait_value: JSON.stringify({ items: orderedItems }),
+    },
+  ];
+  const coverVideo = orderedItems.find((item) => item.isCover && item.type === "video");
+
+  if (coverVideo?.publicUrl) {
+    mediaTraitRows.push(
+      {
+        dog_id: dogId,
+        trait_type: "cover_video_url",
+        trait_value: coverVideo.publicUrl,
+      },
+      {
+        dog_id: dogId,
+        trait_type: "cover_video_storage_path",
+        trait_value: coverVideo.storagePath ?? "",
+      },
+    );
+
+    if (coverVideo.posterUrl) {
+      mediaTraitRows.push({
+        dog_id: dogId,
+        trait_type: "cover_video_poster_url",
+        trait_value: coverVideo.posterUrl,
+      });
+    }
+  }
+
+  const { error: insertMediaTraitsError } = await supabase.from("dog_traits").insert(mediaTraitRows);
+  if (insertMediaTraitsError) {
+    throw new Error(`Could not save media order: ${insertMediaTraitsError.message}`);
+  }
+}
+
 export async function updateDogProfileAction(
   _prevState: EditDogProfileState,
   formData: FormData,
@@ -160,6 +299,8 @@ export async function updateDogProfileAction(
   const shelterId = getString(formData, "shelter_id");
   const ageMonths = getOptionalNumber(formData, "age_months");
   const weightKg = getOptionalNumber(formData, "weight_kg");
+  const coverMediaId = getString(formData, "cover_media_id");
+  const mediaOrderIds = getStringValues(formData, "media_order");
 
   if (!dogId) fieldErrors.dog_id = "Missing dog profile id.";
   if (!name) fieldErrors.name = "Dog name is required.";
@@ -259,6 +400,22 @@ export async function updateDogProfileAction(
     }
   }
 
+  try {
+    await updateDogMediaOrder({
+      coverMediaId,
+      dogId,
+      mediaOrderIds,
+      supabase,
+    });
+  } catch (error) {
+    return {
+      message: `Profile details were updated, but saving photo/video order failed: ${
+        error instanceof Error ? error.message : "Unknown media order error"
+      }`,
+      status: "error",
+    };
+  }
+
   revalidateDogManagementPaths(dogId);
 
   return {
@@ -280,14 +437,20 @@ export async function deleteDogProfileAction(formData: FormData) {
     supabase.from("dog_photos").select("storage_path").eq("dog_id", dogId),
     supabase
       .from("dog_traits")
-      .select("trait_value")
+      .select("trait_type, trait_value")
       .eq("dog_id", dogId)
-      .in("trait_type", ["cover_video_storage_path"]),
+      .in("trait_type", ["cover_video_storage_path", "media_manifest"]),
   ]);
+  const mediaManifestItems = parseDogMediaManifest(mediaTraits ?? []);
 
   const storagePaths = [
     ...(photos ?? []).map((photo) => photo.storage_path),
-    ...(mediaTraits ?? []).map((trait) => trait.trait_value),
+    ...(mediaTraits ?? [])
+      .filter((trait) => trait.trait_type === "cover_video_storage_path")
+      .map((trait) => trait.trait_value),
+    ...mediaManifestItems
+      .map((item) => item.storagePath)
+      .filter((path): path is string => Boolean(path)),
   ].filter(Boolean);
 
   if (storagePaths.length > 0) {

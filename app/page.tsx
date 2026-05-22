@@ -4,14 +4,20 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import SwipeFeed from "@/components/SwipeFeed";
 import type { SwipeDog } from "@/components/SwipeDogCard";
 import { fetchActiveAds } from "@/utils/ads";
+import { buildDogMediaItems } from "@/utils/dog-media";
 
 export const dynamic = "force-dynamic";
 
 function hasUploadedPhoto(dog: SwipeDog) {
-  return dog.photos.some((photo) => {
-    if (!photo.public_url) return false;
+  const urls = [
+    ...dog.photos.map((photo) => photo.public_url),
+    ...(dog.media ?? []).map((item) => item.publicUrl),
+  ];
+
+  return urls.some((url) => {
+    if (!url) return false;
     try {
-      const hostname = new URL(photo.public_url).hostname;
+      const hostname = new URL(url).hostname;
       return hostname.includes("backblazeb2.com") || hostname.includes("supabase.co");
     } catch {
       return false;
@@ -33,7 +39,7 @@ async function getDogs(): Promise<SwipeDog[]> {
   const ids = dogs.map((d) => d.id);
   const { data: photos } = await supabase
     .from("dog_photos")
-    .select("dog_id, public_url, is_cover, sort_order")
+    .select("id, dog_id, public_url, is_cover, sort_order, storage_path")
     .in("dog_id", ids)
     .order("sort_order");
   const { data: traits } = await supabase
@@ -42,7 +48,7 @@ async function getDogs(): Promise<SwipeDog[]> {
     .in("dog_id", ids)
     .order("created_at");
 
-  const photoMap = new Map<string, { public_url: string | null; is_cover: boolean; sort_order: number }[]>();
+  const photoMap = new Map<string, { id: string; public_url: string | null; is_cover: boolean; sort_order: number; storage_path: string }[]>();
   for (const p of photos ?? []) {
     if (!photoMap.has(p.dog_id)) photoMap.set(p.dog_id, []);
     photoMap.get(p.dog_id)!.push(p);
@@ -70,6 +76,10 @@ async function getDogs(): Promise<SwipeDog[]> {
       ...d,
       photos: photoMap.get(d.id) ?? [],
       traits: traitMap.get(d.id) ?? [],
+      media: buildDogMediaItems({
+        photos: photoMap.get(d.id) ?? [],
+        traits: traitMap.get(d.id) ?? [],
+      }),
       video: videoMap.get(d.id) ?? null,
     }))
     .sort((a, b) => {

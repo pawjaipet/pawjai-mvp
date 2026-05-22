@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { Database, DogPhoto, DogTrait } from "@/types/database";
+import { buildDogMediaItems, type DogMediaItem } from "@/utils/dog-media";
 import { deleteDogProfileAction, updateDogProfileAction } from "./actions";
 import { initialEditDogProfileState } from "./form-state";
 
@@ -221,6 +222,108 @@ function statusCopy(status: Dog["adoption_status"]) {
   }
 }
 
+function MediaOrderEditor({ dogName, items }: { dogName: string; items: DogMediaItem[] }) {
+  const [mediaItems, setMediaItems] = useState(items);
+  const [coverMediaId, setCoverMediaId] = useState(
+    items.find((item) => item.isCover)?.id ?? items[0]?.id ?? "",
+  );
+
+  function moveMediaItem(index: number, direction: -1 | 1) {
+    setMediaItems((current) => {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= current.length) return current;
+
+      const next = [...current];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  }
+
+  if (mediaItems.length === 0) {
+    return <p className="text-sm leading-6 text-[#74685d]">No photos or videos are attached yet.</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <input type="hidden" name="cover_media_id" value={coverMediaId} />
+      {mediaItems.map((item) => (
+        <input key={`order-${item.id}`} type="hidden" name="media_order" value={item.id} />
+      ))}
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {mediaItems.map((item, index) => {
+          const previewUrl = item.type === "video" ? item.posterUrl : item.publicUrl;
+          const isCover = coverMediaId === item.id;
+
+          return (
+            <div
+              key={item.id}
+              className={`overflow-hidden rounded-2xl border bg-[#fffdfa] transition ${
+                isCover ? "border-[#cd8188] shadow-[0_12px_30px_rgba(205,129,136,0.22)]" : "border-[#eadfce]"
+              }`}
+            >
+              <div className="relative h-40 bg-[#e3d6bb]">
+                {previewUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={previewUrl}
+                    alt={`${dogName} media ${index + 1}`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-[#65584f]">
+                    No preview
+                  </div>
+                )}
+                {item.type === "video" ? (
+                  <span className="absolute left-3 top-3 rounded-full bg-black/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white">
+                    Video
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="space-y-3 p-3 text-xs text-[#74685d]">
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-[#5b4d40]">
+                  <input
+                    type="radio"
+                    name="cover_media_choice"
+                    checked={isCover}
+                    onChange={() => setCoverMediaId(item.id)}
+                    className="h-4 w-4 border-[#d4c1a5] text-[#cd8188] focus:ring-[#f3cbd0]"
+                  />
+                  <span>
+                    {item.type === "video" ? "Video" : "Photo"} {index + 1}
+                    {isCover ? <span className="ml-2 text-[#b77624]">Cover</span> : null}
+                  </span>
+                </label>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={index === 0}
+                    onClick={() => moveMediaItem(index, -1)}
+                    className="rounded-full border border-[#eadfce] px-3 py-2 font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Up
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === mediaItems.length - 1}
+                    onClick={() => moveMediaItem(index, 1)}
+                    className="rounded-full border border-[#eadfce] px-3 py-2 font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Down
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function DogEditForm({
   dog,
   photos,
@@ -246,7 +349,7 @@ export default function DogEditForm({
   const selectedCareTags = new Set(
     traits.filter((trait) => trait.trait_type === "medical_needs").map((trait) => trait.trait_value),
   );
-  const sortedPhotos = [...photos].sort((a, b) => a.sort_order - b.sort_order);
+  const mediaItems = buildDogMediaItems({ photos, traits });
   const hiddenTraits = traits.filter(
     (trait) =>
       !structuredTraitTypes.includes(trait.trait_type) &&
@@ -534,6 +637,13 @@ export default function DogEditForm({
           </div>
         </Section>
 
+        <Section
+          title="Photos and Video"
+          description="Choose the cover and arrange the exact order users should see on swipe cards and dog profiles."
+        >
+          <MediaOrderEditor dogName={dog.name} items={mediaItems} />
+        </Section>
+
         {state.message ? (
           <div
             className={`rounded-2xl border px-5 py-4 text-sm ${
@@ -566,34 +676,6 @@ export default function DogEditForm({
       </form>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <Section
-          title="Photos and Video"
-          description="Photo uploads stay managed by the onboarding tool for now. This panel helps admins confirm what is attached before editing profile text."
-        >
-          {sortedPhotos.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {sortedPhotos.map((photo, index) => (
-                <div key={photo.id} className="overflow-hidden rounded-2xl border border-[#eadfce] bg-[#fffdfa]">
-                  {photo.public_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={photo.public_url} alt={`${dog.name} photo ${index + 1}`} className="h-40 w-full object-cover" />
-                  ) : (
-                    <div className="flex h-40 items-center justify-center bg-[#e3d6bb] text-sm text-[#65584f]">
-                      No public URL
-                    </div>
-                  )}
-                  <div className="p-3 text-xs text-[#74685d]">
-                    Photo {index + 1}
-                    {photo.is_cover ? <span className="ml-2 font-semibold text-[#b77624]">Cover</span> : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm leading-6 text-[#74685d]">No photos are attached yet.</p>
-          )}
-        </Section>
-
         <section className="rounded-[28px] border border-[#f1c4c0] bg-[#fff7f5] p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
           <h2 className="text-xl font-semibold text-[#6d2a23]">Delete Dog Profile</h2>
           <p className="mt-2 text-sm leading-6 text-[#7a4b45]">

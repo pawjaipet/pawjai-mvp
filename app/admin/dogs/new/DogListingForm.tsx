@@ -12,6 +12,13 @@ type ShelterOption = {
 
 const defaultPhotoRows = ["", ""];
 
+type PendingMediaItem = {
+  key: string;
+  kind: "photo" | "video";
+  name: string;
+  size: number;
+};
+
 const personalityTags = [
   "Happy",
   "Lucky",
@@ -104,6 +111,8 @@ function fileInputClass(error?: string, accent = "file:bg-[#d38a2c]") {
 
 const fieldErrorLabels: Record<string, string> = {
   age_months: "Age in months",
+  cover_media_key: "Cover media",
+  media_files: "Uploaded media files",
   name: "Dog name",
   shelter_id: "Shelter",
   video_file: "Optional cover video",
@@ -115,6 +124,9 @@ function formatFieldErrorLabel(key: string) {
 
   const photoFileMatch = key.match(/^photo_file_(\d+)$/);
   if (photoFileMatch) return `Uploaded photo ${Number(photoFileMatch[1]) + 1}`;
+
+  const mediaFileMatch = key.match(/^media_file_(\d+)$/);
+  if (mediaFileMatch) return `Uploaded media ${Number(mediaFileMatch[1]) + 1}`;
 
   const photoUrlMatch = key.match(/^photo_url_(\d+)$/);
   if (photoUrlMatch) return `Photo URL ${Number(photoUrlMatch[1]) + 1}`;
@@ -142,6 +154,11 @@ function ErrorSummary({ errors }: { errors?: Record<string, string> }) {
       </ul>
     </div>
   );
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
 function ChoiceCards({
@@ -199,7 +216,19 @@ export default function DogListingForm({
     initialCreateDogListingState,
   );
   const [photoRows, setPhotoRows] = useState(defaultPhotoRows);
+  const [mediaItems, setMediaItems] = useState<PendingMediaItem[]>([]);
+  const [coverMediaKey, setCoverMediaKey] = useState("");
   const defaultShelterId = shelters.length === 1 ? shelters[0].id : "";
+
+  function moveMediaItem(index: number, direction: -1 | 1) {
+    setMediaItems((items) => {
+      const next = [...items];
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= next.length) return items;
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  }
 
   return (
     <form action={formAction} className="space-y-6">
@@ -484,8 +513,8 @@ export default function DogListingForm({
       </Section>
 
       <Section
-        title="Photos and optional video"
-        description="Choose the workflow that is easiest for the team. The first imported photo becomes the fallback cover. You can also test one short video loop for the active swipe card."
+        title="Photos and videos"
+        description="Upload photos and short dog videos, then choose the cover and order before saving. Videos are compressed to short muted MP4 loops."
       >
         <div className="space-y-4">
           <Field
@@ -500,34 +529,92 @@ export default function DogListingForm({
           </Field>
 
           <Field
-            label="Upload image files"
-            error={Object.entries(state.fieldErrors ?? {}).find(([key]) => key.startsWith("photo_file_"))?.[1]}
-            hint="Use this when the photos are on your computer. Photos are uploaded to public dog photo storage."
+            label="Upload photos and videos"
+            error={state.fieldErrors?.media_files}
+            hint="Select photos and up to 6 videos. After selecting, use the list below to choose the cover and exact swipe/profile order."
           >
             <input
-              name="photo_files"
+              name="media_files"
               type="file"
-              accept="image/*,.heic,.heif"
+              accept="image/*,video/*,.heic,.heif"
               multiple
-              className={fileInputClass(
-                Object.keys(state.fieldErrors ?? {}).some((key) => key.startsWith("photo_file_")) ? "error" : undefined,
-                "file:bg-[#d38a2c]",
-              )}
+              onChange={(event) => {
+                const files = Array.from(event.currentTarget.files ?? []);
+                const next = files.map((file, index) => ({
+                  key: `file-${index}`,
+                  kind: file.type.startsWith("video/") ? ("video" as const) : ("photo" as const),
+                  name: file.name,
+                  size: file.size,
+                }));
+                setMediaItems(next);
+                setCoverMediaKey(next[0]?.key ?? "");
+              }}
+              className={fileInputClass(state.fieldErrors?.media_files, "file:bg-[#cd8188]")}
             />
           </Field>
 
-          <Field
-            label="Optional cover video"
-            error={state.fieldErrors?.video_file}
-            hint="Upload one short clip if you have it. PawJai trims to the first 10 seconds, removes audio, compresses to MP4, and only loads it for the active dog card."
-          >
-            <input
-              name="video_file"
-              type="file"
-              accept="video/*"
-              className={fileInputClass(state.fieldErrors?.video_file, "file:bg-[#cd8188]")}
-            />
-          </Field>
+          {mediaItems.length > 0 ? (
+            <div className="rounded-[24px] border border-[#eadfce] bg-[#fffdfa] p-4">
+              <div className="mb-3">
+                <p className="text-sm font-semibold text-[#4f4338]">Cover and display order</p>
+                <p className="mt-1 text-xs leading-5 text-[#7a6d61]">
+                  The cover item appears first on swipe cards and dog profiles. Only the active dog
+                  video auto-loads on the public swipe page.
+                </p>
+              </div>
+
+              <input type="hidden" name="cover_media_key" value={coverMediaKey} />
+              {mediaItems.map((item) => (
+                <input key={`order-${item.key}`} type="hidden" name="media_order" value={item.key} />
+              ))}
+
+              <div className="space-y-2">
+                {mediaItems.map((item, index) => (
+                  <div
+                    key={item.key}
+                    className="flex flex-col gap-3 rounded-2xl border border-[#eee2d2] bg-white p-3 sm:flex-row sm:items-center"
+                  >
+                    <label className="flex flex-1 cursor-pointer items-center gap-3">
+                      <input
+                        type="radio"
+                        name="cover_media_choice"
+                        checked={coverMediaKey === item.key}
+                        onChange={() => setCoverMediaKey(item.key)}
+                        className="h-4 w-4 border-[#d4c1a5] text-[#cd8188] focus:ring-[#f3cbd0]"
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-[#4f4338]">
+                          {index + 1}. {item.name}
+                        </span>
+                        <span className="mt-1 block text-xs uppercase tracking-[0.16em] text-[#9a6b2a]">
+                          {item.kind} · {formatFileSize(item.size)}
+                          {coverMediaKey === item.key ? " · Cover" : ""}
+                        </span>
+                      </span>
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={index === 0}
+                        onClick={() => moveMediaItem(index, -1)}
+                        className="rounded-full border border-[#eadfce] px-3 py-2 text-xs font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Up
+                      </button>
+                      <button
+                        type="button"
+                        disabled={index === mediaItems.length - 1}
+                        onClick={() => moveMediaItem(index, 1)}
+                        className="rounded-full border border-[#eadfce] px-3 py-2 text-xs font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Down
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {photoRows.map((value, index) => (
             <Field
