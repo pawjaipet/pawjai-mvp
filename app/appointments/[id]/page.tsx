@@ -1,7 +1,16 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import QRCode from "qrcode";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import AppointmentDetailClient from "@/components/appointments/AppointmentDetailClient";
 import { ensureAdopterForUser } from "@/utils/adopter";
+import {
+  buildCheckInUrl,
+  createSignedCheckInToken,
+  formatBookingCode,
+  getCheckInTokenSecret,
+  hashCheckInToken,
+} from "@/utils/booking";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -77,7 +86,34 @@ export default async function AppointmentDetailPage({
     ? new Date(new Date(`1970-01-01T${appt.appointment_time}`).getTime() + 60 * 60 * 1000).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
     : "";
 
-  const bookingId = `APT-${appt.id.slice(0, 5).toUpperCase()}`;
+  const bookingId = appt.booking_code ?? formatBookingCode(appt.id);
+  const headerStore = await headers();
+  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "localhost:3000";
+  const protocol = headerStore.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const origin = `${protocol}://${host}`;
+  const checkInToken = createSignedCheckInToken({
+    appointmentId: appt.id,
+    secret: getCheckInTokenSecret(),
+  });
+  if (!appt.check_in_token_hash) {
+    await admin
+      .from("appointments")
+      .update({ check_in_token_hash: hashCheckInToken(checkInToken) })
+      .eq("id", appt.id);
+  }
+  const qrSvg = await QRCode.toString(
+    buildCheckInUrl({ origin, token: checkInToken }),
+    {
+      color: {
+        dark: "#65584f",
+        light: "#ffffff",
+      },
+      errorCorrectionLevel: "M",
+      margin: 1,
+      type: "svg",
+      width: 184,
+    },
+  );
 
   const addressLines = shelter
     ? [
@@ -91,6 +127,7 @@ export default async function AppointmentDetailPage({
     <AppointmentDetailClient
       appointmentId={appt.id}
       bookingId={bookingId}
+      qrSvg={qrSvg}
       dog={dog ? { id: dog.id, name: dog.name, breed: dog.breed, coverUrl } : null}
       shelter={
         shelter

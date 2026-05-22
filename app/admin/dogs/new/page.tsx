@@ -202,6 +202,12 @@ export default async function NewAdminDogPage({
           <TabLink href="/onboarding?tab=listings" active={activeTab === "listings"}>
             Manage listings
           </TabLink>
+          <TabLink href="/admin/bookings" active={false}>
+            Bookings
+          </TabLink>
+          <TabLink href="/admin/ads" active={false}>
+            Ads
+          </TabLink>
           <form action={lockAdminGateAction}>
             <button
               type="submit"

@@ -1,10 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adopter";
 import { optionalString } from "@/utils/account-model";
+import {
+  createSignedCheckInToken,
+  formatBookingCode,
+  getCheckInTokenSecret,
+  hashCheckInToken,
+} from "@/utils/booking";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -69,19 +76,31 @@ export async function bookAppointment(formData: FormData) {
     redirect(`/dogs/${dogId}?message=${encodeURIComponent("Could not find that dog.")}`);
   }
 
+  const appointmentId = randomUUID();
+  const checkInToken = createSignedCheckInToken({
+    appointmentId,
+    secret: getCheckInTokenSecret(),
+  });
+
   const { error } = await admin.from("appointments").insert({
     adopter_id: adopter.id,
     appointment_date: appointmentDate,
     appointment_time: appointmentTime,
+    booking_code: formatBookingCode(appointmentId),
+    check_in_token_hash: hashCheckInToken(checkInToken),
     dog_id: dog.id,
+    id: appointmentId,
     shelter_id: dog.shelter_id,
     visitor_note: visitorNote,
   });
 
   if (error) {
-    redirect(`/dogs/${dogId}?message=${encodeURIComponent(error.message)}`);
+    const message = error.message.includes("appointments_active_slot_unique_idx")
+      ? "That visit time was just booked. Please choose another time."
+      : error.message;
+    redirect(`/dogs/${dogId}?message=${encodeURIComponent(message)}`);
   }
 
   revalidatePath("/appointments");
-  redirect("/appointments?message=Appointment requested. The shelter will follow up by email.");
+  redirect(`/appointments/${appointmentId}`);
 }

@@ -201,6 +201,11 @@ export type Database = {
           application_id: string | null
           appointment_date: string
           appointment_time: string
+          booking_code: string
+          check_in_note: string | null
+          check_in_token_hash: string | null
+          checked_in_at: string | null
+          checked_in_by: string | null
           created_at: string
           dog_id: string | null
           id: string
@@ -215,6 +220,11 @@ export type Database = {
           application_id?: string | null
           appointment_date: string
           appointment_time: string
+          booking_code: string
+          check_in_note?: string | null
+          check_in_token_hash?: string | null
+          checked_in_at?: string | null
+          checked_in_by?: string | null
           created_at?: string
           dog_id?: string | null
           id?: string

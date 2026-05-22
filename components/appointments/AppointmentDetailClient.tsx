@@ -11,6 +11,7 @@ type Tab = "details" | "messages" | "help";
 interface Props {
   appointmentId: string;
   bookingId: string;
+  qrSvg: string;
   dog: {
     id: string;
     name: string;
@@ -36,6 +37,7 @@ interface Props {
 export default function AppointmentDetailClient({
   bookingId,
   dog,
+  qrSvg,
   shelter,
   time,
 }: Props) {
@@ -135,6 +137,7 @@ export default function AppointmentDetailClient({
         <DetailsTab
           bookingId={bookingId}
           dog={dog}
+          qrSvg={qrSvg}
           shelter={shelter}
           time={time}
           mapsHref={mapsHref}
@@ -153,12 +156,14 @@ export default function AppointmentDetailClient({
 function DetailsTab({
   bookingId,
   dog,
+  qrSvg,
   shelter,
   time,
   mapsHref,
 }: {
   bookingId: string;
   dog: Props["dog"];
+  qrSvg: string;
   shelter: Props["shelter"];
   time: Props["time"];
   mapsHref: string | null;
@@ -280,37 +285,11 @@ function DetailsTab({
           CHECK-IN QR CODE
         </p>
         <div className="rounded-[14px] p-[24px] flex flex-col items-center" style={{ border: "1.5px solid rgba(101,88,79,0.18)" }}>
-          {/* Decorative QR pattern */}
-          <div className="w-[180px] h-[180px] grid grid-cols-12 grid-rows-12 gap-[2px]">
-            {Array.from({ length: 144 }).map((_, i) => {
-              // Deterministic pseudo-pattern from bookingId
-              const seed = (bookingId.charCodeAt((i * 7) % bookingId.length) + i * 13) % 5;
-              const filled = seed < 3;
-              // Three corner finder squares
-              const row = Math.floor(i / 12);
-              const col = i % 12;
-              const inCorner = (row < 3 && col < 3) || (row < 3 && col > 8) || (row > 8 && col < 3);
-              if (inCorner) {
-                const cornerRow = row > 8 ? row - 9 : row;
-                const cornerCol = col > 8 ? col - 9 : col;
-                const cornerFilled =
-                  cornerRow === 0 || cornerRow === 2 || cornerCol === 0 || cornerCol === 2 ||
-                  (cornerRow === 1 && cornerCol === 1);
-                return (
-                  <div
-                    key={i}
-                    style={{ background: cornerFilled ? "#65584f" : "transparent" }}
-                  />
-                );
-              }
-              return (
-                <div
-                  key={i}
-                  style={{ background: filled ? "#65584f" : "transparent" }}
-                />
-              );
-            })}
-          </div>
+          <div
+            className="w-[184px] h-[184px] [&_svg]:h-full [&_svg]:w-full"
+            aria-label={`Check-in QR code for ${bookingId}`}
+            dangerouslySetInnerHTML={{ __html: qrSvg }}
+          />
 
           <p className="mt-[20px] text-[11px] tracking-[0.16em] font-semibold text-[#65584f]/55" style={{ fontFamily: M }}>
             BOOKING ID
