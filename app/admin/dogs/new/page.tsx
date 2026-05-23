@@ -62,7 +62,7 @@ function DogListingCard({ dog }: { dog: AdminDog }) {
       <p className="mt-3 text-sm text-[#74685d]">{dog.shelter_name}</p>
       <div className="mt-4 flex gap-2">
         <Link
-          href={`/onboarding/dogs/${dog.id}/edit`}
+          href={`/admin/dogs/${dog.id}/edit`}
           className="inline-flex flex-1 items-center justify-center rounded-full bg-[#d38a2c] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#bf781f]"
         >
           Edit
@@ -124,14 +124,16 @@ function ListingsByShelter({
   );
 }
 
-export default async function NewAdminDogPage({
+export async function AdminDogManagementPage({
+  activeTabOverride,
   searchParams,
 }: {
+  activeTabOverride?: "create" | "listings";
   searchParams?: Promise<{ tab?: string }>;
 }) {
   const gateOpen = await isAdminGateOpen();
   const resolvedSearchParams = await searchParams;
-  const activeTab = resolvedSearchParams?.tab === "listings" ? "listings" : "create";
+  const activeTab = activeTabOverride ?? (resolvedSearchParams?.tab === "listings" ? "listings" : "create");
 
   if (!gateOpen) {
     return (
@@ -196,10 +198,10 @@ export default async function NewAdminDogPage({
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <TabLink href="/onboarding" active={activeTab === "create"}>
+          <TabLink href="/admin" active={activeTab === "create"}>
             Create dog
           </TabLink>
-          <TabLink href="/onboarding?tab=listings" active={activeTab === "listings"}>
+          <TabLink href="/doglistings" active={activeTab === "listings"}>
             Manage listings
           </TabLink>
           <TabLink href="/admin/bookings" active={false}>
@@ -237,7 +239,7 @@ export default async function NewAdminDogPage({
                   The first photo becomes the browse card cover, so place the strongest portrait first.
                 </p>
                 <p>
-                  Use <Link href="/onboarding?tab=listings" className="font-semibold text-[#b77624] underline underline-offset-4">Manage listings</Link>{" "}
+                  Use <Link href="/doglistings" className="font-semibold text-[#b77624] underline underline-offset-4">Manage listings</Link>{" "}
                   to edit existing dogs, preview profiles, or delete accidental duplicates.
                 </p>
               </div>
@@ -247,4 +249,12 @@ export default async function NewAdminDogPage({
       )}
     </div>
   );
+}
+
+export default async function NewAdminDogPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ tab?: string }>;
+}) {
+  return <AdminDogManagementPage searchParams={searchParams} />;
 }

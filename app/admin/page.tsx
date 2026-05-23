@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { AdminDogManagementPage } from "@/app/admin/dogs/new/page";
 
 export default function AdminPage() {
-  redirect("/admin/bookings");
+  return <AdminDogManagementPage activeTabOverride="create" />;
 }

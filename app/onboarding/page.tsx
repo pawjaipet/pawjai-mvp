@@ -1,1 +1,5 @@
-export { default } from "@/app/admin/dogs/new/page";
+import { redirect } from "next/navigation";
+
+export default function LegacyOnboardingPage() {
+  redirect("/admin");
+}

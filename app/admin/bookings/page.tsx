@@ -61,8 +61,11 @@ function statusStyle(status: AppointmentStatus) {
 function AdminNav() {
   return (
     <div className="flex flex-wrap gap-3">
-      <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/onboarding">
-        Dog onboarding
+      <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin">
+        Create dog
+      </Link>
+      <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/doglistings">
+        Manage listings
       </Link>
       <Link className="rounded-full bg-[#d38a2c] px-5 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(179,111,31,0.22)]" href="/admin/bookings">
         Bookings

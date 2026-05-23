@@ -138,10 +138,10 @@ function revalidateDogManagementPaths(dogId: string) {
   revalidatePath("/");
   revalidatePath("/dogs");
   revalidatePath(`/dogs/${dogId}`);
+  revalidatePath("/admin");
   revalidatePath("/admin/dogs/new");
-  revalidatePath("/onboarding");
+  revalidatePath("/doglistings");
   revalidatePath(`/admin/dogs/${dogId}/edit`);
-  revalidatePath(`/onboarding/dogs/${dogId}/edit`);
 }
 
 function getUniqueSubmittedOrder(values: string[]) {
@@ -287,7 +287,7 @@ export async function updateDogProfileAction(
 ): Promise<EditDogProfileState> {
   if (!(await isAdminGateOpen())) {
     return {
-      message: "Admin access expired. Please unlock the onboarding page again.",
+      message: "Admin access expired. Please unlock the admin page again.",
       status: "error",
     };
   }
@@ -463,5 +463,5 @@ export async function deleteDogProfileAction(formData: FormData) {
   }
 
   revalidateDogManagementPaths(dogId);
-  redirect("/onboarding");
+  redirect("/doglistings");
 }
