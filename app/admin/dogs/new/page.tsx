@@ -9,6 +9,7 @@ import {
 import { initialAdminGateState } from "./form-state";
 import DogListingForm from "./DogListingForm";
 import AdminGateForm from "./AdminGateForm";
+import { mergePersonalityTags } from "@/utils/personality-tags";
 
 type AdminDog = {
   id: string;
@@ -62,7 +63,7 @@ function DogListingCard({ dog }: { dog: AdminDog }) {
       <p className="mt-3 text-sm text-[#74685d]">{dog.shelter_name}</p>
       <div className="mt-4 flex gap-2">
         <Link
-          href={`/admin/dogs/${dog.id}/edit`}
+          href={`/onboarding/dogs/${dog.id}/edit`}
           className="inline-flex flex-1 items-center justify-center rounded-full bg-[#d38a2c] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#bf781f]"
         >
           Edit
@@ -154,6 +155,11 @@ export async function AdminDogManagementPage({
       .select("id, name, adoption_status, created_at, shelter_id")
       .order("created_at", { ascending: false }),
   ]);
+  const { data: personalityTraitRows } = await supabase
+    .from("dog_traits")
+    .select("trait_value")
+    .eq("trait_type", "personality")
+    .order("trait_value", { ascending: true });
 
   if (!shelters || shelters.length === 0) {
     return (
@@ -175,6 +181,9 @@ export async function AdminDogManagementPage({
   }
 
   const shelterMap = new Map(shelters.map((shelter) => [shelter.id, shelter.name]));
+  const personalityTags = mergePersonalityTags(
+    (personalityTraitRows ?? []).map((trait) => trait.trait_value),
+  );
 
   const formattedDogs: AdminDog[] =
     dogs?.map((dog) => ({
@@ -198,10 +207,10 @@ export async function AdminDogManagementPage({
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <TabLink href="/admin" active={activeTab === "create"}>
+          <TabLink href="/onboarding" active={activeTab === "create"}>
             Create dog
           </TabLink>
-          <TabLink href="/doglistings" active={activeTab === "listings"}>
+          <TabLink href="/onboarding?tab=listings" active={activeTab === "listings"}>
             Manage listings
           </TabLink>
           <TabLink href="/admin/bookings" active={false}>
@@ -225,7 +234,7 @@ export async function AdminDogManagementPage({
         <ListingsByShelter dogs={formattedDogs} shelters={shelters} />
       ) : (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <DogListingForm shelters={shelters} />
+          <DogListingForm personalityTags={personalityTags} shelters={shelters} />
 
           <aside className="space-y-6">
             <section className="rounded-[28px] border border-[#eadfce] bg-white/90 p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
@@ -239,7 +248,7 @@ export async function AdminDogManagementPage({
                   The first photo becomes the browse card cover, so place the strongest portrait first.
                 </p>
                 <p>
-                  Use <Link href="/doglistings" className="font-semibold text-[#b77624] underline underline-offset-4">Manage listings</Link>{" "}
+                  Use <Link href="/onboarding?tab=listings" className="font-semibold text-[#b77624] underline underline-offset-4">Manage listings</Link>{" "}
                   to edit existing dogs, preview profiles, or delete accidental duplicates.
                 </p>
               </div>

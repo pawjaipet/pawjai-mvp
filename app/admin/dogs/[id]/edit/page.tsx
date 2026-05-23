@@ -4,6 +4,7 @@ import AdminGateForm from "@/app/admin/dogs/new/AdminGateForm";
 import { unlockAdminGateAction } from "@/app/admin/dogs/new/actions";
 import { initialAdminGateState } from "@/app/admin/dogs/new/form-state";
 import { isAdminGateOpen } from "@/utils/admin-auth";
+import { mergePersonalityTags } from "@/utils/personality-tags";
 import { createAdminClient } from "@/utils/supabase/admin";
 import DogEditForm from "./DogEditForm";
 
@@ -27,11 +28,16 @@ export default async function EditAdminDogPage({
   }
 
   const supabase = createAdminClient();
-  const [{ data: dog }, { data: shelters }, { data: photos }, { data: traits }] = await Promise.all([
+  const [{ data: dog }, { data: shelters }, { data: photos }, { data: traits }, { data: personalityTraitRows }] = await Promise.all([
     supabase.from("dogs").select("*").eq("id", id).single(),
     supabase.from("shelters").select("id, name").order("name", { ascending: true }),
     supabase.from("dog_photos").select("*").eq("dog_id", id).order("sort_order"),
     supabase.from("dog_traits").select("*").eq("dog_id", id).order("created_at"),
+    supabase
+      .from("dog_traits")
+      .select("trait_value")
+      .eq("trait_type", "personality")
+      .order("trait_value", { ascending: true }),
   ]);
 
   if (!dog) notFound();
@@ -65,6 +71,9 @@ export default async function EditAdminDogPage({
 
       <DogEditForm
         dog={dog}
+        personalityTags={mergePersonalityTags(
+          (personalityTraitRows ?? []).map((trait) => trait.trait_value),
+        )}
         photos={photos ?? []}
         shelters={shelters ?? []}
         traits={traits ?? []}

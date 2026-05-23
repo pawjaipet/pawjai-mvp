@@ -19,32 +19,6 @@ type PendingMediaItem = {
   size: number;
 };
 
-const personalityTags = [
-  "Happy",
-  "Lucky",
-  "Sweet",
-  "Playful",
-  "Adventurous",
-  "Curious",
-  "Cuddly",
-  "Smart",
-  "Gentle",
-  "Calm",
-  "Serene",
-  "Graceful",
-  "Brave",
-  "Social",
-  "Friendly",
-  "Loving",
-  "Funny",
-  "Goofy",
-  "Chill",
-  "Loyal",
-  "Independent",
-  "Affectionate",
-  "Protective",
-];
-
 const careTags = [
   "No medical needs",
   "Vaccinated",
@@ -207,8 +181,10 @@ function ChipCheckboxGroup({
 }
 
 export default function DogListingForm({
+  personalityTags,
   shelters,
 }: {
+  personalityTags: string[];
   shelters: ShelterOption[];
 }) {
   const [state, formAction, pending] = useActionState(

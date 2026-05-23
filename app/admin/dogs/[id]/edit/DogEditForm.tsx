@@ -13,32 +13,6 @@ type ShelterOption = {
   name: string;
 };
 
-const personalityTags = [
-  "Happy",
-  "Lucky",
-  "Sweet",
-  "Playful",
-  "Adventurous",
-  "Curious",
-  "Cuddly",
-  "Smart",
-  "Gentle",
-  "Calm",
-  "Serene",
-  "Graceful",
-  "Brave",
-  "Social",
-  "Friendly",
-  "Loving",
-  "Funny",
-  "Goofy",
-  "Chill",
-  "Loyal",
-  "Independent",
-  "Affectionate",
-  "Protective",
-];
-
 const careTags = [
   "No medical needs",
   "Vaccinated",
@@ -326,11 +300,13 @@ function MediaOrderEditor({ dogName, items }: { dogName: string; items: DogMedia
 
 export default function DogEditForm({
   dog,
+  personalityTags,
   photos,
   shelters,
   traits,
 }: {
   dog: Dog;
+  personalityTags: string[];
   photos: DogPhoto[];
   shelters: ShelterOption[];
   traits: DogTrait[];
