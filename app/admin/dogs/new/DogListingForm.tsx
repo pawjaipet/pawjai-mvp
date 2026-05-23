@@ -13,9 +13,11 @@ type ShelterOption = {
 const defaultPhotoRows = ["", ""];
 
 type PendingMediaItem = {
+  compressed?: boolean;
   key: string;
   kind: "photo" | "video";
   name: string;
+  originalSize?: number;
   size: number;
 };
 
@@ -29,6 +31,85 @@ const careTags = [
   "Mobility support",
   "Behavioral support",
 ];
+
+const CLIENT_MAX_FORM_MEDIA_BYTES = 3.5 * 1024 * 1024;
+const CLIENT_PHOTO_MAX_WIDTH = 1800;
+const CLIENT_PHOTO_MAX_HEIGHT = 2400;
+const CLIENT_PHOTO_QUALITY = 0.78;
+
+function isHeicLikeFile(file: File) {
+  const type = file.type.split(";")[0]?.trim().toLowerCase();
+  const name = file.name.toLowerCase();
+
+  return type === "image/heic" || type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif");
+}
+
+function isClientCompressiblePhoto(file: File) {
+  return file.type.startsWith("image/") && !isHeicLikeFile(file) && file.type !== "image/gif";
+}
+
+function replaceExtension(fileName: string, extension: string) {
+  const baseName = fileName.replace(/\.[^/.]+$/, "");
+  return `${baseName}.${extension}`;
+}
+
+function loadImageFromFile(file: File) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error(`Could not read ${file.name} for browser compression.`));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function compressPhotoForAdminUpload(file: File) {
+  if (!isClientCompressiblePhoto(file)) {
+    return { compressed: false, file };
+  }
+
+  const image = await loadImageFromFile(file);
+  const scale = Math.min(
+    1,
+    CLIENT_PHOTO_MAX_WIDTH / image.naturalWidth,
+    CLIENT_PHOTO_MAX_HEIGHT / image.naturalHeight,
+  );
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return { compressed: false, file };
+  }
+
+  context.drawImage(image, 0, 0, width, height);
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, "image/jpeg", CLIENT_PHOTO_QUALITY);
+  });
+
+  if (!blob || blob.size >= file.size) {
+    return { compressed: false, file };
+  }
+
+  return {
+    compressed: true,
+    file: new File([blob], replaceExtension(file.name, "jpg"), {
+      lastModified: file.lastModified,
+      type: "image/jpeg",
+    }),
+  };
+}
 
 function Section({
   title,
@@ -191,10 +272,13 @@ export default function DogListingForm({
     createDogListingAction,
     initialCreateDogListingState,
   );
+  const [mediaError, setMediaError] = useState("");
   const [photoRows, setPhotoRows] = useState(defaultPhotoRows);
   const [mediaItems, setMediaItems] = useState<PendingMediaItem[]>([]);
   const [coverMediaKey, setCoverMediaKey] = useState("");
+  const [mediaPreparing, setMediaPreparing] = useState(false);
   const defaultShelterId = shelters.length === 1 ? shelters[0].id : "";
+  const mediaUploadError = state.fieldErrors?.media_files ?? mediaError;
 
   function moveMediaItem(index: number, direction: -1 | 1) {
     setMediaItems((items) => {
@@ -204,6 +288,72 @@ export default function DogListingForm({
       [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
       return next;
     });
+  }
+
+  async function handleMediaFilesChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const selectedFiles = Array.from(input.files ?? []);
+    setMediaError("");
+
+    if (selectedFiles.length === 0) {
+      setMediaItems([]);
+      setCoverMediaKey("");
+      return;
+    }
+
+    setMediaPreparing(true);
+
+    try {
+      const preparedFiles: { compressed: boolean; file: File; originalSize: number }[] = [];
+      const warnings: string[] = [];
+
+      for (const file of selectedFiles) {
+        const prepared = await compressPhotoForAdminUpload(file);
+        preparedFiles.push({
+          compressed: prepared.compressed,
+          file: prepared.file,
+          originalSize: file.size,
+        });
+
+        if (isHeicLikeFile(file) && file.size > CLIENT_MAX_FORM_MEDIA_BYTES) {
+          warnings.push(`${file.name} is a large HEIC file. Please export it as JPG before uploading online.`);
+        }
+
+        if (file.type.startsWith("video/") && file.size > CLIENT_MAX_FORM_MEDIA_BYTES) {
+          warnings.push(`${file.name} is too large for direct online form upload. Use a shorter/compressed clip for now.`);
+        }
+      }
+
+      const totalBytes = preparedFiles.reduce((sum, item) => sum + item.file.size, 0);
+      if (totalBytes > CLIENT_MAX_FORM_MEDIA_BYTES) {
+        warnings.push(
+          `Selected media is ${formatFileSize(totalBytes)} after browser compression. Please upload fewer files at once or use smaller exports.`,
+        );
+      }
+
+      const transfer = new DataTransfer();
+      preparedFiles.forEach((item) => transfer.items.add(item.file));
+      input.files = transfer.files;
+
+      const nextItems = preparedFiles.map((item, index) => ({
+        compressed: item.compressed,
+        key: `file-${index}`,
+        kind: item.file.type.startsWith("video/") ? ("video" as const) : ("photo" as const),
+        name: item.file.name,
+        originalSize: item.originalSize,
+        size: item.file.size,
+      }));
+      setMediaItems(nextItems);
+      setCoverMediaKey(nextItems[0]?.key ?? "");
+      setMediaError(warnings.join(" "));
+    } catch (error) {
+      setMediaItems([]);
+      setCoverMediaKey("");
+      input.value = "";
+      setMediaError(error instanceof Error ? error.message : "Could not prepare these files for upload.");
+    } finally {
+      setMediaPreparing(false);
+    }
   }
 
   return (
@@ -506,8 +656,8 @@ export default function DogListingForm({
 
           <Field
             label="Upload photos and videos"
-            error={state.fieldErrors?.media_files}
-            hint="Select photos and up to 6 videos. After selecting, use the list below to choose the cover and exact swipe/profile order."
+            error={mediaUploadError}
+            hint="Select photos and up to 6 videos. Photos are compressed in your browser first so online uploads stay fast and reliable."
           >
             <input
               name="media_files"
@@ -515,17 +665,9 @@ export default function DogListingForm({
               accept="image/*,video/*,.heic,.heif"
               multiple
               onChange={(event) => {
-                const files = Array.from(event.currentTarget.files ?? []);
-                const next = files.map((file, index) => ({
-                  key: `file-${index}`,
-                  kind: file.type.startsWith("video/") ? ("video" as const) : ("photo" as const),
-                  name: file.name,
-                  size: file.size,
-                }));
-                setMediaItems(next);
-                setCoverMediaKey(next[0]?.key ?? "");
+                void handleMediaFilesChange(event);
               }}
-              className={fileInputClass(state.fieldErrors?.media_files, "file:bg-[#cd8188]")}
+              className={fileInputClass(mediaUploadError, "file:bg-[#cd8188]")}
             />
           </Field>
 
@@ -564,6 +706,9 @@ export default function DogListingForm({
                         </span>
                         <span className="mt-1 block text-xs uppercase tracking-[0.16em] text-[#9a6b2a]">
                           {item.kind} · {formatFileSize(item.size)}
+                          {item.compressed && item.originalSize
+                            ? ` · compressed from ${formatFileSize(item.originalSize)}`
+                            : ""}
                           {coverMediaKey === item.key ? " · Cover" : ""}
                         </span>
                       </span>
@@ -662,10 +807,10 @@ export default function DogListingForm({
           </div>
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || mediaPreparing || Boolean(mediaError)}
             className="inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pending ? "Creating listing..." : "Create dog listing"}
+            {mediaPreparing ? "Preparing media..." : pending ? "Creating listing..." : "Create dog listing"}
           </button>
         </div>
       </div>
