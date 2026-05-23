@@ -9,34 +9,40 @@ import { createAdminClient } from "@/utils/supabase/admin";
 
 type AppointmentStatus = Database["public"]["Enums"]["appointment_status"];
 
-const APPOINTMENT_STATUSES = new Set<AppointmentStatus>([
-  "requested",
-  "confirmed",
-  "completed",
-  "cancelled",
-  "no_show",
-]);
+type BookingDecision = "accept" | "deny" | "request_change";
 
-function parseStatus(value: FormDataEntryValue | null): AppointmentStatus | null {
-  const status = typeof value === "string" ? value : "";
-  return APPOINTMENT_STATUSES.has(status as AppointmentStatus)
-    ? (status as AppointmentStatus)
+function parseDecision(value: FormDataEntryValue | null): BookingDecision | null {
+  const decision = typeof value === "string" ? value : "";
+  return decision === "accept" || decision === "deny" || decision === "request_change"
+    ? decision
     : null;
 }
 
-export async function updateBookingStatusAction(formData: FormData) {
+function statusForDecision(decision: BookingDecision): AppointmentStatus {
+  switch (decision) {
+    case "accept":
+      return "confirmed";
+    case "deny":
+      return "cancelled";
+    case "request_change":
+      return "requested";
+  }
+}
+
+export async function decideBookingAction(formData: FormData) {
   if (!(await isAdminGateOpen())) {
     return;
   }
 
   const appointmentId = String(formData.get("appointmentId") ?? "");
-  const status = parseStatus(formData.get("status"));
+  const decision = parseDecision(formData.get("decision"));
   const shelterNote = String(formData.get("shelterNote") ?? "").trim();
 
-  if (!appointmentId || !status) {
+  if (!appointmentId || !decision) {
     return;
   }
 
+  const status = statusForDecision(decision);
   const admin = createAdminClient();
   await admin
     .from("appointments")

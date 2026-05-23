@@ -55,7 +55,7 @@ export default async function EditAdminDogPage({
         </div>
         <div className="flex flex-wrap gap-3">
           <Link
-            href="/doglistings"
+            href="/admin/listings"
             className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-medium text-[#5b4d40] transition hover:bg-[#faf4ec]"
           >
             Back to dog listings

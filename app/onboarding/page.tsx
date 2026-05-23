@@ -1,9 +1,10 @@
-import { AdminDogManagementPage } from "@/app/admin/dogs/new/page";
+import { redirect } from "next/navigation";
 
-export default function OnboardingPage({
+export default async function LegacyOnboardingPage({
   searchParams,
 }: {
   searchParams?: Promise<{ tab?: string }>;
 }) {
-  return <AdminDogManagementPage searchParams={searchParams} />;
+  const resolvedSearchParams = await searchParams;
+  redirect(resolvedSearchParams?.tab === "listings" ? "/admin/listings" : "/admin");
 }

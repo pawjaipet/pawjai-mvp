@@ -139,8 +139,8 @@ function revalidateDogManagementPaths(dogId: string) {
   revalidatePath("/dogs");
   revalidatePath(`/dogs/${dogId}`);
   revalidatePath("/admin");
+  revalidatePath("/admin/listings");
   revalidatePath("/admin/dogs/new");
-  revalidatePath("/doglistings");
   revalidatePath(`/admin/dogs/${dogId}/edit`);
 }
 
@@ -463,5 +463,5 @@ export async function deleteDogProfileAction(formData: FormData) {
   }
 
   revalidateDogManagementPaths(dogId);
-  redirect("/doglistings");
+  redirect("/admin/listings");
 }

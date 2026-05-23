@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { CheckCircle2, ShieldAlert, ShieldCheck } from "lucide-react";
-import type { Database } from "@/types/database";
+import type { ReactNode } from "react";
+import { CheckCircle2, FileText, ShieldAlert, ShieldCheck, UserRound } from "lucide-react";
+import type { Database, Json } from "@/types/database";
 import { formatBookingCode, hashCheckInToken } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -11,8 +12,42 @@ import { checkInBookingAction } from "../actions";
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 type Adopter = Database["public"]["Tables"]["adopters"]["Row"];
+type AdopterDocument = Database["public"]["Tables"]["adopter_documents"]["Row"];
+type AdopterPreference = Database["public"]["Tables"]["adopter_preferences"]["Row"];
+type AdopterProfile = Database["public"]["Tables"]["adopter_profiles"]["Row"];
 type Dog = Pick<Database["public"]["Tables"]["dogs"]["Row"], "breed" | "id" | "name">;
 type Shelter = Pick<Database["public"]["Tables"]["shelters"]["Row"], "district" | "id" | "name" | "phone_number" | "province">;
+type Application = {
+  created_at: string;
+  dog_id: string;
+  id: string;
+  notes: string | null;
+  status: string;
+};
+type ApplicationAnswer = {
+  answer_json: Json;
+  answer_text: string | null;
+  id: string;
+  question_id: string;
+};
+type ApplicationDetail = {
+  daily_routine: string | null;
+  experience_with_pets: string | null;
+  living_condition: string | null;
+  preferred_traits: string | null;
+  purpose: string | null;
+};
+type ApplicationDocument = {
+  document_type: string;
+  id: string;
+  public_url: string | null;
+  storage_path: string;
+};
+type Question = {
+  id: string;
+  question_text: string;
+  sort_order: number;
+};
 
 function formatDateTime(date: string, time: string) {
   const dateLabel = new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
@@ -48,6 +83,60 @@ function InfoBlock({
       {secondary ? <p className="mt-1 text-sm text-[#74685d]">{secondary}</p> : null}
     </div>
   );
+}
+
+function formatValue(value: unknown) {
+  if (value === null || value === undefined || value === "") return "Not provided";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value)) return value.length ? value.join(", ") : "Not provided";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value).replaceAll("_", " ");
+}
+
+function FieldRow({ label, value }: { label: string; value: unknown }) {
+  const rendered = formatValue(value);
+  if (rendered === "Not provided") return null;
+  return (
+    <div className="rounded-2xl bg-[#fffdfa] p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">{label}</p>
+      <p className="mt-1 text-sm leading-6 text-[#4f4338]">{rendered}</p>
+    </div>
+  );
+}
+
+function Panel({
+  children,
+  icon,
+  title,
+}: {
+  children: ReactNode;
+  icon?: ReactNode;
+  title: string;
+}) {
+  return (
+    <section className="rounded-[32px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+      <div className="mb-4 flex items-center gap-3 text-[#9a6b2a]">
+        {icon}
+        <h2 className="text-lg font-semibold text-[#4f4338]">{title}</h2>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function jsonAnswer(answer: Json) {
+  if (Array.isArray(answer)) return answer.map((item) => formatValue(item)).join(", ");
+  if (answer && typeof answer === "object") return JSON.stringify(answer);
+  return formatValue(answer);
+}
+
+async function signedDocumentUrl(
+  admin: ReturnType<typeof createAdminClient>,
+  bucketId: string,
+  storagePath: string,
+) {
+  const { data } = await admin.storage.from(bucketId).createSignedUrl(storagePath, 60 * 15);
+  return data?.signedUrl ?? null;
 }
 
 export default async function AdminBookingCheckInPage({
@@ -88,6 +177,7 @@ export default async function AdminBookingCheckInPage({
   }
 
   const admin = createAdminClient();
+  const adminUntyped = admin as any;
   const { data: appointment } = await admin
     .from("appointments")
     .select("*")
@@ -132,6 +222,54 @@ export default async function AdminBookingCheckInPage({
   const typedDog = dog as Dog | null;
   const typedShelter = shelter as Shelter | null;
   const alreadyCheckedIn = Boolean(typedAppointment.checked_in_at);
+  const [{ data: adopterProfile }, { data: adopterPreference }, { data: adopterDocuments }] = await Promise.all([
+    admin.from("adopter_profiles").select("*").eq("adopter_id", typedAppointment.adopter_id).maybeSingle(),
+    admin.from("adopter_preferences").select("*").eq("adopter_id", typedAppointment.adopter_id).maybeSingle(),
+    admin.from("adopter_documents").select("*").eq("adopter_id", typedAppointment.adopter_id).order("created_at", { ascending: false }),
+  ]);
+  const { data: application } = typedAppointment.application_id
+    ? await adminUntyped.from("applications").select("*").eq("id", typedAppointment.application_id).maybeSingle()
+    : await adminUntyped
+        .from("applications")
+        .select("*")
+        .eq("adopter_id", typedAppointment.adopter_id)
+        .eq("shelter_id", typedAppointment.shelter_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+  const typedApplication = application as Application | null;
+  const applicationId = typedApplication?.id ?? typedAppointment.application_id;
+  const [{ data: applicationDetail }, { data: applicationDocuments }, { data: applicationAnswers }] = applicationId
+    ? await Promise.all([
+        adminUntyped.from("application_details").select("*").eq("application_id", applicationId).maybeSingle(),
+        adminUntyped.from("application_documents").select("*").eq("application_id", applicationId).order("created_at", { ascending: false }),
+        adminUntyped.from("application_answers").select("*").eq("application_id", applicationId),
+      ])
+    : [{ data: null }, { data: [] }, { data: [] }];
+  const questionIds = [...new Set(((applicationAnswers ?? []) as ApplicationAnswer[]).map((answer) => answer.question_id))];
+  const { data: questions } = questionIds.length
+    ? await adminUntyped.from("questionnaire_questions").select("id, question_text, sort_order").in("id", questionIds)
+    : { data: [] };
+  const questionMap = new Map(((questions ?? []) as Question[]).map((question) => [question.id, question]));
+  const profile = adopterProfile as AdopterProfile | null;
+  const preference = adopterPreference as AdopterPreference | null;
+  const detail = applicationDetail as ApplicationDetail | null;
+  const docs = await Promise.all(
+    ((adopterDocuments ?? []) as AdopterDocument[]).map(async (document) => ({
+      ...document,
+      signedUrl: await signedDocumentUrl(admin, document.bucket_id, document.storage_path),
+    })),
+  );
+  const appDocs = await Promise.all(
+    ((applicationDocuments ?? []) as ApplicationDocument[]).map(async (document) => ({
+      ...document,
+      signedUrl:
+        document.public_url ?? (await signedDocumentUrl(admin, "application-documents", document.storage_path)),
+    })),
+  );
+  const answers = ((applicationAnswers ?? []) as ApplicationAnswer[])
+    .map((answer) => ({ answer, question: questionMap.get(answer.question_id) }))
+    .sort((a, b) => (a.question?.sort_order ?? 0) - (b.question?.sort_order ?? 0));
 
   return (
     <div className="min-h-screen bg-[#fffaf3] px-4 py-8">
@@ -220,6 +358,115 @@ export default async function AdminBookingCheckInPage({
               {alreadyCheckedIn ? "Already checked in" : "Confirm check-in"}
             </button>
           </form>
+        </div>
+
+        <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+          <Panel icon={<UserRound size={20} />} title="Adopter profile and lifestyle">
+            <div className="grid gap-3 md:grid-cols-2">
+              <FieldRow label="Address" value={[typedAdopter?.address_line, typedAdopter?.district, typedAdopter?.province].filter(Boolean).join(", ")} />
+              <FieldRow label="Occupation" value={typedAdopter?.occupation} />
+              <FieldRow label="Housing" value={profile?.housing_type} />
+              <FieldRow label="Home ownership" value={profile?.home_ownership} />
+              <FieldRow label="Landlord permission" value={profile?.landlord_permission} />
+              <FieldRow label="Yard space" value={profile?.yard_space} />
+              <FieldRow label="Household size" value={profile?.household_member_count} />
+              <FieldRow label="Allergies" value={profile?.household_allergies} />
+              <FieldRow label="Current pets" value={profile?.current_pets} />
+              <FieldRow label="Other pets" value={profile?.other_pets} />
+              <FieldRow label="Daily time" value={profile?.daily_time_available} />
+              <FieldRow label="Dog experience" value={profile?.dog_experience} />
+              <FieldRow label="Rescue dog experience" value={profile?.rescue_dog_experience} />
+              <FieldRow label="Adoption reason" value={profile?.adoption_reason} />
+              <FieldRow label="Bonding plan" value={profile?.bonding_plan} />
+              <FieldRow label="Behavior response" value={profile?.behavior_response} />
+              <FieldRow label="Trauma response" value={profile?.trauma_response} />
+              <FieldRow label="Emergency plan" value={profile?.emergency_plan} />
+              <FieldRow label="Travel plan" value={profile?.travel_plan} />
+              <FieldRow label="Financial preparedness" value={profile?.financial_preparedness} />
+            </div>
+          </Panel>
+
+          <Panel icon={<ShieldCheck size={20} />} title="Match preferences">
+            <div className="grid gap-3">
+              <FieldRow label="Preferred size" value={preference?.preferred_size} />
+              <FieldRow label="Preferred energy" value={preference?.preferred_energy_level} />
+              <FieldRow label="Good with dogs needed" value={preference?.good_with_dogs} />
+              <FieldRow label="Good with cats needed" value={preference?.good_with_cats} />
+              <FieldRow label="Good with kids needed" value={preference?.good_with_kids} />
+              <FieldRow label="Preference notes" value={preference?.notes} />
+              <FieldRow label="Application purpose" value={detail?.purpose} />
+              <FieldRow label="Living condition" value={detail?.living_condition} />
+              <FieldRow label="Preferred traits" value={detail?.preferred_traits} />
+              <FieldRow label="Daily routine" value={detail?.daily_routine} />
+              <FieldRow label="Experience with pets" value={detail?.experience_with_pets} />
+            </div>
+          </Panel>
+        </div>
+
+        <div className="mt-5 grid gap-5 xl:grid-cols-2">
+          <Panel icon={<FileText size={20} />} title="Verification documents">
+            {docs.length === 0 ? (
+              <p className="text-sm text-[#74685d]">No adopter verification documents are attached yet.</p>
+            ) : (
+              <div className="grid gap-3">
+                {docs.map((document) => (
+                  <a
+                    className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 text-sm font-semibold text-[#4f4338] hover:bg-[#faf4ec]"
+                    href={document.signedUrl ?? "#"}
+                    key={document.id}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {document.document_type.replace("_", " ")}
+                    {document.original_file_name ? <span className="block pt-1 text-xs font-normal text-[#74685d]">{document.original_file_name}</span> : null}
+                  </a>
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          <Panel icon={<FileText size={20} />} title="Application and questionnaire">
+            {typedApplication ? (
+              <div className="mb-4 rounded-2xl bg-[#f8f0e5] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Application status</p>
+                <p className="mt-1 text-sm font-semibold text-[#4f4338]">{typedApplication.status.replace("_", " ")}</p>
+                {typedApplication.notes ? <p className="mt-2 text-sm leading-6 text-[#5b4d40]">{typedApplication.notes}</p> : null}
+              </div>
+            ) : null}
+
+            {appDocs.length > 0 ? (
+              <div className="mb-4 grid gap-3">
+                {appDocs.map((document) => (
+                  <a
+                    className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 text-sm font-semibold text-[#4f4338] hover:bg-[#faf4ec]"
+                    href={document.signedUrl ?? "#"}
+                    key={document.id}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {document.document_type.replace("_", " ")}
+                  </a>
+                ))}
+              </div>
+            ) : null}
+
+            {answers.length === 0 ? (
+              <p className="text-sm text-[#74685d]">No shelter questionnaire answers are attached to this booking yet.</p>
+            ) : (
+              <div className="grid gap-3">
+                {answers.map(({ answer, question }) => (
+                  <div className="rounded-2xl bg-[#fffdfa] p-4" key={answer.id}>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">
+                      {question?.question_text ?? "Question"}
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-[#4f4338]">
+                      {answer.answer_text || jsonAnswer(answer.answer_json)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
         </div>
       </div>
     </div>

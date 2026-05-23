@@ -1278,9 +1278,8 @@ export async function createDogListingAction(
   revalidatePath("/");
   revalidatePath("/dogs");
   revalidatePath("/admin");
+  revalidatePath("/admin/listings");
   revalidatePath("/admin/dogs/new");
-  revalidatePath("/onboarding");
-  revalidatePath("/doglistings");
   revalidatePath(`/dogs/${insertedDog.id}`);
 
   return {

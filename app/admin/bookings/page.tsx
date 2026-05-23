@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { CalendarDays, CheckCircle2, Clock3, QrCode, Search, ShieldCheck } from "lucide-react";
+import { headers } from "next/headers";
+import { CalendarDays, CheckCircle2, Clock3, ExternalLink, QrCode, Search, ShieldCheck } from "lucide-react";
 import type { Database } from "@/types/database";
-import { formatBookingCode } from "@/utils/booking";
+import { buildCheckInUrl, createSignedCheckInToken, formatBookingCode, getCheckInTokenSecret } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import AdminGateForm from "../dogs/new/AdminGateForm";
 import { unlockAdminGateAction } from "../dogs/new/actions";
 import { initialAdminGateState } from "../dogs/new/form-state";
-import { updateBookingStatusAction } from "./actions";
+import { decideBookingAction } from "./actions";
+import BookingQrScanner from "./BookingQrScanner";
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 type Adopter = Database["public"]["Tables"]["adopters"]["Row"];
@@ -58,13 +60,28 @@ function statusStyle(status: AppointmentStatus) {
   }
 }
 
+function decisionLabel(status: AppointmentStatus) {
+  switch (status) {
+    case "confirmed":
+      return "Accepted";
+    case "cancelled":
+      return "Denied";
+    case "completed":
+      return "Completed";
+    case "no_show":
+      return "No show";
+    default:
+      return "Awaiting decision";
+  }
+}
+
 function AdminNav() {
   return (
     <div className="flex flex-wrap gap-3">
       <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin">
         Create dog
       </Link>
-      <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/doglistings">
+      <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin/listings">
         Manage listings
       </Link>
       <Link className="rounded-full bg-[#d38a2c] px-5 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(179,111,31,0.22)]" href="/admin/bookings">
@@ -100,6 +117,11 @@ export default async function AdminBookingsPage({
     ? (resolvedSearchParams?.status as AppointmentStatus)
     : "";
   const selectedDate = resolvedSearchParams?.date ?? "";
+  const headerStore = await headers();
+  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "localhost:3000";
+  const protocol = headerStore.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const origin = `${protocol}://${host}`;
+  const tokenSecret = getCheckInTokenSecret();
   const admin = createAdminClient();
   const { data: allShelters } = await admin
     .from("shelters")
@@ -277,6 +299,10 @@ export default async function AdminBookingsPage({
           </div>
         ) : null}
 
+        <div className="mt-6">
+          <BookingQrScanner />
+        </div>
+
         <div className="mt-6 space-y-4">
           {appointmentRows.length === 0 ? (
             <div className="rounded-[28px] border border-[#eadfce] bg-white p-8 text-center shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
@@ -289,6 +315,11 @@ export default async function AdminBookingsPage({
               const dog = appointment.dog_id ? dogMap.get(appointment.dog_id) : null;
               const shelter = shelterMap.get(appointment.shelter_id);
               const checkedIn = Boolean(appointment.checked_in_at);
+              const checkInToken = createSignedCheckInToken({
+                appointmentId: appointment.id,
+                secret: tokenSecret,
+              });
+              const checkInUrl = buildCheckInUrl({ origin, token: checkInToken });
 
               return (
                 <section
@@ -343,34 +374,94 @@ export default async function AdminBookingsPage({
                       ) : null}
                     </div>
 
-                    <form action={updateBookingStatusAction} className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+                    <form action={decideBookingAction} className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
                       <input name="appointmentId" type="hidden" value={appointment.id} />
-                      <label>
-                        <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Status</span>
-                        <select
-                          className="w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]"
-                          defaultValue={appointment.status}
-                          name="status"
-                        >
-                          {STATUS_OPTIONS.map((status) => (
-                            <option key={status} value={status}>
-                              {status.replace("_", " ")}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                      <div className="rounded-2xl bg-white px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Status</p>
+                        <p className="mt-1 text-lg font-semibold text-[#4f4338]">{decisionLabel(appointment.status)}</p>
+                        {appointment.shelter_note ? (
+                          <p className="mt-2 text-sm leading-6 text-[#74685d]">{appointment.shelter_note}</p>
+                        ) : null}
+                      </div>
+
                       <label className="mt-3 block">
-                        <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Shelter note</span>
+                        <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
+                          Shelter note
+                        </span>
                         <textarea
                           className="min-h-[92px] w-full resize-none rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]"
                           defaultValue={appointment.shelter_note ?? ""}
                           name="shelterNote"
-                          placeholder="Internal note for staff"
+                          placeholder="Optional note for denial, date change, or staff context"
                         />
                       </label>
-                      <button className="mt-3 w-full rounded-full bg-[#d38a2c] px-5 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]" type="submit">
-                        Save booking
-                      </button>
+                      {appointment.status === "requested" ? (
+                        <div className="mt-3 grid gap-2">
+                          <button
+                            className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]"
+                            name="decision"
+                            type="submit"
+                            value="accept"
+                          >
+                            Accept booking
+                          </button>
+                          <button
+                            className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64]"
+                            name="decision"
+                            type="submit"
+                            value="deny"
+                          >
+                            Deny booking
+                          </button>
+                          <button
+                            className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                            name="decision"
+                            type="submit"
+                            value="request_change"
+                          >
+                            Ask to change date/time
+                          </button>
+                        </div>
+                      ) : (
+                        <details className="mt-3 rounded-2xl border border-[#eadfce] bg-white p-3">
+                          <summary className="cursor-pointer text-sm font-semibold text-[#5b4d40]">
+                            Edit decision
+                          </summary>
+                          <div className="mt-3 grid gap-2">
+                            <button
+                              className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]"
+                              name="decision"
+                              type="submit"
+                              value="accept"
+                            >
+                              Mark accepted
+                            </button>
+                            <button
+                              className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64]"
+                              name="decision"
+                              type="submit"
+                              value="deny"
+                            >
+                              Mark denied
+                            </button>
+                            <button
+                              className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                              name="decision"
+                              type="submit"
+                              value="request_change"
+                            >
+                              Ask to change date/time
+                            </button>
+                          </div>
+                        </details>
+                      )}
+                      <Link
+                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                        href={checkInUrl}
+                      >
+                        <ExternalLink size={16} />
+                        Open visitor profile
+                      </Link>
                     </form>
                   </div>
                 </section>
