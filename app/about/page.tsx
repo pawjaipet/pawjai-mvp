@@ -24,12 +24,12 @@ export default function AboutPage() {
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
-      {/* Gradient hero header */}
+      {/* Gradient hero header — #5: one logo, centered, as large as possible */}
       <div
-        className="w-full flex flex-col items-center justify-center pt-[60px] pb-[40px] px-[24px]"
-        style={{ background: "linear-gradient(160deg, #d6c8ad 0%, #c4b49a 100%)", minHeight: 220 }}
+        className="w-full flex flex-col items-center justify-center pt-[48px] pb-[36px] px-[24px]"
+        style={{ background: "linear-gradient(160deg, #d6c8ad 0%, #c4b49a 100%)", minHeight: 360 }}
       >
-        <div className="relative h-[70px] w-[160px] mb-[16px]">
+        <div className="relative h-[220px] w-[300px] mb-[18px]">
           <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain" priority />
         </div>
         <p className="text-[15px] font-semibold text-[#65584f] text-center opacity-80" style={{ fontFamily: M }}>

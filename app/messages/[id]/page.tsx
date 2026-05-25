@@ -2,9 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Camera, ImageIcon, FileText } from "lucide-react";
 import ClientAuthGate from "@/components/auth/ClientAuthGate";
 
 const M = "Montserrat, sans-serif";
@@ -45,12 +44,7 @@ export default function ChatThreadPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const libraryRef = useRef<HTMLInputElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const closeSheet = useCallback(() => setSheetOpen(false), []);
+  const attachRef = useRef<HTMLInputElement>(null);
 
   function handleAttachment(files: FileList | null) {
     if (!files?.length) return;
@@ -63,7 +57,8 @@ export default function ChatThreadPage() {
     } else {
       setMessages((prev) => [...prev, { id: Date.now(), text: `📎 ${file.name}`, from: "me", time }]);
     }
-    setSheetOpen(false);
+    // Reset so re-picking same file fires onChange again
+    if (attachRef.current) attachRef.current.value = "";
   }
 
   function send() {
@@ -161,64 +156,19 @@ export default function ChatThreadPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Hidden file inputs */}
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleAttachment(e.target.files)} />
-      <input ref={libraryRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => handleAttachment(e.target.files)} />
-      <input ref={fileRef} type="file" className="hidden" onChange={(e) => handleAttachment(e.target.files)} />
-
-      {/* Attachment action sheet */}
-      {sheetOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={closeSheet}>
-          <div className="absolute inset-0 bg-black/40" />
-          <div
-            className="relative w-full animate-[slideUp_0.25s_ease-out]"
-            style={{ maxWidth: 402 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-[10px] mb-[8px] rounded-[14px] overflow-hidden" style={{ background: "white" }}>
-              <button
-                onClick={() => { cameraRef.current?.click(); }}
-                className="w-full flex items-center gap-[14px] px-[20px] py-[16px] text-[16px] font-medium text-[#65584f] active:bg-[#f5f1e8] transition-colors"
-                style={{ fontFamily: M, borderBottom: "1px solid rgba(214,200,173,0.4)" }}
-              >
-                <Camera size={22} className="text-[#cd8188]" />
-                Take Photo
-              </button>
-              <button
-                onClick={() => { libraryRef.current?.click(); }}
-                className="w-full flex items-center gap-[14px] px-[20px] py-[16px] text-[16px] font-medium text-[#65584f] active:bg-[#f5f1e8] transition-colors"
-                style={{ fontFamily: M, borderBottom: "1px solid rgba(214,200,173,0.4)" }}
-              >
-                <ImageIcon size={22} className="text-[#cd8188]" />
-                Choose from Library
-              </button>
-              <button
-                onClick={() => { fileRef.current?.click(); }}
-                className="w-full flex items-center gap-[14px] px-[20px] py-[16px] text-[16px] font-medium text-[#65584f] active:bg-[#f5f1e8] transition-colors"
-                style={{ fontFamily: M }}
-              >
-                <FileText size={22} className="text-[#cd8188]" />
-                Files
-              </button>
-            </div>
-            <div className="mx-[10px] mb-[10px]">
-              <button
-                onClick={closeSheet}
-                className="w-full rounded-[14px] py-[16px] text-[16px] font-bold text-[#cd8188] active:bg-[#f5f1e8] transition-colors"
-                style={{ fontFamily: M, background: "white" }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-          <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
-        </div>
-      )}
+      {/* Hidden file input — single native picker (#4) */}
+      <input
+        ref={attachRef}
+        type="file"
+        accept="image/*,video/*,application/pdf"
+        className="hidden"
+        onChange={(e) => handleAttachment(e.target.files)}
+      />
 
       {/* Input */}
       <div className="shrink-0 px-[16px] py-[12px] flex items-center gap-[10px]" style={{ background: "white", borderTop: "1px solid rgba(214,200,173,0.5)", paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}>
         <button
-          onClick={() => setSheetOpen(true)}
+          onClick={() => attachRef.current?.click()}
           className="w-[44px] h-[44px] rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95"
           style={{ background: "#cd8188" }}
           aria-label="Attach"

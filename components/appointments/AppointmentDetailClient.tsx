@@ -1,17 +1,43 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useTransition } from "react";
 import Link from "next/link";
-import { Camera, ImageIcon, FileText } from "lucide-react";
+import { cancelAppointmentAction } from "@/app/appointments/[id]/actions";
 
 const M = "Montserrat, sans-serif";
 
 type Tab = "details" | "messages" | "help";
 
+// Map raw DB status to UI display status.
+// DB enum: requested|confirmed|completed|cancelled|no_show, plus future pending|denied (Codex).
+export type DisplayStatus = "pending" | "accepted" | "denied" | "cancelled" | "completed";
+
+export function normalizeStatus(raw: string | null | undefined): DisplayStatus {
+  switch (raw) {
+    case "pending":
+    case "requested":
+      return "pending";
+    case "accepted":
+    case "confirmed":
+      return "accepted";
+    case "denied":
+      return "denied";
+    case "cancelled":
+    case "no_show":
+      return "cancelled";
+    case "completed":
+      return "completed";
+    default:
+      return "pending";
+  }
+}
+
 interface Props {
   appointmentId: string;
   bookingId: string;
   qrSvg: string;
+  status: string | null;
+  isPast: boolean;
   dog: {
     id: string;
     name: string;
@@ -41,12 +67,16 @@ interface Props {
 }
 
 export default function AppointmentDetailClient({
+  appointmentId,
   bookingId,
   dog,
   qrSvg,
+  status,
+  isPast,
   shelter,
   time,
 }: Props) {
+  const displayStatus = normalizeStatus(status);
   const [tab, setTab] = useState<Tab>("details");
 
   const mapsHref = shelter
@@ -100,16 +130,6 @@ export default function AppointmentDetailClient({
             <p className="text-[16px] font-bold text-white truncate" style={{ fontFamily: M }}>Appointment</p>
             <p className="text-[13px] text-white/75 truncate" style={{ fontFamily: M }}>{dog?.name ?? "Visit"}</p>
           </div>
-
-          <button
-            type="button"
-            className="w-[36px] h-[36px] rounded-full flex items-center justify-center active:scale-95 transition-transform"
-            aria-label="Share"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 3v12M7 8l5-5 5 5M5 21h14a2 2 0 0 0 2-2v-7" />
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -147,9 +167,12 @@ export default function AppointmentDetailClient({
       {/* ── Tab contents ── */}
       {tab === "details" && (
         <DetailsTab
+          appointmentId={appointmentId}
           bookingId={bookingId}
           dog={dog}
           qrSvg={qrSvg}
+          status={displayStatus}
+          isPast={isPast}
           shelter={shelter}
           time={time}
           mapsHref={mapsHref}
@@ -166,16 +189,22 @@ export default function AppointmentDetailClient({
 }
 
 function DetailsTab({
+  appointmentId,
   bookingId,
   dog,
   qrSvg,
+  status,
+  isPast,
   shelter,
   time,
   mapsHref,
 }: {
+  appointmentId: string;
   bookingId: string;
   dog: Props["dog"];
   qrSvg: string;
+  status: DisplayStatus;
+  isPast: boolean;
   shelter: Props["shelter"];
   time: Props["time"];
   mapsHref: string | null;
@@ -204,6 +233,9 @@ function DetailsTab({
           </p>
         </div>
       </div>
+
+      {/* Status box — new UI block (#7) */}
+      <StatusBox status={status} />
 
       {/* Meeting at */}
       {shelter && (
@@ -343,17 +375,137 @@ function DetailsTab({
           </p>
         </div>
       </section>
+
+      {/* Cancel appointment — new UI element (#2) */}
+      {!isPast && status !== "cancelled" && status !== "denied" && status !== "completed" && (
+        <CancelAppointmentButton appointmentId={appointmentId} />
+      )}
+    </div>
+  );
+}
+
+function CancelAppointmentButton({ appointmentId }: { appointmentId: string }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  function handleConfirm() {
+    startTransition(async () => {
+      await cancelAppointmentAction(appointmentId);
+    });
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setConfirmOpen(true)}
+        className="w-full rounded-[14px] py-[14px] text-[15px] font-bold active:scale-[0.99] transition-transform"
+        style={{
+          fontFamily: M,
+          color: "#b3565e",
+          background: "transparent",
+          border: "1.5px solid rgba(179,86,94,0.4)",
+        }}
+      >
+        Cancel Appointment
+      </button>
+
+      {confirmOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-[18px]"
+          onClick={() => !isPending && setConfirmOpen(false)}
+          style={{ paddingTop: "max(24px, env(safe-area-inset-top))", paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-[362px] rounded-[20px] bg-white px-[20px] py-[22px] shadow-[0_20px_60px_rgba(0,0,0,0.24)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-[20px] font-bold text-[#65584f]" style={{ fontFamily: M }}>Cancel this appointment?</p>
+            <p className="mt-[10px] text-[14px] leading-[1.55] text-[#65584f]/70" style={{ fontFamily: M }}>
+              The shelter will be notified. You can book another time anytime.
+            </p>
+            <div className="mt-[20px] flex gap-[10px]">
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                disabled={isPending}
+                className="h-[48px] flex-1 rounded-[14px] text-[14px] font-bold disabled:opacity-60"
+                style={{ background: "rgba(101,88,79,0.1)", color: "#65584f", fontFamily: M }}
+              >
+                Keep
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                disabled={isPending}
+                className="flex h-[48px] flex-1 items-center justify-center rounded-[14px] text-[14px] font-bold text-white disabled:opacity-60"
+                style={{ background: "#b3565e", fontFamily: M }}
+              >
+                {isPending ? "Cancelling..." : "Yes, cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function StatusBox({ status }: { status: DisplayStatus }) {
+  const config: Record<DisplayStatus, { label: string; explain: string; bg: string; fg: string; dot: string }> = {
+    pending: {
+      label: "Pending",
+      explain: "Waiting for shelter to confirm",
+      bg: "rgba(217,164,77,0.12)",
+      fg: "#a07223",
+      dot: "#d9a44d",
+    },
+    accepted: {
+      label: "Accepted",
+      explain: "Confirmed — see you there!",
+      bg: "rgba(56,142,76,0.10)",
+      fg: "#2f6f3f",
+      dot: "#388e4c",
+    },
+    denied: {
+      label: "Denied",
+      explain: "Shelter could not accommodate this time",
+      bg: "rgba(179,86,94,0.10)",
+      fg: "#8b3a42",
+      dot: "#b3565e",
+    },
+    cancelled: {
+      label: "Cancelled",
+      explain: "You cancelled this appointment",
+      bg: "rgba(101,88,79,0.10)",
+      fg: "#65584f",
+      dot: "#9b8e83",
+    },
+    completed: {
+      label: "Completed",
+      explain: "Visit complete",
+      bg: "rgba(56,142,76,0.08)",
+      fg: "#2f6f3f",
+      dot: "#388e4c",
+    },
+  };
+  const c = config[status];
+  return (
+    <div className="rounded-[14px] px-[16px] py-[14px] flex items-center gap-[12px]" style={{ background: c.bg, fontFamily: M }}>
+      <span className="inline-block w-[10px] h-[10px] rounded-full shrink-0" style={{ background: c.dot }} />
+      <div className="flex-1 min-w-0">
+        <p className="text-[15px] font-bold leading-[1.1]" style={{ color: c.fg }}>{c.label}</p>
+        <p className="text-[13px] mt-[2px] leading-[1.35]" style={{ color: c.fg, opacity: 0.78 }}>{c.explain}</p>
+      </div>
     </div>
   );
 }
 
 function MessagesTab({ dogName }: { dogName: string }) {
   const [draft, setDraft] = useState("");
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const libraryRef = useRef<HTMLInputElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const closeSheet = useCallback(() => setSheetOpen(false), []);
+  const attachRef = useRef<HTMLInputElement>(null);
 
   type ChatMsg = { from: string; text: string; time: string; read?: boolean; imageUrl?: string };
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
@@ -386,15 +538,19 @@ function MessagesTab({ dogName }: { dogName: string }) {
     } else {
       setChatMessages((prev) => [...prev, { from: "me", text: `📎 ${file.name}`, time }]);
     }
-    setSheetOpen(false);
+    if (attachRef.current) attachRef.current.value = "";
   }
 
   return (
     <div className="flex flex-col" style={{ minHeight: "calc(100dvh - 240px)" }}>
-      {/* Hidden file inputs */}
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleAttachment(e.target.files)} />
-      <input ref={libraryRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => handleAttachment(e.target.files)} />
-      <input ref={fileRef} type="file" className="hidden" onChange={(e) => handleAttachment(e.target.files)} />
+      {/* Hidden file input — single native picker (#4) */}
+      <input
+        ref={attachRef}
+        type="file"
+        accept="image/*,video/*,application/pdf"
+        className="hidden"
+        onChange={(e) => handleAttachment(e.target.files)}
+      />
 
       <div className="flex-1 px-[16px] py-[20px] space-y-[16px] overflow-y-auto">
         <p className="text-center text-[11px] font-semibold tracking-[0.14em] text-[#65584f]/45" style={{ fontFamily: M }}>
@@ -427,60 +583,11 @@ function MessagesTab({ dogName }: { dogName: string }) {
         ))}
       </div>
 
-      {/* Attachment action sheet */}
-      {sheetOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={closeSheet}>
-          <div className="absolute inset-0 bg-black/40" />
-          <div
-            className="relative w-full animate-[slideUp_0.25s_ease-out]"
-            style={{ maxWidth: 402 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-[10px] mb-[8px] rounded-[14px] overflow-hidden" style={{ background: "white" }}>
-              <button
-                onClick={() => { cameraRef.current?.click(); }}
-                className="w-full flex items-center gap-[14px] px-[20px] py-[16px] text-[16px] font-medium text-[#65584f] active:bg-[#f5f1e8] transition-colors"
-                style={{ fontFamily: M, borderBottom: "1px solid rgba(214,200,173,0.4)" }}
-              >
-                <Camera size={22} className="text-[#cd8188]" />
-                Take Photo
-              </button>
-              <button
-                onClick={() => { libraryRef.current?.click(); }}
-                className="w-full flex items-center gap-[14px] px-[20px] py-[16px] text-[16px] font-medium text-[#65584f] active:bg-[#f5f1e8] transition-colors"
-                style={{ fontFamily: M, borderBottom: "1px solid rgba(214,200,173,0.4)" }}
-              >
-                <ImageIcon size={22} className="text-[#cd8188]" />
-                Choose from Library
-              </button>
-              <button
-                onClick={() => { fileRef.current?.click(); }}
-                className="w-full flex items-center gap-[14px] px-[20px] py-[16px] text-[16px] font-medium text-[#65584f] active:bg-[#f5f1e8] transition-colors"
-                style={{ fontFamily: M }}
-              >
-                <FileText size={22} className="text-[#cd8188]" />
-                Files
-              </button>
-            </div>
-            <div className="mx-[10px] mb-[10px]">
-              <button
-                onClick={closeSheet}
-                className="w-full rounded-[14px] py-[16px] text-[16px] font-bold text-[#cd8188] active:bg-[#f5f1e8] transition-colors"
-                style={{ fontFamily: M, background: "white" }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-          <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
-        </div>
-      )}
-
       {/* Composer */}
       <div className="sticky bottom-[70px] flex items-center gap-[10px] px-[14px] py-[12px] bg-white border-t border-[#d6c8ad]/40">
         <button
           type="button"
-          onClick={() => setSheetOpen(true)}
+          onClick={() => attachRef.current?.click()}
           className="w-[40px] h-[40px] rounded-full flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform"
           style={{ background: "#d6c8ad" }}
           aria-label="Attach"

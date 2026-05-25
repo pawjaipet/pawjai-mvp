@@ -416,7 +416,10 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
       </div>
 
       {showExitWarning && section !== "done" && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 px-[18px] pb-[22px] sm:items-center sm:pb-0">
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-[18px]"
+          style={{ paddingTop: "max(24px, env(safe-area-inset-top))", paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}
+        >
           <div
             role="dialog"
             aria-modal="true"

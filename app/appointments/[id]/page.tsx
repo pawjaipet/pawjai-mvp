@@ -134,11 +134,17 @@ export default async function AppointmentDetailPage({
       ].filter(Boolean) as string[]
     : [];
 
+  // Compute whether slot has passed (start time + 1hr <= now)
+  const slotStart = new Date(`${appt.appointment_date}T${appt.appointment_time}`);
+  const isPast = slotStart.getTime() + 60 * 60 * 1000 <= Date.now();
+
   return (
     <AppointmentDetailClient
       appointmentId={appt.id}
       bookingId={bookingId}
       qrSvg={qrSvg}
+      status={appt.status}
+      isPast={isPast}
       dog={dog ? { id: dog.id, name: dog.name, breed: dog.breed, coverUrl } : null}
       shelter={
         shelter
