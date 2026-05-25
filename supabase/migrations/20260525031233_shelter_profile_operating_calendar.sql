@@ -3,6 +3,51 @@ alter table public.shelters
   add column if not exists google_maps_url text,
   add column if not exists meeting_instructions text;
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'shelter-assets',
+  'shelter-assets',
+  true,
+  5242880,
+  array['image/png', 'image/jpeg', 'image/webp']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "shelter_assets_public_select" on storage.objects;
+create policy "shelter_assets_public_select"
+on storage.objects
+for select
+to public
+using (bucket_id = 'shelter-assets');
+
+drop policy if exists "shelter_assets_admin_write" on storage.objects;
+create policy "shelter_assets_admin_write"
+on storage.objects
+for all
+to authenticated
+using (
+  bucket_id = 'shelter-assets'
+  and exists (
+    select 1
+    from public.profiles actor
+    where actor.id = auth.uid()
+      and actor.role = 'admin'
+  )
+)
+with check (
+  bucket_id = 'shelter-assets'
+  and exists (
+    select 1
+    from public.profiles actor
+    where actor.id = auth.uid()
+      and actor.role = 'admin'
+  )
+);
+
 create table if not exists public.shelter_regular_hours (
   id uuid primary key default gen_random_uuid(),
   shelter_id uuid not null references public.shelters (id) on delete cascade,

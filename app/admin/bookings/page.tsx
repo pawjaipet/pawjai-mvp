@@ -317,7 +317,14 @@ export default async function AdminBookingsPage({
   );
   const regularHours = (regularHoursData ?? []) as ShelterRegularHours[];
   const regularHoursByDay = new Map(regularHours.map((hours) => [hours.day_of_week, hours]));
-  const closedDays = new Set(regularHours.filter((hours) => hours.is_closed).map((hours) => hours.day_of_week));
+  const fallbackClosedDays = unavailableRanges
+    .map((range) => range.note?.match(/^Recurring weekly closure:(\d)$/)?.[1])
+    .filter(Boolean)
+    .map(Number);
+  const closedDays = new Set([
+    ...regularHours.filter((hours) => hours.is_closed).map((hours) => hours.day_of_week),
+    ...fallbackClosedDays,
+  ]);
   const sampleOpenDay = regularHours.find((hours) => !hours.is_closed);
   const defaultOpensAt = sampleOpenDay?.opens_at?.slice(0, 5) ?? "09:00";
   const defaultClosesAt = sampleOpenDay?.closes_at?.slice(0, 5) ?? "17:00";
@@ -526,7 +533,7 @@ export default async function AdminBookingsPage({
                 </div>
               </div>
 
-              <form action={updateShelterProfileAction} className="grid gap-3">
+              <form action={updateShelterProfileAction} className="grid gap-3" encType="multipart/form-data">
                 <input name="shelterId" type="hidden" value={activeShelter.id} />
                 <div className="grid gap-3 md:grid-cols-2">
                   <label>
@@ -548,6 +555,15 @@ export default async function AdminBookingsPage({
                   <label>
                     <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Logo URL</span>
                     <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.logo_url ?? ""} name="logoUrl" placeholder="https://.../logo.png" />
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Upload logo</span>
+                    <input
+                      accept="image/png,image/jpeg,image/webp"
+                      className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-2.5 text-sm text-[#4f4338] file:mr-3 file:rounded-full file:border-0 file:bg-[#d38a2c] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-[#d38a2c]"
+                      name="logoFile"
+                      type="file"
+                    />
                   </label>
                   <label>
                     <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Google Maps URL</span>
@@ -734,7 +750,11 @@ export default async function AdminBookingsPage({
                             {formatShortDate(range.start_date)}
                             {range.end_date !== range.start_date ? ` - ${formatShortDate(range.end_date)}` : ""}
                           </p>
-                          <p className="mt-1 text-xs leading-5 text-[#74685d]">{range.note || "Unavailable"}</p>
+                          <p className="mt-1 text-xs leading-5 text-[#74685d]">
+                            {range.note?.startsWith("Recurring weekly closure:")
+                              ? "Weekly closure"
+                              : range.note || "Unavailable"}
+                          </p>
                         </div>
                         <form action={deleteShelterAvailabilityAction}>
                           <input name="shelterId" type="hidden" value={activeShelter.id} />

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createHash } from "node:crypto";
 import type { Database } from "@/types/database";
 import { buildAdminBookingDetailPath, getCheckInTokenSecret, hashCheckInToken, verifySignedCheckInToken } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
@@ -10,6 +11,8 @@ import { createAdminClient } from "@/utils/supabase/admin";
 type AppointmentStatus = Database["public"]["Enums"]["appointment_status"];
 
 type BookingDecision = "accept" | "deny" | "request_change";
+const SHELTER_ASSETS_BUCKET = "shelter-assets";
+const SHELTER_LOGO_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 function cleanText(value: FormDataEntryValue | null) {
   const text = typeof value === "string" ? value.trim() : "";
@@ -21,6 +24,109 @@ function bookingsRedirect(shelterId: string, message: string) {
   if (shelterId) params.set("shelter", shelterId);
   if (message) params.set("message", message);
   redirect(`/admin/bookings?${params.toString()}`);
+}
+
+function isMissingSchemaError(error: { message?: string } | null | undefined) {
+  const message = error?.message ?? "";
+  return message.includes("Could not find")
+    || message.includes("schema cache")
+    || message.includes("does not exist");
+}
+
+function extensionForMimeType(type: string) {
+  switch (type) {
+    case "image/png":
+      return "png";
+    case "image/webp":
+      return "webp";
+    default:
+      return "jpg";
+  }
+}
+
+async function uploadShelterLogo({
+  admin,
+  file,
+  shelterId,
+}: {
+  admin: ReturnType<typeof createAdminClient>;
+  file: File;
+  shelterId: string;
+}) {
+  if (!SHELTER_LOGO_MIME_TYPES.has(file.type)) {
+    return { error: "Please upload a PNG, JPG, or WEBP logo.", url: null };
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    return { error: "Logo file must be 5 MB or smaller.", url: null };
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const digest = createHash("sha256").update(buffer).digest("hex").slice(0, 16);
+  const path = `${shelterId}/logo-${Date.now()}-${digest}.${extensionForMimeType(file.type)}`;
+  const { error } = await admin.storage.from(SHELTER_ASSETS_BUCKET).upload(path, buffer, {
+    cacheControl: "3600",
+    contentType: file.type,
+    upsert: true,
+  });
+
+  if (error) {
+    return {
+      error: error.message.includes("Bucket not found")
+        ? "Logo upload needs the shelter-assets Supabase migration before it can save."
+        : error.message,
+      url: null,
+    };
+  }
+
+  const { data } = admin.storage.from(SHELTER_ASSETS_BUCKET).getPublicUrl(path);
+  return { error: null, url: data.publicUrl };
+}
+
+async function saveWeeklyClosuresAsBlockouts({
+  admin,
+  closedDays,
+  shelterId,
+}: {
+  admin: ReturnType<typeof createAdminClient>;
+  closedDays: Set<number>;
+  shelterId: string;
+}) {
+  const fallbackNotePrefix = "Recurring weekly closure:";
+  await (admin as any)
+    .from("shelter_availability")
+    .delete()
+    .eq("shelter_id", shelterId)
+    .like("note", `${fallbackNotePrefix}%`);
+
+  if (closedDays.size === 0) {
+    return null;
+  }
+
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const rows = Array.from({ length: 366 }, (_, offset) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + offset);
+    return date;
+  })
+    .filter((date) => closedDays.has(date.getDay()))
+    .map((date) => {
+      const dateKey = date.toISOString().slice(0, 10);
+      return {
+        availability_type: "unavailable",
+        end_date: dateKey,
+        note: `${fallbackNotePrefix}${date.getDay()}`,
+        shelter_id: shelterId,
+        start_date: dateKey,
+      };
+    });
+
+  const { error } = await (admin as any)
+    .from("shelter_availability")
+    .insert(rows);
+
+  return error;
 }
 
 function parseDecision(value: FormDataEntryValue | null): BookingDecision | null {
@@ -83,6 +189,15 @@ export async function updateShelterProfileAction(formData: FormData) {
   }
 
   const admin = createAdminClient();
+  let logoUrl = cleanText(formData.get("logoUrl"));
+  let uploadWarning: string | null = null;
+  const logoFile = formData.get("logoFile");
+  if (logoFile instanceof File && logoFile.size > 0) {
+    const upload = await uploadShelterLogo({ admin, file: logoFile, shelterId });
+    logoUrl = upload.url ?? logoUrl;
+    uploadWarning = upload.error;
+  }
+
   const basePayload = {
     address_line: cleanText(formData.get("addressLine")),
     description: cleanText(formData.get("description")),
@@ -100,7 +215,7 @@ export async function updateShelterProfileAction(formData: FormData) {
   };
   const extendedPayload = {
     google_maps_url: cleanText(formData.get("googleMapsUrl")),
-    logo_url: cleanText(formData.get("logoUrl")),
+    logo_url: logoUrl,
     meeting_instructions: cleanText(formData.get("meetingInstructions")),
   };
 
@@ -111,7 +226,7 @@ export async function updateShelterProfileAction(formData: FormData) {
       ...extendedPayload,
     })
     .eq("id", shelterId);
-  const finalError = error?.message.includes("Could not find")
+  const finalError = isMissingSchemaError(error)
     ? (
         await admin
           .from("shelters")
@@ -122,7 +237,14 @@ export async function updateShelterProfileAction(formData: FormData) {
 
   revalidatePath("/admin/bookings");
   revalidatePath("/appointments");
-  bookingsRedirect(shelterId, finalError ? "Shelter profile could not be saved." : "Shelter profile saved.");
+  const message = finalError
+    ? "Shelter profile could not be saved."
+    : isMissingSchemaError(error)
+      ? "Basic shelter profile saved. Logo, Maps URL, and meeting instructions need the Supabase migration before they can persist."
+      : uploadWarning
+        ? `Shelter profile saved, but ${uploadWarning}`
+        : "Shelter profile saved.";
+  bookingsRedirect(shelterId, message);
 }
 
 export async function updateShelterOperatingDaysAction(formData: FormData) {
@@ -162,10 +284,22 @@ export async function updateShelterOperatingDaysAction(formData: FormData) {
   const { error } = await admin
     .from("shelter_regular_hours")
     .upsert(rows, { onConflict: "shelter_id,day_of_week" });
+  const fallbackError = isMissingSchemaError(error)
+    ? await saveWeeklyClosuresAsBlockouts({ admin, closedDays, shelterId })
+    : null;
 
   revalidatePath("/admin/bookings");
   revalidatePath("/appointments");
-  bookingsRedirect(shelterId, error ? "Operating days could not be saved." : "Operating days saved.");
+  bookingsRedirect(
+    shelterId,
+    isMissingSchemaError(error)
+      ? fallbackError
+        ? `Weekly operating days could not be saved: ${fallbackError.message}`
+        : "Weekly operating days saved as blockout dates. Apply the Supabase migration later for full operating-hour support."
+      : error
+        ? `Operating days could not be saved: ${error.message}`
+        : "Operating days saved.",
+  );
 }
 
 export async function createShelterBlockoutAction(formData: FormData) {
