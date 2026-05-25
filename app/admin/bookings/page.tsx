@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, ExternalLink, Globe, ImageIcon, Mail, MapPin, MessageCircle, PawPrint, Phone, QrCode, Search, Send, ShieldCheck, Trash2 } from "lucide-react";
 import type { Database } from "@/types/database";
+import { appointmentFollowUpDue, isPastAppointmentByTime } from "@/utils/appointments-model";
 import { formatBookingCode, normalizeBookingCodeSearch } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -42,6 +43,7 @@ type ShelterAvailability = {
 };
 type ShelterRegularHours = Database["public"]["Tables"]["shelter_regular_hours"]["Row"];
 type ShelterAdminView = "profile" | "dogs" | "bookings" | "messages";
+type VisitBucket = "upcoming" | "past" | "needs_follow_up" | "all";
 type AppointmentMessage = {
   appointment_id: string;
   body: string;
@@ -73,6 +75,12 @@ const SHELTER_ADMIN_VIEWS: { label: string; value: ShelterAdminView }[] = [
   { label: "Dog listings", value: "dogs" },
   { label: "Booking visits", value: "bookings" },
   { label: "Messaging", value: "messages" },
+];
+const VISIT_BUCKETS: { label: string; value: VisitBucket }[] = [
+  { label: "Upcoming", value: "upcoming" },
+  { label: "Needs follow-up", value: "needs_follow_up" },
+  { label: "Past", value: "past" },
+  { label: "All", value: "all" },
 ];
 
 function formatTime(time: string) {
@@ -205,7 +213,7 @@ function AdminNav() {
 export default async function AdminBookingsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ code?: string; date?: string; message?: string; month?: string; shelter?: string; status?: string; view?: string }>;
+  searchParams?: Promise<{ code?: string; date?: string; message?: string; month?: string; shelter?: string; status?: string; view?: string; visit?: string }>;
 }) {
   const gateOpen = await isAdminGateOpen();
   const resolvedSearchParams = await searchParams;
@@ -230,6 +238,9 @@ export default async function AdminBookingsPage({
   const activeShelterView = SHELTER_ADMIN_VIEWS.some((view) => view.value === resolvedSearchParams?.view)
     ? (resolvedSearchParams?.view as ShelterAdminView)
     : "bookings";
+  const activeVisitBucket = VISIT_BUCKETS.some((bucket) => bucket.value === resolvedSearchParams?.visit)
+    ? (resolvedSearchParams?.visit as VisitBucket)
+    : "upcoming";
   const calendarMonth = parseCalendarMonth(resolvedSearchParams?.month);
   const calendarMonthParam = formatMonthParam(calendarMonth);
   const previousCalendarMonth = new Date(calendarMonth);
@@ -263,6 +274,7 @@ export default async function AdminBookingsPage({
     shelter = selectedShelterId,
     status = selectedStatus,
     view = activeShelterView,
+    visit = activeVisitBucket,
   }: {
     code?: string;
     date?: string;
@@ -270,6 +282,7 @@ export default async function AdminBookingsPage({
     shelter?: string;
     status?: string;
     view?: string;
+    visit?: string;
   } = {}) => {
     const params = new URLSearchParams();
     if (code) params.set("code", code);
@@ -278,6 +291,7 @@ export default async function AdminBookingsPage({
     if (status) params.set("status", status);
     if (month) params.set("month", month);
     if (view) params.set("view", view);
+    if (visit) params.set("visit", visit);
     const query = params.toString();
     return query ? `/admin/bookings?${query}` : "/admin/bookings";
   };
@@ -286,7 +300,7 @@ export default async function AdminBookingsPage({
     .select("*")
     .order("appointment_date", { ascending: true })
     .order("appointment_time", { ascending: true })
-    .limit(selectedBookingCode ? 500 : 80);
+    .limit(selectedBookingCode ? 500 : 500);
 
   if (selectedStatus) {
     appointmentsQuery = appointmentsQuery.eq("status", selectedStatus);
@@ -301,12 +315,25 @@ export default async function AdminBookingsPage({
   }
 
   const { data: appointments } = await appointmentsQuery;
-  const appointmentRows = selectedBookingCode
+  const rawAppointmentRows = selectedBookingCode
     ? (appointments ?? []).filter((appointment) => {
         const displayCode = appointment.booking_code ?? formatBookingCode(appointment.id);
         return displayCode.toUpperCase().startsWith(selectedBookingCode);
       })
     : appointments ?? [];
+  const now = new Date();
+  const upcomingAppointmentRows = rawAppointmentRows.filter((appointment) => !isPastAppointmentByTime(appointment, now));
+  const pastAppointmentRows = rawAppointmentRows.filter((appointment) => isPastAppointmentByTime(appointment, now));
+  const followUpAppointmentRows = rawAppointmentRows.filter((appointment) => appointmentFollowUpDue(appointment, now));
+  const appointmentRows = activeShelterView !== "bookings" || selectedBookingCode || selectedDate || selectedStatus
+    ? rawAppointmentRows
+    : activeVisitBucket === "past"
+      ? pastAppointmentRows
+      : activeVisitBucket === "needs_follow_up"
+        ? followUpAppointmentRows
+        : activeVisitBucket === "all"
+          ? rawAppointmentRows
+          : upcomingAppointmentRows;
   const { data: messagingAppointments } = selectedShelterId
     ? await admin
         .from("appointments")
@@ -493,9 +520,46 @@ export default async function AdminBookingsPage({
         ) : null}
 
         {activeShelterView === "bookings" ? (
+        <div className="mt-6 rounded-[24px] border border-[#eadfce] bg-white p-3 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+          <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
+            Visit timing
+          </p>
+          <div className="grid gap-2 md:grid-cols-4">
+            {VISIT_BUCKETS.map((bucket) => {
+              const active = activeVisitBucket === bucket.value;
+              const count = bucket.value === "past"
+                ? pastAppointmentRows.length
+                : bucket.value === "needs_follow_up"
+                  ? followUpAppointmentRows.length
+                  : bucket.value === "all"
+                    ? rawAppointmentRows.length
+                    : upcomingAppointmentRows.length;
+              return (
+                <Link
+                  className={`rounded-2xl px-4 py-3 text-center text-sm font-semibold transition ${
+                    active
+                      ? "bg-[#d38a2c] text-white shadow-[0_10px_24px_rgba(179,111,31,0.18)]"
+                      : "border border-[#eadfce] bg-[#fffdfa] text-[#5b4d40] hover:bg-[#faf4ec]"
+                  }`}
+                  href={buildBookingsHref({ visit: bucket.value })}
+                  key={bucket.value}
+                >
+                  {bucket.label} ({count})
+                </Link>
+              );
+            })}
+          </div>
+          <p className="mt-3 px-2 text-xs leading-5 text-[#74685d]">
+            Visits move to past 24 hours after their scheduled time. Needs follow-up highlights visits where staff should record the outcome.
+          </p>
+        </div>
+        ) : null}
+
+        {activeShelterView === "bookings" ? (
         <form className="mt-6 flex flex-col gap-3 rounded-[24px] border border-[#eadfce] bg-white p-4 shadow-[0_16px_50px_rgba(128,92,46,0.08)] md:flex-row md:items-end">
           <input name="shelter" type="hidden" value={selectedShelterId} />
           <input name="view" type="hidden" value={activeShelterView} />
+          <input name="visit" type="hidden" value={activeVisitBucket} />
           {selectedBookingCode ? <input name="code" type="hidden" value={selectedBookingCode} /> : null}
           <label className="flex-1">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Date</span>
@@ -1026,6 +1090,7 @@ export default async function AdminBookingsPage({
         <form className="mt-6 rounded-[24px] border border-[#eadfce] bg-white p-4 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
           <input name="shelter" type="hidden" value={selectedShelterId} />
           <input name="view" type="hidden" value={activeShelterView} />
+          <input name="visit" type="hidden" value={activeVisitBucket} />
           {selectedDate ? <input name="date" type="hidden" value={selectedDate} /> : null}
           {selectedStatus ? <input name="status" type="hidden" value={selectedStatus} /> : null}
           <label>
@@ -1074,6 +1139,7 @@ export default async function AdminBookingsPage({
               const dog = appointment.dog_id ? dogMap.get(appointment.dog_id) : null;
               const shelter = shelterMap.get(appointment.shelter_id);
               const checkedIn = Boolean(appointment.checked_in_at);
+              const followUpDue = appointmentFollowUpDue(appointment, now);
               return (
                 <section
                   className="rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]"
@@ -1208,6 +1274,44 @@ export default async function AdminBookingsPage({
                           </div>
                         </details>
                       )}
+                      {followUpDue ? (
+                        <div className="mt-3 rounded-2xl border border-[#eadfce] bg-white p-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
+                            Post-visit outcome
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-[#74685d]">
+                            This visit is more than 24 hours old. Record whether the visit happened or the dog was adopted.
+                          </p>
+                          <div className="mt-3 grid gap-2">
+                            <button
+                              className="w-full rounded-full bg-[#65584f] px-5 py-3 text-sm font-semibold text-white hover:bg-[#50443b]"
+                              name="decision"
+                              type="submit"
+                              value="complete"
+                            >
+                              Mark visit completed
+                            </button>
+                            <button
+                              className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                              name="decision"
+                              type="submit"
+                              value="no_show"
+                            >
+                              Visitor did not show
+                            </button>
+                            {appointment.dog_id ? (
+                              <button
+                                className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]"
+                                name="decision"
+                                type="submit"
+                                value="adopted"
+                              >
+                                Mark dog adopted
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : null}
                       <Link
                         className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
                         href={`/admin/bookings/${appointment.id}/visitor-profile`}

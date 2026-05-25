@@ -7,6 +7,7 @@ export type AppointmentStatus =
 
 export type AppointmentSummary = {
   appointment_date: string;
+  appointment_time?: string | null;
   status: string;
 };
 
@@ -45,6 +46,36 @@ export function isPastAppointment(appointment: AppointmentSummary, today: string
   }
 
   return appointment.appointment_date < today;
+}
+
+export function appointmentFollowUpDue(appointment: AppointmentSummary, now = new Date()) {
+  if (appointment.status === "completed" || appointment.status === "cancelled" || appointment.status === "no_show") {
+    return false;
+  }
+
+  if (!appointment.appointment_time) {
+    return appointment.appointment_date < now.toISOString().slice(0, 10);
+  }
+
+  const visitStart = new Date(`${appointment.appointment_date}T${normalizeAppointmentTime(appointment.appointment_time)}:00`);
+  return visitStart.getTime() + 24 * 60 * 60 * 1000 <= now.getTime();
+}
+
+export function isPastAppointmentByTime(appointment: AppointmentSummary, now = new Date()) {
+  if (
+    appointment.status === "completed" ||
+    appointment.status === "cancelled" ||
+    appointment.status === "no_show"
+  ) {
+    return true;
+  }
+
+  if (!appointment.appointment_time) {
+    return appointment.appointment_date < now.toISOString().slice(0, 10);
+  }
+
+  const visitStart = new Date(`${appointment.appointment_date}T${normalizeAppointmentTime(appointment.appointment_time)}:00`);
+  return visitStart.getTime() + 24 * 60 * 60 * 1000 <= now.getTime();
 }
 
 export function canEditAppointmentDateTime(appointment: AppointmentSummary, today: string) {

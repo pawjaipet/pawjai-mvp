@@ -7,7 +7,7 @@ import {
   APPOINTMENT_TIME_SLOTS,
   canEditAppointmentDateTime,
   getAppointmentStatusCopy,
-  isPastAppointment,
+  isPastAppointmentByTime,
   normalizeAppointmentTime,
 } from "@/utils/appointments-model";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -44,10 +44,10 @@ export default async function AppointmentsPage({
     .order("appointment_date", { ascending: tab === "past" ? false : true })
     .order("appointment_time", { ascending: tab === "past" ? false : true });
 
-  // Split by date — past = before today OR status completed/cancelled/no_show
   const today = new Date().toISOString().slice(0, 10);
-  const upcomingAppointments = (allAppointments ?? []).filter((a) => !isPastAppointment(a, today));
-  const pastAppointments = (allAppointments ?? []).filter((a) => isPastAppointment(a, today));
+  const now = new Date();
+  const upcomingAppointments = (allAppointments ?? []).filter((a) => !isPastAppointmentByTime(a, now));
+  const pastAppointments = (allAppointments ?? []).filter((a) => isPastAppointmentByTime(a, now));
   const appointments = tab === "past" ? pastAppointments : upcomingAppointments;
 
   const dogIds = [...new Set((allAppointments ?? []).map((a) => a.dog_id).filter(Boolean))] as string[];

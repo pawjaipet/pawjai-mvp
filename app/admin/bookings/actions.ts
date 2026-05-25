@@ -10,7 +10,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 
 type AppointmentStatus = Database["public"]["Enums"]["appointment_status"];
 
-type BookingDecision = "accept" | "deny" | "request_change";
+type BookingDecision = "accept" | "deny" | "request_change" | "complete" | "no_show" | "adopted";
 const SHELTER_ASSETS_BUCKET = "shelter-assets";
 const SHELTER_LOGO_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
@@ -139,7 +139,12 @@ async function saveWeeklyClosuresAsBlockouts({
 
 function parseDecision(value: FormDataEntryValue | null): BookingDecision | null {
   const decision = typeof value === "string" ? value : "";
-  return decision === "accept" || decision === "deny" || decision === "request_change"
+  return decision === "accept"
+    || decision === "deny"
+    || decision === "request_change"
+    || decision === "complete"
+    || decision === "no_show"
+    || decision === "adopted"
     ? decision
     : null;
 }
@@ -152,6 +157,11 @@ function statusForDecision(decision: BookingDecision): AppointmentStatus {
       return "cancelled";
     case "request_change":
       return "requested";
+    case "complete":
+    case "adopted":
+      return "completed";
+    case "no_show":
+      return "no_show";
   }
 }
 
@@ -170,14 +180,43 @@ export async function decideBookingAction(formData: FormData) {
 
   const status = statusForDecision(decision);
   const admin = createAdminClient();
+  const { data: appointment } = await admin
+    .from("appointments")
+    .select("id, dog_id")
+    .eq("id", appointmentId)
+    .maybeSingle();
+
   await admin
     .from("appointments")
     .update({
-      shelter_note: shelterNote || null,
+      shelter_note: shelterNote || (decision === "adopted" ? "Visitor adopted this dog after the visit." : null),
       status,
       updated_at: new Date().toISOString(),
     })
     .eq("id", appointmentId);
+
+  if (decision === "adopted" && appointment?.dog_id) {
+    const today = new Date().toISOString().slice(0, 10);
+    await admin
+      .from("dogs")
+      .update({
+        adoption_status: "adopted",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", appointment.dog_id);
+
+    await admin
+      .from("appointments")
+      .update({
+        shelter_note: "This dog has already been adopted.",
+        status: "cancelled",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("dog_id", appointment.dog_id)
+      .neq("id", appointmentId)
+      .gte("appointment_date", today)
+      .in("status", ["requested", "confirmed"]);
+  }
 
   revalidatePath("/admin/bookings");
   revalidatePath("/appointments");
