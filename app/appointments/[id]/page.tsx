@@ -56,6 +56,7 @@ export default async function AppointmentDetailPage({
       : Promise.resolve({ data: null }),
     admin
       .from("shelters")
+      // TODO(codex): add name_th, latitude, longitude columns. Select tolerates missing cols via try/catch wrapper below.
       .select("id, name, phone_number, email, address_line, district, subdistrict, province, postal_code")
       .eq("id", appt.shelter_id)
       .maybeSingle(),
@@ -133,9 +134,14 @@ export default async function AppointmentDetailPage({
         shelter
           ? {
               name: shelter.name,
+              // TODO(codex): wire when name_th column exists
+              nameTh: (shelter as unknown as { name_th?: string | null }).name_th ?? null,
               phone: shelter.phone_number,
               email: shelter.email,
               addressLines,
+              // TODO(codex): wire when latitude/longitude columns exist
+              latitude: (shelter as unknown as { latitude?: number | null }).latitude ?? null,
+              longitude: (shelter as unknown as { longitude?: number | null }).longitude ?? null,
             }
           : null
       }

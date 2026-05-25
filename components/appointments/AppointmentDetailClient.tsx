@@ -20,9 +20,12 @@ interface Props {
   } | null;
   shelter: {
     name: string;
+    nameTh: string | null;
     phone: string | null;
     email: string | null;
     addressLines: string[];
+    latitude: number | null;
+    longitude: number | null;
   } | null;
   time: {
     weekday: string;
@@ -43,8 +46,12 @@ export default function AppointmentDetailClient({
 }: Props) {
   const [tab, setTab] = useState<Tab>("details");
 
-  const mapsHref = shelter && shelter.addressLines.length > 0
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shelter.addressLines.join(", "))}`
+  const mapsHref = shelter
+    ? shelter.latitude != null && shelter.longitude != null
+      ? `https://www.google.com/maps/search/?api=1&query=${shelter.latitude},${shelter.longitude}`
+      : shelter.addressLines.length > 0
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shelter.addressLines.join(", "))}`
+        : null
     : null;
 
   return (
@@ -200,12 +207,14 @@ function DetailsTab({
             MEETING AT
           </p>
           <div className="rounded-[14px] p-[18px]" style={{ background: "#f5f0e8" }}>
-            <p className="text-[18px] font-bold text-[#65584f]" style={{ fontFamily: M }}>{shelter.name}</p>
-            {shelter.addressLines.map((line, i) => (
-              <p key={i} className="text-[14px] text-[#65584f] mt-[4px] leading-[1.45]" style={{ fontFamily: M }}>
-                {line}
+            <p className="text-[18px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
+              {shelter.nameTh ?? shelter.name}
+            </p>
+            {shelter.addressLines.length > 0 && (
+              <p className="text-[14px] text-[#65584f] mt-[8px] leading-[1.45]" style={{ fontFamily: M }}>
+                {shelter.addressLines.join(", ")}
               </p>
-            ))}
+            )}
             {mapsHref && (
               <a
                 href={mapsHref}
@@ -257,7 +266,9 @@ function DetailsTab({
             SHELTER CONTACT
           </p>
           <div className="rounded-[14px] p-[18px]" style={{ background: "#f5f0e8" }}>
-            <p className="text-[18px] font-bold text-[#65584f]" style={{ fontFamily: M }}>{shelter.name}</p>
+            <p className="text-[18px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
+              {shelter.nameTh ?? shelter.name}
+            </p>
             {shelter.phone && (
               <a href={`tel:${shelter.phone}`} className="mt-[10px] flex items-center gap-[8px] text-[14px] text-[#65584f]" style={{ fontFamily: M }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#65584f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
