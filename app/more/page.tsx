@@ -38,16 +38,11 @@ export default async function MorePage() {
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
-      {/* ── Gradient header with logo ── */}
-      <div
-        className="sticky top-0 z-20 pointer-events-none h-[94px] w-full"
-        style={{ background: "linear-gradient(to bottom, #d6c8ad 0%, rgba(214,200,173,0.75) 38.942%, rgba(214,200,173,0) 100%)" }}
-      >
-        <div className="pointer-events-auto absolute left-[8px] top-[7px]">
-          <Link href="/" className="block h-[80px] w-[80px] relative">
-            <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain object-left" priority />
-          </Link>
-        </div>
+      {/* ── Inline header with logo ── */}
+      <div className="px-[8px] pt-[7px] pb-[12px]">
+        <Link href="/" className="block h-[80px] w-[80px] relative active:scale-95 transition-transform" aria-label="PawJai home">
+          <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain object-left" priority />
+        </Link>
       </div>
 
       {/* ── User card ── */}

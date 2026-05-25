@@ -22,22 +22,13 @@ export default async function MessagesPage() {
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
-      {/* Dark header — matches Figma */}
-      <div className="sticky top-0 z-10 px-[16px] py-[20px] shrink-0" style={{ background: "#65584f" }}>
+      {/* Dark header with inline logo + title */}
+      <div className="sticky top-0 z-10 px-[16px] pt-[14px] pb-[20px] shrink-0" style={{ background: "#65584f" }}>
+        <Link href="/" className="block h-[56px] w-[56px] mb-[10px] active:scale-95 transition-transform" aria-label="PawJai home" style={{ filter: "brightness(0) invert(1)" }}>
+          <Image src="/pawjai-logo.png" alt="PawJai" width={56} height={56} className="h-full w-full object-contain object-left" priority />
+        </Link>
         <h1 className="font-bold text-[32px] text-white leading-[1.2]" style={{ fontFamily: M }}>Messages</h1>
         <p className="text-[14px] text-white/80 mt-[4px]" style={{ fontFamily: M }}>Your conversations with shelters</p>
-      </div>
-
-      {/* Gradient header with logo (fixed, on top) */}
-      <div
-        className="fixed top-0 z-20 pointer-events-none h-[94px]"
-        style={{ width: "402px", maxWidth: "100vw", left: "50%", transform: "translateX(-50%)", background: "linear-gradient(to bottom, #d6c8ad 0%, rgba(214,200,173,0.75) 38.942%, rgba(214,200,173,0) 100%)" }}
-      >
-        <div className="pointer-events-auto absolute left-[8px] top-[7px]">
-          <Link href="/" className="block h-[80px] w-[80px] relative">
-            <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain object-left" priority />
-          </Link>
-        </div>
       </div>
 
       {!user ? (
