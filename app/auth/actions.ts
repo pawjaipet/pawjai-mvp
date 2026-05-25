@@ -1,14 +1,17 @@
 "use server";
 
+import type { User } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ensureAdopterForUser } from "@/utils/adopter";
-import { buildAuthPath, parseAccountCredentials, sanitizeNextPath } from "@/utils/account-model";
+import { buildAuthPath, friendlyAuthMessage, parseAccountCredentials, sanitizeNextPath } from "@/utils/account-model";
 import { createClient } from "@/utils/supabase/server";
 
+type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
 function authRedirect(message: string, nextPath: string): never {
-  redirect(buildAuthPath({ nextPath, reason: message }));
+  redirect(buildAuthPath({ nextPath, reason: friendlyAuthMessage(message) }));
 }
 
 function getFormNext(formData: FormData): string {
@@ -21,6 +24,15 @@ async function getRequestOrigin(): Promise<string> {
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
 
   return `${protocol}://${host}`;
+}
+
+async function prepareProfileOrRedirect(supabase: ServerSupabaseClient, user: User, nextPath: string) {
+  try {
+    await ensureAdopterForUser(supabase, user);
+  } catch (error) {
+    console.error("Auth profile setup failed", error);
+    authRedirect("We signed you in, but could not finish preparing your PawJai profile. Please try again.", nextPath);
+  }
 }
 
 export async function signIn(formData: FormData) {
@@ -46,7 +58,7 @@ export async function signIn(formData: FormData) {
     authRedirect(error?.message ?? "We could not sign you in.", nextPath);
   }
 
-  await ensureAdopterForUser(supabase, data.user);
+  await prepareProfileOrRedirect(supabase, data.user, nextPath);
   revalidatePath("/", "layout");
   redirect(nextPath);
 }
@@ -85,7 +97,7 @@ export async function signUp(formData: FormData) {
   }
 
   if (data.session) {
-    await ensureAdopterForUser(supabase, data.user);
+    await prepareProfileOrRedirect(supabase, data.user, nextPath);
     revalidatePath("/", "layout");
     redirect(nextPath);
   }

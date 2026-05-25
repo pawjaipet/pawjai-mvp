@@ -4,7 +4,7 @@ import Image from "next/image";
 import type { FormEvent } from "react";
 import { useState, useTransition } from "react";
 import { ensureCurrentUserProfile } from "@/app/auth/actions";
-import { parseAccountCredentials, sanitizeNextPath } from "@/utils/account-model";
+import { friendlyAuthMessage, parseAccountCredentials, sanitizeNextPath } from "@/utils/account-model";
 import { createClient } from "@/utils/supabase/client";
 
 type AuthFormProps = {
@@ -67,7 +67,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
       });
 
       if (error) {
-        setLocalMessage(error.message);
+        setLocalMessage(friendlyAuthMessage(error.message));
         return;
       }
 
@@ -82,7 +82,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
       });
 
       if (error) {
-        setLocalMessage(error.message);
+        setLocalMessage(friendlyAuthMessage(error.message));
         return;
       }
     }
@@ -116,7 +116,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
       },
     });
 
-    if (error) setLocalMessage(error.message);
+    if (error) setLocalMessage(friendlyAuthMessage(error.message));
   }
 
   return (

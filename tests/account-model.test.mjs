@@ -87,3 +87,19 @@ test("sanitizes next paths for auth redirects", () => {
     "/auth?next=%2Fschedule%3FdogId%3D123&message=Sign+in+first",
   );
 });
+
+test("maps auth provider errors to customer-friendly messages", () => {
+  const { friendlyAuthMessage } = loadAccountModel();
+  assert.match(
+    friendlyAuthMessage("email rate limit exceeded"),
+    /Too many signup or verification emails/i,
+  );
+  assert.match(
+    friendlyAuthMessage("invalid login credentials"),
+    /Email or password did not match/i,
+  );
+  assert.match(
+    friendlyAuthMessage("invalid_grant: code verifier should match"),
+    /verification link is expired/i,
+  );
+});

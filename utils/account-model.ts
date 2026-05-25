@@ -104,6 +104,49 @@ export function buildAuthPath({
   return `/auth?${params.toString()}`;
 }
 
+export function friendlyAuthMessage(message: string | null | undefined): string {
+  const normalized = String(message ?? "").trim();
+  const lower = normalized.toLowerCase();
+
+  if (!normalized) return "We could not finish signing you in. Please try again.";
+
+  if (
+    lower.includes("rate limit")
+    || lower.includes("over email send rate")
+    || lower.includes("only request this after")
+    || lower.includes("too many")
+  ) {
+    return "Too many signup or verification emails were requested. Please wait a minute, then try again or continue with Google.";
+  }
+
+  if (lower.includes("email not confirmed") || lower.includes("confirm your email")) {
+    return "Please verify your email first, then come back to sign in.";
+  }
+
+  if (
+    lower.includes("invalid login credentials")
+    || lower.includes("invalid credentials")
+    || lower.includes("invalid email or password")
+  ) {
+    return "Email or password did not match. Please try again.";
+  }
+
+  if (
+    lower.includes("otp")
+    || lower.includes("token")
+    || lower.includes("expired")
+    || lower.includes("invalid grant")
+    || lower.includes("invalid_grant")
+    || lower.includes("auth code")
+    || lower.includes("code verifier")
+    || lower.includes("flow state")
+  ) {
+    return "This verification link is expired or already used. Please open the newest email from PawJai or sign in again.";
+  }
+
+  return normalized;
+}
+
 export function formatAppointmentDateTime(date: string, time: string): string {
   const [hour = "0", minute = "0"] = time.split(":");
   const appointment = new Date(`${date}T${hour.padStart(2, "0")}:${minute.padStart(2, "0")}:00`);
