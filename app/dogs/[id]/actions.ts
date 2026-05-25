@@ -12,6 +12,8 @@ import {
   getCheckInTokenSecret,
   hashCheckInToken,
 } from "@/utils/booking";
+import { normalizeAppointmentTime } from "@/utils/appointments-model";
+import { getShelterDaySlots } from "@/utils/shelter-availability";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -68,7 +70,7 @@ export async function bookAppointment(formData: FormData) {
 
   const { data: dog, error: dogError } = await admin
     .from("dogs")
-    .select("id, shelter_id")
+    .select("id, shelter_id, adoption_status")
     .eq("id", dogId)
     .single();
 
@@ -76,12 +78,31 @@ export async function bookAppointment(formData: FormData) {
     redirect(`/dogs/${dogId}?message=${encodeURIComponent("Could not find that dog.")}`);
   }
 
+  if (dog.adoption_status !== "available") {
+    redirect(`/dogs/${dogId}?message=${encodeURIComponent("This dog is no longer available for visit bookings.")}`);
+  }
+
+  if (!appointmentDate || !appointmentTime) {
+    redirect(`/schedule?dogId=${encodeURIComponent(dogId)}&message=${encodeURIComponent("Choose a visit date and time first.")}`);
+  }
+
+  const normalizedAppointmentTime = normalizeAppointmentTime(appointmentTime);
+  const availableSlots = await getShelterDaySlots({
+    admin,
+    date: appointmentDate,
+    shelterId: dog.shelter_id,
+  });
+
+  if (!availableSlots.includes(normalizedAppointmentTime)) {
+    redirect(`/schedule?dogId=${encodeURIComponent(dogId)}&message=${encodeURIComponent("That visit time is no longer available. Please choose another time.")}`);
+  }
+
   const { data: existingAppointment } = await admin
     .from("appointments")
     .select("id")
     .eq("shelter_id", dog.shelter_id)
     .eq("appointment_date", appointmentDate)
-    .eq("appointment_time", appointmentTime)
+    .eq("appointment_time", normalizedAppointmentTime)
     .neq("status", "cancelled")
     .neq("status", "no_show")
     .limit(1)
@@ -100,7 +121,7 @@ export async function bookAppointment(formData: FormData) {
   const appointmentPayload = {
     adopter_id: adopter.id,
     appointment_date: appointmentDate,
-    appointment_time: appointmentTime,
+    appointment_time: normalizedAppointmentTime,
     dog_id: dog.id,
     id: appointmentId,
     shelter_id: dog.shelter_id,

@@ -42,12 +42,16 @@ export default async function ScheduleEntry({
   const admin = createAdminClient();
   const { data: dog } = await admin
     .from("dogs")
-    .select("id, name, shelter_id")
+    .select("id, name, shelter_id, adoption_status")
     .eq("id", dogId)
     .maybeSingle();
 
   if (!dog) {
     redirect("/appointments");
+  }
+
+  if (dog.adoption_status !== "available") {
+    redirect(`/dogs/${dog.id}?message=${encodeURIComponent("This dog is no longer available for visit bookings.")}`);
   }
 
   const { data: shelter } = await admin

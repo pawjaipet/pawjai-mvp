@@ -144,6 +144,10 @@ function revalidateDogManagementPaths(dogId: string) {
   revalidatePath(`/admin/dogs/${dogId}/edit`);
 }
 
+function formatDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function getUniqueSubmittedOrder(values: string[]) {
   const seen = new Set<string>();
   const order: string[] = [];
@@ -364,12 +368,50 @@ export async function updateDogProfileAction(
     weight_kg: weightKg,
   };
 
+  const { data: currentDog, error: currentDogError } = await supabase
+    .from("dogs")
+    .select("adoption_status")
+    .eq("id", dogId)
+    .maybeSingle();
+
+  if (currentDogError) {
+    return {
+      message: `Could not read this dog's current status: ${currentDogError.message}`,
+      status: "error",
+    };
+  }
+
   const { error: updateError } = await supabase.from("dogs").update(dogPayload).eq("id", dogId);
   if (updateError) {
     return {
       message: `Could not update this dog profile: ${updateError.message}`,
       status: "error",
     };
+  }
+
+  let cancelledFutureAppointments = 0;
+
+  if (dogPayload.adoption_status === "adopted" && currentDog?.adoption_status !== "adopted") {
+    const { data: cancelledAppointments, error: cancelAppointmentsError } = await supabase
+      .from("appointments")
+      .update({
+        shelter_note: "This dog has already been adopted.",
+        status: "cancelled",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("dog_id", dogId)
+      .in("status", ["requested", "confirmed"])
+      .gte("appointment_date", formatDateKey(new Date()))
+      .select("id");
+
+    if (cancelAppointmentsError) {
+      return {
+        message: `Dog profile was updated, but future appointments could not be cancelled: ${cancelAppointmentsError.message}`,
+        status: "error",
+      };
+    }
+
+    cancelledFutureAppointments = cancelledAppointments?.length ?? 0;
   }
 
   const { error: deleteTraitError } = await supabase
@@ -417,9 +459,13 @@ export async function updateDogProfileAction(
   }
 
   revalidateDogManagementPaths(dogId);
+  revalidatePath("/appointments");
+  revalidatePath("/admin/bookings");
 
   return {
-    message: "Dog profile updated successfully.",
+    message: cancelledFutureAppointments > 0
+      ? `Dog profile updated successfully. ${cancelledFutureAppointments} future appointment${cancelledFutureAppointments === 1 ? "" : "s"} cancelled because this dog is adopted.`
+      : "Dog profile updated successfully.",
     status: "success",
   };
 }
