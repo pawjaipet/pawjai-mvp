@@ -1,148 +1,41 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { CheckCircle2, FileText, ShieldAlert, ShieldCheck, UserRound } from "lucide-react";
-import type { Database, Json } from "@/types/database";
-import { formatBookingCode, hashCheckInToken } from "@/utils/booking";
+import { redirect } from "next/navigation";
+import { ShieldAlert } from "lucide-react";
+import {
+  buildAdminBookingDetailPath,
+  getCheckInTokenSecret,
+  hashCheckInToken,
+  verifySignedCheckInToken,
+} from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import AdminGateForm from "../../dogs/new/AdminGateForm";
 import { unlockAdminGateAction } from "../../dogs/new/actions";
 import { initialAdminGateState } from "../../dogs/new/form-state";
-import { checkInBookingAction } from "../actions";
 
-type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
-type Adopter = Database["public"]["Tables"]["adopters"]["Row"];
-type AdopterDocument = Database["public"]["Tables"]["adopter_documents"]["Row"];
-type AdopterPreference = Database["public"]["Tables"]["adopter_preferences"]["Row"];
-type AdopterProfile = Database["public"]["Tables"]["adopter_profiles"]["Row"];
-type Dog = Pick<Database["public"]["Tables"]["dogs"]["Row"], "breed" | "id" | "name">;
-type Shelter = Pick<Database["public"]["Tables"]["shelters"]["Row"], "district" | "id" | "name" | "phone_number" | "province">;
-type Application = {
-  created_at: string;
-  dog_id: string;
-  id: string;
-  notes: string | null;
-  status: string;
-};
-type ApplicationAnswer = {
-  answer_json: Json;
-  answer_text: string | null;
-  id: string;
-  question_id: string;
-};
-type ApplicationDetail = {
-  daily_routine: string | null;
-  experience_with_pets: string | null;
-  living_condition: string | null;
-  preferred_traits: string | null;
-  purpose: string | null;
-};
-type ApplicationDocument = {
-  document_type: string;
-  id: string;
-  public_url: string | null;
-  storage_path: string;
-};
-type Question = {
-  id: string;
-  question_text: string;
-  sort_order: number;
-};
-
-function formatDateTime(date: string, time: string) {
-  const dateLabel = new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "long",
-    weekday: "long",
-    year: "numeric",
-  });
-  const timeLabel = new Date(`1970-01-01T${time}`).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  return `${dateLabel} at ${timeLabel}`;
-}
-
-function fullName(adopter: Adopter | null) {
-  return [adopter?.first_name, adopter?.last_name].filter(Boolean).join(" ") || "Unknown adopter";
-}
-
-function InfoBlock({
-  label,
-  value,
-  secondary,
-}: {
-  label: string;
-  secondary?: string | null;
-  value: string;
-}) {
+function InvalidQrCard({ retry }: { retry?: boolean }) {
   return (
-    <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-[#4f4338]">{value}</p>
-      {secondary ? <p className="mt-1 text-sm text-[#74685d]">{secondary}</p> : null}
-    </div>
-  );
-}
-
-function formatValue(value: unknown) {
-  if (value === null || value === undefined || value === "") return "Not provided";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  if (Array.isArray(value)) return value.length ? value.join(", ") : "Not provided";
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value).replaceAll("_", " ");
-}
-
-function FieldRow({ label, value }: { label: string; value: unknown }) {
-  const rendered = formatValue(value);
-  if (rendered === "Not provided") return null;
-  return (
-    <div className="rounded-2xl bg-[#fffdfa] p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">{label}</p>
-      <p className="mt-1 text-sm leading-6 text-[#4f4338]">{rendered}</p>
-    </div>
-  );
-}
-
-function Panel({
-  children,
-  icon,
-  title,
-}: {
-  children: ReactNode;
-  icon?: ReactNode;
-  title: string;
-}) {
-  return (
-    <section className="rounded-[32px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-      <div className="mb-4 flex items-center gap-3 text-[#9a6b2a]">
-        {icon}
-        <h2 className="text-lg font-semibold text-[#4f4338]">{title}</h2>
+    <div className="min-h-screen bg-[#fffaf3] px-4 py-12">
+      <div className="mx-auto max-w-2xl rounded-[32px] border border-[#f1c4c0] bg-white p-8 text-center shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+        <ShieldAlert className="mx-auto text-[#9a3129]" size={42} />
+        <h1 className="mt-4 text-3xl font-semibold text-[#4f4338]">Booking QR not recognized</h1>
+        <p className="mt-3 text-sm leading-6 text-[#74685d]">
+          {retry
+            ? "Ask the visitor to open their latest appointment details in PawJai and scan the QR again."
+            : "This code is missing, expired, or does not match a PawJai booking record."}
+        </p>
+        <Link className="mt-6 inline-flex rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white" href="/admin/bookings">
+          Back to bookings
+        </Link>
       </div>
-      {children}
-    </section>
+    </div>
   );
-}
-
-function jsonAnswer(answer: Json) {
-  if (Array.isArray(answer)) return answer.map((item) => formatValue(item)).join(", ");
-  if (answer && typeof answer === "object") return JSON.stringify(answer);
-  return formatValue(answer);
-}
-
-async function signedDocumentUrl(
-  admin: ReturnType<typeof createAdminClient>,
-  bucketId: string,
-  storagePath: string,
-) {
-  const { data } = await admin.storage.from(bucketId).createSignedUrl(storagePath, 60 * 15);
-  return data?.signedUrl ?? null;
 }
 
 export default async function AdminBookingCheckInPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ checkedIn?: string; invalid?: string; token?: string }>;
+  searchParams?: Promise<{ invalid?: string; token?: string }>;
 }) {
   const gateOpen = await isAdminGateOpen();
   const resolvedSearchParams = await searchParams;
@@ -160,315 +53,31 @@ export default async function AdminBookingCheckInPage({
   }
 
   if (!token || resolvedSearchParams?.invalid === "1") {
-    return (
-      <div className="min-h-screen bg-[#fffaf3] px-4 py-12">
-        <div className="mx-auto max-w-2xl rounded-[32px] border border-[#f1c4c0] bg-white p-8 text-center shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-          <ShieldAlert className="mx-auto text-[#9a3129]" size={42} />
-          <h1 className="mt-4 text-3xl font-semibold text-[#4f4338]">Booking QR not recognized</h1>
-          <p className="mt-3 text-sm leading-6 text-[#74685d]">
-            This code is missing, expired, or does not match a PawJai booking record.
-          </p>
-          <Link className="mt-6 inline-flex rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white" href="/admin/bookings">
-            Back to bookings
-          </Link>
-        </div>
-      </div>
-    );
+    return <InvalidQrCard />;
   }
 
   const admin = createAdminClient();
-  const adminUntyped = admin as any;
-  const { data: appointment } = await admin
+  const { data: hashedAppointment } = await admin
     .from("appointments")
-    .select("*")
+    .select("id")
     .eq("check_in_token_hash", hashCheckInToken(token))
     .maybeSingle();
+  const appointmentIdFromToken = verifySignedCheckInToken({
+    token,
+    secret: getCheckInTokenSecret(),
+  });
+  const { data: signedAppointment } = !hashedAppointment && appointmentIdFromToken
+    ? await admin
+        .from("appointments")
+        .select("id")
+        .eq("id", appointmentIdFromToken)
+        .maybeSingle()
+    : { data: null };
+  const appointment = hashedAppointment ?? signedAppointment;
 
   if (!appointment) {
-    return (
-      <div className="min-h-screen bg-[#fffaf3] px-4 py-12">
-        <div className="mx-auto max-w-2xl rounded-[32px] border border-[#f1c4c0] bg-white p-8 text-center shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-          <ShieldAlert className="mx-auto text-[#9a3129]" size={42} />
-          <h1 className="mt-4 text-3xl font-semibold text-[#4f4338]">Booking QR not recognized</h1>
-          <p className="mt-3 text-sm leading-6 text-[#74685d]">
-            Ask the visitor to open their latest appointment details in PawJai and scan the QR again.
-          </p>
-          <Link className="mt-6 inline-flex rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white" href="/admin/bookings">
-            Back to bookings
-          </Link>
-        </div>
-      </div>
-    );
+    return <InvalidQrCard retry />;
   }
 
-  const typedAppointment = appointment as Appointment;
-  const [{ data: adopter }, { data: dog }, { data: shelter }] = await Promise.all([
-    admin
-      .from("adopters")
-      .select("id, first_name, last_name, email, phone_number, verification_status, address_line, district, province")
-      .eq("id", typedAppointment.adopter_id)
-      .maybeSingle(),
-    typedAppointment.dog_id
-      ? admin.from("dogs").select("id, name, breed").eq("id", typedAppointment.dog_id).maybeSingle()
-      : Promise.resolve({ data: null }),
-    admin
-      .from("shelters")
-      .select("id, name, phone_number, district, province")
-      .eq("id", typedAppointment.shelter_id)
-      .maybeSingle(),
-  ]);
-
-  const typedAdopter = adopter as Adopter | null;
-  const typedDog = dog as Dog | null;
-  const typedShelter = shelter as Shelter | null;
-  const alreadyCheckedIn = Boolean(typedAppointment.checked_in_at);
-  const [{ data: adopterProfile }, { data: adopterPreference }, { data: adopterDocuments }] = await Promise.all([
-    admin.from("adopter_profiles").select("*").eq("adopter_id", typedAppointment.adopter_id).maybeSingle(),
-    admin.from("adopter_preferences").select("*").eq("adopter_id", typedAppointment.adopter_id).maybeSingle(),
-    admin.from("adopter_documents").select("*").eq("adopter_id", typedAppointment.adopter_id).order("created_at", { ascending: false }),
-  ]);
-  const { data: application } = typedAppointment.application_id
-    ? await adminUntyped.from("applications").select("*").eq("id", typedAppointment.application_id).maybeSingle()
-    : await adminUntyped
-        .from("applications")
-        .select("*")
-        .eq("adopter_id", typedAppointment.adopter_id)
-        .eq("shelter_id", typedAppointment.shelter_id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-  const typedApplication = application as Application | null;
-  const applicationId = typedApplication?.id ?? typedAppointment.application_id;
-  const [{ data: applicationDetail }, { data: applicationDocuments }, { data: applicationAnswers }] = applicationId
-    ? await Promise.all([
-        adminUntyped.from("application_details").select("*").eq("application_id", applicationId).maybeSingle(),
-        adminUntyped.from("application_documents").select("*").eq("application_id", applicationId).order("created_at", { ascending: false }),
-        adminUntyped.from("application_answers").select("*").eq("application_id", applicationId),
-      ])
-    : [{ data: null }, { data: [] }, { data: [] }];
-  const questionIds = [...new Set(((applicationAnswers ?? []) as ApplicationAnswer[]).map((answer) => answer.question_id))];
-  const { data: questions } = questionIds.length
-    ? await adminUntyped.from("questionnaire_questions").select("id, question_text, sort_order").in("id", questionIds)
-    : { data: [] };
-  const questionMap = new Map(((questions ?? []) as Question[]).map((question) => [question.id, question]));
-  const profile = adopterProfile as AdopterProfile | null;
-  const preference = adopterPreference as AdopterPreference | null;
-  const detail = applicationDetail as ApplicationDetail | null;
-  const docs = await Promise.all(
-    ((adopterDocuments ?? []) as AdopterDocument[]).map(async (document) => ({
-      ...document,
-      signedUrl: await signedDocumentUrl(admin, document.bucket_id, document.storage_path),
-    })),
-  );
-  const appDocs = await Promise.all(
-    ((applicationDocuments ?? []) as ApplicationDocument[]).map(async (document) => ({
-      ...document,
-      signedUrl:
-        document.public_url ?? (await signedDocumentUrl(admin, "application-documents", document.storage_path)),
-    })),
-  );
-  const answers = ((applicationAnswers ?? []) as ApplicationAnswer[])
-    .map((answer) => ({ answer, question: questionMap.get(answer.question_id) }))
-    .sort((a, b) => (a.question?.sort_order ?? 0) - (b.question?.sort_order ?? 0));
-
-  return (
-    <div className="min-h-screen bg-[#fffaf3] px-4 py-8">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#b77624]">
-              QR Check-in
-            </p>
-            <h1 className="mt-2 text-4xl font-semibold text-[#4f4338]">
-              {typedAppointment.booking_code ?? formatBookingCode(typedAppointment.id)}
-            </h1>
-            <p className="mt-2 text-sm text-[#74685d]">
-              {formatDateTime(typedAppointment.appointment_date, typedAppointment.appointment_time)}
-            </p>
-          </div>
-          <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin/bookings">
-            Booking list
-          </Link>
-        </div>
-
-        {resolvedSearchParams?.checkedIn === "1" || alreadyCheckedIn ? (
-          <div className="mb-5 flex items-center gap-3 rounded-[24px] border border-[#cfe4c5] bg-[#f2faee] px-5 py-4 text-[#3f6f24]">
-            <CheckCircle2 size={22} />
-            <p className="text-sm font-semibold">
-              Visitor checked in{typedAppointment.checked_in_at ? ` at ${new Date(typedAppointment.checked_in_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : ""}.
-            </p>
-          </div>
-        ) : null}
-
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <section className="rounded-[32px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-            <div className="grid gap-4 md:grid-cols-2">
-              <InfoBlock
-                label="Adopter"
-                secondary={[typedAdopter?.email, typedAdopter?.phone_number].filter(Boolean).join(" · ")}
-                value={fullName(typedAdopter)}
-              />
-              <InfoBlock
-                label="Verification"
-                value={typedAdopter?.verification_status.replace("_", " ") ?? "unknown"}
-              />
-              <InfoBlock
-                label="Dog"
-                secondary={typedDog?.breed}
-                value={typedDog?.name ?? "Shelter visit"}
-              />
-              <InfoBlock
-                label="Shelter"
-                secondary={[typedShelter?.district, typedShelter?.province].filter(Boolean).join(", ")}
-                value={typedShelter?.name ?? "Unknown shelter"}
-              />
-            </div>
-
-            {typedAppointment.visitor_note ? (
-              <div className="mt-5 rounded-2xl bg-[#f8f0e5] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Visitor note</p>
-                <p className="mt-1 text-sm leading-6 text-[#5b4d40]">{typedAppointment.visitor_note}</p>
-              </div>
-            ) : null}
-          </section>
-
-          <form action={checkInBookingAction} className="rounded-[32px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-            <input name="token" type="hidden" value={token} />
-            <div className="flex items-center gap-3 text-[#3f6f24]">
-              <ShieldCheck size={22} />
-              <p className="font-semibold text-[#4f4338]">Staff check-in</p>
-            </div>
-            <p className="mt-2 text-sm leading-6 text-[#74685d]">
-              Confirm the visitor is physically at the shelter entrance before checking them in.
-            </p>
-            <label className="mt-5 block">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Check-in note</span>
-              <textarea
-                className="min-h-[112px] w-full resize-none rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]"
-                defaultValue={typedAppointment.check_in_note ?? ""}
-                name="checkInNote"
-                placeholder="Optional: ID checked, documents reviewed, staff initials"
-              />
-            </label>
-            <button
-              className="mt-4 w-full rounded-full bg-[#d38a2c] px-5 py-3 text-sm font-semibold text-white hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-55"
-              disabled={alreadyCheckedIn}
-              type="submit"
-            >
-              {alreadyCheckedIn ? "Already checked in" : "Confirm check-in"}
-            </button>
-          </form>
-        </div>
-
-        <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
-          <Panel icon={<UserRound size={20} />} title="Adopter profile and lifestyle">
-            <div className="grid gap-3 md:grid-cols-2">
-              <FieldRow label="Address" value={[typedAdopter?.address_line, typedAdopter?.district, typedAdopter?.province].filter(Boolean).join(", ")} />
-              <FieldRow label="Occupation" value={typedAdopter?.occupation} />
-              <FieldRow label="Housing" value={profile?.housing_type} />
-              <FieldRow label="Home ownership" value={profile?.home_ownership} />
-              <FieldRow label="Landlord permission" value={profile?.landlord_permission} />
-              <FieldRow label="Yard space" value={profile?.yard_space} />
-              <FieldRow label="Household size" value={profile?.household_member_count} />
-              <FieldRow label="Allergies" value={profile?.household_allergies} />
-              <FieldRow label="Current pets" value={profile?.current_pets} />
-              <FieldRow label="Other pets" value={profile?.other_pets} />
-              <FieldRow label="Daily time" value={profile?.daily_time_available} />
-              <FieldRow label="Dog experience" value={profile?.dog_experience} />
-              <FieldRow label="Rescue dog experience" value={profile?.rescue_dog_experience} />
-              <FieldRow label="Adoption reason" value={profile?.adoption_reason} />
-              <FieldRow label="Bonding plan" value={profile?.bonding_plan} />
-              <FieldRow label="Behavior response" value={profile?.behavior_response} />
-              <FieldRow label="Trauma response" value={profile?.trauma_response} />
-              <FieldRow label="Emergency plan" value={profile?.emergency_plan} />
-              <FieldRow label="Travel plan" value={profile?.travel_plan} />
-              <FieldRow label="Financial preparedness" value={profile?.financial_preparedness} />
-            </div>
-          </Panel>
-
-          <Panel icon={<ShieldCheck size={20} />} title="Match preferences">
-            <div className="grid gap-3">
-              <FieldRow label="Preferred size" value={preference?.preferred_size} />
-              <FieldRow label="Preferred energy" value={preference?.preferred_energy_level} />
-              <FieldRow label="Good with dogs needed" value={preference?.good_with_dogs} />
-              <FieldRow label="Good with cats needed" value={preference?.good_with_cats} />
-              <FieldRow label="Good with kids needed" value={preference?.good_with_kids} />
-              <FieldRow label="Preference notes" value={preference?.notes} />
-              <FieldRow label="Application purpose" value={detail?.purpose} />
-              <FieldRow label="Living condition" value={detail?.living_condition} />
-              <FieldRow label="Preferred traits" value={detail?.preferred_traits} />
-              <FieldRow label="Daily routine" value={detail?.daily_routine} />
-              <FieldRow label="Experience with pets" value={detail?.experience_with_pets} />
-            </div>
-          </Panel>
-        </div>
-
-        <div className="mt-5 grid gap-5 xl:grid-cols-2">
-          <Panel icon={<FileText size={20} />} title="Verification documents">
-            {docs.length === 0 ? (
-              <p className="text-sm text-[#74685d]">No adopter verification documents are attached yet.</p>
-            ) : (
-              <div className="grid gap-3">
-                {docs.map((document) => (
-                  <a
-                    className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 text-sm font-semibold text-[#4f4338] hover:bg-[#faf4ec]"
-                    href={document.signedUrl ?? "#"}
-                    key={document.id}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    {document.document_type.replace("_", " ")}
-                    {document.original_file_name ? <span className="block pt-1 text-xs font-normal text-[#74685d]">{document.original_file_name}</span> : null}
-                  </a>
-                ))}
-              </div>
-            )}
-          </Panel>
-
-          <Panel icon={<FileText size={20} />} title="Application and questionnaire">
-            {typedApplication ? (
-              <div className="mb-4 rounded-2xl bg-[#f8f0e5] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Application status</p>
-                <p className="mt-1 text-sm font-semibold text-[#4f4338]">{typedApplication.status.replace("_", " ")}</p>
-                {typedApplication.notes ? <p className="mt-2 text-sm leading-6 text-[#5b4d40]">{typedApplication.notes}</p> : null}
-              </div>
-            ) : null}
-
-            {appDocs.length > 0 ? (
-              <div className="mb-4 grid gap-3">
-                {appDocs.map((document) => (
-                  <a
-                    className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 text-sm font-semibold text-[#4f4338] hover:bg-[#faf4ec]"
-                    href={document.signedUrl ?? "#"}
-                    key={document.id}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    {document.document_type.replace("_", " ")}
-                  </a>
-                ))}
-              </div>
-            ) : null}
-
-            {answers.length === 0 ? (
-              <p className="text-sm text-[#74685d]">No shelter questionnaire answers are attached to this booking yet.</p>
-            ) : (
-              <div className="grid gap-3">
-                {answers.map(({ answer, question }) => (
-                  <div className="rounded-2xl bg-[#fffdfa] p-4" key={answer.id}>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">
-                      {question?.question_text ?? "Question"}
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-[#4f4338]">
-                      {answer.answer_text || jsonAnswer(answer.answer_json)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Panel>
-        </div>
-      </div>
-    </div>
-  );
+  redirect(buildAdminBookingDetailPath({ appointmentId: appointment.id, token }));
 }

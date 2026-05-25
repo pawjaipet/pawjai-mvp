@@ -76,23 +76,47 @@ export async function bookAppointment(formData: FormData) {
     redirect(`/dogs/${dogId}?message=${encodeURIComponent("Could not find that dog.")}`);
   }
 
+  const { data: existingAppointment } = await admin
+    .from("appointments")
+    .select("id")
+    .eq("shelter_id", dog.shelter_id)
+    .eq("appointment_date", appointmentDate)
+    .eq("appointment_time", appointmentTime)
+    .neq("status", "cancelled")
+    .neq("status", "no_show")
+    .limit(1)
+    .maybeSingle();
+
+  if (existingAppointment) {
+    redirect(`/dogs/${dogId}?message=${encodeURIComponent("That visit time was just booked. Please choose another time.")}`);
+  }
+
   const appointmentId = randomUUID();
   const checkInToken = createSignedCheckInToken({
     appointmentId,
     secret: getCheckInTokenSecret(),
   });
 
-  const { error } = await admin.from("appointments").insert({
+  const appointmentPayload = {
     adopter_id: adopter.id,
     appointment_date: appointmentDate,
     appointment_time: appointmentTime,
-    booking_code: formatBookingCode(appointmentId),
-    check_in_token_hash: hashCheckInToken(checkInToken),
     dog_id: dog.id,
     id: appointmentId,
     shelter_id: dog.shelter_id,
     visitor_note: visitorNote,
+  };
+
+  let { error } = await (admin as any).from("appointments").insert({
+    ...appointmentPayload,
+    booking_code: formatBookingCode(appointmentId),
+    check_in_token_hash: hashCheckInToken(checkInToken),
   });
+
+  if (error?.message.includes("Could not find") || error?.message.includes("column")) {
+    const fallback = await (admin as any).from("appointments").insert(appointmentPayload);
+    error = fallback.error;
+  }
 
   if (error) {
     const message = error.message.includes("appointments_active_slot_unique_idx")

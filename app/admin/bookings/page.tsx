@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { CalendarDays, CheckCircle2, Clock3, ExternalLink, QrCode, Search, ShieldCheck } from "lucide-react";
 import type { Database } from "@/types/database";
-import { buildCheckInUrl, createSignedCheckInToken, formatBookingCode, getCheckInTokenSecret } from "@/utils/booking";
+import { formatBookingCode, normalizeBookingCodeSearch } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import AdminGateForm from "../dogs/new/AdminGateForm";
@@ -97,7 +96,7 @@ function AdminNav() {
 export default async function AdminBookingsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ date?: string; shelter?: string; status?: string }>;
+  searchParams?: Promise<{ code?: string; date?: string; shelter?: string; status?: string }>;
 }) {
   const gateOpen = await isAdminGateOpen();
   const resolvedSearchParams = await searchParams;
@@ -117,11 +116,7 @@ export default async function AdminBookingsPage({
     ? (resolvedSearchParams?.status as AppointmentStatus)
     : "";
   const selectedDate = resolvedSearchParams?.date ?? "";
-  const headerStore = await headers();
-  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "localhost:3000";
-  const protocol = headerStore.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const origin = `${protocol}://${host}`;
-  const tokenSecret = getCheckInTokenSecret();
+  const selectedBookingCode = normalizeBookingCodeSearch(resolvedSearchParams?.code ?? "");
   const admin = createAdminClient();
   const { data: allShelters } = await admin
     .from("shelters")
@@ -132,15 +127,18 @@ export default async function AdminBookingsPage({
     ? resolvedSearchParams?.shelter ?? ""
     : shelterTabs[0]?.id ?? "";
   const buildBookingsHref = ({
+    code = selectedBookingCode,
     date = selectedDate,
     shelter = selectedShelterId,
     status = selectedStatus,
   }: {
+    code?: string;
     date?: string;
     shelter?: string;
     status?: string;
   } = {}) => {
     const params = new URLSearchParams();
+    if (code) params.set("code", code);
     if (date) params.set("date", date);
     if (shelter) params.set("shelter", shelter);
     if (status) params.set("status", status);
@@ -152,7 +150,7 @@ export default async function AdminBookingsPage({
     .select("*")
     .order("appointment_date", { ascending: true })
     .order("appointment_time", { ascending: true })
-    .limit(80);
+    .limit(selectedBookingCode ? 500 : 80);
 
   if (selectedStatus) {
     appointmentsQuery = appointmentsQuery.eq("status", selectedStatus);
@@ -167,7 +165,12 @@ export default async function AdminBookingsPage({
   }
 
   const { data: appointments } = await appointmentsQuery;
-  const appointmentRows = appointments ?? [];
+  const appointmentRows = selectedBookingCode
+    ? (appointments ?? []).filter((appointment) => {
+        const displayCode = appointment.booking_code ?? formatBookingCode(appointment.id);
+        return displayCode.toUpperCase().startsWith(selectedBookingCode);
+      })
+    : appointments ?? [];
   const adopterIds = [...new Set(appointmentRows.map((appointment) => appointment.adopter_id))];
   const dogIds = [...new Set(appointmentRows.map((appointment) => appointment.dog_id).filter(Boolean))] as string[];
 
@@ -256,6 +259,7 @@ export default async function AdminBookingsPage({
 
         <form className="mt-6 flex flex-col gap-3 rounded-[24px] border border-[#eadfce] bg-white p-4 shadow-[0_16px_50px_rgba(128,92,46,0.08)] md:flex-row md:items-end">
           <input name="shelter" type="hidden" value={selectedShelterId} />
+          {selectedBookingCode ? <input name="code" type="hidden" value={selectedBookingCode} /> : null}
           <label className="flex-1">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Date</span>
             <input
@@ -284,7 +288,7 @@ export default async function AdminBookingsPage({
             <Search size={16} />
             Filter
           </button>
-          <Link className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-6 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href={buildBookingsHref({ date: "", status: "" })}>
+          <Link className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-6 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href={buildBookingsHref({ code: "", date: "", status: "" })}>
             Reset
           </Link>
         </form>
@@ -299,7 +303,41 @@ export default async function AdminBookingsPage({
           </div>
         ) : null}
 
-        <div className="mt-6">
+        <form className="mt-6 rounded-[24px] border border-[#eadfce] bg-white p-4 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+          <input name="shelter" type="hidden" value={selectedShelterId} />
+          {selectedDate ? <input name="date" type="hidden" value={selectedDate} /> : null}
+          {selectedStatus ? <input name="status" type="hidden" value={selectedStatus} /> : null}
+          <label>
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
+              Search booking code
+            </span>
+            <div className="flex flex-col gap-3 md:flex-row">
+              <input
+                className="min-w-0 flex-1 rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-[#4f4338] outline-none focus:border-[#d38a2c]"
+                defaultValue={selectedBookingCode}
+                name="code"
+                placeholder="APT-FA5C9"
+              />
+              <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]" type="submit">
+                <Search size={16} />
+                Search code
+              </button>
+              {selectedBookingCode ? (
+                <Link
+                  className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-6 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                  href={buildBookingsHref({ code: "" })}
+                >
+                  Clear
+                </Link>
+              ) : null}
+            </div>
+          </label>
+          <p className="mt-3 text-xs leading-5 text-[#74685d]">
+            Type the visitor booking ID from their appointment card or QR screen.
+          </p>
+        </form>
+
+        <div className="mt-4">
           <BookingQrScanner />
         </div>
 
@@ -315,12 +353,6 @@ export default async function AdminBookingsPage({
               const dog = appointment.dog_id ? dogMap.get(appointment.dog_id) : null;
               const shelter = shelterMap.get(appointment.shelter_id);
               const checkedIn = Boolean(appointment.checked_in_at);
-              const checkInToken = createSignedCheckInToken({
-                appointmentId: appointment.id,
-                secret: tokenSecret,
-              });
-              const checkInUrl = buildCheckInUrl({ origin, token: checkInToken });
-
               return (
                 <section
                   className="rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]"
@@ -457,10 +489,17 @@ export default async function AdminBookingsPage({
                       )}
                       <Link
                         className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
-                        href={checkInUrl}
+                        href={`/admin/bookings/${appointment.id}/visitor-profile`}
                       >
                         <ExternalLink size={16} />
                         Open visitor profile
+                      </Link>
+                      <Link
+                        className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                        href={`/admin/bookings/${appointment.id}`}
+                      >
+                        <ExternalLink size={16} />
+                        Open booking detail
                       </Link>
                     </form>
                   </div>

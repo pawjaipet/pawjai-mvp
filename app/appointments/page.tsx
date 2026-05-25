@@ -1,6 +1,15 @@
 import Link from "next/link";
+import { Pencil } from "lucide-react";
+import { updateAppointmentDateTimeAction } from "@/app/appointments/actions";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
-import { canBookAppointment, ensureAdopterForUser, getAdopterVerificationSnapshot } from "@/utils/adopter";
+import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adopter";
+import {
+  APPOINTMENT_TIME_SLOTS,
+  canEditAppointmentDateTime,
+  getAppointmentStatusCopy,
+  isPastAppointment,
+  normalizeAppointmentTime,
+} from "@/utils/appointments-model";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -9,9 +18,9 @@ const M = "Montserrat, sans-serif";
 export default async function AppointmentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ message?: string; tab?: string }>;
+  searchParams: Promise<{ edit?: string; message?: string; tab?: string }>;
 }) {
-  const { message, tab: tabParam } = await searchParams;
+  const { edit: editingAppointmentId, message, tab: tabParam } = await searchParams;
   const tab: "upcoming" | "past" = tabParam === "past" ? "past" : "upcoming";
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -37,13 +46,8 @@ export default async function AppointmentsPage({
 
   // Split by date — past = before today OR status completed/cancelled/no_show
   const today = new Date().toISOString().slice(0, 10);
-  const isPast = (appt: { appointment_date: string; status: string }) => {
-    if (appt.status === "completed" || appt.status === "cancelled" || appt.status === "no_show") return true;
-    return appt.appointment_date < today;
-  };
-
-  const upcomingAppointments = (allAppointments ?? []).filter((a) => !isPast(a));
-  const pastAppointments = (allAppointments ?? []).filter((a) => isPast(a));
+  const upcomingAppointments = (allAppointments ?? []).filter((a) => !isPastAppointment(a, today));
+  const pastAppointments = (allAppointments ?? []).filter((a) => isPastAppointment(a, today));
   const appointments = tab === "past" ? pastAppointments : upcomingAppointments;
 
   const dogIds = [...new Set((allAppointments ?? []).map((a) => a.dog_id).filter(Boolean))] as string[];
@@ -92,70 +96,132 @@ export default async function AppointmentsPage({
             const isPastCard = tab === "past";
             const dateBg = isPastCard ? "#9c8f82" : "#65584f";
             const footerBg = isPastCard ? "rgba(101,88,79,0.45)" : "#cd8188";
-            const statusLabel =
-              appt.status === "completed" ? "Visited"
-              : appt.status === "cancelled" ? "Cancelled"
-              : appt.status === "no_show" ? "Missed"
-              : "Past";
+            const statusCopy = getAppointmentStatusCopy(appt.status);
+            const canEditDateTime = canEditAppointmentDateTime(appt, today);
+            const isEditing = editingAppointmentId === appt.id;
+            const editHref = `/appointments?tab=${tab}&edit=${appt.id}`;
+            const cancelEditHref = `/appointments?tab=${tab}`;
+            const currentTime = normalizeAppointmentTime(appt.appointment_time ?? "");
 
             return (
-              <Link
+              <article
                 key={appt.id}
-                href={`/appointments/${appt.id}`}
-                className={`block rounded-[14px] overflow-hidden active:scale-[0.99] transition-transform ${isPastCard ? "opacity-90" : ""}`}
+                className={`relative rounded-[14px] overflow-hidden ${isPastCard ? "opacity-90" : ""}`}
                 style={{ boxShadow: "0 2px 10px rgba(101,88,79,0.10)" }}
               >
-                <div className="flex">
-                  <div className="w-[112px] shrink-0 flex flex-col items-center justify-center py-[20px]" style={{ background: dateBg }}>
-                    <p className="font-bold text-[44px] text-white leading-[1]" style={{ fontFamily: M }}>{day}</p>
-                    <p className="text-[14px] text-white/85 mt-[4px]" style={{ fontFamily: M }}>{month}</p>
-                    <p className="text-[13px] text-white/70" style={{ fontFamily: M }}>{year} BE</p>
-                  </div>
-
-                  <div className="flex-1 px-[16px] py-[16px] bg-white">
-                    {timeLabel && (
-                      <p className="font-bold text-[20px] text-[#65584f] leading-[1.1]" style={{ fontFamily: M }}>
-                        {timeLabel}
-                      </p>
-                    )}
-                    <p className="mt-[4px] text-[14px] font-semibold text-[#65584f]/85" style={{ fontFamily: M }}>
-                      {shelter?.name ?? "Shelter"}
-                    </p>
-                    {(shelter?.district || shelter?.province) && (
-                      <p className="mt-[6px] text-[12px] text-[#65584f]/55 leading-[1.4]" style={{ fontFamily: M }}>
-                        {[shelter.district, shelter.province].filter(Boolean).join(", ")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="px-[18px] py-[12px] flex items-center justify-between" style={{ background: footerBg }}>
-                  <p className="text-[14px] font-bold text-white truncate" style={{ fontFamily: M }}>
-                    {dog ? `${dog.name}${dog.breed ? ` - ${dog.breed}` : ""}` : "Shelter visit"}
-                  </p>
-                  <span
-                    className="ml-[12px] rounded-full px-[14px] py-[6px] text-[12px] font-bold flex items-center gap-[6px] flex-shrink-0"
-                    style={{ background: "white", color: isPastCard ? "#65584f" : "#cd8188", fontFamily: M }}
+                {canEditDateTime && (
+                  <Link
+                    aria-label="Modify visit date and time"
+                    className="absolute right-[12px] top-[12px] z-10 flex h-[34px] w-[34px] items-center justify-center rounded-full border border-[#eadfce] bg-white text-[#65584f] shadow-[0_2px_8px_rgba(101,88,79,0.14)] active:scale-95"
+                    href={isEditing ? cancelEditHref : editHref}
+                    replace
                   >
-                    {isPastCard ? (
-                      <>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#65584f" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10" />
-                          <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        {statusLabel}
-                      </>
-                    ) : (
-                      <>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cd8188" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                        </svg>
-                        Message
-                      </>
-                    )}
-                  </span>
-                </div>
-              </Link>
+                    <Pencil size={15} strokeWidth={2.4} />
+                  </Link>
+                )}
+
+                <Link
+                  href={`/appointments/${appt.id}`}
+                  className="block active:scale-[0.99] transition-transform"
+                >
+                  <div className="flex">
+                    <div className="w-[112px] shrink-0 flex flex-col items-center justify-center py-[20px]" style={{ background: dateBg }}>
+                      <p className="font-bold text-[44px] text-white leading-[1]" style={{ fontFamily: M }}>{day}</p>
+                      <p className="text-[14px] text-white/85 mt-[4px]" style={{ fontFamily: M }}>{month}</p>
+                      <p className="text-[13px] text-white/70" style={{ fontFamily: M }}>{year} BE</p>
+                    </div>
+
+                    <div className="flex-1 px-[16px] py-[16px] pr-[54px] bg-white">
+                      {timeLabel && (
+                        <p className="font-bold text-[20px] text-[#65584f] leading-[1.1]" style={{ fontFamily: M }}>
+                          {timeLabel}
+                        </p>
+                      )}
+                      <p className="mt-[4px] text-[14px] font-semibold text-[#65584f]/85" style={{ fontFamily: M }}>
+                        {shelter?.name ?? "Shelter"}
+                      </p>
+                      {(shelter?.district || shelter?.province) && (
+                        <p className="mt-[6px] text-[12px] text-[#65584f]/55 leading-[1.4]" style={{ fontFamily: M }}>
+                          {[shelter.district, shelter.province].filter(Boolean).join(", ")}
+                        </p>
+                      )}
+                      <div
+                        className="mt-[10px] inline-flex rounded-[9px] px-[10px] py-[6px] text-[11px] font-bold"
+                        style={{ background: statusCopy.background, color: statusCopy.color, fontFamily: M }}
+                      >
+                        {statusCopy.label}
+                      </div>
+                      <p className="mt-[6px] text-[11px] leading-[1.35] text-[#65584f]/55" style={{ fontFamily: M }}>
+                        {appt.shelter_note || statusCopy.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="px-[18px] py-[12px] flex items-center justify-between" style={{ background: footerBg }}>
+                    <p className="text-[14px] font-bold text-white truncate" style={{ fontFamily: M }}>
+                      {dog ? `${dog.name}${dog.breed ? ` - ${dog.breed}` : ""}` : "Shelter visit"}
+                    </p>
+                    <span
+                      className="ml-[12px] rounded-full px-[14px] py-[6px] text-[12px] font-bold flex items-center gap-[6px] flex-shrink-0"
+                      style={{ background: "white", color: isPastCard ? "#65584f" : statusCopy.color, fontFamily: M }}
+                    >
+                      {statusCopy.label}
+                    </span>
+                  </div>
+                </Link>
+
+                {isEditing && canEditDateTime && (
+                  <form action={updateAppointmentDateTimeAction} className="border-t border-[#eadfce] bg-[#fffaf2] px-[14px] py-[14px]">
+                    <input type="hidden" name="appointmentId" value={appt.id} />
+                    <p className="mb-[10px] text-[11px] font-bold uppercase tracking-[0.16em] text-[#8d7f72]" style={{ fontFamily: M }}>
+                      Modify date and time
+                    </p>
+                    <div className="grid grid-cols-[1fr_112px] gap-[10px]">
+                      <label className="block">
+                        <span className="mb-[5px] block text-[11px] font-semibold text-[#65584f]/60" style={{ fontFamily: M }}>Date</span>
+                        <input
+                          className="h-[42px] w-full rounded-[12px] border border-[#eadfce] bg-white px-[12px] text-[13px] font-semibold text-[#65584f] outline-none"
+                          defaultValue={appt.appointment_date}
+                          min={today}
+                          name="appointmentDate"
+                          type="date"
+                          style={{ fontFamily: M }}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-[5px] block text-[11px] font-semibold text-[#65584f]/60" style={{ fontFamily: M }}>Time</span>
+                        <select
+                          className="h-[42px] w-full rounded-[12px] border border-[#eadfce] bg-white px-[10px] text-[13px] font-semibold text-[#65584f] outline-none"
+                          defaultValue={currentTime}
+                          name="appointmentTime"
+                          style={{ fontFamily: M }}
+                        >
+                          {APPOINTMENT_TIME_SLOTS.map((slot) => (
+                            <option key={slot} value={slot}>{slot}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <div className="mt-[12px] flex gap-[8px]">
+                      <button
+                        className="flex-1 rounded-full bg-[#cd8188] px-[14px] py-[10px] text-[13px] font-bold text-white active:scale-[0.98]"
+                        style={{ fontFamily: M }}
+                        type="submit"
+                      >
+                        Request update
+                      </button>
+                      <Link
+                        className="rounded-full border border-[#eadfce] bg-white px-[14px] py-[10px] text-[13px] font-bold text-[#65584f]"
+                        href={cancelEditHref}
+                        replace
+                        style={{ fontFamily: M }}
+                      >
+                        Cancel
+                      </Link>
+                    </div>
+                  </form>
+                )}
+              </article>
             );
           })}
         </div>

@@ -51,6 +51,7 @@ function loadBookingModel() {
   new Script(outputText).runInNewContext({
     Buffer,
     URL,
+    URLSearchParams,
     exports: module.exports,
     module,
     require,
@@ -59,12 +60,15 @@ function loadBookingModel() {
 }
 
 test("creates human-readable booking codes from appointment ids", () => {
-  const { formatBookingCode } = loadBookingModel();
+  const { formatBookingCode, normalizeBookingCodeSearch } = loadBookingModel();
 
   assert.equal(
     formatBookingCode("5f1a2b3c-9988-7766-5544-33221100aabb"),
     "APT-5F1A2",
   );
+  assert.equal(normalizeBookingCodeSearch(" apt-5f1a2 "), "APT-5F1A2");
+  assert.equal(normalizeBookingCodeSearch("5f1a2"), "APT-5F1A2");
+  assert.equal(normalizeBookingCodeSearch(""), "");
 });
 
 test("generates scan tokens and stores only their hashes", () => {
@@ -76,19 +80,23 @@ test("generates scan tokens and stores only their hashes", () => {
 });
 
 test("creates stable signed check-in tokens for appointment QR codes", () => {
-  const { createSignedCheckInToken } = loadBookingModel();
+  const { createSignedCheckInToken, verifySignedCheckInToken } = loadBookingModel();
+  const appointmentId = "5f1a2b3c-9988-7766-5544-33221100aabb";
+  const token = createSignedCheckInToken({
+    appointmentId,
+    secret: "test-secret",
+  });
 
   assert.equal(
-    createSignedCheckInToken({
-      appointmentId: "5f1a2b3c-9988-7766-5544-33221100aabb",
-      secret: "test-secret",
-    }),
+    token,
     "NWYxYTJiM2MtOTk4OC03NzY2LTU1NDQtMzMyMjExMDBhYWJi.c2lnOnRlc3Qtc2VjcmV0OjVmMWEyYjNjLTk5ODgtNzc2Ni01NTQ0LTMzMjIxMTAwYWFiYg",
   );
+  assert.equal(verifySignedCheckInToken({ token, secret: "test-secret" }), appointmentId);
+  assert.equal(verifySignedCheckInToken({ token, secret: "wrong-secret" }), null);
 });
 
 test("builds admin check-in URLs with the opaque scan token", () => {
-  const { buildCheckInUrl } = loadBookingModel();
+  const { buildAdminBookingDetailPath, buildCheckInUrl } = loadBookingModel();
 
   assert.equal(
     buildCheckInUrl({
@@ -96,5 +104,12 @@ test("builds admin check-in URLs with the opaque scan token", () => {
       token: "scan-token",
     }),
     "https://pawjai.co.th/admin/bookings/check-in?token=scan-token",
+  );
+  assert.equal(
+    buildAdminBookingDetailPath({
+      appointmentId: "5f1a2b3c-9988-7766-5544-33221100aabb",
+      token: "scan-token",
+    }),
+    "/admin/bookings/5f1a2b3c-9988-7766-5544-33221100aabb?token=scan-token",
   );
 });

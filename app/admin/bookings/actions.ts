@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Database } from "@/types/database";
-import { hashCheckInToken } from "@/utils/booking";
+import { buildAdminBookingDetailPath, getCheckInTokenSecret, hashCheckInToken, verifySignedCheckInToken } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 
@@ -54,6 +54,7 @@ export async function decideBookingAction(formData: FormData) {
     .eq("id", appointmentId);
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/appointments");
   revalidatePath(`/appointments/${appointmentId}`);
 }
 
@@ -70,28 +71,53 @@ export async function checkInBookingAction(formData: FormData) {
   }
 
   const admin = createAdminClient();
-  const { data: appointment } = await admin
+  const { data: hashedAppointment } = await admin
     .from("appointments")
     .select("id, status")
     .eq("check_in_token_hash", hashCheckInToken(token))
     .maybeSingle();
+  const appointmentIdFromToken = verifySignedCheckInToken({
+    token,
+    secret: getCheckInTokenSecret(),
+  });
+  const { data: signedAppointment } = !hashedAppointment && appointmentIdFromToken
+    ? await admin
+        .from("appointments")
+        .select("id, status")
+        .eq("id", appointmentIdFromToken)
+        .maybeSingle()
+    : { data: null };
+  const appointment = hashedAppointment ?? signedAppointment;
 
   if (!appointment) {
     redirect("/admin/bookings/check-in?invalid=1");
   }
 
-  await admin
+  const updatePayload = {
+    check_in_note: note || null,
+    checked_in_at: new Date().toISOString(),
+    checked_in_by: "admin-gate",
+    status: appointment.status === "requested" ? "confirmed" : appointment.status,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await admin
     .from("appointments")
-    .update({
-      check_in_note: note || null,
-      checked_in_at: new Date().toISOString(),
-      checked_in_by: "admin-gate",
-      status: appointment.status === "requested" ? "confirmed" : appointment.status,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("id", appointment.id);
 
+  if (error?.message.includes("Could not find") || error?.message.includes("column")) {
+    await admin
+      .from("appointments")
+      .update({
+        status: appointment.status === "requested" ? "confirmed" : appointment.status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", appointment.id);
+  }
+
   revalidatePath("/admin/bookings");
+  revalidatePath("/appointments");
   revalidatePath(`/appointments/${appointment.id}`);
-  redirect(`/admin/bookings/check-in?token=${encodeURIComponent(token)}&checkedIn=1`);
+  redirect(`${buildAdminBookingDetailPath({ appointmentId: appointment.id, token })}&checkedIn=1`);
 }
