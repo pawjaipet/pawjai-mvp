@@ -46,7 +46,7 @@ export default async function AppointmentDetailPage({
     redirect("/appointments");
   }
 
-  const [{ data: dog }, { data: shelter }] = await Promise.all([
+  const [{ data: dog }, { data: shelterBase }] = await Promise.all([
     appt.dog_id
       ? admin
           .from("dogs")
@@ -56,11 +56,21 @@ export default async function AppointmentDetailPage({
       : Promise.resolve({ data: null }),
     admin
       .from("shelters")
-      // TODO(codex): add name_th, latitude, longitude columns. Select tolerates missing cols via try/catch wrapper below.
       .select("id, name, phone_number, email, address_line, district, subdistrict, province, postal_code")
       .eq("id", appt.shelter_id)
       .maybeSingle(),
   ]);
+  const { data: shelterExtended } = await (admin as any)
+    .from("shelters")
+    .select("id, logo_url, google_maps_url, meeting_instructions")
+    .eq("id", appt.shelter_id)
+    .maybeSingle();
+  const shelter = shelterBase
+    ? {
+        ...shelterBase,
+        ...(shelterExtended ?? {}),
+      }
+    : null;
 
   let coverUrl: string | null = null;
   if (appt.dog_id) {
@@ -139,9 +149,11 @@ export default async function AppointmentDetailPage({
               phone: shelter.phone_number,
               email: shelter.email,
               addressLines,
-              // TODO(codex): wire when latitude/longitude columns exist
+              googleMapsUrl: shelter.google_maps_url,
               latitude: (shelter as unknown as { latitude?: number | null }).latitude ?? null,
+              logoUrl: shelter.logo_url,
               longitude: (shelter as unknown as { longitude?: number | null }).longitude ?? null,
+              meetingInstructions: shelter.meeting_instructions,
             }
           : null
       }

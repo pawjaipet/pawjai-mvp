@@ -366,9 +366,12 @@ export type Database = {
           district: string | null
           email: string | null
           facebook_url: string | null
+          google_maps_url: string | null
           hygiene_rating: number | null
           id: string
           instagram_url: string | null
+          logo_url: string | null
+          meeting_instructions: string | null
           name: string
           phone_number: string | null
           postal_code: string | null
@@ -388,9 +391,12 @@ export type Database = {
           district?: string | null
           email?: string | null
           facebook_url?: string | null
+          google_maps_url?: string | null
           hygiene_rating?: number | null
           id?: string
           instagram_url?: string | null
+          logo_url?: string | null
+          meeting_instructions?: string | null
           name: string
           phone_number?: string | null
           postal_code?: string | null
@@ -403,6 +409,32 @@ export type Database = {
           website_url?: string | null
         }
         Update: Partial<Database["public"]["Tables"]["shelters"]["Insert"]>
+        Relationships: []
+      }
+      shelter_regular_hours: {
+        Row: {
+          closes_at: string | null
+          created_at: string
+          day_of_week: number
+          id: string
+          is_closed: boolean
+          opens_at: string | null
+          shelter_id: string
+          slot_duration_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          closes_at?: string | null
+          created_at?: string
+          day_of_week: number
+          id?: string
+          is_closed?: boolean
+          opens_at?: string | null
+          shelter_id: string
+          slot_duration_minutes?: number
+          updated_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["shelter_regular_hours"]["Insert"]>
         Relationships: []
       }
       wishlists: {

@@ -24,8 +24,11 @@ interface Props {
     phone: string | null;
     email: string | null;
     addressLines: string[];
+    googleMapsUrl: string | null;
     latitude: number | null;
+    logoUrl: string | null;
     longitude: number | null;
+    meetingInstructions: string | null;
   } | null;
   time: {
     weekday: string;
@@ -47,7 +50,9 @@ export default function AppointmentDetailClient({
   const [tab, setTab] = useState<Tab>("details");
 
   const mapsHref = shelter
-    ? shelter.latitude != null && shelter.longitude != null
+    ? shelter.googleMapsUrl
+      ? shelter.googleMapsUrl
+      : shelter.latitude != null && shelter.longitude != null
       ? `https://www.google.com/maps/search/?api=1&query=${shelter.latitude},${shelter.longitude}`
       : shelter.addressLines.length > 0
         ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shelter.addressLines.join(", "))}`
@@ -207,12 +212,22 @@ function DetailsTab({
             MEETING AT
           </p>
           <div className="rounded-[14px] p-[18px]" style={{ background: "#f5f0e8" }}>
-            <p className="text-[18px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
-              {shelter.nameTh ?? shelter.name}
-            </p>
+            <div className="flex items-center gap-[12px]">
+              {shelter.logoUrl && (
+                <img src={shelter.logoUrl} alt={`${shelter.name} logo`} className="h-[42px] w-[42px] rounded-[10px] object-cover" />
+              )}
+              <p className="text-[18px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
+                {shelter.nameTh ?? shelter.name}
+              </p>
+            </div>
             {shelter.addressLines.length > 0 && (
               <p className="text-[14px] text-[#65584f] mt-[8px] leading-[1.45]" style={{ fontFamily: M }}>
                 {shelter.addressLines.join(", ")}
+              </p>
+            )}
+            {shelter.meetingInstructions && (
+              <p className="text-[13px] text-[#65584f]/70 mt-[8px] leading-[1.45]" style={{ fontFamily: M }}>
+                {shelter.meetingInstructions}
               </p>
             )}
             {mapsHref && (
@@ -266,9 +281,14 @@ function DetailsTab({
             SHELTER CONTACT
           </p>
           <div className="rounded-[14px] p-[18px]" style={{ background: "#f5f0e8" }}>
-            <p className="text-[18px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
-              {shelter.nameTh ?? shelter.name}
-            </p>
+            <div className="flex items-center gap-[12px]">
+              {shelter.logoUrl && (
+                <img src={shelter.logoUrl} alt={`${shelter.name} logo`} className="h-[42px] w-[42px] rounded-[10px] object-cover" />
+              )}
+              <p className="text-[18px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
+                {shelter.nameTh ?? shelter.name}
+              </p>
+            </div>
             {shelter.phone && (
               <a href={`tel:${shelter.phone}`} className="mt-[10px] flex items-center gap-[8px] text-[14px] text-[#65584f]" style={{ fontFamily: M }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#65584f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

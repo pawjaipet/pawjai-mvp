@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, CheckCircle2, Clock3, ExternalLink, QrCode, Search, ShieldCheck } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, ExternalLink, Globe, ImageIcon, Mail, MapPin, Phone, QrCode, Search, ShieldCheck, Trash2 } from "lucide-react";
 import type { Database } from "@/types/database";
 import { formatBookingCode, normalizeBookingCodeSearch } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
@@ -7,14 +7,50 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import AdminGateForm from "../dogs/new/AdminGateForm";
 import { unlockAdminGateAction } from "../dogs/new/actions";
 import { initialAdminGateState } from "../dogs/new/form-state";
-import { decideBookingAction } from "./actions";
+import { createShelterBlockoutAction, decideBookingAction, deleteShelterAvailabilityAction, toggleShelterBlockoutDateAction, updateShelterOperatingDaysAction, updateShelterProfileAction } from "./actions";
 import BookingQrScanner from "./BookingQrScanner";
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 type Adopter = Database["public"]["Tables"]["adopters"]["Row"];
 type Dog = Pick<Database["public"]["Tables"]["dogs"]["Row"], "breed" | "id" | "name">;
-type Shelter = Pick<Database["public"]["Tables"]["shelters"]["Row"], "district" | "id" | "name" | "phone_number" | "province">;
+type Shelter = Pick<
+  Database["public"]["Tables"]["shelters"]["Row"],
+  | "address_line"
+  | "description"
+  | "district"
+  | "email"
+  | "facebook_url"
+  | "google_maps_url"
+  | "id"
+  | "instagram_url"
+  | "logo_url"
+  | "meeting_instructions"
+  | "name"
+  | "phone_number"
+  | "postal_code"
+  | "province"
+  | "subdistrict"
+  | "website_url"
+>;
 type AppointmentStatus = Database["public"]["Enums"]["appointment_status"];
+type ShelterAvailability = {
+  availability_type: Database["public"]["Enums"]["availability_type"];
+  end_date: string;
+  id: string;
+  note: string | null;
+  start_date: string;
+};
+type ShelterRegularHours = Database["public"]["Tables"]["shelter_regular_hours"]["Row"];
+
+const WEEKDAYS = [
+  { label: "Sun", value: 0 },
+  { label: "Mon", value: 1 },
+  { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 },
+  { label: "Sat", value: 6 },
+];
 
 const STATUS_OPTIONS: AppointmentStatus[] = [
   "requested",
@@ -38,6 +74,55 @@ function formatDate(date: string) {
     weekday: "short",
     year: "numeric",
   });
+}
+
+function formatShortDate(date: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function shelterAddressParts(shelter: Shelter | undefined) {
+  if (!shelter) return [];
+  return [
+    shelter.address_line,
+    shelter.subdistrict,
+    shelter.district,
+    shelter.province,
+    shelter.postal_code,
+  ].filter(Boolean) as string[];
+}
+
+function shelterMapsUrl(shelter: Shelter | undefined) {
+  if (shelter?.google_maps_url) return shelter.google_maps_url;
+  const query = [shelter?.name, ...shelterAddressParts(shelter)].filter(Boolean).join(" ");
+  return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : "";
+}
+
+function parseCalendarMonth(month: string | undefined) {
+  const value = month && /^\d{4}-\d{2}$/.test(month) ? month : new Date().toISOString().slice(0, 7);
+  const [year, monthIndex] = value.split("-").map(Number);
+  return new Date(year, monthIndex - 1, 1);
+}
+
+function formatMonthParam(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function buildCalendarDays(monthStart: Date) {
+  const gridStart = new Date(monthStart);
+  gridStart.setDate(1 - monthStart.getDay());
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    return date;
+  });
+}
+
+function isoDate(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function fullName(adopter: Adopter | undefined) {
@@ -96,7 +181,7 @@ function AdminNav() {
 export default async function AdminBookingsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ code?: string; date?: string; shelter?: string; status?: string }>;
+  searchParams?: Promise<{ code?: string; date?: string; message?: string; month?: string; shelter?: string; status?: string }>;
 }) {
   const gateOpen = await isAdminGateOpen();
   const resolvedSearchParams = await searchParams;
@@ -117,11 +202,29 @@ export default async function AdminBookingsPage({
     : "";
   const selectedDate = resolvedSearchParams?.date ?? "";
   const selectedBookingCode = normalizeBookingCodeSearch(resolvedSearchParams?.code ?? "");
+  const adminMessage = resolvedSearchParams?.message ?? "";
+  const calendarMonth = parseCalendarMonth(resolvedSearchParams?.month);
+  const calendarMonthParam = formatMonthParam(calendarMonth);
+  const previousCalendarMonth = new Date(calendarMonth);
+  previousCalendarMonth.setMonth(previousCalendarMonth.getMonth() - 1);
+  const nextCalendarMonth = new Date(calendarMonth);
+  nextCalendarMonth.setMonth(nextCalendarMonth.getMonth() + 1);
   const admin = createAdminClient();
-  const { data: allShelters } = await admin
+  const { data: baseShelters } = await admin
     .from("shelters")
-    .select("id, name, phone_number, district, province")
+    .select("id, name, phone_number, email, address_line, subdistrict, district, province, postal_code, website_url, facebook_url, instagram_url, description")
     .order("name", { ascending: true });
+  const { data: extendedShelters } = await (admin as any)
+    .from("shelters")
+    .select("id, logo_url, google_maps_url, meeting_instructions")
+    .order("name", { ascending: true });
+  const extendedShelterMap = new Map(
+    ((extendedShelters ?? []) as Partial<Shelter>[]).map((shelter) => [shelter.id, shelter]),
+  );
+  const allShelters = (baseShelters ?? []).map((shelter) => ({
+    ...shelter,
+    ...extendedShelterMap.get(shelter.id),
+  }));
   const shelterTabs = (allShelters ?? []) as Shelter[];
   const selectedShelterId = shelterTabs.some((shelter) => shelter.id === resolvedSearchParams?.shelter)
     ? resolvedSearchParams?.shelter ?? ""
@@ -129,11 +232,13 @@ export default async function AdminBookingsPage({
   const buildBookingsHref = ({
     code = selectedBookingCode,
     date = selectedDate,
+    month = calendarMonthParam,
     shelter = selectedShelterId,
     status = selectedStatus,
   }: {
     code?: string;
     date?: string;
+    month?: string;
     shelter?: string;
     status?: string;
   } = {}) => {
@@ -142,6 +247,7 @@ export default async function AdminBookingsPage({
     if (date) params.set("date", date);
     if (shelter) params.set("shelter", shelter);
     if (status) params.set("status", status);
+    if (month) params.set("month", month);
     const query = params.toString();
     return query ? `/admin/bookings?${query}` : "/admin/bookings";
   };
@@ -187,6 +293,38 @@ export default async function AdminBookingsPage({
   const dogMap = new Map((dogs ?? []).map((dog) => [dog.id, dog as Dog]));
   const shelterMap = new Map(shelterTabs.map((shelter) => [shelter.id, shelter]));
   const activeShelter = shelterMap.get(selectedShelterId);
+  const { data: availabilityData } = selectedShelterId
+    ? await (admin as any)
+        .from("shelter_availability")
+        .select("id, availability_type, start_date, end_date, note")
+        .eq("shelter_id", selectedShelterId)
+        .order("start_date", { ascending: true })
+    : { data: [] };
+  const { data: regularHoursData } = selectedShelterId
+    ? await admin
+        .from("shelter_regular_hours")
+        .select("*")
+        .eq("shelter_id", selectedShelterId)
+        .order("day_of_week", { ascending: true })
+    : { data: [] };
+  const unavailableRanges = ((availabilityData ?? []) as ShelterAvailability[]).filter(
+    (range) => range.availability_type === "unavailable",
+  );
+  const singleDayBlockouts = new Map(
+    unavailableRanges
+      .filter((range) => range.start_date === range.end_date)
+      .map((range) => [range.start_date, range]),
+  );
+  const regularHours = (regularHoursData ?? []) as ShelterRegularHours[];
+  const regularHoursByDay = new Map(regularHours.map((hours) => [hours.day_of_week, hours]));
+  const closedDays = new Set(regularHours.filter((hours) => hours.is_closed).map((hours) => hours.day_of_week));
+  const sampleOpenDay = regularHours.find((hours) => !hours.is_closed);
+  const defaultOpensAt = sampleOpenDay?.opens_at?.slice(0, 5) ?? "09:00";
+  const defaultClosesAt = sampleOpenDay?.closes_at?.slice(0, 5) ?? "17:00";
+  const defaultSlotDuration = sampleOpenDay?.slot_duration_minutes ?? regularHours[0]?.slot_duration_minutes ?? 60;
+  const calendarDays = buildCalendarDays(calendarMonth);
+  const activeShelterAddress = shelterAddressParts(activeShelter);
+  const activeShelterMapsUrl = shelterMapsUrl(activeShelter);
   const today = new Date().toISOString().slice(0, 10);
   const todaysCount = appointmentRows.filter((appointment) => appointment.appointment_date === today).length;
   const checkedInCount = appointmentRows.filter((appointment) => appointment.checked_in_at).length;
@@ -230,6 +368,12 @@ export default async function AdminBookingsPage({
             <p className="mt-3 text-3xl font-semibold text-[#4f4338]">{checkedInCount}</p>
           </div>
         </div>
+
+        {adminMessage ? (
+          <div className="mt-4 rounded-2xl border border-[#eadfce] bg-[#f8f0e5] px-5 py-3 text-sm font-semibold text-[#5b4d40]">
+            {adminMessage}
+          </div>
+        ) : null}
 
         {shelterTabs.length > 0 ? (
           <div className="mt-6 rounded-[24px] border border-[#eadfce] bg-white p-3 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
@@ -294,13 +438,323 @@ export default async function AdminBookingsPage({
         </form>
 
         {activeShelter ? (
-          <div className="mt-4 rounded-[20px] bg-[#f8f0e5] px-5 py-4">
-            <p className="text-sm font-semibold text-[#4f4338]">{activeShelter.name}</p>
-            <p className="mt-1 text-sm text-[#74685d]">
-              {[activeShelter.district, activeShelter.province].filter(Boolean).join(", ") || "No location set"}
-              {activeShelter.phone_number ? ` · ${activeShelter.phone_number}` : ""}
-            </p>
-          </div>
+          <section className="mt-6 rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7f72]">
+                  Shelter profile
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-[#4f4338]">{activeShelter.name}</h2>
+                <p className="mt-2 text-sm leading-6 text-[#74685d]">
+                  This profile feeds the booking screens for meeting location, shelter contact, maps access, and future shelter-specific calendars.
+                </p>
+                <div className="mt-4 flex items-center gap-4 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-[#eadfce] text-[#8d7f72]">
+                    {activeShelter.logo_url ? (
+                      <img alt={`${activeShelter.name} logo`} className="h-full w-full object-cover" src={activeShelter.logo_url} />
+                    ) : (
+                      <ImageIcon size={26} />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[#4f4338]">Shelter logo</p>
+                    <p className="mt-1 text-xs leading-5 text-[#74685d]">
+                      Paste a hosted PNG or JPG URL below. This is ready to show on appointment screens once the user UI uses the logo field.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  <div className="rounded-2xl bg-[#f8f0e5] p-4">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="mt-0.5 text-[#9a6b2a]" size={18} />
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Meeting at</p>
+                        <p className="mt-1 text-base font-semibold text-[#4f4338]">{activeShelter.name}</p>
+                        {activeShelterAddress.length > 0 ? (
+                          <p className="mt-1 text-sm leading-6 text-[#74685d]">{activeShelterAddress.join(", ")}</p>
+                        ) : (
+                          <p className="mt-1 text-sm leading-6 text-[#74685d]">No address set yet.</p>
+                        )}
+                        {activeShelterMapsUrl ? (
+                          <a
+                            className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-[#c97580] hover:text-[#ad5f6a]"
+                            href={activeShelterMapsUrl}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            Open Google Maps
+                            <ExternalLink size={14} />
+                          </a>
+                        ) : null}
+                        {activeShelter.meeting_instructions ? (
+                          <p className="mt-2 text-xs leading-5 text-[#74685d]">{activeShelter.meeting_instructions}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#f8f0e5] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Shelter contact</p>
+                    <div className="mt-3 grid gap-2 text-sm text-[#74685d]">
+                      <p className="inline-flex items-center gap-2">
+                        <Phone size={15} />
+                        {activeShelter.phone_number || "No phone number set"}
+                      </p>
+                      <p className="inline-flex items-center gap-2">
+                        <Mail size={15} />
+                        {activeShelter.email || "No email set"}
+                      </p>
+                      {activeShelter.website_url ? (
+                        <a
+                          className="inline-flex items-center gap-2 font-semibold text-[#c97580] hover:text-[#ad5f6a]"
+                          href={activeShelter.website_url}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          <Globe size={15} />
+                          Shelter website
+                        </a>
+                      ) : (
+                        <p className="inline-flex items-center gap-2">
+                          <Globe size={15} />
+                          No website set
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <form action={updateShelterProfileAction} className="grid gap-3">
+                <input name="shelterId" type="hidden" value={activeShelter.id} />
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Shelter name</span>
+                    <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.name} name="name" required />
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Phone</span>
+                    <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.phone_number ?? ""} name="phoneNumber" />
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Email</span>
+                    <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.email ?? ""} name="email" type="email" />
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Website</span>
+                    <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.website_url ?? ""} name="websiteUrl" placeholder="https://example.org" />
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Logo URL</span>
+                    <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.logo_url ?? ""} name="logoUrl" placeholder="https://.../logo.png" />
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Google Maps URL</span>
+                    <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.google_maps_url ?? ""} name="googleMapsUrl" placeholder="https://maps.google.com/..." />
+                  </label>
+                </div>
+
+                <label>
+                  <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Address</span>
+                  <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.address_line ?? ""} name="addressLine" placeholder="Street address / meeting entrance" />
+                </label>
+
+                <div className="grid gap-3 md:grid-cols-4">
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Subdistrict</span>
+                    <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.subdistrict ?? ""} name="subdistrict" />
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">District</span>
+                    <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.district ?? ""} name="district" />
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Province</span>
+                    <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.province ?? ""} name="province" />
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Postal code</span>
+                    <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.postal_code ?? ""} name="postalCode" />
+                  </label>
+                </div>
+
+                <label>
+                  <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Meeting instructions</span>
+                  <textarea className="min-h-[76px] w-full resize-none rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.meeting_instructions ?? ""} name="meetingInstructions" placeholder="Gate, parking, front desk, or what visitors should say when they arrive" />
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Internal profile note</span>
+                  <textarea className="min-h-[92px] w-full resize-none rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.description ?? ""} name="description" placeholder="Meeting instructions, parking notes, or shelter context for staff" />
+                </label>
+
+                <input name="facebookUrl" type="hidden" value={activeShelter.facebook_url ?? ""} />
+                <input name="instagramUrl" type="hidden" value={activeShelter.instagram_url ?? ""} />
+                <button className="mt-1 inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]" type="submit">
+                  Save shelter profile
+                </button>
+              </form>
+            </div>
+          </section>
+        ) : null}
+
+        {activeShelter ? (
+          <section className="mt-6 rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7f72]">Shelter calendar</p>
+                <h2 className="mt-2 text-2xl font-semibold text-[#4f4338]">Blockout dates</h2>
+                <p className="mt-2 text-sm leading-6 text-[#74685d]">
+                  Click dates to close or reopen one-off holidays. Set recurring closed weekdays for shelters that do not operate on weekends, Wednesdays, or other regular days.
+                </p>
+                <form action={updateShelterOperatingDaysAction} className="mt-5 rounded-2xl bg-[#fffdfa] p-4">
+                  <input name="shelterId" type="hidden" value={activeShelter.id} />
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Weekly closed days</p>
+                  <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7">
+                    {WEEKDAYS.map((day) => (
+                      <label
+                        className="cursor-pointer rounded-2xl border border-[#eadfce] bg-white px-3 py-3 text-center text-xs font-semibold text-[#5b4d40] has-[:checked]:border-[#c46f75] has-[:checked]:bg-[#c46f75] has-[:checked]:text-white"
+                        key={day.value}
+                      >
+                        <input
+                          className="sr-only"
+                          defaultChecked={closedDays.has(day.value)}
+                          name="closedDays"
+                          type="checkbox"
+                          value={day.value}
+                        />
+                        {day.label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <label>
+                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Opens</span>
+                      <input className="w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={defaultOpensAt} name="opensAt" type="time" />
+                    </label>
+                    <label>
+                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Closes</span>
+                      <input className="w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={defaultClosesAt} name="closesAt" type="time" />
+                    </label>
+                    <label>
+                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Slot minutes</span>
+                      <input className="w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={defaultSlotDuration} min="15" name="slotDuration" step="15" type="number" />
+                    </label>
+                  </div>
+                  <button className="mt-4 w-full rounded-full bg-[#d38a2c] px-5 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]" type="submit">
+                    Save weekly schedule
+                  </button>
+                </form>
+              </div>
+
+              <div>
+                <div className="rounded-2xl bg-[#fffdfa] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <Link
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#eadfce] bg-white text-[#5b4d40] hover:bg-[#faf4ec]"
+                      href={buildBookingsHref({ month: formatMonthParam(previousCalendarMonth) })}
+                    >
+                      <ChevronLeft size={18} />
+                    </Link>
+                    <p className="text-lg font-semibold text-[#4f4338]">
+                      {calendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                    </p>
+                    <Link
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#eadfce] bg-white text-[#5b4d40] hover:bg-[#faf4ec]"
+                      href={buildBookingsHref({ month: formatMonthParam(nextCalendarMonth) })}
+                    >
+                      <ChevronRight size={18} />
+                    </Link>
+                  </div>
+                  <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">
+                    {WEEKDAYS.map((day) => (
+                      <span key={day.value}>{day.label}</span>
+                    ))}
+                  </div>
+                  <div className="mt-2 grid grid-cols-7 gap-2">
+                    {calendarDays.map((date) => {
+                      const dateKey = isoDate(date);
+                      const inMonth = date.getMonth() === calendarMonth.getMonth();
+                      const recurringClosed = closedDays.has(date.getDay());
+                      const blockout = singleDayBlockouts.get(dateKey);
+                      const isClosed = recurringClosed || Boolean(blockout);
+                      return (
+                        <form action={toggleShelterBlockoutDateAction} key={dateKey}>
+                          <input name="shelterId" type="hidden" value={activeShelter.id} />
+                          <input name="date" type="hidden" value={dateKey} />
+                          <input name="availabilityId" type="hidden" value={blockout?.id ?? ""} />
+                          <button
+                            className={`flex aspect-square w-full items-center justify-center rounded-xl border text-sm font-semibold transition ${
+                              isClosed
+                                ? "border-[#65584f] bg-[#65584f] text-white"
+                                : "border-[#eadfce] bg-white text-[#5b4d40] hover:bg-[#faf4ec]"
+                            } ${inMonth ? "" : "opacity-35"} ${recurringClosed ? "cursor-not-allowed" : ""}`}
+                            disabled={recurringClosed}
+                            title={recurringClosed ? "Recurring closed day" : blockout ? "Click to reopen this date" : "Click to block this date"}
+                            type="submit"
+                          >
+                            {date.getDate()}
+                          </button>
+                        </form>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-3 text-xs text-[#74685d]">
+                    <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded bg-[#65584f]" /> Closed</span>
+                    <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded border border-[#eadfce] bg-white" /> Open</span>
+                  </div>
+                </div>
+
+                <form action={createShelterBlockoutAction} className="mt-4 grid gap-3 rounded-2xl bg-[#fffdfa] p-4 md:grid-cols-[1fr_1fr_minmax(0,1.3fr)_auto] md:items-end">
+                  <input name="shelterId" type="hidden" value={activeShelter.id} />
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">From</span>
+                    <input className="w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" name="startDate" required type="date" />
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">To</span>
+                    <input className="w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" name="endDate" type="date" />
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Reason</span>
+                    <input className="w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" name="note" placeholder="Holiday, staff training, fully booked" />
+                  </label>
+                  <button className="rounded-full bg-[#d38a2c] px-5 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]" type="submit">
+                    Add
+                  </button>
+                </form>
+
+                <div className="mt-4 grid gap-2">
+                  {unavailableRanges.length > 0 ? (
+                    unavailableRanges.map((range) => (
+                      <div className="flex flex-col gap-3 rounded-2xl border border-[#eadfce] bg-white px-4 py-3 md:flex-row md:items-center md:justify-between" key={range.id}>
+                        <div>
+                          <p className="text-sm font-semibold text-[#4f4338]">
+                            {formatShortDate(range.start_date)}
+                            {range.end_date !== range.start_date ? ` - ${formatShortDate(range.end_date)}` : ""}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-[#74685d]">{range.note || "Unavailable"}</p>
+                        </div>
+                        <form action={deleteShelterAvailabilityAction}>
+                          <input name="shelterId" type="hidden" value={activeShelter.id} />
+                          <input name="availabilityId" type="hidden" value={range.id} />
+                          <button className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-4 py-2 text-xs font-semibold text-[#9a3129] hover:bg-[#fff6f4]" type="submit">
+                            <Trash2 size={14} />
+                            Remove
+                          </button>
+                        </form>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] px-4 py-5 text-sm text-[#74685d]">
+                      No blockout dates set for {activeShelter.name}.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
         ) : null}
 
         <form className="mt-6 rounded-[24px] border border-[#eadfce] bg-white p-4 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
