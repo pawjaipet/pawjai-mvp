@@ -16,10 +16,13 @@ import { createClient } from "@/utils/supabase/server";
 
 export default async function AppointmentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -71,6 +74,11 @@ export default async function AppointmentDetailPage({
         ...(shelterExtended ?? {}),
       }
     : null;
+  const { data: messageRows } = await (admin as any)
+    .from("appointment_messages")
+    .select("id, sender_role, sender_label, body, created_at")
+    .eq("appointment_id", appt.id)
+    .order("created_at", { ascending: true });
 
   let coverUrl: string | null = null;
   if (appt.dog_id) {
@@ -142,6 +150,20 @@ export default async function AppointmentDetailPage({
     <AppointmentDetailClient
       appointmentId={appt.id}
       bookingId={bookingId}
+      initialMessages={((messageRows ?? []) as {
+        body: string;
+        created_at: string;
+        id: string;
+        sender_label: string | null;
+        sender_role: "adopter" | "shelter" | "system";
+      }[]).map((message) => ({
+        body: message.body,
+        createdAt: message.created_at,
+        id: message.id,
+        senderLabel: message.sender_label,
+        senderRole: message.sender_role,
+      }))}
+      initialTab={resolvedSearchParams?.tab === "messages" ? "messages" : "details"}
       qrSvg={qrSvg}
       status={appt.status}
       isPast={isPast}

@@ -38,3 +38,48 @@ export async function cancelAppointmentAction(appointmentId: string) {
   revalidatePath(`/appointments/${appointmentId}`);
   redirect("/appointments");
 }
+
+export async function sendAppointmentMessageAction(formData: FormData) {
+  const appointmentId = String(formData.get("appointmentId") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+
+  if (!appointmentId || !body) {
+    return;
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect(`/auth?next=${encodeURIComponent(`/appointments/${appointmentId}?tab=messages`)}&message=${encodeURIComponent("Sign in to message the shelter.")}`);
+  }
+
+  const adopter = await ensureAdopterForUser(supabase, user);
+  const admin = createAdminClient();
+  const { data: appointment } = await admin
+    .from("appointments")
+    .select("id, adopter_id, shelter_id")
+    .eq("id", appointmentId)
+    .eq("adopter_id", adopter.id)
+    .maybeSingle();
+
+  if (!appointment) {
+    redirect("/appointments");
+  }
+
+  const { error } = await (admin as any).from("appointment_messages").insert({
+    adopter_id: adopter.id,
+    appointment_id: appointment.id,
+    body,
+    sender_label: [adopter.first_name, adopter.last_name].filter(Boolean).join(" ") || user.email || "Visitor",
+    sender_role: "adopter",
+    shelter_id: appointment.shelter_id,
+  });
+
+  if (error) {
+    redirect(`/appointments/${appointmentId}?tab=messages&message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/messages");
+  revalidatePath(`/appointments/${appointmentId}`);
+  redirect(`/appointments/${appointmentId}?tab=messages`);
+}

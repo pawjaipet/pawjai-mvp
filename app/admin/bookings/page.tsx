@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, ExternalLink, Globe, ImageIcon, Mail, MapPin, Phone, QrCode, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, ExternalLink, Globe, ImageIcon, Mail, MapPin, MessageCircle, PawPrint, Phone, QrCode, Search, Send, ShieldCheck, Trash2 } from "lucide-react";
 import type { Database } from "@/types/database";
 import { formatBookingCode, normalizeBookingCodeSearch } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
@@ -7,7 +7,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import AdminGateForm from "../dogs/new/AdminGateForm";
 import { unlockAdminGateAction } from "../dogs/new/actions";
 import { initialAdminGateState } from "../dogs/new/form-state";
-import { createShelterBlockoutAction, decideBookingAction, deleteShelterAvailabilityAction, toggleShelterBlockoutDateAction, updateShelterOperatingDaysAction, updateShelterProfileAction } from "./actions";
+import { createShelterBlockoutAction, decideBookingAction, deleteShelterAvailabilityAction, sendShelterMessageAction, toggleShelterBlockoutDateAction, updateShelterOperatingDaysAction, updateShelterProfileAction } from "./actions";
 import BookingQrScanner from "./BookingQrScanner";
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
@@ -41,6 +41,15 @@ type ShelterAvailability = {
   start_date: string;
 };
 type ShelterRegularHours = Database["public"]["Tables"]["shelter_regular_hours"]["Row"];
+type ShelterAdminView = "profile" | "dogs" | "bookings" | "messages";
+type AppointmentMessage = {
+  appointment_id: string;
+  body: string;
+  created_at: string;
+  id: string;
+  sender_label: string | null;
+  sender_role: "adopter" | "shelter" | "system";
+};
 
 const WEEKDAYS = [
   { label: "Sun", value: 0 },
@@ -58,6 +67,12 @@ const STATUS_OPTIONS: AppointmentStatus[] = [
   "completed",
   "cancelled",
   "no_show",
+];
+const SHELTER_ADMIN_VIEWS: { label: string; value: ShelterAdminView }[] = [
+  { label: "Shelter profile", value: "profile" },
+  { label: "Dog listings", value: "dogs" },
+  { label: "Booking visits", value: "bookings" },
+  { label: "Messaging", value: "messages" },
 ];
 
 function formatTime(time: string) {
@@ -159,6 +174,15 @@ function decisionLabel(status: AppointmentStatus) {
   }
 }
 
+function messageTimestamp(value: string) {
+  return new Date(value).toLocaleString("en-US", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+  });
+}
+
 function AdminNav() {
   return (
     <div className="flex flex-wrap gap-3">
@@ -181,7 +205,7 @@ function AdminNav() {
 export default async function AdminBookingsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ code?: string; date?: string; message?: string; month?: string; shelter?: string; status?: string }>;
+  searchParams?: Promise<{ code?: string; date?: string; message?: string; month?: string; shelter?: string; status?: string; view?: string }>;
 }) {
   const gateOpen = await isAdminGateOpen();
   const resolvedSearchParams = await searchParams;
@@ -203,6 +227,9 @@ export default async function AdminBookingsPage({
   const selectedDate = resolvedSearchParams?.date ?? "";
   const selectedBookingCode = normalizeBookingCodeSearch(resolvedSearchParams?.code ?? "");
   const adminMessage = resolvedSearchParams?.message ?? "";
+  const activeShelterView = SHELTER_ADMIN_VIEWS.some((view) => view.value === resolvedSearchParams?.view)
+    ? (resolvedSearchParams?.view as ShelterAdminView)
+    : "bookings";
   const calendarMonth = parseCalendarMonth(resolvedSearchParams?.month);
   const calendarMonthParam = formatMonthParam(calendarMonth);
   const previousCalendarMonth = new Date(calendarMonth);
@@ -235,12 +262,14 @@ export default async function AdminBookingsPage({
     month = calendarMonthParam,
     shelter = selectedShelterId,
     status = selectedStatus,
+    view = activeShelterView,
   }: {
     code?: string;
     date?: string;
     month?: string;
     shelter?: string;
     status?: string;
+    view?: string;
   } = {}) => {
     const params = new URLSearchParams();
     if (code) params.set("code", code);
@@ -248,6 +277,7 @@ export default async function AdminBookingsPage({
     if (shelter) params.set("shelter", shelter);
     if (status) params.set("status", status);
     if (month) params.set("month", month);
+    if (view) params.set("view", view);
     const query = params.toString();
     return query ? `/admin/bookings?${query}` : "/admin/bookings";
   };
@@ -277,17 +307,45 @@ export default async function AdminBookingsPage({
         return displayCode.toUpperCase().startsWith(selectedBookingCode);
       })
     : appointments ?? [];
-  const adopterIds = [...new Set(appointmentRows.map((appointment) => appointment.adopter_id))];
-  const dogIds = [...new Set(appointmentRows.map((appointment) => appointment.dog_id).filter(Boolean))] as string[];
+  const { data: messagingAppointments } = selectedShelterId
+    ? await admin
+        .from("appointments")
+        .select("*")
+        .eq("shelter_id", selectedShelterId)
+        .order("appointment_date", { ascending: false })
+        .order("appointment_time", { ascending: false })
+        .limit(60)
+    : { data: [] };
+  const combinedAppointments = [...appointmentRows, ...((messagingAppointments ?? []) as Appointment[])];
+  const adopterIds = [...new Set(combinedAppointments.map((appointment) => appointment.adopter_id))];
+  const dogIds = [...new Set(combinedAppointments.map((appointment) => appointment.dog_id).filter(Boolean))] as string[];
 
-  const [{ data: adopters }, { data: dogs }] = await Promise.all([
+  const [{ data: adopters }, { data: dogs }, { data: shelterDogs }, messagesResult] = await Promise.all([
     adopterIds.length
       ? admin.from("adopters").select("id, first_name, last_name, email, phone_number, verification_status").in("id", adopterIds)
       : Promise.resolve({ data: [] }),
     dogIds.length
       ? admin.from("dogs").select("id, name, breed").in("id", dogIds)
       : Promise.resolve({ data: [] }),
+    selectedShelterId
+      ? admin.from("dogs").select("id, name, breed, adoption_status, updated_at").eq("shelter_id", selectedShelterId).order("updated_at", { ascending: false }).limit(80)
+      : Promise.resolve({ data: [] }),
+    messagingAppointments?.length
+      ? (admin as any)
+          .from("appointment_messages")
+          .select("id, appointment_id, sender_role, sender_label, body, created_at")
+          .in("appointment_id", messagingAppointments.map((appointment) => appointment.id))
+          .order("created_at", { ascending: true })
+      : Promise.resolve({ data: [] }),
   ]);
+  const messageRows = ((messagesResult as { data?: AppointmentMessage[]; error?: { message?: string } }).data ?? []) as AppointmentMessage[];
+  const messagesByAppointment = new Map<string, AppointmentMessage[]>();
+  for (const message of messageRows) {
+    if (!messagesByAppointment.has(message.appointment_id)) {
+      messagesByAppointment.set(message.appointment_id, []);
+    }
+    messagesByAppointment.get(message.appointment_id)!.push(message);
+  }
 
   const adopterMap = new Map((adopters ?? []).map((adopter) => [adopter.id, adopter as Adopter]));
   const dogMap = new Map((dogs ?? []).map((dog) => [dog.id, dog as Dog]));
@@ -408,8 +466,36 @@ export default async function AdminBookingsPage({
           </div>
         ) : null}
 
+        {activeShelter ? (
+          <div className="mt-4 rounded-[24px] border border-[#eadfce] bg-white p-3 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+            <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
+              {activeShelter.name} workspace
+            </p>
+            <div className="grid gap-2 md:grid-cols-4">
+              {SHELTER_ADMIN_VIEWS.map((view) => {
+                const active = activeShelterView === view.value;
+                return (
+                  <Link
+                    className={`rounded-2xl px-4 py-3 text-center text-sm font-semibold transition ${
+                      active
+                        ? "bg-[#5f5146] text-white shadow-[0_10px_24px_rgba(95,81,70,0.18)]"
+                        : "border border-[#eadfce] bg-[#fffdfa] text-[#5b4d40] hover:bg-[#faf4ec]"
+                    }`}
+                    href={buildBookingsHref({ view: view.value })}
+                    key={view.value}
+                  >
+                    {view.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {activeShelterView === "bookings" ? (
         <form className="mt-6 flex flex-col gap-3 rounded-[24px] border border-[#eadfce] bg-white p-4 shadow-[0_16px_50px_rgba(128,92,46,0.08)] md:flex-row md:items-end">
           <input name="shelter" type="hidden" value={selectedShelterId} />
+          <input name="view" type="hidden" value={activeShelterView} />
           {selectedBookingCode ? <input name="code" type="hidden" value={selectedBookingCode} /> : null}
           <label className="flex-1">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Date</span>
@@ -443,8 +529,9 @@ export default async function AdminBookingsPage({
             Reset
           </Link>
         </form>
+        ) : null}
 
-        {activeShelter ? (
+        {activeShelter && activeShelterView === "profile" ? (
           <section className="mt-6 rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
             <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
               <div>
@@ -615,7 +702,7 @@ export default async function AdminBookingsPage({
           </section>
         ) : null}
 
-        {activeShelter ? (
+        {activeShelter && activeShelterView === "profile" ? (
           <section className="mt-6 rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
             <div className="grid gap-5 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
               <div>
@@ -777,8 +864,168 @@ export default async function AdminBookingsPage({
           </section>
         ) : null}
 
+        {activeShelter && activeShelterView === "dogs" ? (
+          <section className="mt-6 rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7f72]">Dog listings</p>
+                <h2 className="mt-2 text-2xl font-semibold text-[#4f4338]">{activeShelter.name} dogs</h2>
+                <p className="mt-2 text-sm leading-6 text-[#74685d]">
+                  Shelter-facing list of dogs attached to this shelter. Founder admin can still use the global listing page for the full database.
+                </p>
+              </div>
+              <Link
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]"
+                href={`/admin?shelter=${activeShelter.id}`}
+              >
+                <PawPrint size={16} />
+                Create dog for shelter
+              </Link>
+            </div>
+            <div className="mt-5 grid gap-3">
+              {(shelterDogs ?? []).length > 0 ? (
+                (shelterDogs ?? []).map((dog) => (
+                  <div className="flex flex-col gap-3 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 md:flex-row md:items-center md:justify-between" key={dog.id}>
+                    <div>
+                      <p className="text-lg font-semibold text-[#4f4338]">{dog.name}</p>
+                      <p className="mt-1 text-sm text-[#74685d]">{dog.breed || "Breed not set"}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] ${
+                        dog.adoption_status === "available"
+                          ? "bg-[#eaf6df] text-[#3f6f24]"
+                          : dog.adoption_status === "adopted"
+                            ? "bg-[#f7e3e1] text-[#9a3129]"
+                            : "bg-[#fff1dc] text-[#a86a1f]"
+                      }`}>
+                        {dog.adoption_status}
+                      </span>
+                      <Link
+                        className="rounded-full border border-[#eadfce] bg-white px-4 py-2 text-xs font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                        href={`/admin/dogs/${dog.id}/edit`}
+                      >
+                        Edit listing
+                      </Link>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
+                  No dog listings are attached to {activeShelter.name} yet.
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
+
+        {activeShelter && activeShelterView === "messages" ? (
+          <section className="mt-6 rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7f72]">Messaging</p>
+              <h2 className="text-2xl font-semibold text-[#4f4338]">{activeShelter.name} visitor conversations</h2>
+              <p className="max-w-3xl text-sm leading-6 text-[#74685d]">
+                Appointment-scoped shelter messaging. Staff can answer visit questions from the booking context, while PawJai admin can still see the whole picture.
+              </p>
+            </div>
+            <div className="mt-5 grid gap-4">
+              {((messagingAppointments ?? []) as Appointment[]).length > 0 ? (
+                ((messagingAppointments ?? []) as Appointment[]).map((appointment) => {
+                  const adopter = adopterMap.get(appointment.adopter_id);
+                  const dog = appointment.dog_id ? dogMap.get(appointment.dog_id) : null;
+                  const threadMessages = messagesByAppointment.get(appointment.id) ?? [];
+                  const latestMessage = threadMessages[threadMessages.length - 1];
+                  return (
+                    <div className="grid gap-4 rounded-[24px] border border-[#eadfce] bg-[#fffdfa] p-4 lg:grid-cols-[320px_minmax(0,1fr)]" key={appointment.id}>
+                      <div className="rounded-2xl bg-white p-4">
+                        <div className="flex items-center gap-2">
+                          <MessageCircle className="text-[#9a6b2a]" size={18} />
+                          <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#8a5825]">
+                            {appointment.booking_code ?? formatBookingCode(appointment.id)}
+                          </span>
+                        </div>
+                        <p className="mt-3 text-lg font-semibold text-[#4f4338]">{fullName(adopter)}</p>
+                        <p className="text-sm text-[#74685d]">{adopter?.email ?? "No email"}</p>
+                        <p className="mt-2 text-sm font-semibold text-[#4f4338]">
+                          {dog?.name ?? "Shelter visit"}
+                        </p>
+                        <p className="text-sm text-[#74685d]">
+                          {formatDate(appointment.appointment_date)} at {formatTime(appointment.appointment_time)}
+                        </p>
+                        {latestMessage ? (
+                          <p className="mt-3 text-xs leading-5 text-[#74685d]">
+                            Latest: {messageTimestamp(latestMessage.created_at)}
+                          </p>
+                        ) : (
+                          <p className="mt-3 text-xs leading-5 text-[#74685d]">
+                            No messages yet. Send a first note if the visitor needs instructions.
+                          </p>
+                        )}
+                        <Link
+                          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-4 py-2 text-xs font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                          href={`/admin/bookings/${appointment.id}`}
+                        >
+                          <ExternalLink size={14} />
+                          Open booking
+                        </Link>
+                      </div>
+                      <div className="flex min-h-[260px] flex-col rounded-2xl bg-white p-4">
+                        <div className="flex-1 space-y-3 overflow-y-auto">
+                          {threadMessages.length > 0 ? (
+                            threadMessages.slice(-6).map((message) => {
+                              const fromShelter = message.sender_role === "shelter";
+                              return (
+                                <div className={`flex ${fromShelter ? "justify-end" : "justify-start"}`} key={message.id}>
+                                  <div
+                                    className={`max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-6 ${
+                                      fromShelter
+                                        ? "bg-[#c46f75] text-white"
+                                        : "bg-[#f8f0e5] text-[#5b4d40]"
+                                    }`}
+                                  >
+                                    <p>{message.body}</p>
+                                    <p className={`mt-1 text-[11px] ${fromShelter ? "text-white/70" : "text-[#74685d]/65"}`}>
+                                      {message.sender_label ?? (fromShelter ? "Shelter" : "Visitor")} · {messageTimestamp(message.created_at)}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-center text-sm leading-6 text-[#74685d]">
+                              No conversation yet for this booking.
+                            </div>
+                          )}
+                        </div>
+                        <form action={sendShelterMessageAction} className="mt-4 flex gap-2">
+                          <input name="appointmentId" type="hidden" value={appointment.id} />
+                          <input name="shelterId" type="hidden" value={activeShelter.id} />
+                          <input
+                            className="min-w-0 flex-1 rounded-full border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]"
+                            name="body"
+                            placeholder="Write a shelter reply..."
+                          />
+                          <button className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#d38a2c] text-white hover:bg-[#bf781f]" type="submit">
+                            <Send size={17} />
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
+                  No booking conversations for {activeShelter.name} yet.
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
+
+        {activeShelterView === "bookings" ? (
+        <>
         <form className="mt-6 rounded-[24px] border border-[#eadfce] bg-white p-4 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
           <input name="shelter" type="hidden" value={selectedShelterId} />
+          <input name="view" type="hidden" value={activeShelterView} />
           {selectedDate ? <input name="date" type="hidden" value={selectedDate} /> : null}
           {selectedStatus ? <input name="status" type="hidden" value={selectedStatus} /> : null}
           <label>
@@ -982,6 +1229,8 @@ export default async function AdminBookingsPage({
             })
           )}
         </div>
+        </>
+        ) : null}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useTransition } from "react";
 import Link from "next/link";
-import { cancelAppointmentAction } from "@/app/appointments/[id]/actions";
+import { cancelAppointmentAction, sendAppointmentMessageAction } from "@/app/appointments/[id]/actions";
 
 const M = "Montserrat, sans-serif";
 
@@ -35,6 +35,8 @@ export function normalizeStatus(raw: string | null | undefined): DisplayStatus {
 interface Props {
   appointmentId: string;
   bookingId: string;
+  initialMessages: AppointmentThreadMessage[];
+  initialTab?: Tab;
   qrSvg: string;
   status: string | null;
   isPast: boolean;
@@ -66,10 +68,20 @@ interface Props {
   visitorNote: string | null;
 }
 
+export type AppointmentThreadMessage = {
+  body: string;
+  createdAt: string;
+  id: string;
+  senderLabel: string | null;
+  senderRole: "adopter" | "shelter" | "system";
+};
+
 export default function AppointmentDetailClient({
   appointmentId,
   bookingId,
   dog,
+  initialMessages,
+  initialTab = "details",
   qrSvg,
   status,
   isPast,
@@ -77,7 +89,7 @@ export default function AppointmentDetailClient({
   time,
 }: Props) {
   const displayStatus = normalizeStatus(status);
-  const [tab, setTab] = useState<Tab>("details");
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   const mapsHref = shelter
     ? shelter.googleMapsUrl
@@ -180,7 +192,11 @@ export default function AppointmentDetailClient({
       )}
 
       {tab === "messages" && (
-        <MessagesTab dogName={dog?.name ?? "the shelter"} />
+        <MessagesTab
+          appointmentId={appointmentId}
+          dogName={dog?.name ?? "the shelter"}
+          initialMessages={initialMessages}
+        />
       )}
 
       {tab === "help" && <HelpTab />}
@@ -503,42 +519,53 @@ function StatusBox({ status }: { status: DisplayStatus }) {
   );
 }
 
-function MessagesTab({ dogName }: { dogName: string }) {
-  const [draft, setDraft] = useState("");
+function MessagesTab({
+  appointmentId,
+  dogName,
+  initialMessages,
+}: {
+  appointmentId: string;
+  dogName: string;
+  initialMessages: AppointmentThreadMessage[];
+}) {
   const attachRef = useRef<HTMLInputElement>(null);
-
-  type ChatMsg = { from: string; text: string; time: string; read?: boolean; imageUrl?: string };
-  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
-    {
-      from: "shelter",
-      text: `Hello! Thank you for booking an appointment to meet ${dogName}. We're excited to introduce you!`,
-      time: "3:00 AM",
-    },
-    {
-      from: "me",
-      text: "Thank you! I'm really looking forward to meeting them. What should I bring?",
-      time: "3:15 AM",
-      read: true,
-    },
-    {
-      from: "shelter",
-      text: `Please bring your ID and any questions you may have. We'll show you around and introduce you to ${dogName}.`,
-      time: "7:30 AM",
-    },
-  ]);
+  const [localAttachments, setLocalAttachments] = useState<AppointmentThreadMessage[]>([]);
+  const chatMessages = [
+    ...(initialMessages.length > 0
+      ? initialMessages
+      : [
+          {
+            body: `Hello! Thank you for booking an appointment to meet ${dogName}. Message the shelter here if you have visit questions.`,
+            createdAt: new Date().toISOString(),
+            id: "system-welcome",
+            senderLabel: "PawJai",
+            senderRole: "system" as const,
+          },
+        ]),
+    ...localAttachments,
+  ];
 
   function handleAttachment(files: FileList | null) {
     if (!files?.length) return;
     const file = files[0];
     const now = new Date();
-    const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
-    if (file.type.startsWith("image/")) {
-      const url = URL.createObjectURL(file);
-      setChatMessages((prev) => [...prev, { from: "me", text: `[Image: ${file.name}]`, time, imageUrl: url }]);
-    } else {
-      setChatMessages((prev) => [...prev, { from: "me", text: `📎 ${file.name}`, time }]);
-    }
+    setLocalAttachments((prev) => [
+      ...prev,
+      {
+        body: file.type.startsWith("image/")
+          ? `[Image ready to send later: ${file.name}]`
+          : `[Attachment ready to send later: ${file.name}]`,
+        createdAt: now.toISOString(),
+        id: `local-${now.getTime()}`,
+        senderLabel: "You",
+        senderRole: "adopter",
+      },
+    ]);
     if (attachRef.current) attachRef.current.value = "";
+  }
+
+  function formatMessageTime(value: string) {
+    return new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   }
 
   return (
@@ -556,35 +583,35 @@ function MessagesTab({ dogName }: { dogName: string }) {
         <p className="text-center text-[11px] font-semibold tracking-[0.14em] text-[#65584f]/45" style={{ fontFamily: M }}>
           TUESDAY, APR 7, 2026
         </p>
-        {chatMessages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.from === "me" ? "justify-end" : "justify-start"}`}>
+        {chatMessages.map((msg) => {
+          const fromMe = msg.senderRole === "adopter";
+          return (
+          <div key={msg.id} className={`flex ${fromMe ? "justify-end" : "justify-start"}`}>
             <div className="max-w-[78%]">
               <div
                 className="rounded-[18px] px-[16px] py-[12px] overflow-hidden"
                 style={{
-                  background: msg.from === "me" ? "#cd8188" : "#f5f0e8",
-                  color: msg.from === "me" ? "white" : "#65584f",
+                  background: fromMe ? "#cd8188" : "#f5f0e8",
+                  color: fromMe ? "white" : "#65584f",
                 }}
               >
-                {msg.imageUrl ? (
-                  <img src={msg.imageUrl} alt="" className="rounded-[12px] max-w-full max-h-[200px] object-cover" />
-                ) : (
-                  <p className="text-[14px] leading-[1.45]" style={{ fontFamily: M }}>{msg.text}</p>
-                )}
+                <p className="text-[14px] leading-[1.45]" style={{ fontFamily: M }}>{msg.body}</p>
               </div>
               <p
-                className={`text-[11px] mt-[4px] ${msg.from === "me" ? "text-right" : ""}`}
+                className={`text-[11px] mt-[4px] ${fromMe ? "text-right" : ""}`}
                 style={{ color: "rgba(101,88,79,0.5)", fontFamily: M }}
               >
-                {msg.time}{msg.from === "me" && msg.read ? "  ·  Read" : ""}
+                {formatMessageTime(msg.createdAt)}
               </p>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Composer */}
-      <div className="sticky bottom-[70px] flex items-center gap-[10px] px-[14px] py-[12px] bg-white border-t border-[#d6c8ad]/40">
+      <form action={sendAppointmentMessageAction} className="sticky bottom-[70px] flex items-center gap-[10px] px-[14px] py-[12px] bg-white border-t border-[#d6c8ad]/40">
+        <input name="appointmentId" type="hidden" value={appointmentId} />
         <button
           type="button"
           onClick={() => attachRef.current?.click()}
@@ -599,13 +626,23 @@ function MessagesTab({ dogName }: { dogName: string }) {
         </button>
         <input
           type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          name="body"
           placeholder="Write your message here"
           className="flex-1 rounded-full px-[18px] py-[12px] text-[14px] outline-none"
           style={{ background: "#f5f0e8", color: "#65584f", fontFamily: M }}
         />
-      </div>
+        <button
+          aria-label="Send message"
+          className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full active:scale-95"
+          style={{ background: "#cd8188" }}
+          type="submit"
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </svg>
+        </button>
+      </form>
     </div>
   );
 }

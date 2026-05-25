@@ -26,6 +26,14 @@ function bookingsRedirect(shelterId: string, message: string) {
   redirect(`/admin/bookings?${params.toString()}`);
 }
 
+function shelterViewRedirect(shelterId: string, view: string, message: string) {
+  const params = new URLSearchParams();
+  if (shelterId) params.set("shelter", shelterId);
+  if (view) params.set("view", view);
+  if (message) params.set("message", message);
+  redirect(`/admin/bookings?${params.toString()}`);
+}
+
 function isMissingSchemaError(error: { message?: string } | null | undefined) {
   const message = error?.message ?? "";
   return message.includes("Could not find")
@@ -174,6 +182,57 @@ export async function decideBookingAction(formData: FormData) {
   revalidatePath("/admin/bookings");
   revalidatePath("/appointments");
   revalidatePath(`/appointments/${appointmentId}`);
+}
+
+export async function sendShelterMessageAction(formData: FormData) {
+  if (!(await isAdminGateOpen())) {
+    return;
+  }
+
+  const appointmentId = String(formData.get("appointmentId") ?? "");
+  const shelterId = String(formData.get("shelterId") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+
+  if (!appointmentId || !shelterId || !body) {
+    return;
+  }
+
+  const admin = createAdminClient();
+  const { data: appointment } = await admin
+    .from("appointments")
+    .select("id, adopter_id, shelter_id")
+    .eq("id", appointmentId)
+    .eq("shelter_id", shelterId)
+    .maybeSingle();
+
+  if (!appointment) {
+    shelterViewRedirect(shelterId, "messages", "Booking conversation could not be found.");
+    return;
+  }
+
+  const { data: shelter } = await admin
+    .from("shelters")
+    .select("name")
+    .eq("id", shelterId)
+    .maybeSingle();
+
+  const { error } = await (admin as any).from("appointment_messages").insert({
+    adopter_id: appointment.adopter_id,
+    appointment_id: appointment.id,
+    body,
+    sender_label: shelter?.name ?? "Shelter team",
+    sender_role: "shelter",
+    shelter_id: appointment.shelter_id,
+  });
+
+  revalidatePath("/admin/bookings");
+  revalidatePath("/messages");
+  revalidatePath(`/appointments/${appointment.id}`);
+  shelterViewRedirect(
+    shelterId,
+    "messages",
+    error ? "Message could not be sent. Apply the appointment messages migration first." : "Message sent.",
+  );
 }
 
 export async function updateShelterProfileAction(formData: FormData) {
