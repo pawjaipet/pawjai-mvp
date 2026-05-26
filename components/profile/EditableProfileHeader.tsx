@@ -11,7 +11,7 @@ type BadgeId = "first_adopter" | "top_donater" | "premium_user";
 
 const BADGE_CONFIG: Record<BadgeId, { label: string; Icon: LucideIcon; variant: "outline" | "filled" }> = {
   first_adopter: { label: "First Adopter", Icon: Award, variant: "outline" },
-  top_donater: { label: "Top Donater", Icon: Gift, variant: "outline" },
+  top_donater: { label: "Top Donor", Icon: Gift, variant: "outline" },
   premium_user: { label: "Premium User", Icon: Star, variant: "filled" },
 };
 

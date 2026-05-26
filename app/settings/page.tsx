@@ -1,29 +1,38 @@
 import Link from "next/link";
-import { Bell, Lock, Globe, HelpCircle, Mail } from "lucide-react";
+import { CreditCard, HelpCircle, Mail } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { createClient } from "@/utils/supabase/server";
 
 const M = "Montserrat, sans-serif";
 
-const SECTIONS = [
+type SettingsItem = {
+  label: string;
+  Icon: LucideIcon;
+  hint: string;
+  href: string;
+};
+
+type SettingsSection = {
+  title: string;
+  items: SettingsItem[];
+};
+
+// Notifications + Language removed: system runs notifications via email/SMS,
+// language handled by browser/webapp translation. APP section removed entirely.
+// Privacy renamed to Subscription & Payment Methods, routes to /settings/subscription.
+const SECTIONS: SettingsSection[] = [
   {
     title: "Account",
     items: [
-      { label: "Email & password", Icon: Mail, hint: "Manage your sign-in" },
-      { label: "Privacy", Icon: Lock, hint: "Control who sees what" },
-    ],
-  },
-  {
-    title: "App",
-    items: [
-      { label: "Notifications", Icon: Bell, hint: "Push and email alerts" },
-      { label: "Language", Icon: Globe, hint: "English" },
+      { label: "Email & password", Icon: Mail, hint: "Manage your sign-in", href: "/settings" },
+      { label: "Subscription & Payment Methods", Icon: CreditCard, hint: "Manage your plan and billing", href: "/settings/subscription" },
     ],
   },
   {
     title: "Support",
     items: [
-      { label: "Help center", Icon: HelpCircle, hint: "FAQs and guides" },
+      { label: "Help center", Icon: HelpCircle, hint: "FAQs and guides", href: "/more" },
     ],
   },
 ];
@@ -86,10 +95,10 @@ export default async function SettingsPage() {
               className="rounded-[16px] overflow-hidden"
               style={{ background: "white", boxShadow: "0 2px 12px rgba(101,88,79,0.07)" }}
             >
-              {section.items.map(({ label, Icon, hint }, idx) => (
-                <button
+              {section.items.map(({ label, Icon, hint, href }, idx) => (
+                <Link
                   key={label}
-                  type="button"
+                  href={href}
                   className={`w-full flex items-center gap-[14px] px-[16px] py-[14px] text-left transition-colors active:bg-[#d6c8ad]/20 ${
                     idx > 0 ? "border-t border-[#d6c8ad]/40" : ""
                   }`}
@@ -105,7 +114,7 @@ export default async function SettingsPage() {
                     <p className="text-[12px] text-[#65584f]/55 truncate">{hint}</p>
                   </div>
                   <span className="text-[#65584f]/30 text-[18px]">›</span>
-                </button>
+                </Link>
               ))}
             </div>
           </div>

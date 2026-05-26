@@ -5,16 +5,18 @@ import { signOut } from "@/app/auth/actions";
 
 const M = "Montserrat, sans-serif";
 
-const SECTIONS = [
+// Adopt section removed entirely — duplicates of bottom-nav destinations.
+// Messages kept under its own one-item section since it has no other home.
+// Reroutes: My wishlist -> /profile (Wishlist section), My documents -> /profile (Verification card),
+// Appointments/Browse dogs/My preferences -> bottom-nav tabs.
+const SECTIONS: ReadonlyArray<{
+  title: string | null;
+  items: ReadonlyArray<{ label: string; href: string; icon: string }>;
+}> = [
   {
-    title: "Adopt",
+    title: null,
     items: [
-      { label: "Browse dogs",            href: "/swipe",        icon: "🐾" },
-      { label: "My preferences",         href: "/filter",       icon: "🎯" },
-      { label: "My wishlist",            href: "/profile",      icon: "❤️" },
-      { label: "Appointments",           href: "/appointments", icon: "📅" },
-      { label: "My documents",           href: "/documents",    icon: "🪪" },
-      { label: "Messages",               href: "/messages",     icon: "💬" },
+      { label: "Messages", href: "/messages", icon: "💬" },
     ],
   },
   {
@@ -25,7 +27,7 @@ const SECTIONS = [
       { label: "Contact us",            href: "/about#contact",  icon: "✉️" },
     ],
   },
-] as const;
+];
 
 export default async function MorePage() {
   const supabase = await createClient();
@@ -45,25 +47,9 @@ export default async function MorePage() {
         </Link>
       </div>
 
-      {/* ── User card ── */}
-      <div className="px-[16px] pt-[8px] pb-[20px]">
-        {user ? (
-          <div className="rounded-[16px] p-[16px] flex items-center gap-[14px]" style={{ background: "white" }}>
-            {/* Avatar placeholder */}
-            <div className="size-[52px] rounded-full flex items-center justify-center shrink-0" style={{ background: "#d6c8ad" }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12ZM12 14C8.66667 14 2 15.675 2 19V21H22V19C22 15.675 15.3333 14 12 14Z" fill="#65584f" fillOpacity="0.4" />
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-[16px] text-[#65584f] truncate" style={{ fontFamily: M }}>{user.email}</p>
-              <p className="text-[12px] text-[#65584f]/60 mt-[2px]" style={{ fontFamily: M }}>PawJai member</p>
-            </div>
-            <Link href="/profile" className="shrink-0 text-[12px] font-semibold text-[#cd8188]" style={{ fontFamily: M }}>
-              Edit →
-            </Link>
-          </div>
-        ) : (
+      {/* User profile card removed — email/edit moved to Profile tab + Settings */}
+      {!user && (
+        <div className="px-[16px] pt-[8px] pb-[20px]">
           <Link
             href="/auth"
             className="block rounded-[16px] p-[16px] text-center"
@@ -72,16 +58,18 @@ export default async function MorePage() {
             <p className="font-bold text-[18px] text-white" style={{ fontFamily: M }}>Sign in / Create account</p>
             <p className="text-[13px] text-white/80 mt-[4px]" style={{ fontFamily: M }}>Save dogs and book shelter visits</p>
           </Link>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Menu sections ── */}
       <div className="px-[16px] space-y-[20px]">
-        {SECTIONS.map((section) => (
-          <div key={section.title}>
-            <p className="text-[11px] font-semibold uppercase tracking-widest mb-[10px]" style={{ color: "rgba(101,88,79,0.5)", fontFamily: M }}>
-              {section.title}
-            </p>
+        {SECTIONS.map((section, sIdx) => (
+          <div key={section.title ?? `section-${sIdx}`}>
+            {section.title && (
+              <p className="text-[11px] font-semibold uppercase tracking-widest mb-[10px]" style={{ color: "rgba(101,88,79,0.5)", fontFamily: M }}>
+                {section.title}
+              </p>
+            )}
             <div className="rounded-[16px] overflow-hidden" style={{ background: "white" }}>
               {section.items.map((item, i) => (
                 <Link
