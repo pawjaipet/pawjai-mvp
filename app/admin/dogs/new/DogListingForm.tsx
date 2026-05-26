@@ -526,6 +526,30 @@ export default function DogListingForm({
           </div>
 
           <div>
+            <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Protectiveness</p>
+            <ChoiceCards
+              name="protectiveness"
+              options={[
+                { label: "Chill", value: "Very chill - not reactive", description: "Rarely barks or reacts" },
+                { label: "Alert barker", value: "Barks to alert, but not aggressive", description: "Notices visitors but stays friendly" },
+                { label: "Protective", value: "Highly protective", description: "Very protective of home or family" },
+              ]}
+            />
+          </div>
+
+          <div>
+            <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Affection style</p>
+            <ChoiceCards
+              name="affection_style"
+              options={[
+                { label: "Cuddly", value: "Very cuddly and affectionate", description: "Seeks closeness often" },
+                { label: "Subtle", value: "Subtle", description: "Shows affection quietly" },
+                { label: "Independent", value: "Independent", description: "Loyal but self-directed" },
+              ]}
+            />
+          </div>
+
+          <div>
             <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Training status</p>
             <ChoiceCards
               name="training_preference_match"

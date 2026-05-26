@@ -3,8 +3,10 @@ import { ensureAdopterForUser } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
 import SwipeFeed from "@/components/SwipeFeed";
 import type { SwipeDog } from "@/components/SwipeDogCard";
+import type { Database } from "@/types/database";
 import { fetchActiveAds } from "@/utils/ads";
 import { buildDogMediaItems } from "@/utils/dog-media";
+import { filterDogsByPreferences, hasActiveDogPreference, type PreferenceForDogFilter } from "@/utils/dog-preference-filter";
 
 export const dynamic = "force-dynamic";
 
@@ -25,14 +27,34 @@ function hasUploadedPhoto(dog: SwipeDog) {
   });
 }
 
-async function getDogs(): Promise<SwipeDog[]> {
+async function getDogs(preference: PreferenceForDogFilter | null): Promise<SwipeDog[]> {
   const supabase = await createClient();
 
-  const { data: dogs } = await supabase
+  let dogQuery = supabase
     .from("dogs")
     .select("*")
     .eq("adoption_status", "available")
     .order("created_at", { ascending: false });
+
+  if (preference?.preferred_size) dogQuery = dogQuery.eq("size", preference.preferred_size as Database["public"]["Enums"]["dog_size"]);
+  if (preference?.preferred_energy_level) dogQuery = dogQuery.eq("energy_level", preference.preferred_energy_level as Database["public"]["Enums"]["dog_energy_level"]);
+  if (preference?.good_with_dogs !== null && preference?.good_with_dogs !== undefined) dogQuery = dogQuery.eq("good_with_dogs", preference.good_with_dogs);
+  if (preference?.good_with_cats !== null && preference?.good_with_cats !== undefined) dogQuery = dogQuery.eq("good_with_cats", preference.good_with_cats);
+  if (preference?.good_with_kids !== null && preference?.good_with_kids !== undefined) dogQuery = dogQuery.eq("good_with_kids", preference.good_with_kids);
+  if (preference?.preferred_age_min_months !== null && preference?.preferred_age_min_months !== undefined) {
+    dogQuery = dogQuery.gte("age_months", preference.preferred_age_min_months);
+  }
+  if (preference?.preferred_age_max_months !== null && preference?.preferred_age_max_months !== undefined) {
+    dogQuery = dogQuery.lte("age_months", preference.preferred_age_max_months);
+  }
+  if (
+    preference?.preferred_special_needs?.length === 1 &&
+    preference.preferred_special_needs[0] === "No special needs preferred"
+  ) {
+    dogQuery = dogQuery.is("special_needs", null);
+  }
+
+  const { data: dogs } = await dogQuery;
 
   if (!dogs || dogs.length === 0) return [];
 
@@ -71,7 +93,17 @@ async function getDogs(): Promise<SwipeDog[]> {
     });
   }
 
-  return dogs
+  const matchingDogs = filterDogsByPreferences(
+    dogs,
+    (traits ?? []).map((trait) => ({
+      dog_id: trait.dog_id,
+      trait_type: trait.trait_type,
+      trait_value: trait.trait_value,
+    })),
+    preference,
+  );
+
+  return matchingDogs
     .map((d) => ({
       ...d,
       photos: photoMap.get(d.id) ?? [],
@@ -94,18 +126,29 @@ export default async function HomePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [dogs, ads] = await Promise.all([getDogs(), fetchActiveAds()]);
-
+  let preference: PreferenceForDogFilter | null = null;
   let savedIds: string[] = [];
   if (user) {
     const adopter = await ensureAdopterForUser(supabase, user);
     const admin = createAdminClient();
-    const { data: wishlist } = await admin
-      .from("wishlists")
-      .select("dog_id")
-      .eq("adopter_id", adopter.id);
+    const [{ data: wishlist }, { data: savedPreference }] = await Promise.all([
+      admin
+        .from("wishlists")
+        .select("dog_id")
+        .eq("adopter_id", adopter.id),
+      admin
+        .from("adopter_preferences")
+        .select("*")
+        .eq("adopter_id", adopter.id)
+        .maybeSingle(),
+    ]);
     savedIds = (wishlist ?? []).map((w) => w.dog_id);
+    preference = hasActiveDogPreference(savedPreference as PreferenceForDogFilter | null)
+      ? savedPreference as PreferenceForDogFilter
+      : null;
   }
+
+  const [dogs, ads] = await Promise.all([getDogs(preference), fetchActiveAds()]);
 
   return <SwipeFeed dogs={dogs} savedIds={savedIds} isLoggedIn={!!user} ads={ads} />;
 }

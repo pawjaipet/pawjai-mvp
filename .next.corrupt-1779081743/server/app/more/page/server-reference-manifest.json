@@ -1,0 +1,65 @@
+{
+  "node": {
+    "00d4d0ec2e102204c90fdf607011a970827f07d52f": {
+      "workers": {
+        "app/more/page": {
+          "moduleId": 55668,
+          "async": false,
+          "exportedName": "ensureCurrentUserProfile",
+          "filename": "app/auth/actions.ts"
+        }
+      },
+      "exportedName": "ensureCurrentUserProfile",
+      "filename": "app/auth/actions.ts"
+    },
+    "00abf83815699dddb182e00b9d19b0f22f82e0d634": {
+      "workers": {
+        "app/more/page": {
+          "moduleId": 55668,
+          "async": false,
+          "exportedName": "signOut",
+          "filename": "app/auth/actions.ts"
+        }
+      },
+      "exportedName": "signOut",
+      "filename": "app/auth/actions.ts"
+    },
+    "40aa4f0308acbbc49b14b687077cb41f2cab898e7c": {
+      "workers": {
+        "app/more/page": {
+          "moduleId": 55668,
+          "async": false,
+          "exportedName": "signUp",
+          "filename": "app/auth/actions.ts"
+        }
+      },
+      "exportedName": "signUp",
+      "filename": "app/auth/actions.ts"
+    },
+    "40c631f8a4b580080ac7cb12a850faa2d328bddeee": {
+      "workers": {
+        "app/more/page": {
+          "moduleId": 55668,
+          "async": false,
+          "exportedName": "signInWithGoogle",
+          "filename": "app/auth/actions.ts"
+        }
+      },
+      "exportedName": "signInWithGoogle",
+      "filename": "app/auth/actions.ts"
+    },
+    "40ea826b44f193f98fa78d5434f9a6d4856ccd34f1": {
+      "workers": {
+        "app/more/page": {
+          "moduleId": 55668,
+          "async": false,
+          "exportedName": "signIn",
+          "filename": "app/auth/actions.ts"
+        }
+      },
+      "exportedName": "signIn",
+      "filename": "app/auth/actions.ts"
+    }
+  },
+  "edge": {}
+}

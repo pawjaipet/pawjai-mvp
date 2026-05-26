@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createHash } from "node:crypto";
 import type { Database } from "@/types/database";
+import {
+  APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE,
+  isAppointmentMessagesUnavailableError,
+} from "@/utils/appointment-messages";
 import { isAppointmentTimeSlot, normalizeAppointmentTime } from "@/utils/appointments-model";
 import { buildAdminBookingDetailPath, getCheckInTokenSecret, hashCheckInToken, verifySignedCheckInToken } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
@@ -344,7 +348,7 @@ export async function sendShelterMessageAction(formData: FormData) {
     .eq("id", shelterId)
     .maybeSingle();
 
-  const { error } = await (admin as any).from("appointment_messages").insert({
+  const { error } = await admin.from("appointment_messages").insert({
     adopter_id: appointment.adopter_id,
     appointment_id: appointment.id,
     body,
@@ -359,7 +363,11 @@ export async function sendShelterMessageAction(formData: FormData) {
   shelterViewRedirect(
     shelterId,
     "messages",
-    error ? "Message could not be sent. Apply the appointment messages migration first." : "Message sent.",
+    error
+      ? isAppointmentMessagesUnavailableError(error)
+        ? APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE
+        : "Message could not be sent. Please try again."
+      : "Message sent.",
   );
 }
 

@@ -301,6 +301,8 @@ function normalizeTraitPairs(formData: FormData) {
 
 function normalizeStructuredTraits(formData: FormData) {
   const traits = [
+    ["protectiveness", getOptionalString(formData, "protectiveness")],
+    ["affection_style", getOptionalString(formData, "affection_style")],
     ["training_preference_match", getOptionalString(formData, "training_preference_match")],
     ["people_friendliness", getOptionalString(formData, "people_friendliness")],
     ["dog_social_style", getOptionalString(formData, "dog_social_style")],
@@ -492,22 +494,14 @@ async function uploadPhotoBuffer({
     throw new Error(`Supabase photo upload failed: ${uploadError.message}`);
   }
 
-  const { data } = supabase.storage.from(DOG_PHOTOS_BUCKET).getPublicUrl(desiredPath);
-  let backblazeMirrorError: string | undefined;
-
-  try {
-    await uploadBufferToBackblaze({
-      body: optimizedPhoto.body,
-      contentType: optimizedPhoto.contentType,
-      desiredPath,
-    });
-  } catch (error) {
-    backblazeMirrorError = error instanceof Error ? error.message : "Unknown Backblaze mirror error";
-  }
+  const uploaded = await uploadBufferToBackblaze({
+    body: optimizedPhoto.body,
+    contentType: optimizedPhoto.contentType,
+    desiredPath,
+  });
 
   return {
-    backblazeMirrorError,
-    publicUrl: data.publicUrl,
+    publicUrl: uploaded.publicUrl,
     storagePath: desiredPath,
   };
 }
@@ -591,22 +585,14 @@ async function uploadVideoFile({
     throw new Error(`Supabase video upload failed: ${uploadError.message}`);
   }
 
-  const { data } = supabase.storage.from(DOG_PHOTOS_BUCKET).getPublicUrl(desiredPath);
-  let backblazeMirrorError: string | undefined;
-
-  try {
-    await uploadBufferToBackblaze({
-      body: optimizedBody,
-      contentType: "video/mp4",
-      desiredPath,
-    });
-  } catch (error) {
-    backblazeMirrorError = error instanceof Error ? error.message : "Unknown Backblaze mirror error";
-  }
+  const uploaded = await uploadBufferToBackblaze({
+    body: optimizedBody,
+    contentType: "video/mp4",
+    desiredPath,
+  });
 
   return {
-    backblazeMirrorError,
-    publicUrl: data.publicUrl,
+    publicUrl: uploaded.publicUrl,
     storagePath: desiredPath,
   };
 }

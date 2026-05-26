@@ -13,6 +13,7 @@
     "supabase:status": "supabase status",
     "supabase:login": "supabase login",
     "supabase:link": "supabase link --project-ref bdnyvcvkyepipdcygkvn",
+    "email:test": "node --env-file=.env.local scripts/send-resend-test.mjs",
     "import:dogs": "node scripts/import-sheet-dogs.mjs",
     "link:dog-photos": "node scripts/link-b2-dog-photos.mjs"
   },
@@ -26,6 +27,7 @@
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "resend": "^6.12.4",
     "sharp": "^0.34.5"
   },
   "devDependencies": {

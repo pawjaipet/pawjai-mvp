@@ -2,6 +2,8 @@ import Link from "next/link";
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, ExternalLink, Globe, ImageIcon, Mail, MapPin, MessageCircle, PawPrint, Phone, QrCode, Search, Send, ShieldCheck, Trash2 } from "lucide-react";
 import type { Database } from "@/types/database";
 import { APPOINTMENT_TIME_SLOTS, appointmentFollowUpDue, isPastAppointmentByTime, normalizeAppointmentTime } from "@/utils/appointments-model";
+import type { AppointmentMessageRow } from "@/utils/appointment-messages";
+import { isAppointmentMessagesUnavailableError } from "@/utils/appointment-messages";
 import { formatBookingCode, normalizeBookingCodeSearch } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -44,14 +46,7 @@ type ShelterAvailability = {
 type ShelterRegularHours = Database["public"]["Tables"]["shelter_regular_hours"]["Row"];
 type ShelterAdminView = "profile" | "dogs" | "bookings" | "messages";
 type VisitBucket = "upcoming" | "past" | "needs_follow_up" | "all";
-type AppointmentMessage = {
-  appointment_id: string;
-  body: string;
-  created_at: string;
-  id: string;
-  sender_label: string | null;
-  sender_role: "adopter" | "shelter" | "system";
-};
+type AppointmentMessage = Pick<AppointmentMessageRow, "appointment_id" | "body" | "created_at" | "id" | "sender_label" | "sender_role">;
 
 const WEEKDAYS = [
   { label: "Sun", value: 0 },
@@ -358,14 +353,19 @@ export default async function AdminBookingsPage({
       ? admin.from("dogs").select("id, name, breed, adoption_status, updated_at").eq("shelter_id", selectedShelterId).order("updated_at", { ascending: false }).limit(80)
       : Promise.resolve({ data: [] }),
     messagingAppointments?.length
-      ? (admin as any)
+      ? admin
           .from("appointment_messages")
           .select("id, appointment_id, sender_role, sender_label, body, created_at")
           .in("appointment_id", messagingAppointments.map((appointment) => appointment.id))
           .order("created_at", { ascending: true })
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [], error: null }),
   ]);
-  const messageRows = ((messagesResult as { data?: AppointmentMessage[]; error?: { message?: string } }).data ?? []) as AppointmentMessage[];
+  const messagesUnavailable = Boolean(messagesResult.error);
+  const messagesError = messagesResult.error;
+  if (messagesError && !isAppointmentMessagesUnavailableError(messagesError)) {
+    console.error("Appointment messages failed to load", messagesError);
+  }
+  const messageRows = (messagesResult.data ?? []) as AppointmentMessage[];
   const messagesByAppointment = new Map<string, AppointmentMessage[]>();
   for (const message of messageRows) {
     if (!messagesByAppointment.has(message.appointment_id)) {
@@ -991,6 +991,11 @@ export default async function AdminBookingsPage({
                 Appointment-scoped shelter messaging. Staff can answer visit questions from the booking context, while PawJai admin can still see the whole picture.
               </p>
             </div>
+            {messagesUnavailable ? (
+              <div className="mt-5 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 text-sm leading-6 text-[#74685d]">
+                Messages are temporarily unavailable. Appointment conversations will return here after the database schema is refreshed.
+              </div>
+            ) : null}
             <div className="mt-5 grid gap-4">
               {((messagingAppointments ?? []) as Appointment[]).length > 0 ? (
                 ((messagingAppointments ?? []) as Appointment[]).map((appointment) => {
@@ -1065,10 +1070,15 @@ export default async function AdminBookingsPage({
                           <input name="shelterId" type="hidden" value={activeShelter.id} />
                           <input
                             className="min-w-0 flex-1 rounded-full border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]"
+                            disabled={messagesUnavailable}
                             name="body"
-                            placeholder="Write a shelter reply..."
+                            placeholder={messagesUnavailable ? "Messaging temporarily unavailable" : "Write a shelter reply..."}
                           />
-                          <button className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#d38a2c] text-white hover:bg-[#bf781f]" type="submit">
+                          <button
+                            className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#d38a2c] text-white hover:bg-[#bf781f] disabled:opacity-55"
+                            disabled={messagesUnavailable}
+                            type="submit"
+                          >
                             <Send size={17} />
                           </button>
                         </form>

@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { ensureAdopterForUser } from "@/utils/adopter";
+import type { AppointmentMessageRow } from "@/utils/appointment-messages";
+import { isAppointmentMessagesUnavailableError } from "@/utils/appointment-messages";
 import { formatBookingCode } from "@/utils/booking";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
@@ -46,21 +48,26 @@ export default async function MessagesPage() {
   const dogIds = [...new Set(appointmentRows.map((appointment) => appointment.dog_id).filter(Boolean))] as string[];
   const shelterIds = [...new Set(appointmentRows.map((appointment) => appointment.shelter_id))];
   const appointmentIds = appointmentRows.map((appointment) => appointment.id);
-  const [{ data: dogs }, { data: shelters }, { data: messages }] = await Promise.all([
+  const [{ data: dogs }, { data: shelters }, messagesResult] = await Promise.all([
     dogIds.length ? admin.from("dogs").select("id, name").in("id", dogIds) : Promise.resolve({ data: [] }),
     shelterIds.length ? admin.from("shelters").select("id, name, logo_url").in("id", shelterIds) : Promise.resolve({ data: [] }),
     appointmentIds.length
-      ? (admin as any)
+      ? admin
           .from("appointment_messages")
           .select("appointment_id, body, created_at, sender_role")
           .in("appointment_id", appointmentIds)
           .order("created_at", { ascending: false })
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [], error: null }),
   ]);
+  const messagesUnavailable = Boolean(messagesResult.error);
+  if (messagesResult.error && !isAppointmentMessagesUnavailableError(messagesResult.error)) {
+    console.error("Appointment messages failed to load", messagesResult.error);
+  }
+  const messages = messagesResult.data ?? [];
   const dogMap = new Map((dogs ?? []).map((dog) => [dog.id, dog]));
   const shelterMap = new Map(((shelters ?? []) as { id: string; logo_url?: string | null; name: string }[]).map((shelter) => [shelter.id, shelter]));
-  const latestMessageByAppointment = new Map<string, { body: string; created_at: string; sender_role: string }>();
-  for (const message of ((messages ?? []) as { appointment_id: string; body: string; created_at: string; sender_role: string }[])) {
+  const latestMessageByAppointment = new Map<string, Pick<AppointmentMessageRow, "appointment_id" | "body" | "created_at" | "sender_role">>();
+  for (const message of (messages as Pick<AppointmentMessageRow, "appointment_id" | "body" | "created_at" | "sender_role">[])) {
     if (!latestMessageByAppointment.has(message.appointment_id)) {
       latestMessageByAppointment.set(message.appointment_id, message);
     }
@@ -82,6 +89,13 @@ export default async function MessagesPage() {
       </div>
 
       <div className="px-[16px] pt-[16px] space-y-[2px]">
+        {messagesUnavailable ? (
+          <div className="mb-[12px] rounded-[14px] border border-[#eadfce] bg-[#fffdfa] px-[14px] py-[12px]">
+            <p className="text-[13px] leading-[1.45] text-[#65584f]" style={{ fontFamily: M }}>
+              Messages are temporarily unavailable. Your appointment conversations will appear here again soon.
+            </p>
+          </div>
+        ) : null}
         {appointmentRows.length > 0 ? (
           appointmentRows.map((appointment) => {
             const shelter = shelterMap.get(appointment.shelter_id);

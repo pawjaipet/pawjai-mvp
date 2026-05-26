@@ -198,10 +198,8 @@ const questions = [
   },
 ];
 
-// localStorage key for full wizard state — captures all 12 questions including
-// breed (Q2), special needs (Q11), age (Q1) etc. that the backend schema does
-// not yet have columns for. Codex can replace this with proper DB persistence
-// when adopter_preferences gains the missing columns.
+// localStorage keeps in-progress wizard state responsive; signed-in saves are
+// also persisted to adopter_preferences by the server action.
 const LS_KEY = "pawjai.filter.v1";
 type PersistedFilter = { answers: Record<number, string[]>; ageRange: [number, number] };
 
@@ -225,6 +223,20 @@ function saveToLocal(answers: Record<number, string[]>, ageRange: [number, numbe
   } catch {
     // quota exceeded or storage disabled — ignore
   }
+}
+
+function parseAgeAnswer(label: string | undefined): [number, number] | null {
+  if (!label) return null;
+  const plusMatch = label.match(/^(\d+)\+\s+Years?$/);
+  if (plusMatch) return [Number(plusMatch[1]), 7];
+  const rangeMatch = label.match(/^(\d+)-(\d+)\s+Years?$/);
+  if (rangeMatch) return [Number(rangeMatch[1]), Number(rangeMatch[2])];
+  const singleMatch = label.match(/^(\d+)\s+Years?$/);
+  if (singleMatch) {
+    const year = Number(singleMatch[1]);
+    return [year, year];
+  }
+  return null;
 }
 
 export default function FilterPage() {
@@ -260,10 +272,10 @@ export default function FilterPage() {
 
     async function loadSavedPreferences() {
       const saved = await getSavedFilterPreferences();
-      // Server prefs cover only a subset (size, energy, kids/dogs/cats).
-      // Merge them in WITHOUT overwriting locally-stored answers for the
-      // questions the server can't persist yet.
-      if (active && saved) setSelectedAnswers((current) => ({ ...saved, ...current }));
+      if (!active || !saved) return;
+      setSelectedAnswers((current) => ({ ...saved, ...current }));
+      const savedAgeRange = parseAgeAnswer(saved[1]?.[0]);
+      if (savedAgeRange) setAgeRange(savedAgeRange);
     }
 
     supabase.auth.getUser().then(({ data }) => {
@@ -331,12 +343,6 @@ export default function FilterPage() {
 
   const finishAndSave = () => {
     // Map question indices to backend-supported preference fields.
-    // TODO(codex): backend currently persists only size, energy, kids/dogs/cats.
-    // Breed (Q2), age range (Q1), protectiveness (Q4), affection (Q5),
-    // training (Q6), people friendliness (Q7), and special needs (Q11) are
-    // saved client-side via localStorage in this commit. Extend
-    // adopter_preferences with the missing columns and update
-    // saveFilterPreferences/getSavedFilterPreferences accordingly.
     const sizeQ = selectedAnswers[0] ?? [];         // Q0: size cards
     const energyQ = selectedAnswers[3] ?? [];        // Q3: activity cards
     const kidsQ = selectedAnswers[10] ?? [];         // Q10: kids
