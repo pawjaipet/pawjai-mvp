@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, ExternalLink, Globe, ImageIcon, Mail, MapPin, MessageCircle, PawPrint, Phone, QrCode, Search, Send, ShieldCheck, Trash2 } from "lucide-react";
 import type { Database } from "@/types/database";
-import { appointmentFollowUpDue, isPastAppointmentByTime } from "@/utils/appointments-model";
+import { APPOINTMENT_TIME_SLOTS, appointmentFollowUpDue, isPastAppointmentByTime, normalizeAppointmentTime } from "@/utils/appointments-model";
 import { formatBookingCode, normalizeBookingCodeSearch } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -1201,6 +1201,11 @@ export default async function AdminBookingsPage({
                         {appointment.shelter_note ? (
                           <p className="mt-2 text-sm leading-6 text-[#74685d]">{appointment.shelter_note}</p>
                         ) : null}
+                        {(appointment as any).proposed_appointment_date && (appointment as any).proposed_appointment_time ? (
+                          <p className="mt-2 rounded-xl bg-[#fff1dc] px-3 py-2 text-xs font-semibold text-[#8a5825]">
+                            Proposed: {formatDate((appointment as any).proposed_appointment_date)} at {formatTime(normalizeAppointmentTime((appointment as any).proposed_appointment_time))}
+                          </p>
+                        ) : null}
                       </div>
 
                       <label className="mt-3 block">
@@ -1216,6 +1221,30 @@ export default async function AdminBookingsPage({
                       </label>
                       {appointment.status === "requested" ? (
                         <div className="mt-3 grid gap-2">
+                          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-white p-3">
+                            <label className="block">
+                              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New date</span>
+                              <input
+                                className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]"
+                                defaultValue={(appointment as any).proposed_appointment_date ?? appointment.appointment_date}
+                                min={new Date().toISOString().slice(0, 10)}
+                                name="proposedAppointmentDate"
+                                type="date"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New time</span>
+                              <select
+                                className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]"
+                                defaultValue={normalizeAppointmentTime((appointment as any).proposed_appointment_time ?? appointment.appointment_time)}
+                                name="proposedAppointmentTime"
+                              >
+                                {APPOINTMENT_TIME_SLOTS.map((slot) => (
+                                  <option key={slot} value={slot}>{slot}</option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
                           <button
                             className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]"
                             name="decision"
@@ -1247,6 +1276,30 @@ export default async function AdminBookingsPage({
                             Edit decision
                           </summary>
                           <div className="mt-3 grid gap-2">
+                            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#fffaf3] p-3">
+                              <label className="block">
+                                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New date</span>
+                                <input
+                                  className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]"
+                                  defaultValue={(appointment as any).proposed_appointment_date ?? appointment.appointment_date}
+                                  min={new Date().toISOString().slice(0, 10)}
+                                  name="proposedAppointmentDate"
+                                  type="date"
+                                />
+                              </label>
+                              <label className="block">
+                                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New time</span>
+                                <select
+                                  className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]"
+                                  defaultValue={normalizeAppointmentTime((appointment as any).proposed_appointment_time ?? appointment.appointment_time)}
+                                  name="proposedAppointmentTime"
+                                >
+                                  {APPOINTMENT_TIME_SLOTS.map((slot) => (
+                                    <option key={slot} value={slot}>{slot}</option>
+                                  ))}
+                                </select>
+                              </label>
+                            </div>
                             <button
                               className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]"
                               name="decision"

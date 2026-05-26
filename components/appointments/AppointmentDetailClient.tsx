@@ -2,6 +2,7 @@
 
 import { useState, useRef, useTransition } from "react";
 import Link from "next/link";
+import { acceptRescheduleRequestAction, cancelAppointmentFromListAction } from "@/app/appointments/actions";
 import { cancelAppointmentAction, sendAppointmentMessageAction } from "@/app/appointments/[id]/actions";
 
 const M = "Montserrat, sans-serif";
@@ -39,6 +40,9 @@ interface Props {
   initialTab?: Tab;
   qrSvg: string;
   status: string | null;
+  proposedDate: string | null;
+  proposedTime: string | null;
+  rescheduleNote: string | null;
   isPast: boolean;
   dog: {
     id: string;
@@ -83,6 +87,9 @@ export default function AppointmentDetailClient({
   initialMessages,
   initialTab = "details",
   qrSvg,
+  proposedDate,
+  proposedTime,
+  rescheduleNote,
   status,
   isPast,
   shelter,
@@ -183,6 +190,9 @@ export default function AppointmentDetailClient({
           bookingId={bookingId}
           dog={dog}
           qrSvg={qrSvg}
+          proposedDate={proposedDate}
+          proposedTime={proposedTime}
+          rescheduleNote={rescheduleNote}
           status={displayStatus}
           isPast={isPast}
           shelter={shelter}
@@ -209,6 +219,9 @@ function DetailsTab({
   bookingId,
   dog,
   qrSvg,
+  proposedDate,
+  proposedTime,
+  rescheduleNote,
   status,
   isPast,
   shelter,
@@ -219,6 +232,9 @@ function DetailsTab({
   bookingId: string;
   dog: Props["dog"];
   qrSvg: string;
+  proposedDate: string | null;
+  proposedTime: string | null;
+  rescheduleNote: string | null;
   status: DisplayStatus;
   isPast: boolean;
   shelter: Props["shelter"];
@@ -252,6 +268,15 @@ function DetailsTab({
 
       {/* Status box — new UI block (#7) */}
       <StatusBox status={status} />
+
+      {proposedDate && proposedTime && !isPast && status !== "cancelled" && status !== "completed" && (
+        <RescheduleRequestPanel
+          appointmentId={appointmentId}
+          note={rescheduleNote}
+          proposedDate={proposedDate}
+          proposedTime={proposedTime}
+        />
+      )}
 
       {/* Meeting at */}
       {shelter && (
@@ -466,6 +491,66 @@ function CancelAppointmentButton({ appointmentId }: { appointmentId: string }) {
         </div>
       )}
     </>
+  );
+}
+
+function RescheduleRequestPanel({
+  appointmentId,
+  note,
+  proposedDate,
+  proposedTime,
+}: {
+  appointmentId: string;
+  note: string | null;
+  proposedDate: string;
+  proposedTime: string;
+}) {
+  const dateLabel = new Date(`${proposedDate}T00:00:00`).toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    weekday: "short",
+    year: "numeric",
+  });
+  const timeLabel = new Date(`1970-01-01T${proposedTime.slice(0, 5)}`).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return (
+    <section className="rounded-[14px] border border-[#eadfce] bg-[#fffaf2] p-[16px]">
+      <p className="text-[11px] font-bold tracking-[0.18em] text-[#8d7f72]" style={{ fontFamily: M }}>
+        DATE CHANGE REQUEST
+      </p>
+      <p className="mt-[8px] text-[18px] font-bold leading-[1.35] text-[#65584f]" style={{ fontFamily: M }}>
+        {dateLabel} at {timeLabel}
+      </p>
+      {note ? (
+        <p className="mt-[6px] text-[13px] leading-[1.5] text-[#65584f]/70" style={{ fontFamily: M }}>
+          {note}
+        </p>
+      ) : null}
+      <div className="mt-[14px] grid grid-cols-3 gap-[8px]">
+        <form action={acceptRescheduleRequestAction}>
+          <input name="appointmentId" type="hidden" value={appointmentId} />
+          <button className="h-[42px] w-full rounded-full bg-[#3f7d34] px-[10px] text-[12px] font-bold text-white active:scale-[0.98]" style={{ fontFamily: M }} type="submit">
+            Accept
+          </button>
+        </form>
+        <Link
+          className="flex h-[42px] items-center justify-center rounded-full border border-[#eadfce] bg-white px-[10px] text-center text-[12px] font-bold text-[#65584f]"
+          href={`/appointments?edit=${appointmentId}`}
+          style={{ fontFamily: M }}
+        >
+          Different
+        </Link>
+        <form action={cancelAppointmentFromListAction}>
+          <input name="appointmentId" type="hidden" value={appointmentId} />
+          <button className="h-[42px] w-full rounded-full bg-[#c46f75] px-[10px] text-[12px] font-bold text-white active:scale-[0.98]" style={{ fontFamily: M }} type="submit">
+            Cancel
+          </button>
+        </form>
+      </div>
+    </section>
   );
 }
 

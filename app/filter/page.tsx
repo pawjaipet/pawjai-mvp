@@ -289,11 +289,14 @@ export default function FilterPage() {
 
     startTransition(async () => {
       await saveFilterPreferences({
+        ageRange,
+        fullAnswers: selectedAnswers,
         sizes: sizeQ,
         energyLevels: energyQ,
         goodWithKids: kidsQ.includes("Kid-friendly") ? true : kidsQ.length > 0 ? false : null,
         goodWithDogs: dogsQ.includes("Friendly and playful") ? true : dogsQ.length > 0 ? false : null,
         goodWithCats: catsQ.includes("Cat-friendly") ? true : catsQ.length > 0 ? false : null,
+        questionLabels: Object.fromEntries(questions.map((question, index) => [index, question.question])),
       });
       router.push("/");
     });

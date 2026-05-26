@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckCircle2, ExternalLink, QrCode, ShieldCheck } from "lucide-react";
 import type { Database } from "@/types/database";
+import { APPOINTMENT_TIME_SLOTS, normalizeAppointmentTime } from "@/utils/appointments-model";
 import { formatBookingCode } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -215,6 +216,11 @@ export default async function AdminBookingDetailPage({
                   {typedAppointment.shelter_note ? (
                     <p className="mt-2 text-sm leading-6 text-[#74685d]">{typedAppointment.shelter_note}</p>
                   ) : null}
+                  {(typedAppointment as any).proposed_appointment_date && (typedAppointment as any).proposed_appointment_time ? (
+                    <p className="mt-2 rounded-xl bg-[#fff1dc] px-3 py-2 text-xs font-semibold text-[#8a5825]">
+                      Proposed: {formatDate((typedAppointment as any).proposed_appointment_date)} at {formatTime(normalizeAppointmentTime((typedAppointment as any).proposed_appointment_time))}
+                    </p>
+                  ) : null}
                 </div>
                 <label className="mt-3 block">
                   <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
@@ -232,6 +238,30 @@ export default async function AdminBookingDetailPage({
                     Edit decision
                   </summary>
                   <div className="mt-3 grid gap-2">
+                    <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#fffaf3] p-3">
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New date</span>
+                        <input
+                          className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]"
+                          defaultValue={(typedAppointment as any).proposed_appointment_date ?? typedAppointment.appointment_date}
+                          min={new Date().toISOString().slice(0, 10)}
+                          name="proposedAppointmentDate"
+                          type="date"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New time</span>
+                        <select
+                          className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]"
+                          defaultValue={normalizeAppointmentTime((typedAppointment as any).proposed_appointment_time ?? typedAppointment.appointment_time)}
+                          name="proposedAppointmentTime"
+                        >
+                          {APPOINTMENT_TIME_SLOTS.map((slot) => (
+                            <option key={slot} value={slot}>{slot}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
                     <button className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" name="decision" type="submit" value="accept">
                       Mark accepted
                     </button>

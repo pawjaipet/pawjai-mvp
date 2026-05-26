@@ -37,16 +37,15 @@ type ApplicationDetail = {
   preferred_traits: string | null;
   purpose: string | null;
 };
-type ApplicationDocument = {
-  document_type: string;
-  id: string;
-  public_url: string | null;
-  storage_path: string;
-};
 type Question = {
   id: string;
   question_text: string;
   sort_order: number;
+};
+type FilterSnapshot = {
+  ageRange?: [number, number] | null;
+  answers?: Record<string, string[]>;
+  questions?: Record<string, string>;
 };
 
 function fullName(adopter: Adopter | null) {
@@ -88,6 +87,39 @@ function FieldRow({ label, value }: { label: string; value: unknown }) {
     <div className="rounded-2xl bg-[#fffdfa] p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">{label}</p>
       <p className="mt-1 text-sm leading-6 text-[#4f4338]">{rendered}</p>
+    </div>
+  );
+}
+
+function ageRangeLabel(range: unknown) {
+  if (!Array.isArray(range) || range.length !== 2) return null;
+  const [min, max] = range.map(Number);
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+  const fmt = (value: number) => (value === 0 ? "0 year" : value >= 7 ? "7+ years" : `${value} year${value === 1 ? "" : "s"}`);
+  return min === max ? fmt(min) : `${fmt(min)} - ${fmt(max)}`;
+}
+
+function FilterAnswerRows({ snapshot }: { snapshot: FilterSnapshot | null }) {
+  const entries = Object.entries(snapshot?.answers ?? {})
+    .filter(([, values]) => Array.isArray(values) && values.length > 0)
+    .sort(([a], [b]) => Number(a) - Number(b));
+
+  const ageLabel = ageRangeLabel(snapshot?.ageRange);
+
+  if (!entries.length && !ageLabel) {
+    return <p className="text-sm text-[#74685d]">No saved filter preferences yet.</p>;
+  }
+
+  return (
+    <div className="grid gap-3">
+      {ageLabel ? <FieldRow label="Preferred age range" value={ageLabel} /> : null}
+      {entries.map(([index, values]) => (
+        <FieldRow
+          key={index}
+          label={snapshot?.questions?.[index] ?? `Preference question ${Number(index) + 1}`}
+          value={values}
+        />
+      ))}
     </div>
   );
 }
@@ -226,13 +258,12 @@ export default async function AdminVisitorProfilePage({
         .maybeSingle();
   const typedApplication = application as Application | null;
   const applicationId = typedApplication?.id ?? typedAppointment.application_id;
-  const [{ data: applicationDetail }, { data: applicationDocuments }, { data: applicationAnswers }] = applicationId
+  const [{ data: applicationDetail }, { data: applicationAnswers }] = applicationId
     ? await Promise.all([
         adminUntyped.from("application_details").select("*").eq("application_id", applicationId).maybeSingle(),
-        adminUntyped.from("application_documents").select("*").eq("application_id", applicationId).order("created_at", { ascending: false }),
         adminUntyped.from("application_answers").select("*").eq("application_id", applicationId),
       ])
-    : [{ data: null }, { data: [] }, { data: [] }];
+    : [{ data: null }, { data: [] }];
   const questionIds = [...new Set(((applicationAnswers ?? []) as ApplicationAnswer[]).map((answer) => answer.question_id))];
   const { data: questions } = questionIds.length
     ? await adminUntyped.from("questionnaire_questions").select("id, question_text, sort_order").in("id", questionIds)
@@ -248,16 +279,10 @@ export default async function AdminVisitorProfilePage({
       signedUrl: await signedDocumentUrl(admin, document.bucket_id, document.storage_path),
     })),
   );
-  const appDocs = await Promise.all(
-    ((applicationDocuments ?? []) as ApplicationDocument[]).map(async (document) => ({
-      ...document,
-      signedUrl:
-        document.public_url ?? (await signedDocumentUrl(admin, "application-documents", document.storage_path)),
-    })),
-  );
   const answers = ((applicationAnswers ?? []) as ApplicationAnswer[])
     .map((answer) => ({ answer, question: questionMap.get(answer.question_id) }))
     .sort((a, b) => (a.question?.sort_order ?? 0) - (b.question?.sort_order ?? 0));
+  const filterSnapshot = ((preference as unknown as { filter_answers?: FilterSnapshot | null })?.filter_answers ?? null);
 
   return (
     <div className="min-h-screen bg-[#fffaf3] px-4 py-8">
@@ -312,6 +337,25 @@ export default async function AdminVisitorProfilePage({
               <FieldRow label="Travel plan" value={profile?.travel_plan} />
               <FieldRow label="Financial preparedness" value={profile?.financial_preparedness} />
             </div>
+            <div className="mt-5 rounded-2xl bg-[#f8f0e5] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Shelter questionnaire Q&A</p>
+              {answers.length === 0 ? (
+                <p className="mt-2 text-sm leading-6 text-[#74685d]">No shelter questionnaire answers are attached to this booking yet.</p>
+              ) : (
+                <div className="mt-3 grid gap-3">
+                  {answers.map(({ answer, question }) => (
+                    <div className="rounded-2xl bg-[#fffdfa] p-4" key={answer.id}>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">
+                        {question?.question_text ?? "Question"}
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-[#4f4338]">
+                        {answer.answer_text || jsonAnswer(answer.answer_json)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </Panel>
 
           <Panel icon={<ShieldCheck size={20} />} title="Match preferences">
@@ -327,11 +371,16 @@ export default async function AdminVisitorProfilePage({
               <FieldRow label="Preferred traits" value={detail?.preferred_traits} />
               <FieldRow label="Daily routine" value={detail?.daily_routine} />
               <FieldRow label="Experience with pets" value={detail?.experience_with_pets} />
+              <FieldRow label="Saved preference summary" value={(preference as unknown as { filter_summary?: string | null })?.filter_summary} />
+            </div>
+            <div className="mt-5 rounded-2xl bg-[#f8f0e5] p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Full filter preferences</p>
+              <FilterAnswerRows snapshot={filterSnapshot} />
             </div>
           </Panel>
         </div>
 
-        <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <div className="mt-5 grid gap-5">
           <Panel icon={<FileText size={20} />} title="Verification documents">
             {docs.length === 0 ? (
               <p className="text-sm text-[#74685d]">No adopter verification documents are attached yet.</p>
@@ -345,45 +394,6 @@ export default async function AdminVisitorProfilePage({
                     mimeType={document.mime_type}
                     signedUrl={document.signedUrl}
                   />
-                ))}
-              </div>
-            )}
-          </Panel>
-
-          <Panel icon={<FileText size={20} />} title="Application and questionnaire">
-            {typedApplication ? (
-              <div className="mb-4 rounded-2xl bg-[#f8f0e5] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Application status</p>
-                <p className="mt-1 text-sm font-semibold text-[#4f4338]">{typedApplication.status.replace("_", " ")}</p>
-                {typedApplication.notes ? <p className="mt-2 text-sm leading-6 text-[#5b4d40]">{typedApplication.notes}</p> : null}
-              </div>
-            ) : null}
-
-            {appDocs.length > 0 ? (
-              <div className="mb-4 grid gap-3 md:grid-cols-2">
-                {appDocs.map((document) => (
-                  <DocumentCard
-                    documentType={document.document_type}
-                    key={document.id}
-                    signedUrl={document.signedUrl}
-                  />
-                ))}
-              </div>
-            ) : null}
-
-            {answers.length === 0 ? (
-              <p className="text-sm text-[#74685d]">No shelter questionnaire answers are attached to this booking yet.</p>
-            ) : (
-              <div className="grid gap-3">
-                {answers.map(({ answer, question }) => (
-                  <div className="rounded-2xl bg-[#fffdfa] p-4" key={answer.id}>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">
-                      {question?.question_text ?? "Question"}
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-[#4f4338]">
-                      {answer.answer_text || jsonAnswer(answer.answer_json)}
-                    </p>
-                  </div>
                 ))}
               </div>
             )}

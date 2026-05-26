@@ -166,6 +166,9 @@ export default async function AppointmentDetailPage({
       initialTab={resolvedSearchParams?.tab === "messages" ? "messages" : "details"}
       qrSvg={qrSvg}
       status={appt.status}
+      proposedDate={(appt as any).proposed_appointment_date ?? null}
+      proposedTime={(appt as any).proposed_appointment_time ?? null}
+      rescheduleNote={(appt as any).reschedule_note ?? null}
       isPast={isPast}
       dog={dog ? { id: dog.id, name: dog.name, breed: dog.breed, coverUrl } : null}
       shelter={

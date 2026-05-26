@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createHash } from "node:crypto";
 import type { Database } from "@/types/database";
+import { isAppointmentTimeSlot, normalizeAppointmentTime } from "@/utils/appointments-model";
 import { buildAdminBookingDetailPath, getCheckInTokenSecret, hashCheckInToken, verifySignedCheckInToken } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -149,6 +150,10 @@ function parseDecision(value: FormDataEntryValue | null): BookingDecision | null
     : null;
 }
 
+function isIsoDate(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
 function statusForDecision(decision: BookingDecision): AppointmentStatus {
   switch (decision) {
     case "accept":
@@ -173,6 +178,8 @@ export async function decideBookingAction(formData: FormData) {
   const appointmentId = String(formData.get("appointmentId") ?? "");
   const decision = parseDecision(formData.get("decision"));
   const shelterNote = String(formData.get("shelterNote") ?? "").trim();
+  const proposedAppointmentDate = String(formData.get("proposedAppointmentDate") ?? "");
+  const proposedAppointmentTime = normalizeAppointmentTime(String(formData.get("proposedAppointmentTime") ?? ""));
 
   if (!appointmentId || !decision) {
     return;
@@ -182,18 +189,62 @@ export async function decideBookingAction(formData: FormData) {
   const admin = createAdminClient();
   const { data: appointment } = await admin
     .from("appointments")
-    .select("id, dog_id")
+    .select("id, dog_id, shelter_id")
     .eq("id", appointmentId)
     .maybeSingle();
 
-  await admin
-    .from("appointments")
-    .update({
-      shelter_note: shelterNote || (decision === "adopted" ? "Visitor adopted this dog after the visit." : null),
-      status,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", appointmentId);
+  if (decision === "request_change") {
+    if (!appointment || !isIsoDate(proposedAppointmentDate) || !isAppointmentTimeSlot(proposedAppointmentTime)) {
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    if (proposedAppointmentDate < today) {
+      return;
+    }
+
+    const { data: existingAppointment } = await admin
+      .from("appointments")
+      .select("id")
+      .eq("shelter_id", appointment.shelter_id)
+      .eq("appointment_date", proposedAppointmentDate)
+      .eq("appointment_time", proposedAppointmentTime)
+      .neq("id", appointmentId)
+      .neq("status", "cancelled")
+      .neq("status", "no_show")
+      .limit(1)
+      .maybeSingle();
+
+    if (existingAppointment) {
+      return;
+    }
+
+    await (admin as any)
+      .from("appointments")
+      .update({
+        proposed_appointment_date: proposedAppointmentDate,
+        proposed_appointment_time: proposedAppointmentTime,
+        reschedule_note: shelterNote || null,
+        reschedule_requested_by: "shelter",
+        shelter_note: shelterNote || "Shelter requested a different visit date/time.",
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", appointmentId);
+  } else {
+    await (admin as any)
+      .from("appointments")
+      .update({
+        proposed_appointment_date: null,
+        proposed_appointment_time: null,
+        reschedule_note: null,
+        reschedule_requested_by: null,
+        shelter_note: shelterNote || (decision === "adopted" ? "Visitor adopted this dog after the visit." : null),
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", appointmentId);
+  }
 
   if (decision === "adopted" && appointment?.dog_id) {
     const today = new Date().toISOString().slice(0, 10);

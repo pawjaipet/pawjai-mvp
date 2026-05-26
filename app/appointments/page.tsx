@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Pencil } from "lucide-react";
-import { updateAppointmentDateTimeAction } from "@/app/appointments/actions";
+import { acceptRescheduleRequestAction, cancelAppointmentFromListAction, updateAppointmentDateTimeAction } from "@/app/appointments/actions";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adopter";
 import {
@@ -102,6 +102,26 @@ export default async function AppointmentsPage({
             const editHref = `/appointments?tab=${tab}&edit=${appt.id}`;
             const cancelEditHref = `/appointments?tab=${tab}`;
             const currentTime = normalizeAppointmentTime(appt.appointment_time ?? "");
+            const reschedule = appt as unknown as {
+              proposed_appointment_date?: string | null;
+              proposed_appointment_time?: string | null;
+              reschedule_note?: string | null;
+            };
+            const proposedTime = reschedule.proposed_appointment_time
+              ? new Date(`1970-01-01T${normalizeAppointmentTime(reschedule.proposed_appointment_time)}`).toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })
+              : "";
+            const proposedDate = reschedule.proposed_appointment_date
+              ? new Date(`${reschedule.proposed_appointment_date}T00:00:00`).toLocaleDateString("en-US", {
+                  day: "numeric",
+                  month: "short",
+                  weekday: "short",
+                  year: "numeric",
+                })
+              : "";
+            const hasRescheduleRequest = Boolean(reschedule.proposed_appointment_date && reschedule.proposed_appointment_time && !isPastCard);
 
             return (
               <article
@@ -169,6 +189,44 @@ export default async function AppointmentsPage({
                     </span>
                   </div>
                 </Link>
+
+                {hasRescheduleRequest && (
+                  <div className="border-t border-[#eadfce] bg-[#fffaf2] px-[14px] py-[14px]">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8d7f72]" style={{ fontFamily: M }}>
+                      Shelter requested a new time
+                    </p>
+                    <p className="mt-[6px] text-[14px] font-bold leading-[1.4] text-[#65584f]" style={{ fontFamily: M }}>
+                      {proposedDate} at {proposedTime}
+                    </p>
+                    {reschedule.reschedule_note || appt.shelter_note ? (
+                      <p className="mt-[5px] text-[12px] leading-[1.5] text-[#65584f]/65" style={{ fontFamily: M }}>
+                        {reschedule.reschedule_note || appt.shelter_note}
+                      </p>
+                    ) : null}
+                    <div className="mt-[12px] grid grid-cols-3 gap-[8px]">
+                      <form action={acceptRescheduleRequestAction}>
+                        <input name="appointmentId" type="hidden" value={appt.id} />
+                        <button className="h-[40px] w-full rounded-full bg-[#3f7d34] px-[10px] text-[12px] font-bold text-white active:scale-[0.98]" style={{ fontFamily: M }} type="submit">
+                          Accept
+                        </button>
+                      </form>
+                      <Link
+                        className="flex h-[40px] items-center justify-center rounded-full border border-[#eadfce] bg-white px-[10px] text-center text-[12px] font-bold text-[#65584f]"
+                        href={editHref}
+                        replace
+                        style={{ fontFamily: M }}
+                      >
+                        Different
+                      </Link>
+                      <form action={cancelAppointmentFromListAction}>
+                        <input name="appointmentId" type="hidden" value={appt.id} />
+                        <button className="h-[40px] w-full rounded-full bg-[#c46f75] px-[10px] text-[12px] font-bold text-white active:scale-[0.98]" style={{ fontFamily: M }} type="submit">
+                          Cancel
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                )}
 
                 {isEditing && canEditDateTime && (
                   <form action={updateAppointmentDateTimeAction} className="border-t border-[#eadfce] bg-[#fffaf2] px-[14px] py-[14px]">

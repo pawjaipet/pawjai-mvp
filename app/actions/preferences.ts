@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
-import type { Database } from "@/types/database";
+import type { Database, Json } from "@/types/database";
 
 type DogSize = Database["public"]["Enums"]["dog_size"];
 type DogEnergy = Database["public"]["Enums"]["dog_energy_level"];
@@ -14,6 +14,9 @@ interface FilterAnswers {
   goodWithKids: boolean | null;
   goodWithDogs: boolean | null;
   goodWithCats: boolean | null;
+  fullAnswers?: SavedFilterAnswers;
+  ageRange?: [number, number];
+  questionLabels?: Record<number, string>;
 }
 
 export type SavedFilterAnswers = Record<number, string[]>;
@@ -55,11 +58,25 @@ export async function getSavedFilterPreferences(): Promise<SavedFilterAnswers | 
   const admin = createAdminClient();
   const { data: preferences } = await admin
     .from("adopter_preferences")
-    .select("preferred_size, preferred_energy_level, good_with_kids, good_with_dogs, good_with_cats")
+    .select("*")
     .eq("adopter_id", adopter.id)
     .maybeSingle();
 
   if (!preferences) return null;
+
+  const filterAnswers = (preferences as unknown as { filter_answers?: unknown }).filter_answers;
+  if (filterAnswers && typeof filterAnswers === "object" && !Array.isArray(filterAnswers)) {
+    const rawAnswers = (filterAnswers as { answers?: unknown }).answers;
+    if (rawAnswers && typeof rawAnswers === "object" && !Array.isArray(rawAnswers)) {
+      const restored: SavedFilterAnswers = {};
+      for (const [key, value] of Object.entries(rawAnswers)) {
+        if (Array.isArray(value)) {
+          restored[Number(key)] = value.map(String);
+        }
+      }
+      if (Object.keys(restored).length) return restored;
+    }
+  }
 
   const answers: SavedFilterAnswers = {};
   const size = sizeLabel(preferences.preferred_size);
@@ -93,8 +110,24 @@ export async function saveFilterPreferences(answers: FilterAnswers) {
 
   const preferred_size: DogSize | null = answers.sizes.length === 1 ? mapSize(answers.sizes[0]) : null;
   const preferred_energy_level: DogEnergy | null = answers.energyLevels.length === 1 ? mapEnergy(answers.energyLevels[0]) : null;
+  const fullAnswers = answers.fullAnswers ?? {};
+  const questionLabels = answers.questionLabels ?? {};
+  const filterSnapshot = {
+    ageRange: answers.ageRange ?? null,
+    answers: fullAnswers,
+    questions: questionLabels,
+    savedAt: new Date().toISOString(),
+  } satisfies Json;
+  const filterSummary = Object.entries(fullAnswers)
+    .map(([index, values]) => {
+      const question = questionLabels[Number(index)] ?? `Question ${Number(index) + 1}`;
+      return `${question}: ${values.join(", ")}`;
+    })
+    .join("\n");
 
   const updates = {
+    filter_answers: filterSnapshot,
+    filter_summary: filterSummary || null,
     preferred_size,
     preferred_energy_level,
     good_with_kids: answers.goodWithKids,
@@ -109,8 +142,16 @@ export async function saveFilterPreferences(answers: FilterAnswers) {
     .maybeSingle();
 
   if (existing) {
-    await admin.from("adopter_preferences").update(updates).eq("adopter_id", adopter.id);
+    const { error } = await (admin as any).from("adopter_preferences").update(updates).eq("adopter_id", adopter.id);
+    if (error && (error.message.includes("filter_answers") || error.message.includes("filter_summary") || error.message.includes("schema cache"))) {
+      const { filter_answers: _filterAnswers, filter_summary: _filterSummary, ...legacyUpdates } = updates;
+      await admin.from("adopter_preferences").update(legacyUpdates).eq("adopter_id", adopter.id);
+    }
   } else {
-    await admin.from("adopter_preferences").insert({ adopter_id: adopter.id, ...updates });
+    const { error } = await (admin as any).from("adopter_preferences").insert({ adopter_id: adopter.id, ...updates });
+    if (error && (error.message.includes("filter_answers") || error.message.includes("filter_summary") || error.message.includes("schema cache"))) {
+      const { filter_answers: _filterAnswers, filter_summary: _filterSummary, ...legacyUpdates } = updates;
+      await admin.from("adopter_preferences").insert({ adopter_id: adopter.id, ...legacyUpdates });
+    }
   }
 }
