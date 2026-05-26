@@ -115,23 +115,43 @@ export type Database = {
         Row: {
           adopter_id: string
           created_at: string
+          filter_answers: Json
+          filter_summary: string | null
           good_with_cats: boolean | null
           good_with_dogs: boolean | null
           good_with_kids: boolean | null
           notes: string | null
+          preferred_affection_styles: string[]
+          preferred_age_max_months: number | null
+          preferred_age_min_months: number | null
+          preferred_breeds: string[]
           preferred_energy_level: Database["public"]["Enums"]["dog_energy_level"] | null
+          preferred_people_friendliness: string[]
+          preferred_protectiveness: string[]
           preferred_size: Database["public"]["Enums"]["dog_size"] | null
+          preferred_special_needs: string[]
+          preferred_training_preferences: string[]
           updated_at: string
         }
         Insert: {
           adopter_id: string
           created_at?: string
+          filter_answers?: Json
+          filter_summary?: string | null
           good_with_cats?: boolean | null
           good_with_dogs?: boolean | null
           good_with_kids?: boolean | null
           notes?: string | null
+          preferred_affection_styles?: string[]
+          preferred_age_max_months?: number | null
+          preferred_age_min_months?: number | null
+          preferred_breeds?: string[]
           preferred_energy_level?: Database["public"]["Enums"]["dog_energy_level"] | null
+          preferred_people_friendliness?: string[]
+          preferred_protectiveness?: string[]
           preferred_size?: Database["public"]["Enums"]["dog_size"] | null
+          preferred_special_needs?: string[]
+          preferred_training_preferences?: string[]
           updated_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["adopter_preferences"]["Insert"]>
@@ -235,6 +255,40 @@ export type Database = {
           visitor_note?: string | null
         }
         Update: Partial<Database["public"]["Tables"]["appointments"]["Insert"]>
+        Relationships: []
+      }
+      appointment_messages: {
+        Row: {
+          adopter_id: string
+          appointment_id: string
+          attachment_name: string | null
+          attachment_type: string | null
+          attachment_url: string | null
+          body: string
+          created_at: string
+          id: string
+          read_by_adopter_at: string | null
+          read_by_shelter_at: string | null
+          sender_label: string | null
+          sender_role: "adopter" | "shelter" | "system"
+          shelter_id: string
+        }
+        Insert: {
+          adopter_id: string
+          appointment_id: string
+          attachment_name?: string | null
+          attachment_type?: string | null
+          attachment_url?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          read_by_adopter_at?: string | null
+          read_by_shelter_at?: string | null
+          sender_label?: string | null
+          sender_role: "adopter" | "shelter" | "system"
+          shelter_id: string
+        }
+        Update: Partial<Database["public"]["Tables"]["appointment_messages"]["Insert"]>
         Relationships: []
       }
       dog_photos: {

@@ -3,6 +3,10 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { ensureAdopterForUser } from "@/utils/adopter";
+import {
+  APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE,
+  isAppointmentMessagesUnavailableError,
+} from "@/utils/appointment-messages";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -66,7 +70,7 @@ export async function sendAppointmentMessageAction(formData: FormData) {
     redirect("/appointments");
   }
 
-  const { error } = await (admin as any).from("appointment_messages").insert({
+  const { error } = await admin.from("appointment_messages").insert({
     adopter_id: adopter.id,
     appointment_id: appointment.id,
     body,
@@ -76,7 +80,10 @@ export async function sendAppointmentMessageAction(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/appointments/${appointmentId}?tab=messages&message=${encodeURIComponent(error.message)}`);
+    const message = isAppointmentMessagesUnavailableError(error)
+      ? APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE
+      : "Message could not be sent. Please try again.";
+    redirect(`/appointments/${appointmentId}?tab=messages&message=${encodeURIComponent(message)}`);
   }
 
   revalidatePath("/messages");

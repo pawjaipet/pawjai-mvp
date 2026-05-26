@@ -1,0 +1,29 @@
+{
+  "node": {
+    "00b66fc88710294174bbe49d3599c867d17bcac44d": {
+      "workers": {
+        "app/documents/page": {
+          "moduleId": "[project]/.next-internal/server/app/documents/page/actions.js { ACTIONS_MODULE0 => \"[project]/app/auth/actions.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/app/documents/actions.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "ensureCurrentUserProfile",
+          "filename": "app/auth/actions.ts"
+        }
+      },
+      "exportedName": "ensureCurrentUserProfile",
+      "filename": "app/auth/actions.ts"
+    },
+    "60ff22a6e043471cc15bbfbe4c33e31f596acdee88": {
+      "workers": {
+        "app/documents/page": {
+          "moduleId": "[project]/.next-internal/server/app/documents/page/actions.js { ACTIONS_MODULE0 => \"[project]/app/auth/actions.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/app/documents/actions.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "submitVerificationDocuments",
+          "filename": "app/documents/actions.ts"
+        }
+      },
+      "exportedName": "submitVerificationDocuments",
+      "filename": "app/documents/actions.ts"
+    }
+  },
+  "edge": {}
+}

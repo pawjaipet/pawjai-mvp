@@ -3,51 +3,16 @@
 import { createClient } from "@/utils/supabase/server";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
-import type { Database, Json } from "@/types/database";
+import {
+  buildPreferenceUpdate,
+  hasStructuredPreferenceAnswers,
+  restoreAnswersFromPreference,
+  restoreAnswersFromSnapshot,
+  type FilterAnswers,
+  type SavedFilterAnswers,
+} from "@/utils/adopter-preference-model";
 
-type DogSize = Database["public"]["Enums"]["dog_size"];
-type DogEnergy = Database["public"]["Enums"]["dog_energy_level"];
-
-interface FilterAnswers {
-  sizes: string[];         // Small, Medium, Large
-  energyLevels: string[];  // Low, Medium, High
-  goodWithKids: boolean | null;
-  goodWithDogs: boolean | null;
-  goodWithCats: boolean | null;
-  fullAnswers?: SavedFilterAnswers;
-  ageRange?: [number, number];
-  questionLabels?: Record<number, string>;
-}
-
-export type SavedFilterAnswers = Record<number, string[]>;
-
-function mapSize(label: string): DogSize {
-  const map: Record<string, DogSize> = {
-    Small: "small",
-    Medium: "medium",
-    Large: "large",
-  };
-  return map[label] ?? "medium";
-}
-
-function mapEnergy(label: string): DogEnergy {
-  const map: Record<string, DogEnergy> = {
-    Low: "low",
-    Medium: "medium",
-    High: "high",
-  };
-  return map[label] ?? "medium";
-}
-
-function sizeLabel(size: DogSize | null): string | null {
-  if (!size) return null;
-  return size.charAt(0).toUpperCase() + size.slice(1);
-}
-
-function energyLabel(energy: DogEnergy | null): string | null {
-  if (!energy) return null;
-  return energy.charAt(0).toUpperCase() + energy.slice(1);
-}
+export type { SavedFilterAnswers } from "@/utils/adopter-preference-model";
 
 export async function getSavedFilterPreferences(): Promise<SavedFilterAnswers | null> {
   const supabase = await createClient();
@@ -64,40 +29,16 @@ export async function getSavedFilterPreferences(): Promise<SavedFilterAnswers | 
 
   if (!preferences) return null;
 
-  const filterAnswers = (preferences as unknown as { filter_answers?: unknown }).filter_answers;
-  if (filterAnswers && typeof filterAnswers === "object" && !Array.isArray(filterAnswers)) {
-    const rawAnswers = (filterAnswers as { answers?: unknown }).answers;
-    if (rawAnswers && typeof rawAnswers === "object" && !Array.isArray(rawAnswers)) {
-      const restored: SavedFilterAnswers = {};
-      for (const [key, value] of Object.entries(rawAnswers)) {
-        if (Array.isArray(value)) {
-          restored[Number(key)] = value.map(String);
-        }
-      }
-      if (Object.keys(restored).length) return restored;
-    }
+  if (hasStructuredPreferenceAnswers(preferences)) {
+    const structuredAnswers = restoreAnswersFromPreference(preferences);
+    if (Object.keys(structuredAnswers).length) return structuredAnswers;
   }
 
-  const answers: SavedFilterAnswers = {};
-  const size = sizeLabel(preferences.preferred_size);
-  const energy = energyLabel(preferences.preferred_energy_level);
+  const snapshotAnswers = restoreAnswersFromSnapshot((preferences as unknown as { filter_answers?: unknown }).filter_answers);
+  if (snapshotAnswers) return snapshotAnswers;
 
-  // Question indices match current filter page order:
-  // 0=Size, 1=Age, 2=Breed, 3=Activity, 4=Protect, 5=Affection,
-  // 6=Training, 7=People, 8=Dogs, 9=Cats, 10=Kids, 11=Special
-  if (size) answers[0] = [size];
-  if (energy) answers[3] = [energy];
-  if (preferences.good_with_dogs !== null) {
-    answers[8] = [preferences.good_with_dogs ? "Friendly and playful" : "Prefer to be solo"];
-  }
-  if (preferences.good_with_cats !== null) {
-    answers[9] = [preferences.good_with_cats ? "Cat-friendly" : "Not sure / No"];
-  }
-  if (preferences.good_with_kids !== null) {
-    answers[10] = [preferences.good_with_kids ? "Kid-friendly" : "Not sure / No"];
-  }
-
-  return Object.keys(answers).length ? answers : null;
+  const legacyAnswers = restoreAnswersFromPreference(preferences);
+  return Object.keys(legacyAnswers).length ? legacyAnswers : null;
 }
 
 export async function saveFilterPreferences(answers: FilterAnswers) {
@@ -108,32 +49,7 @@ export async function saveFilterPreferences(answers: FilterAnswers) {
   const adopter = await ensureAdopterForUser(supabase, user);
   const admin = createAdminClient();
 
-  const preferred_size: DogSize | null = answers.sizes.length === 1 ? mapSize(answers.sizes[0]) : null;
-  const preferred_energy_level: DogEnergy | null = answers.energyLevels.length === 1 ? mapEnergy(answers.energyLevels[0]) : null;
-  const fullAnswers = answers.fullAnswers ?? {};
-  const questionLabels = answers.questionLabels ?? {};
-  const filterSnapshot = {
-    ageRange: answers.ageRange ?? null,
-    answers: fullAnswers,
-    questions: questionLabels,
-    savedAt: new Date().toISOString(),
-  } satisfies Json;
-  const filterSummary = Object.entries(fullAnswers)
-    .map(([index, values]) => {
-      const question = questionLabels[Number(index)] ?? `Question ${Number(index) + 1}`;
-      return `${question}: ${values.join(", ")}`;
-    })
-    .join("\n");
-
-  const updates = {
-    filter_answers: filterSnapshot,
-    filter_summary: filterSummary || null,
-    preferred_size,
-    preferred_energy_level,
-    good_with_kids: answers.goodWithKids,
-    good_with_dogs: answers.goodWithDogs,
-    good_with_cats: answers.goodWithCats,
-  };
+  const updates = buildPreferenceUpdate(answers);
 
   const { data: existing } = await admin
     .from("adopter_preferences")
@@ -143,14 +59,14 @@ export async function saveFilterPreferences(answers: FilterAnswers) {
 
   if (existing) {
     const { error } = await (admin as any).from("adopter_preferences").update(updates).eq("adopter_id", adopter.id);
-    if (error && (error.message.includes("filter_answers") || error.message.includes("filter_summary") || error.message.includes("schema cache"))) {
-      const { filter_answers: _filterAnswers, filter_summary: _filterSummary, ...legacyUpdates } = updates;
+    if (error && (error.message.includes("filter_answers") || error.message.includes("filter_summary") || error.message.includes("preferred_") || error.message.includes("schema cache"))) {
+      const { filter_answers: _filterAnswers, filter_summary: _filterSummary, preferred_affection_styles: _affection, preferred_age_max_months: _ageMax, preferred_age_min_months: _ageMin, preferred_breeds: _breeds, preferred_people_friendliness: _people, preferred_protectiveness: _protectiveness, preferred_special_needs: _specialNeeds, preferred_training_preferences: _training, ...legacyUpdates } = updates;
       await admin.from("adopter_preferences").update(legacyUpdates).eq("adopter_id", adopter.id);
     }
   } else {
     const { error } = await (admin as any).from("adopter_preferences").insert({ adopter_id: adopter.id, ...updates });
-    if (error && (error.message.includes("filter_answers") || error.message.includes("filter_summary") || error.message.includes("schema cache"))) {
-      const { filter_answers: _filterAnswers, filter_summary: _filterSummary, ...legacyUpdates } = updates;
+    if (error && (error.message.includes("filter_answers") || error.message.includes("filter_summary") || error.message.includes("preferred_") || error.message.includes("schema cache"))) {
+      const { filter_answers: _filterAnswers, filter_summary: _filterSummary, preferred_affection_styles: _affection, preferred_age_max_months: _ageMax, preferred_age_min_months: _ageMin, preferred_breeds: _breeds, preferred_people_friendliness: _people, preferred_protectiveness: _protectiveness, preferred_special_needs: _specialNeeds, preferred_training_preferences: _training, ...legacyUpdates } = updates;
       await admin.from("adopter_preferences").insert({ adopter_id: adopter.id, ...legacyUpdates });
     }
   }

@@ -4,6 +4,8 @@ import QRCode from "qrcode";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import AppointmentDetailClient from "@/components/appointments/AppointmentDetailClient";
 import { ensureAdopterForUser } from "@/utils/adopter";
+import type { AppointmentMessageRow } from "@/utils/appointment-messages";
+import { isAppointmentMessagesUnavailableError } from "@/utils/appointment-messages";
 import {
   buildCheckInUrl,
   createSignedCheckInToken,
@@ -74,11 +76,15 @@ export default async function AppointmentDetailPage({
         ...(shelterExtended ?? {}),
       }
     : null;
-  const { data: messageRows } = await (admin as any)
+  const { data: messageRows, error: messageRowsError } = await admin
     .from("appointment_messages")
     .select("id, sender_role, sender_label, body, created_at")
     .eq("appointment_id", appt.id)
     .order("created_at", { ascending: true });
+  const messagesUnavailable = Boolean(messageRowsError);
+  if (messageRowsError && !isAppointmentMessagesUnavailableError(messageRowsError)) {
+    console.error("Appointment messages failed to load", messageRowsError);
+  }
 
   let coverUrl: string | null = null;
   if (appt.dog_id) {
@@ -145,24 +151,23 @@ export default async function AppointmentDetailPage({
   // Compute whether slot has passed (start time + 1hr <= now)
   const slotStart = new Date(`${appt.appointment_date}T${appt.appointment_time}`);
   const isPast = slotStart.getTime() + 60 * 60 * 1000 <= Date.now();
+  const initialMessages = ((messageRows ?? []) as Pick<
+    AppointmentMessageRow,
+    "body" | "created_at" | "id" | "sender_label" | "sender_role"
+  >[]).map((message) => ({
+    body: message.body,
+    createdAt: message.created_at,
+    id: message.id,
+    senderLabel: message.sender_label,
+    senderRole: message.sender_role,
+  }));
 
   return (
     <AppointmentDetailClient
       appointmentId={appt.id}
       bookingId={bookingId}
-      initialMessages={((messageRows ?? []) as {
-        body: string;
-        created_at: string;
-        id: string;
-        sender_label: string | null;
-        sender_role: "adopter" | "shelter" | "system";
-      }[]).map((message) => ({
-        body: message.body,
-        createdAt: message.created_at,
-        id: message.id,
-        senderLabel: message.sender_label,
-        senderRole: message.sender_role,
-      }))}
+      initialMessages={initialMessages}
+      messagesUnavailable={messagesUnavailable}
       initialTab={resolvedSearchParams?.tab === "messages" ? "messages" : "details"}
       qrSvg={qrSvg}
       status={appt.status}

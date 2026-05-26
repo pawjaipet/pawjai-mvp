@@ -59,7 +59,25 @@
       "Bash(sed -i '' 's|href={dogId ? `/dogs/${dogId}` : \"/swipe\"}|href={dogId ? `/dogs/${dogId}` : \"/\"}|g' app/schedule/page.tsx)",
       "Bash(sed -i '' 's|href=\"/swipe\" className=\"block h-\\\\[55px\\\\]|href=\"/\" className=\"block h-[55px]|g' app/schedule/page.tsx app/dogs/[id]/page.tsx)",
       "Bash(sed -i '' 's|router\\\\.push\\(\"/swipe\"\\)|router.push\\(\"/\"\\)|g' app/filter/page.tsx)",
-      "Bash(sed -i '' 's|revalidatePath\\(\"/swipe\"\\)|revalidatePath\\(\"/\"\\)|g' app/admin/dogs/new/actions.ts)"
+      "Bash(sed -i '' 's|revalidatePath\\(\"/swipe\"\\)|revalidatePath\\(\"/\"\\)|g' app/admin/dogs/new/actions.ts)",
+      "Bash(git rm *)",
+      "Bash(git commit -m 'Remove binary assets from tracking; add to .gitignore *)",
+      "Bash(GIT_TRACE_CURL=1 git push origin codex/auth-modal-access)",
+      "Bash(git tag *)",
+      "mcp__96b59bab-9681-4ba9-97d1-24bbaec99e22__execute_sql",
+      "Bash(curl -s -o /dev/null -w \"/ %{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"/profile %{http_code}\\\\n\" http://localhost:3000/profile)",
+      "Bash(curl -s -o /dev/null -w \"/ %{http_code}\\\\n/profile %{http_code}\\\\n\" http://localhost:3000/ http://localhost:3000/profile)",
+      "Bash(git fetch *)",
+      "Bash(git symbolic-ref *)",
+      "Bash(curl -s -o /dev/null -w \"/documents %{http_code}\\\\n\" http://localhost:3000/documents)",
+      "Bash(xargs ls *)",
+      "Bash(curl -s http://localhost:3000/documents)",
+      "Bash(curl -s http://localhost:3000/api/__nextjs_original-stack-frames)",
+      "Bash(curl -s -o /dev/null -w \"/documents %{http_code}\\\\n/ %{http_code}\\\\n\" http://localhost:3000/documents http://localhost:3000/)",
+      "Bash(grep -n \"ArrowLeft\\\\|aria-label=\\\\\"Back\\\\\"\\\\|M19 12H5M5 12L12\\\\|href=\\\\\".*\\\\\"\\\\s*$\\\\|Back$\\\\|backHref\\\\|onClick.*router.back\\\\|back arrow\" app/dogs/\\\\[id\\\\]/page.tsx app/settings/page.tsx components/appointments/AppointmentDetailClient.tsx components/documents/DocumentsPageClient.tsx)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s http://localhost:3000/dogs/732285b0-3d60-4e4e-b739-d9b48f1c93f7)"
     ]
   }
 }

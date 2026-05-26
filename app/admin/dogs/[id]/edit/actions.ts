@@ -40,6 +40,8 @@ const DOG_ADOPTION_STATUSES = new Set<Database["public"]["Enums"]["dog_adoption_
 ]);
 
 const EDITABLE_TRAIT_TYPES = [
+  "protectiveness",
+  "affection_style",
   "training_preference_match",
   "people_friendliness",
   "dog_social_style",
@@ -92,6 +94,8 @@ function getEnumValue<T extends string>(formData: FormData, name: string, allowe
 
 function normalizeStructuredTraits(formData: FormData) {
   const traits = [
+    ["protectiveness", getOptionalString(formData, "protectiveness")],
+    ["affection_style", getOptionalString(formData, "affection_style")],
     ["training_preference_match", getOptionalString(formData, "training_preference_match")],
     ["people_friendliness", getOptionalString(formData, "people_friendliness")],
     ["dog_social_style", getOptionalString(formData, "dog_social_style")],

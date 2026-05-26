@@ -38,6 +38,7 @@ interface Props {
   bookingId: string;
   initialMessages: AppointmentThreadMessage[];
   initialTab?: Tab;
+  messagesUnavailable?: boolean;
   qrSvg: string;
   status: string | null;
   proposedDate: string | null;
@@ -86,6 +87,7 @@ export default function AppointmentDetailClient({
   dog,
   initialMessages,
   initialTab = "details",
+  messagesUnavailable = false,
   qrSvg,
   proposedDate,
   proposedTime,
@@ -206,6 +208,7 @@ export default function AppointmentDetailClient({
           appointmentId={appointmentId}
           dogName={dog?.name ?? "the shelter"}
           initialMessages={initialMessages}
+          messagesUnavailable={messagesUnavailable}
         />
       )}
 
@@ -608,10 +611,12 @@ function MessagesTab({
   appointmentId,
   dogName,
   initialMessages,
+  messagesUnavailable,
 }: {
   appointmentId: string;
   dogName: string;
   initialMessages: AppointmentThreadMessage[];
+  messagesUnavailable: boolean;
 }) {
   const attachRef = useRef<HTMLInputElement>(null);
   const [localAttachments, setLocalAttachments] = useState<AppointmentThreadMessage[]>([]);
@@ -665,6 +670,13 @@ function MessagesTab({
       />
 
       <div className="flex-1 px-[16px] py-[20px] space-y-[16px] overflow-y-auto">
+        {messagesUnavailable && (
+          <div className="rounded-[14px] border border-[#eadfce] bg-[#fffaf2] px-[14px] py-[12px]">
+            <p className="text-[13px] leading-[1.45] text-[#65584f]" style={{ fontFamily: M }}>
+              Messages are temporarily unavailable. Please try again soon.
+            </p>
+          </div>
+        )}
         <p className="text-center text-[11px] font-semibold tracking-[0.14em] text-[#65584f]/45" style={{ fontFamily: M }}>
           TUESDAY, APR 7, 2026
         </p>
@@ -700,7 +712,8 @@ function MessagesTab({
         <button
           type="button"
           onClick={() => attachRef.current?.click()}
-          className="w-[40px] h-[40px] rounded-full flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform"
+          disabled={messagesUnavailable}
+          className="w-[40px] h-[40px] rounded-full flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform disabled:opacity-55"
           style={{ background: "#d6c8ad" }}
           aria-label="Attach"
         >
@@ -713,13 +726,15 @@ function MessagesTab({
           type="text"
           name="body"
           placeholder="Write your message here"
+          disabled={messagesUnavailable}
           className="flex-1 rounded-full px-[18px] py-[12px] text-[14px] outline-none"
           style={{ background: "#f5f0e8", color: "#65584f", fontFamily: M }}
         />
         <button
           aria-label="Send message"
-          className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full active:scale-95"
+          className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full active:scale-95 disabled:opacity-55"
           style={{ background: "#cd8188" }}
+          disabled={messagesUnavailable}
           type="submit"
         >
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

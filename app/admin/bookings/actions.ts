@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createHash } from "node:crypto";
 import type { Database } from "@/types/database";
+import {
+  APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE,
+  isAppointmentMessagesUnavailableError,
+} from "@/utils/appointment-messages";
 import { isAppointmentTimeSlot, normalizeAppointmentTime } from "@/utils/appointments-model";
+import { sendBookingNotificationForAppointment } from "@/utils/booking-email";
 import { buildAdminBookingDetailPath, getCheckInTokenSecret, hashCheckInToken, verifySignedCheckInToken } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -221,6 +226,8 @@ export async function decideBookingAction(formData: FormData) {
     .eq("id", appointmentId)
     .maybeSingle();
 
+  let updateError = null;
+
   if (decision === "request_change") {
     if (!appointment || !isIsoDate(proposedAppointmentDate) || !isAppointmentTimeSlot(proposedAppointmentTime)) {
       return;
@@ -252,7 +259,7 @@ export async function decideBookingAction(formData: FormData) {
       status,
       updated_at: new Date().toISOString(),
     };
-    await updateAppointmentWithRescheduleFallback({
+    updateError = await updateAppointmentWithRescheduleFallback({
       admin,
       appointmentId,
       legacyUpdate,
@@ -270,7 +277,7 @@ export async function decideBookingAction(formData: FormData) {
       status,
       updated_at: new Date().toISOString(),
     };
-    await updateAppointmentWithRescheduleFallback({
+    updateError = await updateAppointmentWithRescheduleFallback({
       admin,
       appointmentId,
       legacyUpdate,
@@ -282,6 +289,10 @@ export async function decideBookingAction(formData: FormData) {
         reschedule_requested_by: null,
       },
     });
+  }
+
+  if (!updateError && (decision === "accept" || decision === "deny")) {
+    await sendBookingNotificationForAppointment({ admin, appointmentId });
   }
 
   if (decision === "adopted" && appointment?.dog_id) {
@@ -344,7 +355,7 @@ export async function sendShelterMessageAction(formData: FormData) {
     .eq("id", shelterId)
     .maybeSingle();
 
-  const { error } = await (admin as any).from("appointment_messages").insert({
+  const { error } = await admin.from("appointment_messages").insert({
     adopter_id: appointment.adopter_id,
     appointment_id: appointment.id,
     body,
@@ -359,7 +370,11 @@ export async function sendShelterMessageAction(formData: FormData) {
   shelterViewRedirect(
     shelterId,
     "messages",
-    error ? "Message could not be sent. Apply the appointment messages migration first." : "Message sent.",
+    error
+      ? isAppointmentMessagesUnavailableError(error)
+        ? APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE
+        : "Message could not be sent. Please try again."
+      : "Message sent.",
   );
 }
 

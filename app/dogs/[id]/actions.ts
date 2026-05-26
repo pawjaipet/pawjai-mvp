@@ -12,6 +12,7 @@ import {
   getCheckInTokenSecret,
   hashCheckInToken,
 } from "@/utils/booking";
+import { sendBookingNotificationForAppointment } from "@/utils/booking-email";
 import { normalizeAppointmentTime } from "@/utils/appointments-model";
 import { getShelterDaySlots } from "@/utils/shelter-availability";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -146,6 +147,7 @@ export async function bookAppointment(formData: FormData) {
     redirect(`/dogs/${dogId}?message=${encodeURIComponent(message)}`);
   }
 
+  await sendBookingNotificationForAppointment({ admin, appointmentId });
   revalidatePath("/appointments");
   redirect(`/appointments/${appointmentId}`);
 }

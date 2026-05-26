@@ -1,0 +1,205 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
+import { useParams } from "next/navigation";
+import ClientAuthGate from "@/components/auth/ClientAuthGate";
+
+const M = "Montserrat, sans-serif";
+
+type Msg = { id: number; text: string; from: "me" | "shelter"; time: string; imageUrl?: string };
+
+const SHELTER_NAMES: Record<string, string> = {
+  "1": "Soi Dog Foundation",
+  "2": "Ban Rak Nong Shelter",
+  "3": "Happy Paws Bangkok",
+};
+
+const INITIAL_MESSAGES: Record<string, Msg[]> = {
+  "1": [
+    { id: 1, text: "Hi! I'm interested in adopting one of your dogs.", from: "me", time: "10:21" },
+    { id: 2, text: "Hello! Thank you for reaching out. Which dog caught your eye?", from: "shelter", time: "10:35" },
+    { id: 3, text: "I've been looking at Mochi 🐾 She looks absolutely wonderful.", from: "me", time: "10:36" },
+    { id: 4, text: "Mochi is a sweetheart! She's great with kids and very playful. Would you like to schedule a visit?", from: "shelter", time: "10:40" },
+    { id: 5, text: "Thank you for your interest! We'd love to meet you.", from: "shelter", time: "10:41" },
+  ],
+  "2": [
+    { id: 1, text: "Mochi is doing great today 🐾", from: "shelter", time: "Yesterday" },
+  ],
+  "3": [
+    { id: 1, text: "Hi, I booked an appointment for next Saturday. Is that still confirmed?", from: "me", time: "3 days ago" },
+    { id: 2, text: "Your appointment is confirmed for next Saturday.", from: "shelter", time: "3 days ago" },
+  ],
+};
+
+export default function ChatThreadPage() {
+  const { id } = useParams<{ id: string }>();
+  const shelterName = SHELTER_NAMES[id] ?? "Shelter";
+  const [messages, setMessages] = useState<Msg[]>(INITIAL_MESSAGES[id] ?? []);
+  const [input, setInput] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const attachRef = useRef<HTMLInputElement>(null);
+
+  function handleAttachment(files: FileList | null) {
+    if (!files?.length) return;
+    const file = files[0];
+    const now = new Date();
+    const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    if (file.type.startsWith("image/")) {
+      const url = URL.createObjectURL(file);
+      setMessages((prev) => [...prev, { id: Date.now(), text: `[Image: ${file.name}]`, from: "me", time, imageUrl: url }]);
+    } else {
+      setMessages((prev) => [...prev, { id: Date.now(), text: `📎 ${file.name}`, from: "me", time }]);
+    }
+    // Reset so re-picking same file fires onChange again
+    if (attachRef.current) attachRef.current.value = "";
+  }
+
+  function send() {
+    const text = input.trim();
+    if (!text) return;
+    const now = new Date();
+    const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    setMessages((prev) => [...prev, { id: Date.now(), text, from: "me", time }]);
+    setInput("");
+    setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now() + 1, text: "Thanks for your message! We'll get back to you shortly.", from: "shelter", time },
+      ]);
+    }, 1200);
+  }
+
+  return (
+    <ClientAuthGate
+      nextPath={`/messages/${id}`}
+      reason="Sign in to continue your shelter conversation."
+    >
+    <div
+      className="flex flex-col"
+      style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", height: "calc(100dvh - 70px)", background: "#F5F1E8", fontFamily: M }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-[12px] px-[16px] py-[14px] shrink-0" style={{ background: "#d6c8ad" }}>
+        <Link href="/messages" className="w-[36px] h-[36px] rounded-full flex items-center justify-center active:scale-95 transition-transform shrink-0" style={{ background: "rgba(101,88,79,0.15)" }}>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+            <path d="M7 1L1 7L7 13" stroke="#65584f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
+        <div className="w-[40px] h-[40px] rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(101,88,79,0.15)" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#65584f" fillOpacity="0.35" />
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-[15px] text-[#65584f] truncate" style={{ fontFamily: M }}>{shelterName}</p>
+          <p className="text-[11px] text-[#65584f]/50" style={{ fontFamily: M }}>Partner shelter</p>
+        </div>
+        <div className="w-[40px] h-[40px] rounded-full flex items-center justify-center" style={{ background: "rgba(101,88,79,0.15)" }}>
+          <Link href="/" className="block">
+            <div className="w-[36px] h-[36px] relative">
+              <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain" />
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-[16px] py-[16px] space-y-[10px]" style={{ scrollbarWidth: "none" }}>
+        <style>{`div::-webkit-scrollbar{display:none}`}</style>
+
+        {/* Date divider */}
+        <div className="flex items-center gap-[8px] py-[4px]">
+          <div className="flex-1 h-[1px]" style={{ background: "rgba(101,88,79,0.15)" }} />
+          <p className="text-[11px] text-[#65584f]/40" style={{ fontFamily: M }}>Today</p>
+          <div className="flex-1 h-[1px]" style={{ background: "rgba(101,88,79,0.15)" }} />
+        </div>
+
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex ${msg.from === "me" ? "justify-end" : "justify-start"}`}>
+            {msg.from === "shelter" && (
+              <div className="w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 mr-[8px] self-end" style={{ background: "#d6c8ad" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#65584f" fillOpacity="0.4" />
+                </svg>
+              </div>
+            )}
+            <div className="max-w-[72%]">
+              <div
+                className="rounded-[18px] px-[14px] py-[10px] text-[14px] overflow-hidden"
+                style={{
+                  background: msg.from === "me" ? "#cd8188" : "white",
+                  color: msg.from === "me" ? "white" : "#65584f",
+                  fontFamily: M,
+                  borderBottomRightRadius: msg.from === "me" ? 4 : 18,
+                  borderBottomLeftRadius: msg.from === "shelter" ? 4 : 18,
+                }}
+              >
+                {msg.imageUrl ? (
+                  <img src={msg.imageUrl} alt="" className="rounded-[12px] max-w-full max-h-[200px] object-cover" />
+                ) : (
+                  msg.text
+                )}
+              </div>
+              <p className={`text-[10px] mt-[3px] text-[#65584f]/40 ${msg.from === "me" ? "text-right" : "text-left"}`} style={{ fontFamily: M }}>
+                {msg.time}
+              </p>
+            </div>
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Hidden file input — single native picker (#4) */}
+      <input
+        ref={attachRef}
+        type="file"
+        accept="image/*,video/*,application/pdf"
+        className="hidden"
+        onChange={(e) => handleAttachment(e.target.files)}
+      />
+
+      {/* Input */}
+      <div className="shrink-0 px-[16px] py-[12px] flex items-center gap-[10px]" style={{ background: "white", borderTop: "1px solid rgba(214,200,173,0.5)", paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}>
+        <button
+          onClick={() => attachRef.current?.click()}
+          className="w-[44px] h-[44px] rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95"
+          style={{ background: "#cd8188" }}
+          aria-label="Attach"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+          placeholder="Type a message…"
+          className="flex-1 rounded-full px-[16px] py-[10px] text-[14px] text-[#65584f] outline-none border-none"
+          style={{ background: "#F5F1E8", fontFamily: M }}
+        />
+        <button
+          onClick={send}
+          disabled={!input.trim()}
+          className="w-[44px] h-[44px] rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95 disabled:opacity-40"
+          style={{ background: "#cd8188" }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </svg>
+        </button>
+      </div>
+    </div>
+    </ClientAuthGate>
+  );
+}
