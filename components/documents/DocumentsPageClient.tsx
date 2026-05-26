@@ -522,9 +522,6 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
           <Block question="What is your date of birth?">
             <input name="dateOfBirth" type="date" className={inputCls} value={a.dateOfBirth} onChange={(e) => setA({ ...a, dateOfBirth: e.target.value })} style={{ fontFamily: M }} />
           </Block>
-          <Block question="What is your ID or passport number?">
-            <input name="idNumber" type="text" className={inputCls} placeholder="Type here" value={a.idNumber} onChange={(e) => setA({ ...a, idNumber: e.target.value })} style={{ fontFamily: M }} />
-          </Block>
           <Block question="What is your home address?">
             <textarea name="address" rows={3} className={`${inputCls} resize-none`} placeholder="Type here" value={a.address} onChange={(e) => setA({ ...a, address: e.target.value })} style={{ fontFamily: M }} />
           </Block>
@@ -534,7 +531,6 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
           <Block question="What is your phone number?">
             <input name="phone" type="tel" className={inputCls} placeholder="Type here" value={a.phone} onChange={(e) => setA({ ...a, phone: e.target.value })} style={{ fontFamily: M }} />
           </Block>
-          <UploadBox existingLabel={initialData.existingIdFileName} file={a.idFile} label="Upload your ID or passport" name="idFile" onChange={(f) => setA({ ...a, idFile: f })} />
         </SectionWrapper>
 
         <SectionWrapper active={section === "B"}>

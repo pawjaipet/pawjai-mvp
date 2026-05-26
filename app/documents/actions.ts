@@ -167,12 +167,10 @@ export async function submitVerificationDocuments(
   const hasExistingId = (existingDocuments ?? []).some((doc) => doc.document_type === "id_copy");
   const hasExistingHome = (existingDocuments ?? []).some((doc) => doc.document_type === "house_image");
 
-  if (isFinalSubmit && !(idFile instanceof File && idFile.size > 0) && uploadedIdDocuments.length === 0 && !hasExistingId) {
-    return {
-      message: "Please upload an ID or passport file.",
-      status: "error",
-    };
-  }
+  // ID/passport upload + number removed from the verification UI. The data
+  // model still tolerates it being attached later (e.g. post-adoption flow),
+  // so the server keeps reading/writing the column when supplied — just no
+  // longer requires it at submit time.
 
   if (isFinalSubmit && homePhotoFiles.length === 0 && uploadedHomeDocuments.length === 0 && !hasExistingHome) {
     return {
