@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ensureAdopterForUser } from "@/utils/adopter";
-import { buildAuthPath, friendlyAuthMessage, parseAccountCredentials, sanitizeNextPath } from "@/utils/account-model";
+import {
+  buildAuthPath,
+  buildEmailVerificationRedirect,
+  friendlyAuthMessage,
+  parseAccountCredentials,
+  sanitizeNextPath,
+} from "@/utils/account-model";
 import { createClient } from "@/utils/supabase/server";
 
 type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
@@ -78,9 +84,6 @@ export async function signUp(formData: FormData) {
     authRedirect(error instanceof Error ? error.message : "Please check your details.", nextPath);
   }
 
-  const callbackUrl = new URL("/auth/callback", await getRequestOrigin());
-  callbackUrl.searchParams.set("next", nextPath);
-
   const { data, error } = await supabase.auth.signUp({
     email: credentials.email,
     password: credentials.password,
@@ -88,7 +91,7 @@ export async function signUp(formData: FormData) {
       data: {
         full_name: null,
       },
-      emailRedirectTo: callbackUrl.toString(),
+      emailRedirectTo: buildEmailVerificationRedirect(await getRequestOrigin(), nextPath),
     },
   });
 

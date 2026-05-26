@@ -103,3 +103,15 @@ test("maps auth provider errors to customer-friendly messages", () => {
     /verification link is expired/i,
   );
 });
+
+test("builds email verification redirects for token hash templates", () => {
+  const { buildEmailVerificationRedirect } = loadAccountModel();
+  assert.equal(
+    buildEmailVerificationRedirect("https://www.pawjai.co.th", "/filter?breed=small"),
+    "https://www.pawjai.co.th/auth/confirm?next=%2Ffilter%3Fbreed%3Dsmall",
+  );
+  assert.equal(
+    buildEmailVerificationRedirect("https://www.pawjai.co.th", "https://evil.test"),
+    "https://www.pawjai.co.th/auth/confirm?next=%2Fswipe",
+  );
+});

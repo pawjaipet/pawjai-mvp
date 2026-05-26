@@ -104,6 +104,12 @@ export function buildAuthPath({
   return `/auth?${params.toString()}`;
 }
 
+export function buildEmailVerificationRedirect(origin: string, nextPath?: string | null): string {
+  const url = new URL("/auth/confirm", origin);
+  url.searchParams.set("next", sanitizeNextPath(nextPath));
+  return url.toString();
+}
+
 export function friendlyAuthMessage(message: string | null | undefined): string {
   const normalized = String(message ?? "").trim();
   const lower = normalized.toLowerCase();

@@ -4,7 +4,12 @@ import Image from "next/image";
 import type { FormEvent } from "react";
 import { useState, useTransition } from "react";
 import { ensureCurrentUserProfile } from "@/app/auth/actions";
-import { friendlyAuthMessage, parseAccountCredentials, sanitizeNextPath } from "@/utils/account-model";
+import {
+  buildEmailVerificationRedirect,
+  friendlyAuthMessage,
+  parseAccountCredentials,
+  sanitizeNextPath,
+} from "@/utils/account-model";
 import { createClient } from "@/utils/supabase/client";
 
 type AuthFormProps = {
@@ -54,15 +59,12 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
     const supabase = createClient();
 
     if (isSignup) {
-      const callbackUrl = new URL("/auth/callback", window.location.origin);
-      callbackUrl.searchParams.set("next", safeNextPath);
-
       const { data, error } = await supabase.auth.signUp({
         email: credentials.email,
         password: credentials.password,
         options: {
           data: { full_name: null },
-          emailRedirectTo: callbackUrl.toString(),
+          emailRedirectTo: buildEmailVerificationRedirect(window.location.origin, safeNextPath),
         },
       });
 
