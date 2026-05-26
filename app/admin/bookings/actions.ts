@@ -9,6 +9,7 @@ import {
   isAppointmentMessagesUnavailableError,
 } from "@/utils/appointment-messages";
 import { isAppointmentTimeSlot, normalizeAppointmentTime } from "@/utils/appointments-model";
+import { sendBookingNotificationForAppointment } from "@/utils/booking-email";
 import { buildAdminBookingDetailPath, getCheckInTokenSecret, hashCheckInToken, verifySignedCheckInToken } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -225,6 +226,8 @@ export async function decideBookingAction(formData: FormData) {
     .eq("id", appointmentId)
     .maybeSingle();
 
+  let updateError = null;
+
   if (decision === "request_change") {
     if (!appointment || !isIsoDate(proposedAppointmentDate) || !isAppointmentTimeSlot(proposedAppointmentTime)) {
       return;
@@ -256,7 +259,7 @@ export async function decideBookingAction(formData: FormData) {
       status,
       updated_at: new Date().toISOString(),
     };
-    await updateAppointmentWithRescheduleFallback({
+    updateError = await updateAppointmentWithRescheduleFallback({
       admin,
       appointmentId,
       legacyUpdate,
@@ -274,7 +277,7 @@ export async function decideBookingAction(formData: FormData) {
       status,
       updated_at: new Date().toISOString(),
     };
-    await updateAppointmentWithRescheduleFallback({
+    updateError = await updateAppointmentWithRescheduleFallback({
       admin,
       appointmentId,
       legacyUpdate,
@@ -286,6 +289,10 @@ export async function decideBookingAction(formData: FormData) {
         reschedule_requested_by: null,
       },
     });
+  }
+
+  if (!updateError && (decision === "accept" || decision === "deny")) {
+    await sendBookingNotificationForAppointment({ admin, appointmentId });
   }
 
   if (decision === "adopted" && appointment?.dog_id) {
