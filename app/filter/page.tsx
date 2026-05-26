@@ -198,6 +198,35 @@ const questions = [
   },
 ];
 
+// localStorage key for full wizard state — captures all 12 questions including
+// breed (Q2), special needs (Q11), age (Q1) etc. that the backend schema does
+// not yet have columns for. Codex can replace this with proper DB persistence
+// when adopter_preferences gains the missing columns.
+const LS_KEY = "pawjai.filter.v1";
+type PersistedFilter = { answers: Record<number, string[]>; ageRange: [number, number] };
+
+function loadFromLocal(): PersistedFilter | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedFilter;
+    if (parsed && typeof parsed === "object" && parsed.answers) return parsed;
+  } catch {
+    // ignore corrupt JSON
+  }
+  return null;
+}
+
+function saveToLocal(answers: Record<number, string[]>, ageRange: [number, number]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(LS_KEY, JSON.stringify({ answers, ageRange }));
+  } catch {
+    // quota exceeded or storage disabled — ignore
+  }
+}
+
 export default function FilterPage() {
   const router = useRouter();
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -207,13 +236,34 @@ export default function FilterPage() {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [, startTransition] = useTransition();
 
+  // Load from localStorage immediately on mount so breed + special needs + age
+  // (none of which the server persists yet) survive a revisit.
+  useEffect(() => {
+    const local = loadFromLocal();
+    if (local) {
+      setSelectedAnswers((current) => ({ ...current, ...local.answers }));
+      if (Array.isArray(local.ageRange) && local.ageRange.length === 2) {
+        setAgeRange(local.ageRange);
+      }
+    }
+  }, []);
+
+  // Persist to localStorage whenever selections change (no Save & Finish needed
+  // for in-progress wizard state — covers tab close mid-flow).
+  useEffect(() => {
+    saveToLocal(selectedAnswers, ageRange);
+  }, [selectedAnswers, ageRange]);
+
   useEffect(() => {
     let active = true;
     const supabase = createClient();
 
     async function loadSavedPreferences() {
       const saved = await getSavedFilterPreferences();
-      if (active && saved) setSelectedAnswers((current) => ({ ...current, ...saved }));
+      // Server prefs cover only a subset (size, energy, kids/dogs/cats).
+      // Merge them in WITHOUT overwriting locally-stored answers for the
+      // questions the server can't persist yet.
+      if (active && saved) setSelectedAnswers((current) => ({ ...saved, ...current }));
     }
 
     supabase.auth.getUser().then(({ data }) => {
@@ -280,12 +330,21 @@ export default function FilterPage() {
   };
 
   const finishAndSave = () => {
-    // Map question indices to preference fields
+    // Map question indices to backend-supported preference fields.
+    // TODO(codex): backend currently persists only size, energy, kids/dogs/cats.
+    // Breed (Q2), age range (Q1), protectiveness (Q4), affection (Q5),
+    // training (Q6), people friendliness (Q7), and special needs (Q11) are
+    // saved client-side via localStorage in this commit. Extend
+    // adopter_preferences with the missing columns and update
+    // saveFilterPreferences/getSavedFilterPreferences accordingly.
     const sizeQ = selectedAnswers[0] ?? [];         // Q0: size cards
     const energyQ = selectedAnswers[3] ?? [];        // Q3: activity cards
     const kidsQ = selectedAnswers[10] ?? [];         // Q10: kids
     const dogsQ = selectedAnswers[8] ?? [];          // Q8: other dogs
     const catsQ = selectedAnswers[9] ?? [];          // Q9: cats
+
+    // Ensure all 12 answers are persisted locally before navigation.
+    saveToLocal(selectedAnswers, ageRange);
 
     startTransition(async () => {
       await saveFilterPreferences({
@@ -523,7 +582,7 @@ export default function FilterPage() {
             fontFamily: "Montserrat, sans-serif",
           }}
         >
-          {currentQuestion === questions.length - 1 ? "Save & Finish" : "Continue"}
+          {currentQuestion === questions.length - 1 ? "Show Dogs" : "Continue"}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
