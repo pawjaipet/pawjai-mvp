@@ -170,6 +170,34 @@ function statusForDecision(decision: BookingDecision): AppointmentStatus {
   }
 }
 
+async function updateAppointmentWithRescheduleFallback({
+  admin,
+  appointmentId,
+  legacyUpdate,
+  update,
+}: {
+  admin: ReturnType<typeof createAdminClient>;
+  appointmentId: string;
+  legacyUpdate: Record<string, unknown>;
+  update: Record<string, unknown>;
+}) {
+  const { error } = await (admin as any)
+    .from("appointments")
+    .update(update)
+    .eq("id", appointmentId);
+
+  if (!isMissingSchemaError(error)) {
+    return error;
+  }
+
+  const { error: fallbackError } = await admin
+    .from("appointments")
+    .update(legacyUpdate as any)
+    .eq("id", appointmentId);
+
+  return fallbackError;
+}
+
 export async function decideBookingAction(formData: FormData) {
   if (!(await isAdminGateOpen())) {
     return;
@@ -219,31 +247,41 @@ export async function decideBookingAction(formData: FormData) {
       return;
     }
 
-    await (admin as any)
-      .from("appointments")
-      .update({
+    const legacyUpdate = {
+      shelter_note: shelterNote || "Shelter requested a different visit date/time.",
+      status,
+      updated_at: new Date().toISOString(),
+    };
+    await updateAppointmentWithRescheduleFallback({
+      admin,
+      appointmentId,
+      legacyUpdate,
+      update: {
+        ...legacyUpdate,
         proposed_appointment_date: proposedAppointmentDate,
         proposed_appointment_time: proposedAppointmentTime,
         reschedule_note: shelterNote || null,
         reschedule_requested_by: "shelter",
-        shelter_note: shelterNote || "Shelter requested a different visit date/time.",
-        status,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", appointmentId);
+      },
+    });
   } else {
-    await (admin as any)
-      .from("appointments")
-      .update({
+    const legacyUpdate = {
+      shelter_note: shelterNote || (decision === "adopted" ? "Visitor adopted this dog after the visit." : null),
+      status,
+      updated_at: new Date().toISOString(),
+    };
+    await updateAppointmentWithRescheduleFallback({
+      admin,
+      appointmentId,
+      legacyUpdate,
+      update: {
+        ...legacyUpdate,
         proposed_appointment_date: null,
         proposed_appointment_time: null,
         reschedule_note: null,
         reschedule_requested_by: null,
-        shelter_note: shelterNote || (decision === "adopted" ? "Visitor adopted this dog after the visit." : null),
-        status,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", appointmentId);
+      },
+    });
   }
 
   if (decision === "adopted" && appointment?.dog_id) {
