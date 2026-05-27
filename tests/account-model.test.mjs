@@ -50,6 +50,16 @@ test("rejects weak credentials before auth calls", () => {
   );
 });
 
+test("normalizes email verification codes", () => {
+  const { parseVerificationCode } = loadAccountModel();
+  assert.equal(parseVerificationCode(" 123 456 "), "123456");
+  assert.equal(parseVerificationCode("123-456"), "123456");
+  assert.throws(
+    () => parseVerificationCode("12345"),
+    /6-digit/i,
+  );
+});
+
 test("rejects mismatched sign up passwords", () => {
   const { parseAccountCredentials } = loadAccountModel();
   assert.throws(
@@ -105,7 +115,8 @@ test("maps auth provider errors to customer-friendly messages", () => {
 });
 
 test("builds email verification redirects for token hash templates", () => {
-  const { buildEmailVerificationRedirect } = loadAccountModel();
+  const { buildEmailVerificationRedirect, getCanonicalAuthOrigin } = loadAccountModel();
+  assert.equal(getCanonicalAuthOrigin("https://pawjai.co.th"), "https://www.pawjai.co.th");
   assert.equal(
     buildEmailVerificationRedirect("https://www.pawjai.co.th", "/filter?breed=small"),
     "https://www.pawjai.co.th/auth/confirm?next=%2Ffilter%3Fbreed%3Dsmall",

@@ -32,6 +32,16 @@ export function parseAccountCredentials(input: AccountCredentialInput): AccountC
   return { email, password, fullName };
 }
 
+export function parseVerificationCode(value: FormDataEntryValue | string | null): string {
+  const code = String(value ?? "").replace(/[\s-]/g, "");
+
+  if (!/^\d{6}$/.test(code)) {
+    throw new Error("Enter the 6-digit verification code from your email.");
+  }
+
+  return code;
+}
+
 export function optionalString(value: FormDataEntryValue | null): string | null {
   const normalized = String(value ?? "").trim();
   return normalized || null;
@@ -104,8 +114,22 @@ export function buildAuthPath({
   return `/auth?${params.toString()}`;
 }
 
+export function getCanonicalAuthOrigin(origin: string): string {
+  const url = new URL(origin);
+
+  if (url.hostname === "pawjai.co.th") {
+    url.hostname = "www.pawjai.co.th";
+    url.protocol = "https:";
+  }
+
+  url.pathname = "";
+  url.search = "";
+  url.hash = "";
+  return url.toString().replace(/\/$/, "");
+}
+
 export function buildEmailVerificationRedirect(origin: string, nextPath?: string | null): string {
-  const url = new URL("/auth/confirm", origin);
+  const url = new URL("/auth/confirm", getCanonicalAuthOrigin(origin));
   url.searchParams.set("next", sanitizeNextPath(nextPath));
   return url.toString();
 }

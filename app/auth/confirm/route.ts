@@ -20,6 +20,28 @@ function redirectToAuth(request: NextRequest, nextPath: string, message: string)
   return NextResponse.redirect(authUrl);
 }
 
+async function verifyTokenHash(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tokenHash: string,
+  type: EmailOtpType,
+) {
+  const typeAttempts: EmailOtpType[] =
+    type === "email" ? ["email", "signup"] : type === "signup" ? ["signup", "email"] : [type];
+  let lastError: { message: string } | null = null;
+
+  for (const typeAttempt of typeAttempts) {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: typeAttempt,
+    });
+
+    if (!error) return null;
+    lastError = error;
+  }
+
+  return lastError;
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const tokenHash = requestUrl.searchParams.get("token_hash");
@@ -36,10 +58,7 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({
-    token_hash: tokenHash,
-    type,
-  });
+  const error = await verifyTokenHash(supabase, tokenHash, type);
 
   if (error) {
     return redirectToAuth(request, nextPath, error.message);
