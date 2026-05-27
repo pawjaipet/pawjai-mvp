@@ -5,6 +5,7 @@ node_modules/
 
 # next.js
 .next/
+.next.corrupt-*/
 out/
 
 # env
@@ -23,3 +24,5 @@ npm-debug.log*
 next-env.d.ts
 .codex-auth-profile-smoke.png
 pawjaidogs/
+pawjai related secrets/
+IMG_6829*.PNG
