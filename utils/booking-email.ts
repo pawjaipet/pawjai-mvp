@@ -22,7 +22,6 @@ type BookingEmailDetails = {
 };
 
 type BookingNotificationRecipientInput = {
-  overrideEmail?: string | null;
   recipientEmail?: string | null;
 };
 
@@ -54,10 +53,9 @@ function statusCopy(status: BookingEmailStatus) {
 }
 
 export function getBookingNotificationRecipient({
-  overrideEmail,
   recipientEmail,
 }: BookingNotificationRecipientInput) {
-  return String(overrideEmail || recipientEmail || FALLBACK_NOTIFICATION_TO).trim();
+  return String(recipientEmail || FALLBACK_NOTIFICATION_TO).trim();
 }
 
 export function buildBookingNotificationEmail(details: BookingEmailDetails) {
@@ -96,7 +94,6 @@ export function buildBookingNotificationEmail(details: BookingEmailDetails) {
     subject: `PawJai booking ${details.appointment.bookingCode} ${status.subjectAction}`,
     text,
     to: getBookingNotificationRecipient({
-      overrideEmail: process.env.PAWJAI_BOOKING_EMAIL_TO,
       recipientEmail: details.recipientEmail,
     }),
   };
@@ -104,6 +101,11 @@ export function buildBookingNotificationEmail(details: BookingEmailDetails) {
 
 export async function sendBookingNotificationEmail(details: BookingEmailDetails) {
   const message = buildBookingNotificationEmail(details);
+  console.info("Sending booking notification email", {
+    bookingCode: details.appointment.bookingCode,
+    status: details.appointment.status,
+    to: message.to,
+  });
 
   try {
     const resend = getResendClient();
@@ -126,7 +128,7 @@ export async function sendBookingNotificationForAppointment({
 }) {
   const { data: appointment, error } = await admin
     .from("appointments")
-    .select("id, adopter_id, dog_id, shelter_id, booking_code, status")
+    .select("id, adopter_id, dog_id, shelter_id, status")
     .eq("id", appointmentId)
     .maybeSingle();
 
@@ -156,7 +158,7 @@ export async function sendBookingNotificationForAppointment({
 
   await sendBookingNotificationEmail({
     appointment: {
-      bookingCode: appointment.booking_code ?? `APT-${appointment.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5)}`,
+      bookingCode: `APT-${appointment.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5)}`,
       status: appointment.status,
     },
     dogName: dogResult.data?.name ?? null,
