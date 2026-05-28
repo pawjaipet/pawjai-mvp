@@ -387,6 +387,30 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["dogs"]["Insert"]>
         Relationships: []
       }
+      pawjai_profile: {
+        Row: {
+          contact_items: Json
+          created_at: string
+          hero_slogan: string
+          id: string
+          mission_body: string
+          mission_title: string
+          partner_shelters: Json
+          updated_at: string
+        }
+        Insert: {
+          contact_items?: Json
+          created_at?: string
+          hero_slogan?: string
+          id?: string
+          mission_body?: string
+          mission_title?: string
+          partner_shelters?: Json
+          updated_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["pawjai_profile"]["Insert"]>
+        Relationships: []
+      }
       profiles: {
         Row: {
           cover_photo_url: string | null
@@ -530,6 +554,7 @@ export type Database = {
 export type Dog = Database["public"]["Tables"]["dogs"]["Row"]
 export type DogPhoto = Database["public"]["Tables"]["dog_photos"]["Row"]
 export type DogTrait = Database["public"]["Tables"]["dog_traits"]["Row"]
+export type PawjaiProfile = Database["public"]["Tables"]["pawjai_profile"]["Row"]
 export type Shelter = Database["public"]["Tables"]["shelters"]["Row"]
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 export type Adopter = Database["public"]["Tables"]["adopters"]["Row"]

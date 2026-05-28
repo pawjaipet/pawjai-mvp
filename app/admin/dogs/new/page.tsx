@@ -219,6 +219,9 @@ export async function AdminDogManagementPage({
           <TabLink href="/admin/ads" active={false}>
             Ads
           </TabLink>
+          <TabLink href="/admin/pawjaiprofile" active={false}>
+            About content
+          </TabLink>
           <form action={lockAdminGateAction}>
             <button
               type="submit"
