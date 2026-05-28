@@ -28,12 +28,42 @@ export const APPOINTMENT_TIME_SLOTS = [
   "16:00",
 ] as const;
 
+const LEGACY_RESCHEDULE_PREFIX = "Shelter requested a different visit date/time";
+const LEGACY_RESCHEDULE_PATTERN = /^Shelter requested a different visit date\/time: (\d{4}-\d{2}-\d{2}) at (\d{2}:\d{2})(?:\. (.*))?$/;
+
 export function normalizeAppointmentTime(time: string) {
   return time.slice(0, 5);
 }
 
 export function isAppointmentTimeSlot(time: string) {
   return APPOINTMENT_TIME_SLOTS.includes(normalizeAppointmentTime(time) as (typeof APPOINTMENT_TIME_SLOTS)[number]);
+}
+
+export function buildLegacyRescheduleNote({
+  note,
+  proposedDate,
+  proposedTime,
+}: {
+  note?: string | null;
+  proposedDate: string;
+  proposedTime: string;
+}) {
+  const cleanNote = note?.trim();
+  return `${LEGACY_RESCHEDULE_PREFIX}: ${proposedDate} at ${normalizeAppointmentTime(proposedTime)}${cleanNote ? `. ${cleanNote}` : ""}`;
+}
+
+export function parseLegacyRescheduleNote(note?: string | null) {
+  if (!note?.startsWith(LEGACY_RESCHEDULE_PREFIX)) return null;
+  const match = note.match(LEGACY_RESCHEDULE_PATTERN);
+  if (!match) return null;
+  const proposedDate = match[1];
+  const proposedTime = normalizeAppointmentTime(match[2]);
+  if (!isAppointmentTimeSlot(proposedTime)) return null;
+  return {
+    note: match[3]?.trim() || null,
+    proposedDate,
+    proposedTime,
+  };
 }
 
 export function isPastAppointment(appointment: AppointmentSummary, today: string) {

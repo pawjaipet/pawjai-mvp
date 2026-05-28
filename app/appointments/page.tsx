@@ -9,6 +9,7 @@ import {
   getAppointmentStatusCopy,
   isPastAppointmentByTime,
   normalizeAppointmentTime,
+  parseLegacyRescheduleNote,
 } from "@/utils/appointments-model";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
@@ -107,21 +108,25 @@ export default async function AppointmentsPage({
               proposed_appointment_time?: string | null;
               reschedule_note?: string | null;
             };
-            const proposedTime = reschedule.proposed_appointment_time
-              ? new Date(`1970-01-01T${normalizeAppointmentTime(reschedule.proposed_appointment_time)}`).toLocaleTimeString("en-US", {
+            const legacyReschedule = parseLegacyRescheduleNote(appt.shelter_note);
+            const proposedDateValue = reschedule.proposed_appointment_date ?? legacyReschedule?.proposedDate ?? null;
+            const proposedTimeValue = reschedule.proposed_appointment_time ?? legacyReschedule?.proposedTime ?? null;
+            const proposedTime = proposedTimeValue
+              ? new Date(`1970-01-01T${normalizeAppointmentTime(proposedTimeValue)}`).toLocaleTimeString("en-US", {
                   hour: "numeric",
                   minute: "2-digit",
                 })
               : "";
-            const proposedDate = reschedule.proposed_appointment_date
-              ? new Date(`${reschedule.proposed_appointment_date}T00:00:00`).toLocaleDateString("en-US", {
+            const proposedDate = proposedDateValue
+              ? new Date(`${proposedDateValue}T00:00:00`).toLocaleDateString("en-US", {
                   day: "numeric",
                   month: "short",
                   weekday: "short",
                   year: "numeric",
                 })
               : "";
-            const hasRescheduleRequest = Boolean(reschedule.proposed_appointment_date && reschedule.proposed_appointment_time && !isPastCard);
+            const rescheduleNote = reschedule.reschedule_note ?? legacyReschedule?.note ?? null;
+            const hasRescheduleRequest = Boolean(proposedDateValue && proposedTimeValue && !isPastCard);
 
             return (
               <article
@@ -198,9 +203,9 @@ export default async function AppointmentsPage({
                     <p className="mt-[6px] text-[14px] font-bold leading-[1.4] text-[#65584f]" style={{ fontFamily: M }}>
                       {proposedDate} at {proposedTime}
                     </p>
-                    {reschedule.reschedule_note || appt.shelter_note ? (
+                    {rescheduleNote ? (
                       <p className="mt-[5px] text-[12px] leading-[1.5] text-[#65584f]/65" style={{ fontFamily: M }}>
-                        {reschedule.reschedule_note || appt.shelter_note}
+                        {rescheduleNote}
                       </p>
                     ) : null}
                     <div className="mt-[12px] grid grid-cols-3 gap-[8px]">

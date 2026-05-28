@@ -6,6 +6,7 @@ import AppointmentDetailClient from "@/components/appointments/AppointmentDetail
 import { ensureAdopterForUser } from "@/utils/adopter";
 import type { AppointmentMessageRow } from "@/utils/appointment-messages";
 import { isAppointmentMessagesUnavailableError } from "@/utils/appointment-messages";
+import { parseLegacyRescheduleNote } from "@/utils/appointments-model";
 import {
   buildCheckInUrl,
   createSignedCheckInToken,
@@ -151,6 +152,7 @@ export default async function AppointmentDetailPage({
   // Compute whether slot has passed (start time + 1hr <= now)
   const slotStart = new Date(`${appt.appointment_date}T${appt.appointment_time}`);
   const isPast = slotStart.getTime() + 60 * 60 * 1000 <= Date.now();
+  const legacyReschedule = parseLegacyRescheduleNote(appt.shelter_note);
   const initialMessages = ((messageRows ?? []) as Pick<
     AppointmentMessageRow,
     "body" | "created_at" | "id" | "sender_label" | "sender_role"
@@ -171,9 +173,9 @@ export default async function AppointmentDetailPage({
       initialTab={resolvedSearchParams?.tab === "messages" ? "messages" : "details"}
       qrSvg={qrSvg}
       status={appt.status}
-      proposedDate={(appt as any).proposed_appointment_date ?? null}
-      proposedTime={(appt as any).proposed_appointment_time ?? null}
-      rescheduleNote={(appt as any).reschedule_note ?? null}
+      proposedDate={(appt as any).proposed_appointment_date ?? legacyReschedule?.proposedDate ?? null}
+      proposedTime={(appt as any).proposed_appointment_time ?? legacyReschedule?.proposedTime ?? null}
+      rescheduleNote={(appt as any).reschedule_note ?? legacyReschedule?.note ?? null}
       isPast={isPast}
       dog={dog ? { id: dog.id, name: dog.name, breed: dog.breed, coverUrl } : null}
       shelter={

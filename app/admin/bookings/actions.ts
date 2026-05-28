@@ -8,7 +8,7 @@ import {
   APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE,
   isAppointmentMessagesUnavailableError,
 } from "@/utils/appointment-messages";
-import { isAppointmentTimeSlot, normalizeAppointmentTime } from "@/utils/appointments-model";
+import { buildLegacyRescheduleNote, isAppointmentTimeSlot, normalizeAppointmentTime } from "@/utils/appointments-model";
 import { sendBookingNotificationForAppointment } from "@/utils/booking-email";
 import { buildAdminBookingDetailPath, getCheckInTokenSecret, hashCheckInToken, verifySignedCheckInToken } from "@/utils/booking";
 import { isAdminGateOpen } from "@/utils/admin-auth";
@@ -255,7 +255,11 @@ export async function decideBookingAction(formData: FormData) {
     }
 
     const legacyUpdate = {
-      shelter_note: shelterNote || "Shelter requested a different visit date/time.",
+      shelter_note: buildLegacyRescheduleNote({
+        note: shelterNote,
+        proposedDate: proposedAppointmentDate,
+        proposedTime: proposedAppointmentTime,
+      }),
       status,
       updated_at: new Date().toISOString(),
     };
