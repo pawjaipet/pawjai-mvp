@@ -60,6 +60,15 @@ const MAX_VIDEO_UPLOAD_BYTES = 100 * 1024 * 1024;
 const DOG_VIDEO_DURATION_SECONDS = 10;
 const execFileAsync = promisify(execFile);
 
+async function fileExists(filePath: string) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 type UploadedPhoto = {
   backblazeMirrorError?: string;
   publicUrl: string;
@@ -515,33 +524,46 @@ async function optimizeDogVideo(body: Buffer, contentType: string | null) {
     const ffmpegModule = await import("ffmpeg-static");
     const ffmpegPath = ffmpegModule.default;
 
-    if (!ffmpegPath) {
+    if (!ffmpegPath || !(await fileExists(ffmpegPath))) {
       if (contentType === "video/mp4") return body;
       throw new Error("Video compression is unavailable on this machine.");
     }
 
     await fs.writeFile(inputPath, body);
-    await execFileAsync(ffmpegPath, [
-      "-y",
-      "-i",
-      inputPath,
-      "-t",
-      String(DOG_VIDEO_DURATION_SECONDS),
-      "-an",
-      "-vf",
-      "scale='if(gt(iw,ih),720,-2)':'if(gt(iw,ih),-2,720)'",
-      "-c:v",
-      "libx264",
-      "-preset",
-      "veryfast",
-      "-crf",
-      "28",
-      "-pix_fmt",
-      "yuv420p",
-      "-movflags",
-      "+faststart",
-      outputPath,
-    ]);
+    try {
+      await execFileAsync(ffmpegPath, [
+        "-y",
+        "-i",
+        inputPath,
+        "-t",
+        String(DOG_VIDEO_DURATION_SECONDS),
+        "-an",
+        "-vf",
+        "scale='if(gt(iw,ih),720,-2)':'if(gt(iw,ih),-2,720)'",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "28",
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart",
+        outputPath,
+      ]);
+    } catch (error) {
+      if (
+        contentType === "video/mp4" &&
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "ENOENT"
+      ) {
+        return body;
+      }
+
+      throw error;
+    }
 
     return fs.readFile(outputPath);
   } finally {

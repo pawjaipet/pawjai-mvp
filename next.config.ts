@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "100mb",
     },
   },
+  outputFileTracingIncludes: {
+    "/admin/**/*": ["./node_modules/ffmpeg-static/ffmpeg"],
+  },
+  serverExternalPackages: ["ffmpeg-static"],
   images: {
     remotePatterns: [
       {
