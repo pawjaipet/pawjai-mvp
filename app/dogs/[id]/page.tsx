@@ -6,6 +6,7 @@ import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adop
 import { createAdminClient } from "@/utils/supabase/admin";
 import AuthPromptButton from "@/components/auth/AuthPromptButton";
 import DogPhotoGallery from "@/components/dogs/DogPhotoGallery";
+import TreatButton from "@/components/donations/TreatButton";
 import type { DogPhoto, DogTrait } from "@/types/database";
 import { buildDogMediaItems } from "@/utils/dog-media";
 import { toggleWishlist } from "./actions";
@@ -45,10 +46,17 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 export default async function DogProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ treat?: string }>;
 }) {
   const { id } = await params;
+  const { treat: treatParam } = await searchParams;
+  const autoOpenTreatCount = (() => {
+    const n = Number(treatParam);
+    return Number.isInteger(n) && n > 0 ? n : null;
+  })();
   const supabase = await createClient();
   const {
     data: { user },
@@ -161,6 +169,20 @@ export default async function DogProfilePage({
         >
           <ArrowLeft size={22} stroke="white" strokeWidth={2.2} />
         </Link>
+
+        {/* Treat button — floating left, below the back arrow */}
+        <div className="absolute left-[14px] top-[74px] z-10">
+          <TreatButton
+            variant="floating"
+            size="sm"
+            dogId={dog.id}
+            dogName={dog.name}
+            shelterId={dog.shelter_id}
+            shelterName={shelter?.name ?? "their shelter"}
+            dogPhotoUrl={orderedPhotos[0]?.public_url ?? null}
+            isLoggedIn={Boolean(user)}
+          />
+        </div>
 
         {/* PawJai watermark — non-interactive branding bottom-right of hero */}
         <img
@@ -353,6 +375,20 @@ export default async function DogProfilePage({
               Sign in to book a visit
             </AuthPromptButton>
           )}
+        </div>
+
+        {/* Treat CTA — secondary outlined button below the appointment CTA */}
+        <div className="mt-[10px]">
+          <TreatButton
+            variant="cta"
+            dogId={dog.id}
+            dogName={dog.name}
+            shelterId={dog.shelter_id}
+            shelterName={shelter?.name ?? "their shelter"}
+            dogPhotoUrl={orderedPhotos[0]?.public_url ?? null}
+            isLoggedIn={Boolean(user)}
+            autoOpenCount={autoOpenTreatCount}
+          />
         </div>
       </div>
     </div>

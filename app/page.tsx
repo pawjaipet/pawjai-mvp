@@ -83,6 +83,14 @@ async function getDogs(preference: PreferenceForDogFilter | null): Promise<Swipe
       trait_value: trait.trait_value,
     });
   }
+  const shelterIds = Array.from(new Set(dogs.map((d) => d.shelter_id).filter(Boolean)));
+  const { data: shelters } = await supabase
+    .from("shelters")
+    .select("id, name")
+    .in("id", shelterIds);
+  const shelterNameMap = new Map<string, string>();
+  for (const s of shelters ?? []) shelterNameMap.set(s.id, s.name);
+
   const videoMap = new Map<string, { public_url: string; poster_url: string | null }>();
   for (const [dogId, dogTraits] of traitMap) {
     const publicUrl = dogTraits.find((trait) => trait.trait_type === "cover_video_url")?.trait_value;
@@ -106,6 +114,7 @@ async function getDogs(preference: PreferenceForDogFilter | null): Promise<Swipe
   return matchingDogs
     .map((d) => ({
       ...d,
+      shelter_name: shelterNameMap.get(d.shelter_id) ?? null,
       photos: photoMap.get(d.id) ?? [],
       traits: traitMap.get(d.id) ?? [],
       media: buildDogMediaItems({

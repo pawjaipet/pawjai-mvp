@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Share2, CalendarDays, Bookmark } from "lucide-react";
 import { toggleWishlistAction } from "@/app/actions/wishlist";
 import { useAuthModal } from "@/components/auth/AuthProvider";
+import TreatButton from "@/components/donations/TreatButton";
 import type { Dog, DogPhoto, DogTrait } from "@/types/database";
 import type { DogMediaItem } from "@/utils/dog-media";
 
@@ -13,6 +14,7 @@ export type SwipeDog = Dog & {
   traits?: Pick<DogTrait, "trait_type" | "trait_value">[];
   media?: DogMediaItem[];
   video?: { poster_url: string | null; public_url: string } | null;
+  shelter_name?: string | null;
 };
 
 function ageLabel(months: number | null) {
@@ -308,6 +310,19 @@ export default function SwipeDogCard({
         >
           <Bookmark size={24} stroke="white" fill={saved ? "white" : "none"} strokeWidth={2} />
         </button>
+      </div>
+
+      {/* Treat button — left edge, vertically aligned with the bookmark button */}
+      <div className="absolute left-4 top-1/2 translate-y-[94px] z-10">
+        <TreatButton
+          variant="swipe"
+          dogId={dog.id}
+          dogName={dog.name}
+          shelterId={dog.shelter_id}
+          shelterName={dog.shelter_name ?? "their shelter"}
+          dogPhotoUrl={photoMedia[0]?.publicUrl ?? null}
+          isLoggedIn={isLoggedIn}
+        />
       </div>
     </div>
   );
