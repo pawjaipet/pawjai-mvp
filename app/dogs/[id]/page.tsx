@@ -173,7 +173,6 @@ export default async function DogProfilePage({
             bottom: "70px",
             height: "44px",
             width: "auto",
-            opacity: 0.55,
             filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.35))",
           }}
         />
