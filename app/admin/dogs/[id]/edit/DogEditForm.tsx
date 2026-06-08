@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useState } from "react";
 import type { Database, DogPhoto, DogTrait } from "@/types/database";
 import { buildDogMediaItems, type DogMediaItem } from "@/utils/dog-media";
 import { deleteDogProfileAction, updateDogProfileAction } from "./actions";
@@ -88,6 +89,8 @@ function formatFieldErrorLabel(key: string) {
     shelter_id: "Shelter",
     weight_kg: "Weight in kg",
   };
+
+  if (key.startsWith("new_photo_")) return "New photo upload";
 
   return labels[key] ?? key.replaceAll("_", " ");
 }
@@ -313,10 +316,18 @@ export default function DogEditForm({
   shelters: ShelterOption[];
   traits: DogTrait[];
 }) {
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(
     updateDogProfileAction,
     initialEditDogProfileState,
   );
+
+  useEffect(() => {
+    if (state.status === "success") {
+      router.refresh();
+    }
+  }, [router, state.status]);
+
   const personalityTraitValues = traits
     .filter((trait) => trait.trait_type === "personality")
     .map((trait) => trait.trait_value);
@@ -645,7 +656,28 @@ export default function DogEditForm({
           title="Photos and Video"
           description="Choose the cover and arrange the exact order users should see on swipe cards and dog profiles."
         >
-          <MediaOrderEditor dogName={dog.name} items={mediaItems} />
+          <div className="space-y-6">
+            <MediaOrderEditor dogName={dog.name} items={mediaItems} />
+
+            <div className="rounded-3xl border border-dashed border-[#d8c8ad] bg-[#fffdfa] p-5">
+              <Field
+                label="Add new photos"
+                error={state.fieldErrors?.new_photo_0}
+                hint="Upload JPG, PNG, WEBP, or HEIC photos. New photos are compressed, saved to storage, and appended after the current media when you press Save."
+              >
+                <input
+                  name="new_photo_files"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
+                  multiple
+                  className="block w-full rounded-2xl border border-[#e7dbc8] bg-white px-4 py-3 text-sm text-[#5b4d40] file:mr-4 file:rounded-full file:border-0 file:bg-[#d38a2c] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#bf781f]"
+                />
+              </Field>
+              <p className="mt-3 text-xs leading-5 text-[#8c7d70]">
+                After saving, the page refreshes and the new photos can be moved up, moved down, or selected as the cover.
+              </p>
+            </div>
+          </div>
         </Section>
 
         {state.message ? (

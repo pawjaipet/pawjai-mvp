@@ -2,13 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { execFile } from "node:child_process";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { promisify } from "node:util";
 import type { Database } from "@/types/database";
 import { isAdminGateOpen } from "@/utils/admin-auth";
+import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { buildDogMediaItems, parseDogMediaManifest } from "@/utils/dog-media";
+import { slugify } from "@/utils/slug";
 import { createAdminClient } from "@/utils/supabase/admin";
 import type { EditDogProfileState } from "./form-state";
 
 type DogUpdate = Database["public"]["Tables"]["dogs"]["Update"];
+type DogPhotoInsert = Database["public"]["Tables"]["dog_photos"]["Insert"];
 type DogTraitInsert = Database["public"]["Tables"]["dog_traits"]["Insert"];
 type SupabaseAdminClient = ReturnType<typeof createAdminClient>;
 
@@ -49,6 +57,23 @@ const EDITABLE_TRAIT_TYPES = [
   "personality",
   "medical_needs",
 ];
+const DOG_PHOTOS_BUCKET = "dog-photos";
+const DOG_STORAGE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const MAX_DOG_PHOTO_HEIGHT = 2400;
+const MAX_DOG_PHOTO_WIDTH = 1800;
+const DOG_PHOTO_JPEG_QUALITY = 78;
+const execFileAsync = promisify(execFile);
+
+type OptimizedPhoto = {
+  body: Buffer;
+  contentType: string;
+  extension: string;
+};
+
+type UploadedPhoto = {
+  publicUrl: string;
+  storagePath: string;
+};
 
 function getString(formData: FormData, name: string) {
   const value = formData.get(name);
@@ -90,6 +115,248 @@ function getEnumValue<T extends string>(formData: FormData, name: string, allowe
   const value = getString(formData, name);
   if (allowed.has(value as T)) return value as T;
   return fallback ?? null;
+}
+
+function extensionFromContentType(contentType: string | null) {
+  const type = contentType?.split(";")[0]?.trim().toLowerCase();
+
+  switch (type) {
+    case "image/jpeg":
+      return "jpg";
+    case "image/png":
+      return "png";
+    case "image/webp":
+      return "webp";
+    case "image/heic":
+      return "heic";
+    case "image/heif":
+      return "heif";
+    default:
+      return "bin";
+  }
+}
+
+function guessExtensionFromFileName(fileName: string) {
+  const extension = path.extname(fileName).replace(/^\./, "").toLowerCase();
+  return extension || null;
+}
+
+function isHeicImage(contentType: string | null, extension: string | null) {
+  const normalizedType = contentType?.split(";")[0]?.trim().toLowerCase();
+  const normalizedExtension = extension?.replace(/^\./, "").toLowerCase();
+
+  return (
+    normalizedType === "image/heic" ||
+    normalizedType === "image/heif" ||
+    normalizedExtension === "heic" ||
+    normalizedExtension === "heif"
+  );
+}
+
+function isHeicFile(file: File) {
+  return isHeicImage(file.type, guessExtensionFromFileName(file.name));
+}
+
+function normalizeNewPhotoFiles(formData: FormData) {
+  return formData
+    .getAll("new_photo_files")
+    .filter((value): value is File => value instanceof File && value.size > 0);
+}
+
+async function convertHeicToJpeg(body: Buffer) {
+  try {
+    const heicConvert = (await import("heic-convert")).default;
+    const jpeg = await heicConvert({
+      buffer: body as unknown as ArrayBufferLike,
+      format: "JPEG",
+      quality: DOG_PHOTO_JPEG_QUALITY / 100,
+    });
+
+    return Buffer.from(jpeg);
+  } catch (heicConvertError) {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pawjai-heic-"));
+    const inputPath = path.join(tempDir, "input.heic");
+    const outputPath = path.join(tempDir, "output.jpg");
+
+    try {
+      await fs.writeFile(inputPath, body);
+      await execFileAsync("/usr/bin/sips", ["-s", "format", "jpeg", inputPath, "--out", outputPath]);
+      return await fs.readFile(outputPath);
+    } catch {
+      throw new Error(
+        `This HEIC photo could not be converted to JPG. Please try a different export of the same photo. ${
+          heicConvertError instanceof Error ? heicConvertError.message : ""
+        }`,
+      );
+    } finally {
+      await fs.rm(tempDir, { force: true, recursive: true });
+    }
+  }
+}
+
+async function optimizeDogPhoto({
+  body,
+  contentType,
+  extension,
+}: {
+  body: Buffer;
+  contentType: string | null;
+  extension: string | null;
+}): Promise<OptimizedPhoto> {
+  const isHeic = isHeicImage(contentType, extension);
+  const sourceBody = isHeic ? await convertHeicToJpeg(body) : body;
+  const sourceContentType = isHeic ? "image/jpeg" : contentType;
+  const sourceExtension = isHeic ? "jpg" : extension;
+
+  try {
+    const { default: sharp } = await import("sharp");
+    const optimizedBody = await sharp(sourceBody, { failOn: "none" })
+      .rotate()
+      .resize({
+        fit: "inside",
+        height: MAX_DOG_PHOTO_HEIGHT,
+        width: MAX_DOG_PHOTO_WIDTH,
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        mozjpeg: true,
+        quality: DOG_PHOTO_JPEG_QUALITY,
+      })
+      .toBuffer();
+
+    return {
+      body: optimizedBody,
+      contentType: "image/jpeg",
+      extension: "jpg",
+    };
+  } catch {
+    const fallbackContentType = sourceContentType?.split(";")[0]?.trim() || "application/octet-stream";
+
+    if (!DOG_STORAGE_IMAGE_MIME_TYPES.has(fallbackContentType)) {
+      throw new Error("This image format could not be converted to JPG. Please upload a JPG, PNG, WEBP, or HEIC image.");
+    }
+
+    return {
+      body: sourceBody,
+      contentType: fallbackContentType,
+      extension: sourceExtension?.replace(/^\./, "") || extensionFromContentType(sourceContentType),
+    };
+  }
+}
+
+function photoLetter(photoIndex: number) {
+  let index = photoIndex;
+  let label = "";
+
+  do {
+    label = String.fromCharCode(97 + (index % 26)) + label;
+    index = Math.floor(index / 26) - 1;
+  } while (index >= 0);
+
+  return label;
+}
+
+function photoIndexFromLetter(label: string) {
+  return label.split("").reduce((total, letter) => total * 26 + (letter.charCodeAt(0) - 96), 0) - 1;
+}
+
+function buildDogMediaBaseName(dogName: string, dogNumber: number) {
+  const fullNameSlug = slugify(dogName);
+  if (fullNameSlug) return `${fullNameSlug}-dog${dogNumber}`;
+
+  const romanizedAlias = dogName.match(/\(([^)]+)\)/)?.[1];
+  const aliasSlug = romanizedAlias ? slugify(romanizedAlias) : "";
+  if (aliasSlug) return `${aliasSlug}-dog${dogNumber}`;
+
+  return `dog-${dogNumber}`;
+}
+
+function buildDogPhotoPath({
+  dogName,
+  dogNumber,
+  extension,
+  photoIndex,
+}: {
+  dogName: string;
+  dogNumber: number;
+  extension: string | null;
+  photoIndex: number;
+}) {
+  const slug = buildDogMediaBaseName(dogName, dogNumber);
+  const normalizedExtension = extension?.replace(/^\./, "") || "jpg";
+
+  return `pawjaidogs/${slug}-photo${photoLetter(photoIndex)}.${normalizedExtension}`;
+}
+
+function inferDogNumberFromMedia(items: ReturnType<typeof buildDogMediaItems>) {
+  for (const item of items) {
+    const match = item.storagePath?.match(/(?:^|-)dog(\d+)-/);
+    if (match?.[1]) return Number(match[1]);
+  }
+
+  return null;
+}
+
+async function getFallbackDogNumber(supabase: SupabaseAdminClient) {
+  const { count } = await supabase.from("dogs").select("id", { count: "exact", head: true });
+  return (count ?? 0) + 1;
+}
+
+function getNextPhotoIndex(items: ReturnType<typeof buildDogMediaItems>) {
+  const photoIndexes = items
+    .map((item) => item.storagePath?.match(/photo([a-z]+)\.[a-z0-9]+$/i)?.[1]?.toLowerCase())
+    .filter((label): label is string => Boolean(label))
+    .map(photoIndexFromLetter);
+
+  if (photoIndexes.length > 0) return Math.max(...photoIndexes) + 1;
+
+  return items.filter((item) => item.type === "photo").length;
+}
+
+async function uploadPhotoBuffer({
+  body,
+  contentType,
+  dogName,
+  dogNumber,
+  extension,
+  photoIndex,
+  supabase,
+}: {
+  body: Buffer;
+  contentType: string | null;
+  dogName: string;
+  dogNumber: number;
+  extension: string | null;
+  photoIndex: number;
+  supabase: SupabaseAdminClient;
+}): Promise<UploadedPhoto> {
+  const optimizedPhoto = await optimizeDogPhoto({ body, contentType, extension });
+  const desiredPath = buildDogPhotoPath({
+    dogName,
+    dogNumber,
+    extension: optimizedPhoto.extension,
+    photoIndex,
+  });
+
+  const { error: uploadError } = await supabase.storage.from(DOG_PHOTOS_BUCKET).upload(desiredPath, optimizedPhoto.body, {
+    contentType: optimizedPhoto.contentType,
+    upsert: true,
+  });
+
+  if (uploadError) {
+    throw new Error(`Supabase photo upload failed: ${uploadError.message}`);
+  }
+
+  const uploaded = await uploadBufferToBackblaze({
+    body: optimizedPhoto.body,
+    contentType: optimizedPhoto.contentType,
+    desiredPath,
+  });
+
+  return {
+    publicUrl: uploaded.publicUrl,
+    storagePath: desiredPath,
+  };
 }
 
 function normalizeStructuredTraits(formData: FormData) {
@@ -168,15 +435,19 @@ function getUniqueSubmittedOrder(values: string[]) {
 async function updateDogMediaOrder({
   coverMediaId,
   dogId,
+  dogName,
   mediaOrderIds,
+  newPhotoFiles,
   supabase,
 }: {
   coverMediaId: string;
   dogId: string;
+  dogName: string;
   mediaOrderIds: string[];
+  newPhotoFiles: File[];
   supabase: SupabaseAdminClient;
 }) {
-  if (mediaOrderIds.length === 0 && !coverMediaId) return;
+  if (mediaOrderIds.length === 0 && !coverMediaId && newPhotoFiles.length === 0) return;
 
   const [{ data: photos, error: photosError }, { data: traits, error: traitsError }] = await Promise.all([
     supabase.from("dog_photos").select("*").eq("dog_id", dogId).order("sort_order"),
@@ -195,19 +466,76 @@ async function updateDogMediaOrder({
   }
 
   const currentItems = buildDogMediaItems({ photos: photos ?? [], traits: traits ?? [] });
-  if (currentItems.length === 0) return;
+  const newlyUploadedItems: ReturnType<typeof buildDogMediaItems> = [];
 
-  const currentById = new Map(currentItems.map((item) => [item.id, item]));
+  if (newPhotoFiles.length > 0) {
+    const dogNumber = inferDogNumberFromMedia(currentItems) ?? (await getFallbackDogNumber(supabase));
+    let nextPhotoIndex = getNextPhotoIndex(currentItems);
+    const nextSortOrder =
+      currentItems.length > 0
+        ? Math.max(...currentItems.map((item) => item.sortOrder)) + 1
+        : 0;
+    const photoRows: DogPhotoInsert[] = [];
+
+    for (const [index, file] of newPhotoFiles.entries()) {
+      const uploaded = await uploadPhotoBuffer({
+        body: Buffer.from(await file.arrayBuffer()),
+        contentType: file.type,
+        dogName,
+        dogNumber,
+        extension: guessExtensionFromFileName(file.name) ?? extensionFromContentType(file.type),
+        photoIndex: nextPhotoIndex,
+        supabase,
+      });
+
+      photoRows.push({
+        dog_id: dogId,
+        is_cover: currentItems.length === 0 && index === 0 && !coverMediaId,
+        public_url: uploaded.publicUrl,
+        sort_order: nextSortOrder + index,
+        storage_path: uploaded.storagePath,
+      });
+      nextPhotoIndex += 1;
+    }
+
+    const { data: insertedPhotos, error: insertPhotosError } = photoRows.length > 0
+      ? await supabase
+          .from("dog_photos")
+          .insert(photoRows)
+          .select("id, is_cover, public_url, sort_order, storage_path")
+      : { data: [], error: null };
+
+    if (insertPhotosError) {
+      throw new Error(`Could not save new photos: ${insertPhotosError.message}`);
+    }
+
+    for (const photo of insertedPhotos ?? []) {
+      newlyUploadedItems.push({
+        id: photo.id,
+        isCover: photo.is_cover,
+        posterUrl: null,
+        publicUrl: photo.public_url,
+        sortOrder: photo.sort_order,
+        storagePath: photo.storage_path,
+        type: "photo" as const,
+      });
+    }
+  }
+
+  const allItems = [...currentItems, ...newlyUploadedItems];
+  if (allItems.length === 0) return;
+
+  const currentById = new Map(allItems.map((item) => [item.id, item]));
   const validRequestedOrder = getUniqueSubmittedOrder(mediaOrderIds).filter((id) => currentById.has(id));
-  const remainingIds = currentItems
+  const remainingIds = allItems
     .map((item) => item.id)
     .filter((id) => !validRequestedOrder.includes(id));
   const finalOrderIds = [...validRequestedOrder, ...remainingIds];
   const selectedCoverId = currentById.has(coverMediaId)
     ? coverMediaId
-    : currentItems.find((item) => item.isCover)?.id ?? finalOrderIds[0];
+    : allItems.find((item) => item.isCover)?.id ?? finalOrderIds[0];
   const firstPhotoUrl =
-    currentItems.find((item) => item.type === "photo" && item.publicUrl)?.publicUrl ?? null;
+    allItems.find((item) => item.type === "photo" && item.publicUrl)?.publicUrl ?? null;
 
   const orderedItems = finalOrderIds.map((id, index) => {
     const item = currentById.get(id)!;
@@ -309,6 +637,7 @@ export async function updateDogProfileAction(
   const weightKg = getOptionalNumber(formData, "weight_kg");
   const coverMediaId = getString(formData, "cover_media_id");
   const mediaOrderIds = getStringValues(formData, "media_order");
+  const newPhotoFiles = normalizeNewPhotoFiles(formData);
 
   if (!dogId) fieldErrors.dog_id = "Missing dog profile id.";
   if (!name) fieldErrors.name = "Dog name is required.";
@@ -318,6 +647,11 @@ export async function updateDogProfileAction(
   }
   if (Number.isNaN(weightKg) || (typeof weightKg === "number" && weightKg < 0)) {
     fieldErrors.weight_kg = "Weight must be a non-negative number.";
+  }
+  for (const [index, file] of newPhotoFiles.entries()) {
+    if (!isHeicFile(file) && !file.type.startsWith("image/")) {
+      fieldErrors[`new_photo_${index}`] = `${file.name} is not a supported photo. Upload JPG, PNG, WEBP, or HEIC.`;
+    }
   }
 
   if (Object.keys(fieldErrors).length > 0) {
@@ -450,7 +784,9 @@ export async function updateDogProfileAction(
     await updateDogMediaOrder({
       coverMediaId,
       dogId,
+      dogName: name,
       mediaOrderIds,
+      newPhotoFiles,
       supabase,
     });
   } catch (error) {
