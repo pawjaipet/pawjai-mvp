@@ -43,5 +43,7 @@ test("database types include appointment messages table", () => {
   const source = readFileSync(new URL("../types/database.ts", import.meta.url), "utf8");
 
   assert.match(source, /appointment_messages:\s*\{/);
+  assert.match(source, /attachment_url: string \| null/);
   assert.match(source, /sender_role: "adopter" \| "shelter" \| "system"/);
+  assert.match(source, /return_inquiries:\s*\{/);
 });

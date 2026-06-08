@@ -1,13 +1,22 @@
 import { getResendClient } from "@/lib/resend";
 
 type BookingEmailStatus = "requested" | "confirmed" | "cancelled";
+export type BookingNotificationEvent =
+  | "booking_requested"
+  | "booking_confirmed"
+  | "booking_denied"
+  | "date_change_requested";
 
 type BookingEmailDetails = {
   appointment: {
+    appointmentDate?: string | null;
+    appointmentTime?: string | null;
     bookingCode: string;
     status: BookingEmailStatus;
   };
+  adopterName?: string | null;
   dogName?: string | null;
+  event?: BookingNotificationEvent;
   recipientEmail?: string | null;
   shelter: {
     addressLine?: string | null;
@@ -23,6 +32,28 @@ type BookingEmailDetails = {
 
 type BookingNotificationRecipientInput = {
   recipientEmail?: string | null;
+};
+
+type BookingNotificationAudience = "adopter" | "shelter";
+type BookingNotificationMessage = {
+  from: string;
+  html: string;
+  subject: string;
+  text: string;
+  to: string;
+};
+type ReturnInquiryNotificationDetails = {
+  appointment: {
+    appointmentDate?: string | null;
+    appointmentTime?: string | null;
+    bookingCode: string;
+  };
+  adopterName?: string | null;
+  dogName?: string | null;
+  shelter: {
+    email?: string | null;
+    name?: string | null;
+  };
 };
 
 const FALLBACK_NOTIFICATION_TO = "pawjaipet@gmail.com";
@@ -41,14 +72,39 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#39;");
 }
 
-function statusCopy(status: BookingEmailStatus) {
+function eventFromStatus(status: BookingEmailStatus): BookingNotificationEvent {
   switch (status) {
     case "confirmed":
-      return { label: "Accepted", subjectAction: "was accepted" };
+      return "booking_confirmed";
     case "cancelled":
-      return { label: "Denied", subjectAction: "was denied" };
+      return "booking_denied";
     case "requested":
-      return { label: "Pending", subjectAction: "is pending" };
+      return "booking_requested";
+  }
+}
+
+function eventCopy(event: BookingNotificationEvent, audience: BookingNotificationAudience) {
+  switch (event) {
+    case "booking_confirmed":
+      return {
+        label: "Accepted",
+        subject: "was accepted",
+      };
+    case "booking_denied":
+      return {
+        label: "Denied",
+        subject: "was denied",
+      };
+    case "date_change_requested":
+      return {
+        label: "Date change requested",
+        subject: audience === "shelter" ? "needs a date change review" : "has a date change request",
+      };
+    case "booking_requested":
+      return {
+        label: "Pending",
+        subject: "is pending",
+      };
   }
 }
 
@@ -58,8 +114,22 @@ export function getBookingNotificationRecipient({
   return String(recipientEmail || FALLBACK_NOTIFICATION_TO).trim();
 }
 
-export function buildBookingNotificationEmail(details: BookingEmailDetails) {
-  const status = statusCopy(details.appointment.status);
+function formatVisit(appointment: BookingEmailDetails["appointment"]) {
+  const date = String(appointment.appointmentDate ?? "").trim();
+  const time = String(appointment.appointmentTime ?? "").trim();
+
+  if (date && time) return `${date} at ${time}`;
+  if (date) return date;
+  if (time) return time;
+  return "Not provided";
+}
+
+function formatName(parts: Array<string | null | undefined>) {
+  return parts.map((part) => String(part ?? "").trim()).filter(Boolean).join(" ");
+}
+
+function buildNotificationLines(details: BookingEmailDetails, audience: BookingNotificationAudience) {
+  const event = eventCopy(details.event ?? eventFromStatus(details.appointment.status), audience);
   const shelterContact = compactJoin([
     details.shelter.name,
     details.shelter.email,
@@ -74,61 +144,108 @@ export function buildBookingNotificationEmail(details: BookingEmailDetails) {
   ]) || "Not provided";
   const lines = [
     `Booking number: ${details.appointment.bookingCode}`,
-    `Status: ${status.label}`,
+    `Status: ${event.label}`,
+    `Visit: ${formatVisit(details.appointment)}`,
+  ];
+
+  if (audience === "shelter") {
+    lines.push(
+      `Adopter: ${compactJoin([details.adopterName, details.recipientEmail]) || "Not provided"}`,
+      `Dog: ${details.dogName || "Not provided"}`,
+    );
+  }
+
+  lines.push(
     `Shelter contact: ${shelterContact}`,
     `Shelter location: ${shelterLocation}`,
-  ];
-  const text = lines.join("\n");
-  const html = `
+  );
+
+  return lines;
+}
+
+function buildHtml(lines: string[]) {
+  return `
     <div>
-      <p>Booking number: <strong>${escapeHtml(details.appointment.bookingCode)}</strong></p>
-      <p>Status: ${escapeHtml(status.label)}</p>
-      <p>Shelter contact: ${escapeHtml(shelterContact)}</p>
-      <p>Shelter location: ${escapeHtml(shelterLocation)}</p>
+      ${lines.map((line) => {
+        const [label, ...rest] = line.split(": ");
+        const value = rest.join(": ");
+        return `<p>${escapeHtml(label)}: <strong>${escapeHtml(value)}</strong></p>`;
+      }).join("\n      ")}
     </div>
   `.trim();
+}
+
+function buildBookingNotificationEmailForAudience(
+  details: BookingEmailDetails,
+  audience: BookingNotificationAudience,
+) {
+  const notificationEvent = details.event ?? eventFromStatus(details.appointment.status);
+  const event = eventCopy(notificationEvent, audience);
+  const lines = buildNotificationLines(details, audience);
+  const to = audience === "shelter"
+    ? String(details.shelter.email ?? "").trim()
+    : getBookingNotificationRecipient({ recipientEmail: details.recipientEmail });
+
+  if (!to) return null;
 
   return {
     from: process.env.PAWJAI_EMAIL_FROM ?? DEFAULT_FROM,
-    html,
-    subject: `PawJai booking ${details.appointment.bookingCode} ${status.subjectAction}`,
-    text,
-    to: getBookingNotificationRecipient({
-      recipientEmail: details.recipientEmail,
-    }),
+    html: buildHtml(lines),
+    subject: `${audience === "shelter" && notificationEvent === "booking_requested" ? "New " : ""}PawJai booking ${details.appointment.bookingCode} ${event.subject}`,
+    text: lines.join("\n"),
+    to,
   };
 }
 
+export function buildBookingNotificationEmail(details: BookingEmailDetails) {
+  return buildBookingNotificationEmailForAudience(details, "adopter")!;
+}
+
+export function buildBookingNotificationEmails(details: BookingEmailDetails) {
+  return ([
+    buildBookingNotificationEmailForAudience(details, "adopter"),
+    buildBookingNotificationEmailForAudience(details, "shelter"),
+  ]).filter((message): message is BookingNotificationMessage => Boolean(message));
+}
+
 export async function sendBookingNotificationEmail(details: BookingEmailDetails) {
-  const message = buildBookingNotificationEmail(details);
+  const messages = buildBookingNotificationEmails(details);
   console.info("Sending booking notification email", {
     bookingCode: details.appointment.bookingCode,
-    status: details.appointment.status,
-    to: message.to,
+    event: details.event ?? eventFromStatus(details.appointment.status),
+    to: messages.map((message) => message.to),
   });
 
-  try {
-    const resend = getResendClient();
-    const { error } = await resend.emails.send(message);
+  await Promise.all(messages.map(async (message) => {
+    try {
+      const resend = getResendClient();
+      const { error } = await resend.emails.send(message);
 
-    if (error) {
-      console.error("Booking notification email failed", error);
+      if (error) {
+        console.error("Booking notification email failed", error);
+      }
+    } catch (error) {
+      console.error("Booking notification email could not be sent", error);
     }
-  } catch (error) {
-    console.error("Booking notification email could not be sent", error);
-  }
+  }));
 }
 
 export async function sendBookingNotificationForAppointment({
   admin,
   appointmentId,
+  event,
+  visitDate,
+  visitTime,
 }: {
   admin: any;
   appointmentId: string;
+  event?: BookingNotificationEvent;
+  visitDate?: string | null;
+  visitTime?: string | null;
 }) {
   const { data: appointment, error } = await admin
     .from("appointments")
-    .select("id, adopter_id, dog_id, shelter_id, status")
+    .select("id, adopter_id, appointment_date, appointment_time, dog_id, shelter_id, status")
     .eq("id", appointmentId)
     .maybeSingle();
 
@@ -138,7 +255,7 @@ export async function sendBookingNotificationForAppointment({
   }
 
   const [adopterResult, dogResult, shelterResult] = await Promise.all([
-    admin.from("adopters").select("email").eq("id", appointment.adopter_id).maybeSingle(),
+    admin.from("adopters").select("email, first_name, last_name").eq("id", appointment.adopter_id).maybeSingle(),
     appointment.dog_id
       ? admin.from("dogs").select("name").eq("id", appointment.dog_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -158,10 +275,14 @@ export async function sendBookingNotificationForAppointment({
 
   await sendBookingNotificationEmail({
     appointment: {
+      appointmentDate: visitDate ?? appointment.appointment_date ?? null,
+      appointmentTime: visitTime ?? appointment.appointment_time ?? null,
       bookingCode: `APT-${appointment.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5)}`,
       status: appointment.status,
     },
+    adopterName: formatName([adopterResult.data?.first_name, adopterResult.data?.last_name]) || null,
     dogName: dogResult.data?.name ?? null,
+    event,
     recipientEmail: adopterResult.data?.email ?? null,
     shelter: {
       addressLine: shelterResult.data.address_line,
@@ -174,4 +295,99 @@ export async function sendBookingNotificationForAppointment({
       subdistrict: shelterResult.data.subdistrict,
     },
   });
+}
+
+export function buildReturnInquiryNotificationEmail(details: ReturnInquiryNotificationDetails) {
+  const to = String(details.shelter.email ?? "").trim();
+  if (!to) return null;
+
+  const lines = [
+    `Booking number: ${details.appointment.bookingCode}`,
+    `Status: Return inquiry`,
+    `Visit: ${formatVisit({
+      appointmentDate: details.appointment.appointmentDate ?? null,
+      appointmentTime: details.appointment.appointmentTime ?? null,
+      bookingCode: details.appointment.bookingCode,
+      status: "requested",
+    })}`,
+    `Adopter: ${details.adopterName || "Not provided"}`,
+    `Dog: ${details.dogName || "Not provided"}`,
+  ];
+
+  return {
+    from: process.env.PAWJAI_EMAIL_FROM ?? DEFAULT_FROM,
+    html: buildHtml(lines),
+    subject: `PawJai return inquiry for booking ${details.appointment.bookingCode}`,
+    text: lines.join("\n"),
+    to,
+  };
+}
+
+export async function sendReturnInquiryNotificationForAppointment({
+  admin,
+  appointmentId,
+}: {
+  admin: any;
+  appointmentId: string;
+}) {
+  const { data: appointment, error } = await admin
+    .from("appointments")
+    .select("id, adopter_id, appointment_date, appointment_time, dog_id, shelter_id")
+    .eq("id", appointmentId)
+    .maybeSingle();
+
+  if (error || !appointment) {
+    if (error) console.error("Return inquiry appointment lookup failed", error);
+    return;
+  }
+
+  const [adopterResult, dogResult, shelterResult] = await Promise.all([
+    admin.from("adopters").select("email, first_name, last_name").eq("id", appointment.adopter_id).maybeSingle(),
+    appointment.dog_id
+      ? admin.from("dogs").select("name").eq("id", appointment.dog_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    admin.from("shelters").select("name, email").eq("id", appointment.shelter_id).maybeSingle(),
+  ]);
+
+  if (adopterResult.error) console.error("Return inquiry adopter lookup failed", adopterResult.error);
+  if (dogResult.error) console.error("Return inquiry dog lookup failed", dogResult.error);
+  if (shelterResult.error || !shelterResult.data) {
+    console.error("Return inquiry shelter lookup failed", shelterResult.error);
+    return;
+  }
+
+  const message = buildReturnInquiryNotificationEmail({
+    appointment: {
+      appointmentDate: appointment.appointment_date ?? null,
+      appointmentTime: appointment.appointment_time ?? null,
+      bookingCode: `APT-${appointment.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5)}`,
+    },
+    adopterName: compactJoin([
+      formatName([adopterResult.data?.first_name, adopterResult.data?.last_name]),
+      adopterResult.data?.email,
+    ]) || null,
+    dogName: dogResult.data?.name ?? null,
+    shelter: {
+      email: shelterResult.data.email,
+      name: shelterResult.data.name,
+    },
+  });
+
+  if (!message) return;
+
+  console.info("Sending return inquiry notification email", {
+    appointmentId,
+    to: message.to,
+  });
+
+  try {
+    const resend = getResendClient();
+    const { error: sendError } = await resend.emails.send(message);
+
+    if (sendError) {
+      console.error("Return inquiry notification email failed", sendError);
+    }
+  } catch (error) {
+    console.error("Return inquiry notification email could not be sent", error);
+  }
 }

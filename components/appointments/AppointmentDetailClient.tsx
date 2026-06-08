@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { useState, useRef, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { acceptRescheduleRequestAction, cancelAppointmentFromListAction } from "@/app/appointments/actions";
-import { cancelAppointmentAction, sendAppointmentMessageAction } from "@/app/appointments/[id]/actions";
+import { cancelAppointmentAction, createReturnInquiryAction, sendAppointmentMessageAction } from "@/app/appointments/[id]/actions";
 
 const M = "Montserrat, sans-serif";
 
@@ -74,6 +74,9 @@ interface Props {
 }
 
 export type AppointmentThreadMessage = {
+  attachmentName?: string | null;
+  attachmentType?: string | null;
+  attachmentUrl?: string | null;
   body: string;
   createdAt: string;
   id: string;
@@ -619,7 +622,48 @@ function MessagesTab({
   messagesUnavailable: boolean;
 }) {
   const attachRef = useRef<HTMLInputElement>(null);
-  const [localAttachments, setLocalAttachments] = useState<AppointmentThreadMessage[]>([]);
+  const bodyRef = useRef<HTMLInputElement>(null);
+  const [draft, setDraft] = useState("");
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [isReturnPending, startReturnTransition] = useTransition();
+
+  function prefillDraft(text: string, opts?: { attach?: boolean }) {
+    setDraft(text);
+    if (opts?.attach) attachRef.current?.click();
+    requestAnimationFrame(() => {
+      const el = bodyRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(text.length, text.length);
+    });
+  }
+
+  useEffect(() => {
+    if (!returnOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setReturnOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [returnOpen]);
+
+  const quickActions = [
+    {
+      emoji: "📷",
+      label: "Send update photo",
+      onClick: () => prefillDraft(`Just wanted to share an update on ${dogName}! 📷`, { attach: true }),
+    },
+    {
+      emoji: "🆘",
+      label: "I need help",
+      onClick: () => prefillDraft(`Hi, I could use some help with ${dogName}. `),
+    },
+    {
+      emoji: "💔",
+      label: "Return inquiry",
+      onClick: () => setReturnOpen(true),
+    },
+  ];
   const chatMessages = [
     ...(initialMessages.length > 0
       ? initialMessages
@@ -632,26 +676,14 @@ function MessagesTab({
             senderRole: "system" as const,
           },
         ]),
-    ...localAttachments,
   ];
 
   function handleAttachment(files: FileList | null) {
     if (!files?.length) return;
     const file = files[0];
-    const now = new Date();
-    setLocalAttachments((prev) => [
-      ...prev,
-      {
-        body: file.type.startsWith("image/")
-          ? `[Image ready to send later: ${file.name}]`
-          : `[Attachment ready to send later: ${file.name}]`,
-        createdAt: now.toISOString(),
-        id: `local-${now.getTime()}`,
-        senderLabel: "You",
-        senderRole: "adopter",
-      },
-    ]);
-    if (attachRef.current) attachRef.current.value = "";
+    if (!draft.trim()) {
+      prefillDraft(file.type.startsWith("image/") ? `Photo attached: ${file.name}` : `Attachment: ${file.name}`);
+    }
   }
 
   function formatMessageTime(value: string) {
@@ -663,11 +695,32 @@ function MessagesTab({
       {/* Hidden file input — single native picker (#4) */}
       <input
         ref={attachRef}
+        name="attachment"
         type="file"
-        accept="image/*,video/*,application/pdf"
+        accept="image/png,image/jpeg,image/webp"
         className="hidden"
         onChange={(e) => handleAttachment(e.target.files)}
       />
+
+      {/* Quick-action chip row */}
+      <div
+        className="flex gap-[8px] overflow-x-auto px-[14px] pt-[12px] pb-[10px] shrink-0"
+        style={{ scrollbarWidth: "none" }}
+      >
+        {quickActions.map((c) => (
+          <button
+            key={c.label}
+            type="button"
+            onClick={c.onClick}
+            disabled={messagesUnavailable}
+            className="flex items-center gap-[6px] rounded-full px-[14px] py-[8px] whitespace-nowrap shrink-0 active:scale-95 transition-transform disabled:opacity-55"
+            style={{ background: "#f5f0e8", color: "#65584f", fontFamily: M, fontSize: "13px", fontWeight: 600 }}
+          >
+            <span aria-hidden>{c.emoji}</span>
+            {c.label}
+          </button>
+        ))}
+      </div>
 
       <div className="flex-1 px-[16px] py-[20px] space-y-[16px] overflow-y-auto">
         {messagesUnavailable && (
@@ -692,6 +745,13 @@ function MessagesTab({
                   color: fromMe ? "white" : "#65584f",
                 }}
               >
+                {msg.attachmentUrl && msg.attachmentType?.startsWith("image/") && (
+                  <img
+                    src={msg.attachmentUrl}
+                    alt={msg.attachmentName ?? "Appointment attachment"}
+                    className="mb-[10px] max-h-[260px] w-full rounded-[12px] object-cover"
+                  />
+                )}
                 <p className="text-[14px] leading-[1.45]" style={{ fontFamily: M }}>{msg.body}</p>
               </div>
               <p
@@ -707,7 +767,18 @@ function MessagesTab({
       </div>
 
       {/* Composer */}
-      <form action={sendAppointmentMessageAction} className="sticky bottom-[70px] flex items-center gap-[10px] px-[14px] py-[12px] bg-white border-t border-[#d6c8ad]/40">
+      <form
+        action={async (formData) => {
+          const attachment = attachRef.current?.files?.[0];
+          if (attachment) {
+            formData.set("attachment", attachment);
+          }
+          await sendAppointmentMessageAction(formData);
+          setDraft("");
+          if (attachRef.current) attachRef.current.value = "";
+        }}
+        className="sticky bottom-[70px] flex items-center gap-[10px] px-[14px] py-[12px] bg-white border-t border-[#d6c8ad]/40"
+      >
         <input name="appointmentId" type="hidden" value={appointmentId} />
         <button
           type="button"
@@ -723,8 +794,11 @@ function MessagesTab({
           </svg>
         </button>
         <input
+          ref={bodyRef}
           type="text"
           name="body"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
           placeholder="Write your message here"
           disabled={messagesUnavailable}
           className="flex-1 rounded-full px-[18px] py-[12px] text-[14px] outline-none"
@@ -743,6 +817,52 @@ function MessagesTab({
           </svg>
         </button>
       </form>
+
+      {/* Return Inquiry modal */}
+      {returnOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-[18px]"
+          onClick={() => setReturnOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Thinking about returning ${dogName}?`}
+            className="w-full max-w-[340px] rounded-[20px] bg-white px-[26px] py-[28px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-[21px] font-bold leading-[1.2] text-[#65584f]" style={{ fontFamily: M }}>
+              Thinking about returning {dogName}?
+            </p>
+            <p className="mt-[12px] text-[15px] leading-[1.5] text-[#65584f]/80" style={{ fontFamily: M }}>
+              Life changes, and shelters understand. Let them know what&apos;s going on — they can offer training support, resources, or help with rehoming if that&apos;s the best path.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                startReturnTransition(async () => {
+                  await createReturnInquiryAction(appointmentId);
+                  setReturnOpen(false);
+                  prefillDraft(`Hi, I'm considering returning ${dogName}. Could we talk about what's going on?`);
+                });
+              }}
+              disabled={isReturnPending}
+              className="mt-[22px] w-full rounded-full py-[13px] text-[15px] font-semibold text-white active:scale-95 transition-transform"
+              style={{ background: "#cd8188", fontFamily: M }}
+            >
+              Start the conversation
+            </button>
+            <button
+              type="button"
+              onClick={() => setReturnOpen(false)}
+              className="mt-[14px] w-full text-center text-[14px] text-[#65584f]/60 active:opacity-70"
+              style={{ fontFamily: M }}
+            >
+              Not right now
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

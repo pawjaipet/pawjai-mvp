@@ -71,6 +71,8 @@ function createFakeAdmin({ firstAppointmentError = null } = {}) {
   const rows = {
     appointments: {
       id: "6bfc0abc-1111-2222-3333-444455556666",
+      appointment_date: "2026-05-30",
+      appointment_time: "13:00",
       adopter_id: "adopter-1",
       dog_id: "dog-1",
       shelter_id: "shelter-1",
@@ -78,6 +80,8 @@ function createFakeAdmin({ firstAppointmentError = null } = {}) {
     },
     adopters: {
       email: "proudxd@gmail.com",
+      first_name: "Polchaya",
+      last_name: "Sudlabha",
     },
     dogs: {
       name: "Yala",
@@ -124,6 +128,8 @@ function createFakeAdmin({ firstAppointmentError = null } = {}) {
 
 const details = {
   appointment: {
+    appointmentDate: "2026-05-30",
+    appointmentTime: "13:00",
     bookingCode: "APT-5F1A2",
     status: "requested",
   },
@@ -141,7 +147,7 @@ const details = {
   },
 };
 
-test("builds a pending booking email with booking number, contact, and location only", () => {
+test("builds a pending adopter email with booking number, contact, location, and visit time", () => {
   const { buildBookingNotificationEmail } = loadBookingEmail();
   const email = buildBookingNotificationEmail(details);
 
@@ -149,10 +155,23 @@ test("builds a pending booking email with booking number, contact, and location 
   assert.equal(email.subject, "PawJai booking APT-5F1A2 is pending");
   assert.match(email.text, /Booking number: APT-5F1A2/);
   assert.match(email.text, /Status: Pending/);
+  assert.match(email.text, /Visit: 2026-05-30 at 13:00/);
   assert.match(email.text, /Shelter contact: Bangkok Dog Shelter, shelter@example.com, 02-123-4567/);
   assert.match(email.text, /Shelter location: 123 Happy Road, Khlong Tan Nuea, Watthana, Bangkok, 10110/);
-  assert.doesNotMatch(email.text, /Mali/);
-  assert.doesNotMatch(email.text, /appointment date/i);
+});
+
+test("builds role-aware booking emails for the adopter and shelter", () => {
+  const { buildBookingNotificationEmails } = loadBookingEmail();
+  const emails = buildBookingNotificationEmails(details);
+
+  assert.equal(emails.length, 2);
+  assert.equal(emails[0].to, "adopter@example.com");
+  assert.equal(emails[0].subject, "PawJai booking APT-5F1A2 is pending");
+  assert.equal(emails[1].to, "shelter@example.com");
+  assert.equal(emails[1].subject, "New PawJai booking APT-5F1A2 is pending");
+  assert.match(emails[1].text, /Adopter: adopter@example.com/);
+  assert.match(emails[1].text, /Dog: Mali/);
+  assert.match(emails[1].text, /Visit: 2026-05-30 at 13:00/);
 });
 
 test("builds accepted and denied booking subjects from appointment status", () => {
@@ -174,6 +193,59 @@ test("builds accepted and denied booking subjects from appointment status", () =
   );
 });
 
+test("builds date change request emails for both parties", () => {
+  const { buildBookingNotificationEmails } = loadBookingEmail();
+  const emails = buildBookingNotificationEmails({
+    ...details,
+    event: "date_change_requested",
+    appointment: {
+      ...details.appointment,
+      appointmentDate: "2026-06-01",
+      appointmentTime: "14:00",
+    },
+  });
+
+  assert.equal(emails[0].subject, "PawJai booking APT-5F1A2 has a date change request");
+  assert.match(emails[0].text, /Status: Date change requested/);
+  assert.match(emails[0].text, /Visit: 2026-06-01 at 14:00/);
+  assert.equal(emails[1].subject, "PawJai booking APT-5F1A2 needs a date change review");
+});
+
+test("builds shelter-only return inquiry email", () => {
+  const { buildReturnInquiryNotificationEmail } = loadBookingEmail();
+  const email = buildReturnInquiryNotificationEmail({
+    appointment: {
+      appointmentDate: "2026-05-30",
+      appointmentTime: "13:00",
+      bookingCode: "APT-5F1A2",
+    },
+    adopterName: "Mali Visitor, adopter@example.com",
+    dogName: "Yala",
+    shelter: {
+      email: "shelter@example.com",
+      name: "Bangkok Dog Shelter",
+    },
+  });
+
+  assert.equal(email.to, "shelter@example.com");
+  assert.equal(email.subject, "PawJai return inquiry for booking APT-5F1A2");
+  assert.match(email.text, /Status: Return inquiry/);
+  assert.match(email.text, /Visit: 2026-05-30 at 13:00/);
+  assert.match(email.text, /Adopter: Mali Visitor, adopter@example.com/);
+  assert.match(email.text, /Dog: Yala/);
+});
+
+test("skips the shelter email when the shelter profile has no email", () => {
+  const { buildBookingNotificationEmails } = loadBookingEmail();
+  const emails = buildBookingNotificationEmails({
+    ...details,
+    shelter: { ...details.shelter, email: "" },
+  });
+
+  assert.equal(emails.length, 1);
+  assert.equal(emails[0].to, "adopter@example.com");
+});
+
 test("falls back to the PawJai inbox only when the adopter email is missing", () => {
   const { getBookingNotificationRecipient } = loadBookingEmail();
 
@@ -191,7 +263,7 @@ test("falls back to the PawJai inbox only when the adopter email is missing", ()
   );
 });
 
-test("sends to adopter email without requiring the booking_code column", async () => {
+test("sends to adopter and shelter emails without requiring the booking_code column", async () => {
   const sentMessages = [];
   const { sendBookingNotificationForAppointment } = loadBookingEmailWithSentMessages(sentMessages);
   const admin = createFakeAdmin({
@@ -205,10 +277,30 @@ test("sends to adopter email without requiring the booking_code column", async (
     appointmentId: "6bfc0abc-1111-2222-3333-444455556666",
   });
 
-  assert.equal(sentMessages.length, 1);
+  assert.equal(sentMessages.length, 2);
   assert.equal(sentMessages[0].to, "proudxd@gmail.com");
   assert.equal(sentMessages[0].subject, "PawJai booking APT-6BFC0 was accepted");
+  assert.equal(sentMessages[1].to, "test@test.com");
+  assert.equal(sentMessages[1].subject, "PawJai booking APT-6BFC0 was accepted");
   assert.equal(admin.calls[0].columns.includes("booking_code"), false);
   assert.match(sentMessages[0].text, /Shelter contact: The Voice Foundation, test@test.com, 1111111111/);
   assert.match(sentMessages[0].text, /Shelter location: b, c/);
+  assert.match(sentMessages[1].text, /Adopter: Polchaya Sudlabha, proudxd@gmail.com/);
+});
+
+test("sends return inquiry notification to shelter", async () => {
+  const sentMessages = [];
+  const { sendReturnInquiryNotificationForAppointment } = loadBookingEmailWithSentMessages(sentMessages);
+  const admin = createFakeAdmin();
+
+  await sendReturnInquiryNotificationForAppointment({
+    admin,
+    appointmentId: "6bfc0abc-1111-2222-3333-444455556666",
+  });
+
+  assert.equal(sentMessages.length, 1);
+  assert.equal(sentMessages[0].to, "test@test.com");
+  assert.equal(sentMessages[0].subject, "PawJai return inquiry for booking APT-6BFC0");
+  assert.match(sentMessages[0].text, /Adopter: Polchaya Sudlabha, proudxd@gmail.com/);
+  assert.match(sentMessages[0].text, /Dog: Yala/);
 });

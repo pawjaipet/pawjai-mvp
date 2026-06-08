@@ -79,7 +79,7 @@ export default async function AppointmentDetailPage({
     : null;
   const { data: messageRows, error: messageRowsError } = await admin
     .from("appointment_messages")
-    .select("id, sender_role, sender_label, body, created_at")
+    .select("id, sender_role, sender_label, body, attachment_url, attachment_name, attachment_type, created_at")
     .eq("appointment_id", appt.id)
     .order("created_at", { ascending: true });
   const messagesUnavailable = Boolean(messageRowsError);
@@ -155,8 +155,11 @@ export default async function AppointmentDetailPage({
   const legacyReschedule = parseLegacyRescheduleNote(appt.shelter_note);
   const initialMessages = ((messageRows ?? []) as Pick<
     AppointmentMessageRow,
-    "body" | "created_at" | "id" | "sender_label" | "sender_role"
+    "attachment_name" | "attachment_type" | "attachment_url" | "body" | "created_at" | "id" | "sender_label" | "sender_role"
   >[]).map((message) => ({
+    attachmentName: message.attachment_name,
+    attachmentType: message.attachment_type,
+    attachmentUrl: message.attachment_url,
     body: message.body,
     createdAt: message.created_at,
     id: message.id,

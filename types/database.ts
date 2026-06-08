@@ -459,6 +459,26 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>
         Relationships: []
       }
+      return_inquiries: {
+        Row: {
+          adopter_id: string
+          appointment_id: string
+          created_at: string
+          dog_id: string | null
+          id: string
+          shelter_id: string
+        }
+        Insert: {
+          adopter_id: string
+          appointment_id: string
+          created_at?: string
+          dog_id?: string | null
+          id?: string
+          shelter_id: string
+        }
+        Update: Partial<Database["public"]["Tables"]["return_inquiries"]["Insert"]>
+        Relationships: []
+      }
       shelters: {
         Row: {
           address_line: string | null
