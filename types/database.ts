@@ -387,6 +387,30 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["dogs"]["Insert"]>
         Relationships: []
       }
+      donation_intents: {
+        Row: {
+          amount_thb: number
+          created_at: string
+          dog_id: string
+          id: string
+          shelter_id: string
+          status: string
+          treat_count: number
+          user_id: string
+        }
+        Insert: {
+          amount_thb: number
+          created_at?: string
+          dog_id: string
+          id?: string
+          shelter_id: string
+          status?: string
+          treat_count: number
+          user_id: string
+        }
+        Update: Partial<Database["public"]["Tables"]["donation_intents"]["Insert"]>
+        Relationships: []
+      }
       pawjai_profile: {
         Row: {
           contact_items: Json
@@ -438,6 +462,9 @@ export type Database = {
       shelters: {
         Row: {
           address_line: string | null
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_name: string | null
           country: string | null
           created_at: string
           description: string | null
@@ -454,6 +481,7 @@ export type Database = {
           phone_number: string | null
           postal_code: string | null
           professionalism_rating: number | null
+          promptpay_id: string | null
           province: string | null
           shelter_size: number | null
           shelter_type: string | null
@@ -463,6 +491,9 @@ export type Database = {
         }
         Insert: {
           address_line?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
           country?: string | null
           created_at?: string
           description?: string | null
@@ -479,6 +510,7 @@ export type Database = {
           phone_number?: string | null
           postal_code?: string | null
           professionalism_rating?: number | null
+          promptpay_id?: string | null
           province?: string | null
           shelter_size?: number | null
           shelter_type?: string | null

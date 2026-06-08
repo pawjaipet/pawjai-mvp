@@ -11,6 +11,7 @@ import {
 import { buildLegacyRescheduleNote, isAppointmentTimeSlot, normalizeAppointmentTime } from "@/utils/appointments-model";
 import { sendBookingNotificationForAppointment } from "@/utils/booking-email";
 import { buildAdminBookingDetailPath, getCheckInTokenSecret, hashCheckInToken, verifySignedCheckInToken } from "@/utils/booking";
+import { parseShelterDonationDetails } from "@/utils/donations";
 import { isAdminGateOpen } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 
@@ -419,7 +420,23 @@ export async function updateShelterProfileAction(formData: FormData) {
     updated_at: new Date().toISOString(),
     website_url: cleanText(formData.get("websiteUrl")),
   };
+  let donationDetails: ReturnType<typeof parseShelterDonationDetails>;
+
+  try {
+    donationDetails = parseShelterDonationDetails({
+      bankAccountName: formData.get("bankAccountName"),
+      bankAccountNumber: formData.get("bankAccountNumber"),
+      bankName: formData.get("bankName"),
+      otherBankName: formData.get("otherBankName"),
+      promptpayId: formData.get("promptpayId"),
+    });
+  } catch (error) {
+    bookingsRedirect(shelterId, error instanceof Error ? error.message : "Donation details could not be saved.");
+    return;
+  }
+
   const extendedPayload = {
+    ...donationDetails,
     google_maps_url: cleanText(formData.get("googleMapsUrl")),
     logo_url: logoUrl,
     meeting_instructions: cleanText(formData.get("meetingInstructions")),

@@ -12,6 +12,7 @@ import { unlockAdminGateAction } from "../dogs/new/actions";
 import { initialAdminGateState } from "../dogs/new/form-state";
 import { createShelterBlockoutAction, decideBookingAction, deleteShelterAvailabilityAction, sendShelterMessageAction, toggleShelterBlockoutDateAction, updateShelterOperatingDaysAction, updateShelterProfileAction } from "./actions";
 import BookingQrScanner from "./BookingQrScanner";
+import DonationDetailsFields from "./DonationDetailsFields";
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 type Adopter = Database["public"]["Tables"]["adopters"]["Row"];
@@ -19,6 +20,9 @@ type Dog = Pick<Database["public"]["Tables"]["dogs"]["Row"], "breed" | "id" | "n
 type Shelter = Pick<
   Database["public"]["Tables"]["shelters"]["Row"],
   | "address_line"
+  | "bank_account_name"
+  | "bank_account_number"
+  | "bank_name"
   | "description"
   | "district"
   | "email"
@@ -31,6 +35,7 @@ type Shelter = Pick<
   | "name"
   | "phone_number"
   | "postal_code"
+  | "promptpay_id"
   | "province"
   | "subdistrict"
   | "website_url"
@@ -249,7 +254,7 @@ export default async function AdminBookingsPage({
     .order("name", { ascending: true });
   const { data: extendedShelters } = await (admin as any)
     .from("shelters")
-    .select("id, logo_url, google_maps_url, meeting_instructions")
+    .select("id, logo_url, google_maps_url, meeting_instructions, promptpay_id, bank_name, bank_account_number, bank_account_name")
     .order("name", { ascending: true });
   const extendedShelterMap = new Map(
     ((extendedShelters ?? []) as Partial<Shelter>[]).map((shelter) => [shelter.id, shelter]),
@@ -758,6 +763,12 @@ export default async function AdminBookingsPage({
 
                 <input name="facebookUrl" type="hidden" value={activeShelter.facebook_url ?? ""} />
                 <input name="instagramUrl" type="hidden" value={activeShelter.instagram_url ?? ""} />
+                <DonationDetailsFields
+                  bankAccountName={activeShelter.bank_account_name}
+                  bankAccountNumber={activeShelter.bank_account_number}
+                  bankName={activeShelter.bank_name}
+                  promptpayId={activeShelter.promptpay_id}
+                />
                 <button className="mt-1 inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]" type="submit">
                   Save shelter profile
                 </button>
