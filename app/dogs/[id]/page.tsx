@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Calendar, ShieldCheck, Bookmark } from "lucide-react";
+import { ArrowLeft, Calendar, ShieldCheck, Bookmark } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -152,15 +152,31 @@ export default async function DogProfilePage({
           videoPosterUrl={coverVideoPosterUrl}
         />
 
-        {/* PawJai logo — floating top-left, doubles as back-home */}
+        {/* Back to home — floating top-left, matches save button style */}
         <Link
           href="/"
-          className="absolute left-[14px] top-[10px] block h-[72px] w-[72px] z-10 active:scale-95 transition-transform"
-          style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.30))" }}
-          aria-label="PawJai home"
+          className="absolute left-[14px] top-[14px] w-[48px] h-[48px] rounded-full flex items-center justify-center shadow-lg z-10 active:scale-95 transition-all"
+          style={{ background: "#cd8188" }}
+          aria-label="Back to home"
         >
-          <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
+          <ArrowLeft size={22} stroke="white" strokeWidth={2.2} />
         </Link>
+
+        {/* PawJai watermark — non-interactive branding bottom-right of hero */}
+        <img
+          src="/pawjai-logo.png"
+          alt=""
+          aria-hidden="true"
+          className="absolute pointer-events-none select-none z-10"
+          style={{
+            right: "10px",
+            bottom: "70px",
+            height: "44px",
+            width: "auto",
+            opacity: 0.55,
+            filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.35))",
+          }}
+        />
 
         {/* Wishlist save (bookmark) — floating top-right, matches swipe card */}
         {user && (
