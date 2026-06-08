@@ -14,6 +14,18 @@ type ShelterOption = {
   name: string;
 };
 
+type PendingPhotoUpload = {
+  compressed: boolean;
+  name: string;
+  originalSize: number;
+  size: number;
+};
+
+const CLIENT_MAX_FORM_MEDIA_BYTES = 3.5 * 1024 * 1024;
+const CLIENT_PHOTO_MAX_WIDTH = 1800;
+const CLIENT_PHOTO_MAX_HEIGHT = 2400;
+const CLIENT_PHOTO_QUALITY = 0.78;
+
 const careTags = [
   "No medical needs",
   "Vaccinated",
@@ -33,6 +45,85 @@ const structuredTraitTypes = [
   "dog_social_style",
   "intake_note",
 ];
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+function isHeicLikeFile(file: File) {
+  const type = file.type.split(";")[0]?.trim().toLowerCase();
+  const name = file.name.toLowerCase();
+
+  return type === "image/heic" || type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif");
+}
+
+function isClientCompressiblePhoto(file: File) {
+  return file.type.startsWith("image/") && !isHeicLikeFile(file) && file.type !== "image/gif";
+}
+
+function replaceExtension(fileName: string, extension: string) {
+  const baseName = fileName.replace(/\.[^/.]+$/, "");
+  return `${baseName}.${extension}`;
+}
+
+function loadImageFromFile(file: File) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error(`Could not read ${file.name} for browser compression.`));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function compressPhotoForAdminUpload(file: File) {
+  if (!isClientCompressiblePhoto(file)) {
+    return { compressed: false, file };
+  }
+
+  const image = await loadImageFromFile(file);
+  const scale = Math.min(
+    1,
+    CLIENT_PHOTO_MAX_WIDTH / image.naturalWidth,
+    CLIENT_PHOTO_MAX_HEIGHT / image.naturalHeight,
+  );
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return { compressed: false, file };
+  }
+
+  context.drawImage(image, 0, 0, width, height);
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, "image/jpeg", CLIENT_PHOTO_QUALITY);
+  });
+
+  if (!blob || blob.size >= file.size) {
+    return { compressed: false, file };
+  }
+
+  return {
+    compressed: true,
+    file: new File([blob], replaceExtension(file.name, "jpg"), {
+      lastModified: file.lastModified,
+      type: "image/jpeg",
+    }),
+  };
+}
 
 function Section({
   title,
@@ -327,6 +418,65 @@ export default function DogEditForm({
       router.refresh();
     }
   }, [router, state.status]);
+
+  const [newPhotoUploadError, setNewPhotoUploadError] = useState("");
+  const [newPhotoItems, setNewPhotoItems] = useState<PendingPhotoUpload[]>([]);
+  const [newPhotosPreparing, setNewPhotosPreparing] = useState(false);
+
+  async function handleNewPhotoFilesChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const selectedFiles = Array.from(input.files ?? []);
+    setNewPhotoUploadError("");
+
+    if (selectedFiles.length === 0) {
+      setNewPhotoItems([]);
+      return;
+    }
+
+    setNewPhotosPreparing(true);
+
+    try {
+      const preparedFiles: { compressed: boolean; file: File; originalSize: number }[] = [];
+
+      for (const file of selectedFiles) {
+        if (isHeicLikeFile(file) && file.size > CLIENT_MAX_FORM_MEDIA_BYTES) {
+          throw new Error(`${file.name} is a large HEIC file. Please export it as JPG before uploading online.`);
+        }
+
+        const prepared = await compressPhotoForAdminUpload(file);
+        preparedFiles.push({
+          compressed: prepared.compressed,
+          file: prepared.file,
+          originalSize: file.size,
+        });
+      }
+
+      const totalBytes = preparedFiles.reduce((sum, item) => sum + item.file.size, 0);
+      if (totalBytes > CLIENT_MAX_FORM_MEDIA_BYTES) {
+        throw new Error(
+          `Selected photos are ${formatFileSize(totalBytes)} after browser compression. Please upload fewer photos at once or use smaller exports.`,
+        );
+      }
+
+      const transfer = new DataTransfer();
+      preparedFiles.forEach((item) => transfer.items.add(item.file));
+      input.files = transfer.files;
+      setNewPhotoItems(
+        preparedFiles.map((item) => ({
+          compressed: item.compressed,
+          name: item.file.name,
+          originalSize: item.originalSize,
+          size: item.file.size,
+        })),
+      );
+    } catch (error) {
+      setNewPhotoItems([]);
+      input.value = "";
+      setNewPhotoUploadError(error instanceof Error ? error.message : "Could not prepare these photos for upload.");
+    } finally {
+      setNewPhotosPreparing(false);
+    }
+  }
 
   const personalityTraitValues = traits
     .filter((trait) => trait.trait_type === "personality")
@@ -662,17 +812,35 @@ export default function DogEditForm({
             <div className="rounded-3xl border border-dashed border-[#d8c8ad] bg-[#fffdfa] p-5">
               <Field
                 label="Add new photos"
-                error={state.fieldErrors?.new_photo_0}
-                hint="Upload JPG, PNG, WEBP, or HEIC photos. New photos are compressed, saved to storage, and appended after the current media when you press Save."
+                error={state.fieldErrors?.new_photo_0 ?? newPhotoUploadError}
+                hint="Upload JPG, PNG, WEBP, or HEIC photos. Photos are compressed in your browser first, then saved to storage and appended after the current media when you press Save."
               >
                 <input
                   name="new_photo_files"
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
                   multiple
+                  onChange={(event) => {
+                    void handleNewPhotoFilesChange(event);
+                  }}
                   className="block w-full rounded-2xl border border-[#e7dbc8] bg-white px-4 py-3 text-sm text-[#5b4d40] file:mr-4 file:rounded-full file:border-0 file:bg-[#d38a2c] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#bf781f]"
                 />
               </Field>
+              {newPhotosPreparing ? (
+                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#b77624]">
+                  Preparing photos...
+                </p>
+              ) : null}
+              {newPhotoItems.length > 0 ? (
+                <div className="mt-4 space-y-2 rounded-2xl border border-[#eadfce] bg-white p-3">
+                  {newPhotoItems.map((item) => (
+                    <p key={`${item.name}-${item.size}`} className="text-xs uppercase tracking-[0.14em] text-[#9a6b2a]">
+                      {item.name} · {formatFileSize(item.size)}
+                      {item.compressed ? ` · compressed from ${formatFileSize(item.originalSize)}` : ""}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
               <p className="mt-3 text-xs leading-5 text-[#8c7d70]">
                 After saving, the page refreshes and the new photos can be moved up, moved down, or selected as the cover.
               </p>
@@ -702,10 +870,10 @@ export default function DogEditForm({
             </div>
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || newPhotosPreparing || Boolean(newPhotoUploadError)}
               className="inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {pending ? "Saving changes..." : "Save changes"}
+              {pending ? "Saving changes..." : newPhotosPreparing ? "Preparing photos..." : "Save changes"}
             </button>
           </div>
         </div>
