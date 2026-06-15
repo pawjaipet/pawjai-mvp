@@ -1,0 +1,139 @@
+# PAWJAI — Account Migration Handoff
+
+**Prepared:** 2026-06-15 · **Purpose:** hand this repo off to a fresh machine and a different Anthropic/Claude account, cleanly disconnecting the old account from every external service.
+
+---
+
+## Project overview
+
+**PAWJAI** is a Thai dog-adoption platform — a **Next.js 16** (App Router, server actions, Turbopack) + **TypeScript** + **Tailwind** app, backed by **Supabase** (Postgres, Auth via `@supabase/ssr`, storage). Media is served from **Backblaze B2** behind a **Cloudflare** CDN (`media.pawjai.co.th`); transactional email goes through **Resend**. It's deployed in **production** on **Vercel** at **pawjai.co.th**. The GitHub repo is `pawjaipet/pawjai-mvp`.
+
+**Actively being extended right now:**
+- **Donations** — "Send Treats" QR + bank-transfer screen, donation intents, shelter payment details (most recent commits).
+- **Appointments / messaging** — chat attachments, return-inquiry backend, quick-action chips, reschedule flow.
+- **Admin tooling** — editable About-page profile, booking QR check-in, dog photo management.
+- **Adopter preference filtering** — dog matching wizard.
+
+There is also a **separate personal project, "PROUD,"** whose Claude Code sessions ran inside this same directory. Those sessions are listed below but flagged `NON-PAWJAI` — they belong to a different repo / GitHub / Vercel and should not be conflated with PAWJAI when revoking access.
+
+---
+
+## Session summary
+
+Reconstructed directly from the `.jsonl` transcripts in `~/.claude/projects/-Users-sudlabha-Desktop-paw/` (there was **no** `sessions-index.json`; metadata below was derived from the transcripts themselves). 18 logical sessions across 21 transcript files (the initial build was saved as 3 resumed snapshots).
+
+### PAWJAI sessions
+
+| Date | Session | What | State | File |
+|------|---------|------|-------|------|
+| 2026-04-20 → 05-17 | `1b12712c` (+`502eaa6b`,`7837dd7e`) | Initial build: Figma import, swipe feed, auth modal, admin, Supabase scaffold | Done | [link](sessions/2026-04_initial-build-figma-auth.md) |
+| 2026-05-26 | `6b40d9ab` | Adopter preference filtering + migration repair | Done (PR #1) | [link](sessions/2026-05-26_adopter-preference-filtering.md) |
+| 2026-05-26 | `f6544bb9` | Push + merge PR #1 to main | Done | [link](sessions/2026-05-26_merge-to-main.md) |
+| 2026-05-26 | `6c0d8df0` | Cloudflare CDN in front of Backblaze B2 | Done (verify env var) | [link](sessions/2026-05-26_cloudflare-cdn.md) |
+| 2026-05-27 | `19ea920d` | About-page restructure + admin editor spec | Done | [link](sessions/2026-05-27_about-page.md) |
+| 2026-06-08 | `70bdcf52` | Messages tab quick-action chips (Figma UX/UI) | Done (no live screenshot) | [link](sessions/2026-06-08_figma-uxui-messages.md) |
+| 2026-06-08 | `d4e5b3ee` | Donate QR + bank screen kickoff/discovery | Done (shipped later) | [link](sessions/2026-06-08_donate-qr-prompt.md) |
+| 2026-06-08 | `1f669b51` | PAWJAI UX/UI polish batch | Interrupted (usage limit) | [link](sessions/2026-06-08_pawjai-uxui.md) |
+| 2026-06-09 | `2aa49bab` | Account-separation advisory (two Claude accounts) | Done | [link](sessions/2026-06-09_account-separation.md) |
+| 2026-06-15 | `03201a97` | Brief check-in | Done (trivial) | [link](sessions/2026-06-15_recent-hello.md) |
+
+### Off-topic / trivial sessions (ran in this dir incidentally)
+
+| Date | Session | What | State | File |
+|------|---------|------|-------|------|
+| 2026-05-20 | `13ea035e` | iPhone mass-SMS question | Abandoned | [link](sessions/2026-05-20_iphone-sms.md) |
+| 2026-06-07 | `5251deb7` | Gmail (Berkeley) — sent a test email | Done (unrelated) | [link](sessions/2026-06-07_gmail-berkeley.md) |
+| 2026-06-08 | `38ec0b86` | Empty greeting | Done (empty) | [link](sessions/2026-06-08_hello-trivial.md) |
+
+### PROUD sessions — NON-PAWJAI (separate personal project)
+
+| Date | Session | What | File |
+|------|---------|------|------|
+| 2026-06-09 → 06-14 | `3c8e2037` | PROUD agent/role structure | [link](sessions/proud-2026-06-09_agent-structure.md) |
+| 2026-06-09 → 06-10 | `7a1f9031` | PROUD Mac setup + repo/account move | [link](sessions/proud-2026-06-09_setup-account-move.md) |
+| 2026-06-10 → 06-14 | `1936d5b1` | PROUD identity building | [link](sessions/proud-2026-06-10_identity-building.md) |
+| 2026-06-10 → 06-11 | `c13fd30d` | PROUD web build (`PROUD/site/`) | [link](sessions/proud-2026-06-10_web-build.md) |
+| 2026-06-10 | `96cf6256` | PROUD intake manifest | [link](sessions/proud-2026-06-10_intake-manifest.md) |
+
+---
+
+## Connections (external services)
+
+> Variable **names only** below — no secret values appear in this handoff. Real values live in `.env.local` (git-ignored) and in each service's own dashboard.
+
+| Service | Wired to | Config / env-var names |
+|---------|----------|------------------------|
+| **GitHub** | `pawjaipet/pawjai-mvp` (org `pawjaipet`), branch `main` | git remote `origin` = `https://github.com/pawjaipet/pawjai-mvp.git` |
+| **Vercel** | Production deploy → `pawjai.co.th` | No `.vercel/project.json` in repo; linkage is account-level. `VERCEL_OIDC_TOKEN` present in `.env.local` |
+| **Supabase** | Project ref `bdnyvcvkyepipdcygkvn` (URL public in `.env.example`); local `supabase/config.toml` project_id `paw` | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD` |
+| **Backblaze B2** | Media/object storage (origin behind CDN) | `B2_KEY_ID`, `B2_APPLICATION_KEY`, `B2_BUCKET_ID`, `PAWJAI_B2_PUBLIC_BASE_URL` |
+| **Cloudflare** | CDN/DNS for `media.pawjai.co.th` (proxies Backblaze), domain `pawjai.co.th` | No env vars in repo; managed in Cloudflare dashboard. ⚠️ A Cloudflare API token was pasted into session `6c0d8df0` — treat as exposed, rotate it. |
+| **Resend** | Transactional/booking email | `RESEND_API_KEY`, `PAWJAI_EMAIL_FROM` |
+| **Figma MCP** | Design source (`PAWJAI-Currently` Figma Make file) | Claude-account-level MCP connector (no project `.mcp.json`); OAuth tied to the Figma account |
+| **Supabase MCP** | Same Supabase project, via Claude | Claude-account-level MCP connector `96b59bab-…`; uses a Supabase access token |
+| **Google / Gmail** | Berkeley account (used incidentally in session `5251deb7`) | Browser session on this machine only — no repo config |
+
+**MCP note:** there is **no `.mcp.json`** in the repo and **no project-scoped MCP servers** in `~/.claude.json`. The Figma and Supabase MCP servers are configured as **connectors on the Claude account itself** — so they travel with the *account*, not the repo. Switching Claude accounts automatically drops their auth; nothing in the repo needs editing.
+
+---
+
+## DISCONNECT CHECKLIST (do manually, in each dashboard)
+
+Do these **after** the new machine is confirmed working (see Restore). Goal: remove the **old** account's access without destroying the production services.
+
+### 1. GitHub (old personal account)
+- **Repo access:** github.com/pawjaipet → Settings → **Collaborators and teams** (or Org → People). Remove the old personal account from the `pawjaipet` org / `pawjai-mvp` repo **only after** the new account has been added as owner/admin.
+- **Tokens:** github.com → Settings → Developer settings → **Personal access tokens** (classic + fine-grained) → revoke any token used for this repo. Also **SSH and GPG keys** → remove the old machine's key.
+- **OAuth/Authorized apps:** Settings → **Applications → Authorized OAuth Apps** → revoke Vercel, Supabase, and any Claude/Figma integrations authorized under the old account.
+- **DO NOT:** delete the repo, the `pawjaipet` org, or any branches/PRs.
+
+### 2. Vercel
+- vercel.com → **Account/Team Settings → Members** → ensure the **new** account is a member/owner of the team that owns the `pawjai` project, then **remove the old account**.
+- Settings → **Tokens** → revoke any personal access tokens; the old machine's CLI login (`vercel logout` on the old machine).
+- Re-check the Git integration is connected via the **new** GitHub account so deploys keep flowing.
+- **DO NOT:** delete the `pawjai` project, the `pawjai.co.th` domain, or production env vars. (Also leave the **separate PROUD** Vercel project alone.)
+
+### 3. Supabase
+- supabase.com → Organization → **Team / Members** → add the new account, then **remove the old account** from the org.
+- Account → **Access Tokens** → revoke tokens tied to the old account / old machine (these back the Supabase CLI + MCP).
+- If the Supabase MCP used a dedicated access token, revoke it here.
+- **DO NOT:** pause/delete the project `bdnyvcvkyepipdcygkvn`, its database, storage buckets, or auth config.
+
+### 4. Backblaze B2
+- backblaze.com → **App Keys** → if the old account/machine should lose access, create fresh keys for the new account and **delete the old `B2_KEY_ID`** key (then update the Vercel env vars).
+- **DO NOT:** delete the bucket (`B2_BUCKET_ID`) or its objects.
+
+### 5. Cloudflare
+- dash.cloudflare.com → **Manage Account → Members** → add new account, remove old.
+- **My Profile → API Tokens** → **rotate/revoke** tokens — *especially* the one pasted into session `6c0d8df0`, which must be treated as exposed.
+- **DO NOT:** delete the `pawjai.co.th` zone, DNS records, SSL settings, or the `media.pawjai.co.th` cache rule.
+
+### 6. Resend
+- resend.com → **Team / Members** → swap old account for new.
+- **API Keys** → rotate `RESEND_API_KEY` if it was issued under the old account; update Vercel env var.
+- **DO NOT:** remove the verified sending domain.
+
+### 7. Figma
+- The Figma MCP auth is an **OAuth connector on the old Claude account** — it disappears when you log out of that Claude account (step 9). Additionally: figma.com → Settings → **Security / Connected apps / Authorized integrations** → revoke any Claude/MCP authorization granted by the old account.
+- **DO NOT:** delete the `PAWJAI-Currently` Figma file.
+
+### 8. Google / Gmail (incidental)
+- A Gmail (Berkeley) browser session was used on this machine. If retiring the old machine, sign out of Google in that browser and review **myaccount.google.com → Security → Your devices / Third-party access**.
+
+### 9. Claude on this machine
+- Run **`claude logout`** in the terminal on this (old) machine. This drops the old Claude account session and, with it, the **Figma MCP** and **Supabase MCP** connector auth (both live on the account, not the repo).
+- Optionally remove cached creds under `~/.claude/` on the old machine if decommissioning it.
+- **DO NOT:** delete `~/.claude/projects/-Users-sudlabha-Desktop-paw/` if you want the session history preserved — though note it stays on the *old machine* unless copied.
+
+---
+
+## RESTORE CHECKLIST
+
+Setting up the **new** machine + new Claude account is handled by **Prompt B** (the restore/setup prompt). In short it will: clone `pawjaipet/pawjai-mvp`, recreate `.env.local` from the values in each dashboard (using the variable names in the Connections table above), re-link Vercel, re-authorize the Figma + Supabase MCP connectors on the **new** Claude account, and `npm install`. Do the disconnect steps above **only after** the new machine is verified working.
+
+---
+
+## Secrets / safety notes
+- No `.env` contents, tokens, or keys are reproduced anywhere in `handoff/`. Only variable **names** are listed.
+- `.gitignore` **does** ignore `.env`, `.env.local`, and `.env.*.local`. ⚠️ It does **not** ignore a plain `.env.production` / `.env.development` (only the `*.local` variants) — none exist today, but if you ever create one, add it to `.gitignore` first. `.env.example` is committed and contains only placeholders + the public Supabase URL (safe).
+- ⚠️ A **Cloudflare API token** and a **Backblaze key context** appeared inside past session transcripts (`6c0d8df0`). Those transcripts are not part of this handoff, but the token should be rotated regardless (see Disconnect §5).
