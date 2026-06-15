@@ -9,10 +9,14 @@
 **PAWJAI** is a Thai dog-adoption platform — a **Next.js 16** (App Router, server actions, Turbopack) + **TypeScript** + **Tailwind** app, backed by **Supabase** (Postgres, Auth via `@supabase/ssr`, storage). Media is served from **Backblaze B2** behind a **Cloudflare** CDN (`media.pawjai.co.th`); transactional email goes through **Resend**. It's deployed in **production** on **Vercel** at **pawjai.co.th**. The GitHub repo is `pawjaipet/pawjai-mvp`.
 
 **Actively being extended right now:**
-- **Donations** — "Send Treats" QR + bank-transfer screen, donation intents, shelter payment details (most recent commits).
+- **Donations** — "Send Treats" QR + bank-transfer screen, donation intents, shelter payment details. **Shipped to `main`** (commits `92f6d1c` Treat button + modal, `4b1ce77` QR screen).
 - **Appointments / messaging** — chat attachments, return-inquiry backend, quick-action chips, reschedule flow.
 - **Admin tooling** — editable About-page profile, booking QR check-in, dog photo management.
 - **Adopter preference filtering** — dog matching wizard.
+
+> ### ⚠️ Open threads to pick up on the new machine
+> 1. **Swipe-card Treat modal renders inline instead of as an overlay (OPEN BUG).** A `transform` ancestor on the swipe card breaks the modal's `position: fixed`. Fix in progress: portal `TreatModal` to `document.body` via `createPortal`. Not yet committed. See [donate session](sessions/2026-06-08_pawjai-uxui.md).
+> 2. **Donation migrations are NOT applied to the remote Supabase DB.** `donation_intents` table + `shelters.promptpay_id/bank_name/bank_account_number/bank_account_name` columns exist only as local migration files. Until Codex applies them, `createDonationIntent` fails silently and the donate screen shows its empty state.
 
 There is also a **separate personal project, "PROUD,"** whose Claude Code sessions ran inside this same directory. Those sessions are listed below but flagged `NON-PAWJAI` — they belong to a different repo / GitHub / Vercel and should not be conflated with PAWJAI when revoking access.
 
@@ -20,7 +24,7 @@ There is also a **separate personal project, "PROUD,"** whose Claude Code sessio
 
 ## Session summary
 
-Reconstructed directly from the `.jsonl` transcripts in `~/.claude/projects/-Users-sudlabha-Desktop-paw/` (there was **no** `sessions-index.json`; metadata below was derived from the transcripts themselves). 18 logical sessions across 21 transcript files (the initial build was saved as 3 resumed snapshots).
+Reconstructed directly from the `.jsonl` transcripts in `~/.claude/projects/-Users-sudlabha-Desktop-paw/` (there was **no** `sessions-index.json`; metadata below was derived from the transcripts themselves). 18 logical sessions across 20 transcript files (the initial build was saved as 3 resumed snapshots). Re-verified 2026-06-15 against the live transcripts and `.vercel/repo.json`.
 
 ### PAWJAI sessions
 
@@ -33,7 +37,7 @@ Reconstructed directly from the `.jsonl` transcripts in `~/.claude/projects/-Use
 | 2026-05-27 | `19ea920d` | About-page restructure + admin editor spec | Done | [link](sessions/2026-05-27_about-page.md) |
 | 2026-06-08 | `70bdcf52` | Messages tab quick-action chips (Figma UX/UI) | Done (no live screenshot) | [link](sessions/2026-06-08_figma-uxui-messages.md) |
 | 2026-06-08 | `d4e5b3ee` | Donate QR + bank screen kickoff/discovery | Done (shipped later) | [link](sessions/2026-06-08_donate-qr-prompt.md) |
-| 2026-06-08 | `1f669b51` | PAWJAI UX/UI polish batch | Interrupted (usage limit) | [link](sessions/2026-06-08_pawjai-uxui.md) |
+| 2026-06-08 → 06-15 | `1f669b51` | Donations UX: Treat button + modal (Prompt 1) & Send Treats QR screen (Prompt 2) | Shipped to main; 2 open threads (modal portal bug, unapplied migrations) | [link](sessions/2026-06-08_pawjai-uxui.md) |
 | 2026-06-09 | `2aa49bab` | Account-separation advisory (two Claude accounts) | Done | [link](sessions/2026-06-09_account-separation.md) |
 | 2026-06-15 | `03201a97` | Brief check-in | Done (trivial) | [link](sessions/2026-06-15_recent-hello.md) |
 
@@ -64,7 +68,7 @@ Reconstructed directly from the `.jsonl` transcripts in `~/.claude/projects/-Use
 | Service | Wired to | Config / env-var names |
 |---------|----------|------------------------|
 | **GitHub** | `pawjaipet/pawjai-mvp` (org `pawjaipet`), branch `main` | git remote `origin` = `https://github.com/pawjaipet/pawjai-mvp.git` |
-| **Vercel** | Production deploy → `pawjai.co.th` | No `.vercel/project.json` in repo; linkage is account-level. `VERCEL_OIDC_TOKEN` present in `.env.local` |
+| **Vercel** | Production deploy → `pawjai.co.th` | Linked via `.vercel/repo.json` (git-ignored): project `pawjai-mvp` id `prj_hqDpCgHngxahehXoognmVuXw1OBk`, team/org id `team_97uk7kuLt4prWHNQbfZV8y73`. `VERCEL_OIDC_TOKEN` present in `.env.local` |
 | **Supabase** | Project ref `bdnyvcvkyepipdcygkvn` (URL public in `.env.example`); local `supabase/config.toml` project_id `paw` | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD` |
 | **Backblaze B2** | Media/object storage (origin behind CDN) | `B2_KEY_ID`, `B2_APPLICATION_KEY`, `B2_BUCKET_ID`, `PAWJAI_B2_PUBLIC_BASE_URL` |
 | **Cloudflare** | CDN/DNS for `media.pawjai.co.th` (proxies Backblaze), domain `pawjai.co.th` | No env vars in repo; managed in Cloudflare dashboard. ⚠️ A Cloudflare API token was pasted into session `6c0d8df0` — treat as exposed, rotate it. |
