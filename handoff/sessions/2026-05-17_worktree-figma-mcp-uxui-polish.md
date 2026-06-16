@@ -1,7 +1,7 @@
 # Session: Worktree — Figma MCP setup + long-running UX/UI polish
 
 - **Session ID:** `26138611-8087-4cbb-9e19-91a09b1ea996`
-- **Date range:** 2026-05-17 → 2026-06-08 (1907 events, ~53 user prompts)
+- **Date range:** 2026-05-17 → 2026-06-16 (still active; ~14 MB transcript as of last update)
 - **Working dir:** `.claude/worktrees/vigilant-bhaskara-eb96de` (git worktree off `main`)
 - **Branches used:** `claude/vigilant-bhaskara-eb96de`, `ui-polish-1`, `ui-polish-2`, then cherry-picked onto `main`
 - **Transcript location:** `~/.claude/projects/-Users-sudlabha-Desktop-paw--claude-worktrees-vigilant-bhaskara-eb96de/26138611-8087-4cbb-9e19-91a09b1ea996.jsonl`
@@ -52,6 +52,24 @@ Major themes:
 - `c3aaf64` `feat(filter): add reset button + scrolling all-in-one view after first completion`
 - `3b02534` `ui(dogs): replace logo-as-home with back arrow, move logo to watermark`
 - `d7451d5` `ui(dogs): keep PawJai watermark at 100% opacity`
+
+### Admin auth + security hardening sweep (post-2026-06-08, IN-FLIGHT)
+
+The worktree session continued past 2026-06-08 into a substantial admin-auth and security pass. **None of this is committed yet** — it sits as modified/untracked files in the main checkout. Highlights:
+
+- **Supabase-Auth-backed admin sign-in** at `/admin/login` (new `app/admin/login/page.tsx`), replacing the shared-passphrase gate.
+- **Role model**: `admin` (PawJai global) and `shelter_admin` (per-shelter), enforced through `utils/admin-authorization.ts` and the new `/admin/accounts` admin UI (`app/admin/accounts/{actions.ts,page.tsx}`).
+- **Audit log** UI + util: `app/admin/audit/page.tsx`, `utils/admin-audit.ts`.
+- **Rate limiting** for sensitive endpoints: `utils/rate-limit.ts` + `supabase/migrations/20260615123000_rate_limit_buckets.sql`.
+- **Supabase advisor security fixes** migration: `supabase/migrations/20260615124500_supabase_advisor_security_fixes.sql`.
+- **Booking guards + admin auth audit** migration: `supabase/migrations/20260615120000_admin_auth_audit_and_booking_guards.sql`.
+- **About-page content** migration: `supabase/migrations/20260526230000_about_page_content.sql`.
+- **Middleware → proxy.ts**: top-level `middleware.ts` deleted in favor of `proxy.ts`.
+- **Docs added**: `docs/admin-account-setup.md`, `docs/agent-map.md`, `docs/playbooks/`, `docs/skills-recommendations.md`.
+- **Test added**: `tests/admin-authorization.test.mjs`.
+- **Touched (modified)**: most `app/admin/**` files (`ads`, `bookings`, `dogs`, `pawjaiprofile`), several `app/*/actions.ts` files, `app/ads/*`, `components/documents/DocumentsPageClient.tsx`, `types/database.ts`, `utils/admin-auth.ts`, `docs/frontend-supabase-setup.md`, `package.json` / `package-lock.json`, `eslint.config.mjs` (new).
+
+**Status:** uncommitted in the main working tree (see `git status`). The three new SQL migrations are local-only and **not yet applied to the remote Supabase project** `bdnyvcvkyepipdcygkvn`. The new machine must decide whether to finish-and-commit this branch of work before doing anything else risky in `/admin`.
 
 ## Unfinished threads / TODOs
 1. **Subscription page is visual-only.** `currentTier` is hardcoded to `"free"` with a `TODO(backend)` marker in `app/settings/subscription/page.tsx`. Tier enforcement (wishlist cap, dogs-viewed/day rate limit, gating Advanced Matching), wiring of the Profile "Premium User" badge to real state, and the payment integration behind "Upgrade Now" are all out of scope and not started.

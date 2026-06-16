@@ -1,6 +1,6 @@
 # PAWJAI — Account Migration Handoff
 
-**Prepared:** 2026-06-15 · **Last updated:** 2026-06-16 · **Purpose:** hand this repo off to a fresh machine and a different Anthropic/Claude account, cleanly disconnecting the old account from every external service.
+**Prepared:** 2026-06-15 · **Last updated:** 2026-06-16 (refresh — added in-flight admin-auth thread, extended worktree session date range, noted resumed `7837dd7e` UI polish second life) · **Purpose:** hand this repo off to a fresh machine and a different Anthropic/Claude account, cleanly disconnecting the old account from every external service.
 
 ---
 
@@ -17,6 +17,8 @@
 > ### ⚠️ Open threads to pick up on the new machine
 > 1. **Swipe-card Treat modal renders inline instead of as an overlay (OPEN BUG).** A `transform` ancestor on the swipe card breaks the modal's `position: fixed`. Fix in progress: portal `TreatModal` to `document.body` via `createPortal`. Not yet committed. See [donate session](sessions/2026-06-08_pawjai-uxui.md).
 > 2. **Donation migrations are NOT applied to the remote Supabase DB.** `donation_intents` table + `shelters.promptpay_id/bank_name/bank_account_number/bank_account_name` columns exist only as local migration files. Until Codex applies them, `createDonationIntent` fails silently and the donate screen shows its empty state.
+> 3. **Admin-auth + security hardening sweep is uncommitted in the main checkout.** New routes `/admin/login`, `/admin/accounts`, `/admin/audit`; new utils `utils/admin-audit.ts`, `utils/admin-authorization.ts`, `utils/rate-limit.ts`; deleted top-level `middleware.ts` in favor of `proxy.ts`; new test `tests/admin-authorization.test.mjs`; **three new SQL migrations not applied to remote Supabase**: `20260615120000_admin_auth_audit_and_booking_guards.sql`, `20260615123000_rate_limit_buckets.sql`, `20260615124500_supabase_advisor_security_fixes.sql` (plus `20260526230000_about_page_content.sql`). Plus modifications to most `app/admin/**` files and several `app/*/actions.ts`. See `git status` and the [worktree session](sessions/2026-05-17_worktree-figma-mcp-uxui-polish.md) "Admin auth + security hardening sweep" subsection. **Decide whether to finish/commit before touching `/admin` on the new machine.**
+> 4. **Swipe-feed logo resize task** still open from the resumed `7837dd7e` snapshot — user wants the PawJai logo bigger/proportional on the swipe feed to match Figma. Current size `h-[60px] w-[140px]` in `components/SwipeFeed.tsx`.
 
 There is also a **separate personal project, "PROUD,"** whose Claude Code sessions ran inside this same directory. Those sessions are listed below but flagged `NON-PAWJAI` — they belong to a different repo / GitHub / Vercel and should not be conflated with PAWJAI when revoking access.
 
@@ -34,8 +36,8 @@ There was **no** `sessions-index.json` in either; metadata below was derived fro
 
 | Date | Session | What | State | File |
 |------|---------|------|-------|------|
-| 2026-04-20 → 05-17 | `1b12712c` (+`502eaa6b`,`7837dd7e`) | Initial build: Figma import, swipe feed, auth modal, admin, Supabase scaffold | Done | [link](sessions/2026-04_initial-build-figma-auth.md) |
-| 2026-05-17 → 06-08 | `26138611` (worktree) | Figma MCP setup + long-running UX/UI polish: logo crop, header overlaps, real QR, chat attachments, settings/Subscription page, More cleanup, Filter wizard scroll mode, dog-detail back button, etc. | Done (~25 commits cherry-picked to `main`) | [link](sessions/2026-05-17_worktree-figma-mcp-uxui-polish.md) |
+| 2026-04-20 → 05-17 (initial) · `7837dd7e` resumed through 2026-06-16 | `1b12712c` (+`502eaa6b`,`7837dd7e`) | Initial build: Figma import, swipe feed, auth modal, admin, Supabase scaffold. **`7837dd7e` resumed for an extensive UI polish second life** (swipe feed sizing/ads, profile redesign, appointments redesign, `/schedule/[dogId]` routing, multi-photo upload, verification per-section drafts, admin dog-form error summary). | Done; **open: swipe-feed logo resize** | [link](sessions/2026-04_initial-build-figma-auth.md) |
+| 2026-05-17 → 06-16 | `26138611` (worktree) | Figma MCP setup + long-running UX/UI polish (logo crop, header overlaps, real QR, chat attachments, settings/Subscription page, More cleanup, Filter wizard scroll mode, dog-detail back button) **+ admin-auth + security hardening sweep (post-06-08, in-flight, uncommitted)** | Polish: shipped (~25 commits cherry-picked to `main`). Admin-auth sweep: **uncommitted**, 3 migrations not applied | [link](sessions/2026-05-17_worktree-figma-mcp-uxui-polish.md) |
 | 2026-05-26 | `6b40d9ab` | Adopter preference filtering + migration repair | Done (PR #1) | [link](sessions/2026-05-26_adopter-preference-filtering.md) |
 | 2026-06-15 | `f6544bb9` | Push + merge booking-email notifications (PR #1) to main; finalize handoff docs + push | Done | [link](sessions/2026-06-15_merge-and-handoff-push.md) |
 | 2026-05-26 | `6c0d8df0` | Cloudflare CDN in front of Backblaze B2 | Done (verify env var) | [link](sessions/2026-05-26_cloudflare-cdn.md) |
