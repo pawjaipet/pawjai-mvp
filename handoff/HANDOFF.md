@@ -24,13 +24,18 @@ There is also a **separate personal project, "PROUD,"** whose Claude Code sessio
 
 ## Session summary
 
-Reconstructed directly from the `.jsonl` transcripts in `~/.claude/projects/-Users-sudlabha-Desktop-paw/` (there was **no** `sessions-index.json`; metadata below was derived from the transcripts themselves). 18 logical sessions across 20 transcript files (the initial build was saved as 3 resumed snapshots). Re-verified 2026-06-15 against the live transcripts and `.vercel/repo.json`.
+Reconstructed directly from the `.jsonl` transcripts. **Two** Claude-project directories exist for this repo because one long-running session was run inside a git worktree:
+- `~/.claude/projects/-Users-sudlabha-Desktop-paw/` — 20 transcripts from the main checkout.
+- `~/.claude/projects/-Users-sudlabha-Desktop-paw--claude-worktrees-vigilant-bhaskara-eb96de/` — 1 transcript from the `.claude/worktrees/vigilant-bhaskara-eb96de` git worktree.
+
+There was **no** `sessions-index.json` in either; metadata below was derived from the transcripts themselves. 19 logical sessions across 22 transcript files (the initial build was saved as 3 resumed snapshots). Re-verified 2026-06-15 against the live transcripts and `.vercel/repo.json`.
 
 ### PAWJAI sessions
 
 | Date | Session | What | State | File |
 |------|---------|------|-------|------|
 | 2026-04-20 → 05-17 | `1b12712c` (+`502eaa6b`,`7837dd7e`) | Initial build: Figma import, swipe feed, auth modal, admin, Supabase scaffold | Done | [link](sessions/2026-04_initial-build-figma-auth.md) |
+| 2026-05-17 → 06-08 | `26138611` (worktree) | Figma MCP setup + long-running UX/UI polish: logo crop, header overlaps, real QR, chat attachments, settings/Subscription page, More cleanup, Filter wizard scroll mode, dog-detail back button, etc. | Done (~25 commits cherry-picked to `main`) | [link](sessions/2026-05-17_worktree-figma-mcp-uxui-polish.md) |
 | 2026-05-26 | `6b40d9ab` | Adopter preference filtering + migration repair | Done (PR #1) | [link](sessions/2026-05-26_adopter-preference-filtering.md) |
 | 2026-05-26 | `f6544bb9` | Push + merge PR #1 to main | Done | [link](sessions/2026-05-26_merge-to-main.md) |
 | 2026-05-26 | `6c0d8df0` | Cloudflare CDN in front of Backblaze B2 | Done (verify env var) | [link](sessions/2026-05-26_cloudflare-cdn.md) |
