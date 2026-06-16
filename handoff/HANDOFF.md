@@ -1,6 +1,6 @@
 # PAWJAI — Account Migration Handoff
 
-**Prepared:** 2026-06-15 · **Purpose:** hand this repo off to a fresh machine and a different Anthropic/Claude account, cleanly disconnecting the old account from every external service.
+**Prepared:** 2026-06-15 · **Last updated:** 2026-06-16 · **Purpose:** hand this repo off to a fresh machine and a different Anthropic/Claude account, cleanly disconnecting the old account from every external service.
 
 ---
 
@@ -11,7 +11,7 @@
 **Actively being extended right now:**
 - **Donations** — "Send Treats" QR + bank-transfer screen, donation intents, shelter payment details. **Shipped to `main`** (commits `92f6d1c` Treat button + modal, `4b1ce77` QR screen).
 - **Appointments / messaging** — chat attachments, return-inquiry backend, quick-action chips, reschedule flow.
-- **Admin tooling** — editable About-page profile, booking QR check-in, dog photo management.
+- **Admin tooling** — editable About-page profile (`pawjai_profile` table now live in remote DB), booking QR check-in, dog photo management. ⚠️ Admin editor page has a `"use server"` export bug — a Codex prompt exists to fix it (see [about-page session](sessions/2026-05-27_about-page.md)).
 - **Adopter preference filtering** — dog matching wizard.
 
 > ### ⚠️ Open threads to pick up on the new machine
