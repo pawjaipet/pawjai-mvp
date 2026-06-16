@@ -131,9 +131,9 @@ Do these **after** the new machine is confirmed working (see Restore). Goal: rem
 
 ---
 
-## RESTORE CHECKLIST
+## RESTORE / MIGRATION CHECKLIST
 
-Setting up the **new** machine + new Claude account is handled by **Prompt B** (the restore/setup prompt). In short it will: clone `pawjaipet/pawjai-mvp`, recreate `.env.local` from the values in each dashboard (using the variable names in the Connections table above), re-link Vercel, re-authorize the Figma + Supabase MCP connectors on the **new** Claude account, and `npm install`. Do the disconnect steps above **only after** the new machine is verified working.
+The full **add-new → verify → remove-old** procedure (the "Prompt B" runbook) lives in **[MIGRATION-RUNBOOK.md](MIGRATION-RUNBOOK.md)**. It covers, in order: standing up the new machine + new Claude Max account, then migrating GitHub, Vercel, Supabase, Backblaze, Cloudflare, Resend, Figma, and the domain registrar — each with a verification gate — and rotating all secrets. **The old Anthropic account is deleted dead last (Step 11), only after every verification box is green.** The DISCONNECT steps above are the "remove-old" half of each runbook step; do them per-service **only after** that service's new-account access is verified.
 
 ---
 
