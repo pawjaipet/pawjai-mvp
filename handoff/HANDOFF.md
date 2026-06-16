@@ -39,7 +39,7 @@ There was **no** `sessions-index.json` in either; metadata below was derived fro
 | 2026-05-26 | `6b40d9ab` | Adopter preference filtering + migration repair | Done (PR #1) | [link](sessions/2026-05-26_adopter-preference-filtering.md) |
 | 2026-05-26 | `f6544bb9` | Push + merge PR #1 to main | Done | [link](sessions/2026-05-26_merge-to-main.md) |
 | 2026-05-26 | `6c0d8df0` | Cloudflare CDN in front of Backblaze B2 | Done (verify env var) | [link](sessions/2026-05-26_cloudflare-cdn.md) |
-| 2026-05-27 | `19ea920d` | About-page restructure + admin editor spec | Done | [link](sessions/2026-05-27_about-page.md) |
+| 2026-05-27 → 06-16 | `19ea920d` | About-page restructure (shelters first, big cards, live Supabase fetch), `pawjai_profile` migration applied to remote DB, logo_url added to shelter type, Codex prompt written for admin editor bug | Done (open: admin editor bug, shelter logo input missing) | [link](sessions/2026-05-27_about-page.md) |
 | 2026-06-08 | `70bdcf52` | Messages tab quick-action chips (Figma UX/UI) | Done (no live screenshot) | [link](sessions/2026-06-08_figma-uxui-messages.md) |
 | 2026-06-08 | `d4e5b3ee` | Donate QR + bank screen kickoff/discovery | Done (shipped later) | [link](sessions/2026-06-08_donate-qr-prompt.md) |
 | 2026-06-08 → 06-15 | `1f669b51` | Donations UX: Treat button + modal (Prompt 1) & Send Treats QR screen (Prompt 2) | Shipped to main; 2 open threads (modal portal bug, unapplied migrations) | [link](sessions/2026-06-08_pawjai-uxui.md) |
