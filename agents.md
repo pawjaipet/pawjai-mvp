@@ -1,148 +1,82 @@
-# PAWJAI — Agent & MCP Connector Reference
+# PAWJAI — Agent Guide
 
-This file documents all MCP servers and AI agent tools wired into the PAWJAI project (Thai dog adoption & matching platform). Use this as the source of truth for what each connector can do and when to call it.
+PAWJAI is a Thai dog **adoption & matching** platform — live in production at **pawjai.co.th**. This file is the context an AI coding agent (Codex) should load first. The day-to-day work here is **front-end / UX-UI**; the backend is built and stable.
 
----
-
-## MCP Servers
-
-### 1. Figma — Design Source
-**Server:** `plugin:design:figma` / `mcp__Figma__*`
-
-The canonical source for all UI design. The PAWJAI Figma Make file contains 23 screens, 34 shadcn/ui primitives, and 538 image assets.
-
-**File key:** `cfYww0U2M4xAkvHv3Gbvss`
-**Figma URL:** `https://www.figma.com/make/cfYww0U2M4xAkvHv3Gbvss/PAWJAI-Currently`
-
-| Tool | When to use |
-|------|-------------|
-| `get_design_context` | Primary tool — fetch code + screenshot for any node. Pass `fileKey` + `nodeId`. |
-| `get_screenshot` | Get a visual screenshot of a specific node without full code context. |
-| `get_metadata` | Get structural overview (layer names, IDs, positions). Never use on Make files. |
-| `get_variable_defs` | Fetch design tokens (colors, spacing, typography) from the file. |
-| `get_code_connect_map` | Check which Figma components are mapped to codebase components. |
-| `add_code_connect_map` | Register a new Figma ↔ codebase component mapping. |
-| `create_design_system_rules` | Generate design system rules from the Figma file. |
-
-**Screens available (by nodeId — fetch via get_metadata to resolve):**
-
-| Screen | Description |
-|--------|-------------|
-| SignUp | Sign-up form |
-| RegisterAccount | Account registration |
-| VerificationA–D | 4-step identity verification |
-| DocumentVerificationA–D | 4-step document upload flow |
-| DocumentReminderPopup | Missing documents reminder |
-| Questionnaire1–3 | Adopter questionnaire (3 pages) |
-| Homepage | Main home screen |
-| DogsScrolling | Scrollable dog browse listing |
-| DogProfilePage / DogProfile | Dog detail page (2 variants) |
-| FilterPage | Search & filter |
-| SchedulePage / SelectedSchedule | Appointment scheduling |
-| AppointmentsPage | User's appointments list |
-| MessagesPage / ChatThreadPage | Messaging & chat |
-| ProfileDashboard | User account dashboard |
-| SubscriptionPage | Subscription / pricing |
-| MorePage / AboutUsPage | Settings & info |
-| NavigationMenu / BottomNavBar | Nav components |
-| AdminTestPage | Admin panel |
+> **Deeper context:** see [`handoff/HANDOFF.md`](handoff/HANDOFF.md) for the full project history, the session-by-session log in [`handoff/sessions/`](handoff/sessions/), and current open threads. New here? Start with [`handoff/START-HERE.md`](handoff/START-HERE.md).
 
 ---
 
-### 2. Supabase — Backend & Database
-**Server:** `mcp__96b59bab-9681-4ba9-97d1-24bbaec99e22__*`
+## Stack
 
-PAWJAI's backend runs entirely on Supabase: PostgreSQL DB, Row Level Security, Edge Functions, and Storage.
-
-**Database migrations (apply in order):**
-1. `001_core_schema.sql` — tables
-2. `002_rls_policies.sql` — RLS policies
-3. `003_storage_setup.sql` — storage buckets
-4. `004_views_and_queries.sql` — views & queries
-5. `005_seed_data.sql` — seed data
-
-**Edge Functions:**
-- `server/index.tsx` — main entry
-- `server/database.tsx` — DB operations
-- `server/kv_store.tsx` — key-value store
-- `server/routes-admin.tsx` — admin API routes
-- `server/routes-adopters.tsx` — adopter API routes
-
-| Tool | When to use |
-|------|-------------|
-| `list_projects` | See all Supabase projects linked to the account |
-| `get_project` | Get project details (ID, region, status) |
-| `get_project_url` | Get the project's API URL |
-| `get_publishable_keys` | Get anon/public keys for client config |
-| `execute_sql` | Run SQL queries directly against the DB |
-| `apply_migration` | Apply a new SQL migration |
-| `list_migrations` | List all applied migrations |
-| `list_tables` | Inspect DB tables and schema |
-| `generate_typescript_types` | Generate TypeScript types from the DB schema |
-| `deploy_edge_function` | Deploy or update an Edge Function |
-| `get_edge_function` | Inspect a deployed Edge Function |
-| `list_edge_functions` | List all deployed functions |
-| `get_logs` | Fetch logs (DB, edge functions, etc.) |
-| `get_advisors` | Get performance and security advisors |
-| `list_extensions` | List enabled PostgreSQL extensions |
-| `create_branch` / `list_branches` | Manage DB preview branches |
-| `merge_branch` / `rebase_branch` / `reset_branch` / `delete_branch` | Branch lifecycle |
-| `pause_project` / `restore_project` | Project compute management |
-| `list_organizations` / `get_organization` | Org-level access |
-| `get_cost` / `confirm_cost` | Review and confirm costs before paid actions |
-| `search_docs` | Search Supabase documentation |
+| Layer | Tech |
+|-------|------|
+| Framework | **Next.js 16** (App Router, Server Actions, Turbopack) |
+| Language | TypeScript, React 19 |
+| Styling | Tailwind CSS 3.4 + shadcn/ui (Radix primitives), `lucide-react` icons |
+| Backend | **Supabase** — Postgres, Auth (`@supabase/ssr`), Storage |
+| Media | **Backblaze B2** behind a **Cloudflare** CDN (`media.pawjai.co.th`) |
+| Email | **Resend** (`lib/resend.ts`) |
+| Donations | PromptPay QR via `promptpay-qr` + `qrcode` |
+| Hosting | **Vercel** — auto-deploys on push to `main` |
 
 ---
 
-## Agent Workflows
-
-### Design → Code
-1. Open screen in Figma, copy the node ID from the URL (`?node-id=X-Y` → `X:Y`)
-2. Call `get_design_context(fileKey, nodeId)` → get reference React+Tailwind code + screenshot
-3. Adapt the output to this project's stack (React, Tailwind, shadcn/ui)
-4. Reuse existing components before generating new ones
-
-### DB Schema Changes
-1. Write the SQL migration
-2. Call `apply_migration` with the SQL
-3. Call `generate_typescript_types` to update types
-4. Update relevant Edge Functions if routes changed
-
-### New Feature End-to-End
-1. Get design from Figma (`get_design_context`)
-2. Implement frontend component
-3. Wire to Supabase via existing client utils (`utils/supabase/client.tsx`)
-4. If new DB table/column needed: `apply_migration` → `generate_typescript_types`
-5. If new API route needed: update Edge Function → `deploy_edge_function`
-
----
-
-## Project Stack Summary
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React + TypeScript |
-| Styling | Tailwind CSS + shadcn/ui |
-| Backend | Supabase Edge Functions (Deno) |
-| Database | PostgreSQL (via Supabase) |
-| Auth | Supabase Auth |
-| Storage | Supabase Storage |
-| Design | Figma Make |
-
----
-
-## Key Files (from Figma Make source)
+## Repo layout
 
 ```
-App.tsx                          — app entry point
-styles/globals.css               — global styles
-components/                      — screen components (23 screens)
-components/ui/                   — shadcn/ui primitives (34 components)
-components/figma/                — Figma-specific helpers (ImageWithFallback)
-imports/                         — Figma component variant exports (~94 files)
-utils/supabase/                  — Supabase client utilities
-supabase/functions/server/       — Edge Function source
-supabase/migrations/             — 5 SQL migration files
-docs/                            — API reference, setup guides, architecture
-guidelines/Guidelines.md         — design guidelines
+app/                     Next.js App Router (routes below)
+components/              UI components, grouped by domain:
+  appointments/ auth/ documents/ dogs/ donations/ profile/ settings/
+  (plus shared top-level components: SwipeFeed, SwipeDogCard, BottomNavBar, PageHeader, …)
+utils/                   Domain logic & data models (booking, donations, adopter,
+                         dog-media, swipe-feed-model, personality-tags, backblaze, …)
+  utils/supabase/        Supabase clients: server.ts, client.ts, admin.ts, config.ts
+lib/                     resend.ts + lib/supabase/ (client/server/middleware helpers)
+supabase/migrations/     SQL migrations
+types/                   database.ts (generated DB types)
+scripts/                 one-off node scripts (dog import, B2 photo linking, email test)
+public/                  static assets (incl. pawjai-logo.png)
+docs/                    setup guides & architecture notes
+handoff/                 project handoff + session history (read this for context)
 ```
+
+### Main routes (`app/`)
+Public/adopter: `swipe` (home feed), `dogs/[id]`, `dogs/[id]/donate`, `filter`, `profile`,
+`appointments` + `appointments/[id]`, `schedule/[dogId]`, `documents` (verification),
+`about`, `more`, `settings` + `settings/subscription`, `donations`, `auth/*`, `onboarding/*`.
+Admin: `admin/dogs`, `admin/bookings`, `admin/ads`, `admin/listings`, `admin/accounts`,
+`admin/audit`, `admin/pawjaiprofile`, `admin/login`.
+
+---
+
+## Workflow (edit → live)
+
+1. Make the change (front-end work is the norm — components in `components/`, routes in `app/`).
+2. Verify locally: `npm run dev` (Turbopack). Before committing, run **`npm run verify`** (typecheck + tests + lint + audit) — or at minimum `npm run typecheck`.
+3. Commit, then **push to `main`** → Vercel auto-deploys to pawjai.co.th in ~1 min.
+4. Reuse existing components and `utils/` models before writing new ones.
+
+**Useful scripts:** `npm run dev`, `npm run build`, `npm run typecheck`, `npm test`, `npm run verify`, `npm run lint`, `npm run supabase:link` (links the CLI to project `bdnyvcvkyepipdcygkvn`), `npm run email:test`.
+
+---
+
+## Backend notes (stable — touch sparingly)
+
+- Supabase project ref: **`bdnyvcvkyepipdcygkvn`** (region us-west-1). Client code lives in `utils/supabase/` (use `server.ts` in Server Components/Actions, `client.ts` in Client Components, `admin.ts` for service-role tasks).
+- DB schema changes go through `supabase/migrations/` and the **Supabase CLI** (`npm run supabase:link` then `supabase db push`), or the Supabase dashboard. After a schema change, regenerate `types/database.ts`.
+- Storage buckets: public — `dog-photos`, `profile-pictures`, `assets`; private — `identity-documents`, `application-documents`, `adopter-documents`. Large media is served via Backblaze B2 + Cloudflare; see `utils/backblaze.ts`.
+- Env vars live in `.env.local` (git-ignored). Names are documented in [`handoff/HANDOFF.md`](handoff/HANDOFF.md) → Connections. **Never commit secrets.**
+
+---
+
+## Open threads (see handoff for detail)
+
+1. **Swipe-card "Treat" donation modal renders inline instead of as an overlay** — a `transform` ancestor breaks `position: fixed`; fix is to portal the modal to `document.body` via `createPortal`. Not yet committed.
+2. **Donation migrations not yet applied to the remote DB** — `donation_intents` table + `shelters` payment columns exist only as local migration files.
+3. **Admin About-page editor bug** — `app/admin/pawjaiprofile/actions.ts` exports a plain object from a `"use server"` file (Next.js 16 forbids it). Move the constant out or inline it.
+
+---
+
+## Design
+
+Figma was the original design source but is **no longer central** — treat the live app and these docs as the source of truth for UX decisions. (The legacy design file key is `cfYww0U2M4xAkvHv3Gbvss` if ever needed; no Figma connector is required to do the work.)
