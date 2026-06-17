@@ -26,8 +26,10 @@ The work you'll continue is **front-end and UX-UI** — the swipe feed, dog deta
 ## Where the work stands (open threads to continue)
 From [HANDOFF.md](HANDOFF.md):
 1. **Swipe-card "Treat" modal renders inline instead of as an overlay** — a `transform` ancestor breaks `position: fixed`; fix is to portal the modal to `document.body`. Not yet committed.
-2. **Donation migrations not yet applied to the remote Supabase DB** — `donation_intents` table + `shelters` payment columns exist only as local migration files.
-3. **Admin About-page editor bug** — `app/admin/pawjaiprofile/actions.ts` exports a plain object from a `"use server"` file (Next.js 16 forbids it); a fix is described in the [about-page session](sessions/2026-05-27_about-page.md).
+2. **Donation migrations not yet applied to the remote Supabase DB** — `donation_intents` table + `shelters` payment columns exist only as local migration files. ▶ Ready-to-paste prompt: [prompts/apply-donation-migrations.md](prompts/apply-donation-migrations.md).
+3. **Admin About-page editor bug** — `app/admin/pawjaiprofile/actions.ts` exports a plain object from a `"use server"` file (Next.js 16 forbids it). ▶ Ready-to-paste prompt: [prompts/admin-about-page-editor.md](prompts/admin-about-page-editor.md).
+
+> **[prompts/](prompts/)** holds the full Codex prompts extracted verbatim from the (now-deleted) sessions, so the open threads above have ready-to-run instructions, not just descriptions.
 
 ## Refresh AGENTS.md (recommended)
 `AGENTS.md` is the file Codex reads automatically, but it still documents Claude MCP tool names (`mcp__Figma__*`, `mcp__96b59bab…__*`) and the pre-Next.js file layout. For a clean Codex handoff it should be rewritten to: drop the Claude-MCP tool tables, de-emphasize Figma, and describe the current Next.js App Router structure + the real workflow (edit → commit → push to `main` → Vercel auto-deploys). *(Claude can do this for you before you leave, or ask Codex to do it as its first task.)*
