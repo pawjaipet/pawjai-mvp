@@ -138,9 +138,15 @@ Do these **after** the new machine is confirmed working (see Restore). Goal: rem
 
 ---
 
-## RESTORE / MIGRATION CHECKLIST
+## RESTORE / HANDOFF — now targeting **Codex**, not a new Claude account
 
-The full **add-new → verify → remove-old** procedure (the "Prompt B" runbook) lives in **[MIGRATION-RUNBOOK.md](MIGRATION-RUNBOOK.md)**. It covers, in order: standing up the new machine + new Claude Max account, then migrating GitHub, Vercel, Supabase, Backblaze, Cloudflare, Resend, Figma, and the domain registrar — each with a verification gate — and rotating all secrets. **The old Anthropic account is deleted dead last (Step 11), only after every verification box is green.** The DISCONNECT steps above are the "remove-old" half of each runbook step; do them per-service **only after** that service's new-account access is verified.
+**Decision (2026-06):** PAWJAI is moving to **Codex** rather than a second Claude account — keeping it on one agent (the backend was already built in Codex) and avoiding the headache of two projects under one Claude account. PROUD stays separate.
+
+➡️ **Start at [START-HERE.md](START-HERE.md)** — the Codex-targeted entry point (install/sign in to Codex → it auto-loads `AGENTS.md` → read this handoff → recreate `.env.local`). It's a **front-end / UX-UI** handoff; Figma is no longer central.
+
+Because the live services aren't tied to any AI account, there is **no service-ownership migration required** for the Claude → Codex switch — your GitHub/Vercel/Supabase/etc. logins are unchanged. The only Claude-account cleanup left is `claude logout` on this machine when you're done (§9 above).
+
+> `MIGRATION-RUNBOOK.md` (the heavy add-new→verify→remove-old service-transfer doc) is **only relevant if you also move the underlying service dashboards to different logins** — not needed for simply switching the AI agent from Claude to Codex. Safe to ignore.
 
 ---
 
