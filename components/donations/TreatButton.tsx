@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Bone } from "lucide-react";
 import { useAuthModal } from "@/components/auth/AuthProvider";
@@ -38,7 +39,12 @@ export default function TreatButton({
   const router = useRouter();
   const { openAuthModal } = useAuthModal();
   const [open, setOpen] = useState(autoOpenCount != null);
+  const [mounted, setMounted] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   function handleContinue({ treatCount, amountThb }: TreatSelection) {
     if (!isLoggedIn) {
@@ -91,16 +97,21 @@ export default function TreatButton({
   return (
     <>
       {trigger}
-      <TreatModal
-        open={open}
-        onClose={() => setOpen(false)}
-        dogName={dogName}
-        shelterName={shelterName}
-        dogPhotoUrl={dogPhotoUrl}
-        initialCount={autoOpenCount ?? 1}
-        pending={pending}
-        onContinue={handleContinue}
-      />
+      {mounted
+        ? createPortal(
+            <TreatModal
+              open={open}
+              onClose={() => setOpen(false)}
+              dogName={dogName}
+              shelterName={shelterName}
+              dogPhotoUrl={dogPhotoUrl}
+              initialCount={autoOpenCount ?? 1}
+              pending={pending}
+              onContinue={handleContinue}
+            />,
+            document.body,
+          )
+        : null}
     </>
   );
 }
