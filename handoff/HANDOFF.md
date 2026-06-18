@@ -1,6 +1,6 @@
 # PAWJAI — Account Migration Handoff
 
-**Prepared:** 2026-06-15 · **Last updated:** 2026-06-16 (refresh — added in-flight admin-auth thread, extended worktree session date range, noted resumed `7837dd7e` UI polish second life) · **Purpose:** hand this repo off to a fresh machine and a different Anthropic/Claude account, cleanly disconnecting the old account from every external service.
+**Prepared:** 2026-06-15 · **Last updated:** 2026-06-18 (Codex re-verification — transcript/session count, connection inventory, MCP auth notes, env-var names, dirty worktree status) · **Purpose:** hand this repo off to a fresh machine and a different Anthropic/Claude account, cleanly disconnecting the old account from every external service.
 
 ---
 
@@ -27,10 +27,10 @@ There is also a **separate personal project, "PROUD,"** whose Claude Code sessio
 ## Session summary
 
 Reconstructed directly from the `.jsonl` transcripts. **Two** Claude-project directories exist for this repo because one long-running session was run inside a git worktree:
-- `~/.claude/projects/-Users-sudlabha-Desktop-paw/` — 20 transcripts from the main checkout.
+- `~/.claude/projects/-Users-sudlabha-Desktop-paw/` — 18 `.jsonl` transcripts from the main checkout on this machine.
 - `~/.claude/projects/-Users-sudlabha-Desktop-paw--claude-worktrees-vigilant-bhaskara-eb96de/` — 1 transcript from the `.claude/worktrees/vigilant-bhaskara-eb96de` git worktree.
 
-There was **no** `sessions-index.json` in either; metadata below was derived from the transcripts themselves. 19 logical sessions across 22 transcript files (the initial build was saved as 3 resumed snapshots). Re-verified 2026-06-15 against the live transcripts and `.vercel/repo.json`.
+There was **no** `sessions-index.json` in either directory when rechecked; metadata below was derived from the `.jsonl` transcripts themselves. Current inventory: 18 main-checkout `.jsonl` transcripts + 1 worktree `.jsonl` transcript, represented as 19 session summary files in `handoff/sessions/` (the initial build doc also references older resumed snapshot IDs that are not present as separate local `.jsonl` files). Re-verified 2026-06-18 against the live transcripts, `.vercel/repo.json`, `.claude/settings.local.json`, `supabase/config.toml`, and env-var names.
 
 ### PAWJAI sessions
 
@@ -46,7 +46,7 @@ There was **no** `sessions-index.json` in either; metadata below was derived fro
 | 2026-06-08 | `d4e5b3ee` | Donate QR + bank screen kickoff/discovery | Done (shipped later) | [link](sessions/2026-06-08_donate-qr-prompt.md) |
 | 2026-06-08 → 06-15 | `1f669b51` | Donations UX: Treat button + modal (Prompt 1) & Send Treats QR screen (Prompt 2) | Shipped to main; 2 open threads (modal portal bug, unapplied migrations) | [link](sessions/2026-06-08_pawjai-uxui.md) |
 | 2026-06-09 | `2aa49bab` | Account-separation advisory (two Claude accounts) | Done | [link](sessions/2026-06-09_account-separation.md) |
-| 2026-06-15 | `03201a97` | Handoff documentation (first pass) — read all transcripts, wrote session files + HANDOFF.md | Done | [link](sessions/2026-06-15_recent-hello.md) |
+| 2026-06-15 → 06-17 | `03201a97` | Handoff documentation (first pass), later resumed for PROUD-vs-PAWJAI transcript separation notes | Done | [link](sessions/2026-06-15_recent-hello.md) |
 
 ### Off-topic / trivial sessions (ran in this dir incidentally)
 
@@ -74,17 +74,18 @@ There was **no** `sessions-index.json` in either; metadata below was derived fro
 
 | Service | Wired to | Config / env-var names |
 |---------|----------|------------------------|
-| **GitHub** | `pawjaipet/pawjai-mvp` (org `pawjaipet`), branch `main` | git remote `origin` = `https://github.com/pawjaipet/pawjai-mvp.git` |
+| **GitHub** | `pawjaipet/pawjai-mvp` (org `pawjaipet`), branch `main` | git remote `origin` = `https://github.com/pawjaipet/pawjai-mvp.git`. Recheck 2026-06-18: `main...origin/main`, no unpushed commits, but many uncommitted app/admin-auth files in the working tree. |
 | **Vercel** | Production deploy → `pawjai.co.th` | Linked via `.vercel/repo.json` (git-ignored): project `pawjai-mvp` id `prj_hqDpCgHngxahehXoognmVuXw1OBk`, team/org id `team_97uk7kuLt4prWHNQbfZV8y73`. `VERCEL_OIDC_TOKEN` present in `.env.local` |
-| **Supabase** | Project ref `bdnyvcvkyepipdcygkvn` (URL public in `.env.example`); local `supabase/config.toml` project_id `paw` | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD` |
+| **Supabase** | Project ref `bdnyvcvkyepipdcygkvn` (URL public in `.env.example`); local `supabase/config.toml` project_id `paw` | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD`, plus referenced-but-not-currently-local vars `PAWJAI_BOOKING_TOKEN_SECRET`, `PAWJAI_IMPORT_SHELTER_NAME`. `supabase/config.toml` also references `OPENAI_API_KEY` for local Supabase Studio AI only. |
 | **Backblaze B2** | Media/object storage (origin behind CDN) | `B2_KEY_ID`, `B2_APPLICATION_KEY`, `B2_BUCKET_ID`, `PAWJAI_B2_PUBLIC_BASE_URL` |
 | **Cloudflare** | CDN/DNS for `media.pawjai.co.th` (proxies Backblaze), domain `pawjai.co.th` | No env vars in repo; managed in Cloudflare dashboard. ⚠️ A Cloudflare API token was pasted into session `6c0d8df0` — treat as exposed, rotate it. |
 | **Resend** | Transactional/booking email | `RESEND_API_KEY`, `PAWJAI_EMAIL_FROM` |
-| **Figma MCP** | Design source (`PAWJAI-Currently` Figma Make file) | Claude-account-level MCP connector (no project `.mcp.json`); OAuth tied to the Figma account |
-| **Supabase MCP** | Same Supabase project, via Claude | Claude-account-level MCP connector `96b59bab-…`; uses a Supabase access token |
+| **Figma MCP** | Design source (`PAWJAI-Currently` Figma Make file, key `cfYww0U2M4xAkvHv3Gbvss`) | Claude-account-level MCP connector (no project `.mcp.json`); OAuth tied to the Figma account. `.claude/settings.local.json` only records allowed tool names such as `mcp__plugin_design_figma__*` / `mcp__Figma__*`; it does not contain auth. |
+| **Supabase MCP** | Same Supabase project, via Claude | Claude-account-level MCP connector `96b59bab-9681-4ba9-97d1-24bbaec99e22`; uses a Supabase access token. `.claude/settings.local.json` permits tools such as `mcp__96b59bab-...__execute_sql`, but auth lives outside the repo. |
+| **Domain registrar** | `pawjai.co.th` registration | Registrar not recorded in repo; verify dashboard ownership separately from Cloudflare DNS before retiring any old account. |
 | **Google / Gmail** | Berkeley account (used incidentally in session `5251deb7`) | Browser session on this machine only — no repo config |
 
-**MCP note:** there is **no `.mcp.json`** in the repo and **no project-scoped MCP servers** in `~/.claude.json`. The Figma and Supabase MCP servers are configured as **connectors on the Claude account itself** — so they travel with the *account*, not the repo. Switching Claude accounts automatically drops their auth; nothing in the repo needs editing.
+**MCP note:** there is **no `.mcp.json`** in the repo. Project `.claude/settings.local.json` contains Claude Code permission allow-list entries for Figma and Supabase MCP tools, but no credentials. The Figma and Supabase MCP servers are configured as **connectors on the Claude account itself** — so they travel with the *account*, not the repo. Switching Claude accounts automatically drops their auth; re-authorize them in the new account before using Figma/Supabase MCP.
 
 ---
 
@@ -126,6 +127,7 @@ Do these **after** the new machine is confirmed working (see Restore). Goal: rem
 
 ### 7. Figma
 - The Figma MCP auth is an **OAuth connector on the old Claude account** — it disappears when you log out of that Claude account (step 9). Additionally: figma.com → Settings → **Security / Connected apps / Authorized integrations** → revoke any Claude/MCP authorization granted by the old account.
+- On the new account, re-add/re-authorize the Figma MCP before doing design-to-code work. The old design source is the Figma Make file `PAWJAI-Currently` (`cfYww0U2M4xAkvHv3Gbvss`), but current UX/UI work should treat the live app plus these docs as source of truth.
 - **DO NOT:** delete the `PAWJAI-Currently` Figma file.
 
 ### 8. Google / Gmail (incidental)
@@ -138,15 +140,13 @@ Do these **after** the new machine is confirmed working (see Restore). Goal: rem
 
 ---
 
-## RESTORE / HANDOFF — now targeting **Codex**, not a new Claude account
+## RESTORE CHECKLIST
 
-**Decision (2026-06):** PAWJAI is moving to **Codex** rather than a second Claude account — keeping it on one agent (the backend was already built in Codex) and avoiding the headache of two projects under one Claude account. PROUD stays separate.
+The new-machine walkthrough is intentionally separate from this disconnect inventory. Use **[MIGRATION-RUNBOOK.md](MIGRATION-RUNBOOK.md)** as "Prompt B" if you are moving PAWJAI to a fresh machine and a different Anthropic/Claude account. It covers install/auth basics, GitHub, Vercel, Supabase env recreation, Figma MCP/Supabase MCP re-authorization, and the final "continue here" briefing.
 
-➡️ **Start at [START-HERE.md](START-HERE.md)** — the Codex-targeted entry point (install/sign in to Codex → it auto-loads `AGENTS.md` → read this handoff → recreate `.env.local`). It's a **front-end / UX-UI** handoff; Figma is no longer central.
+If continuing in Codex instead, start at **[START-HERE.md](START-HERE.md)** — the Codex-targeted entry point (install/sign in to Codex → it auto-loads `AGENTS.md` → read this handoff → recreate `.env.local`). It's a **front-end / UX-UI** handoff; Figma is useful for reference but no longer central.
 
-Because the live services aren't tied to any AI account, there is **no service-ownership migration required** for the Claude → Codex switch — your GitHub/Vercel/Supabase/etc. logins are unchanged. The only Claude-account cleanup left is `claude logout` on this machine when you're done (§9 above).
-
-> `MIGRATION-RUNBOOK.md` (the heavy add-new→verify→remove-old service-transfer doc) is **only relevant if you also move the underlying service dashboards to different logins** — not needed for simply switching the AI agent from Claude to Codex. Safe to ignore.
+Because the live services are not owned by an AI account, simply switching agents does not affect production. Full service ownership transfer is only needed if you are also changing the actual GitHub/Vercel/Supabase/Cloudflare/etc. dashboard logins.
 
 ---
 
@@ -154,3 +154,4 @@ Because the live services aren't tied to any AI account, there is **no service-o
 - No `.env` contents, tokens, or keys are reproduced anywhere in `handoff/`. Only variable **names** are listed.
 - `.gitignore` **does** ignore `.env`, `.env.local`, and `.env.*.local`. ⚠️ It does **not** ignore a plain `.env.production` / `.env.development` (only the `*.local` variants) — none exist today, but if you ever create one, add it to `.gitignore` first. `.env.example` is committed and contains only placeholders + the public Supabase URL (safe).
 - ⚠️ A **Cloudflare API token** and a **Backblaze key context** appeared inside past session transcripts (`6c0d8df0`). Those transcripts are not part of this handoff, but the token should be rotated regardless (see Disconnect §5).
+- Recheck 2026-06-18 found local `.env.example` and `.env.local`; only variable names were inspected. No values were copied into this handoff.
