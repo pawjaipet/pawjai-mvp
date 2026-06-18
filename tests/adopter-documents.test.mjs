@@ -26,6 +26,10 @@ function imageFile(name) {
   return new File(["image-bytes"], name, { type: "image/jpeg" });
 }
 
+function fileWithType(name, type) {
+  return new File(["file-bytes"], name, { type });
+}
+
 test("appends selected document files from client state into the submitted form data", () => {
   const { syncVerificationFileFields } = loadAdopterDocuments();
   const formData = new FormData();
@@ -50,6 +54,33 @@ test("rejects more than five home environment uploads", () => {
 
   assert.equal(result.files.length, 0);
   assert.match(result.error, /no more than 5/i);
+});
+
+test("accepts heic and heif photos as document images", () => {
+  const { getDocumentFileKind } = loadAdopterDocuments();
+
+  assert.equal(getDocumentFileKind(fileWithType("home.heic", "image/heic")), "image");
+  assert.equal(getDocumentFileKind(fileWithType("home.HEIF", "application/octet-stream")), "image");
+  assert.equal(getDocumentFileKind(fileWithType("home.jpeg", "image/jpeg")), "image");
+  assert.equal(getDocumentFileKind(fileWithType("lease.pdf", "application/pdf")), "pdf");
+  assert.equal(getDocumentFileKind(fileWithType("notes.txt", "text/plain")), null);
+});
+
+test("identifies heic document files that need conversion", () => {
+  const { isHeicDocumentFile } = loadAdopterDocuments();
+
+  assert.equal(isHeicDocumentFile(fileWithType("home.heic", "")), true);
+  assert.equal(isHeicDocumentFile(fileWithType("home.HEIF", "application/octet-stream")), true);
+  assert.equal(isHeicDocumentFile(fileWithType("home.jpg", "image/jpeg")), false);
+  assert.equal(isHeicDocumentFile(fileWithType("lease.pdf", "application/pdf")), false);
+});
+
+test("renames uploaded image documents to compressed jpg names", () => {
+  const { getStoredDocumentFileName } = loadAdopterDocuments();
+
+  assert.equal(getStoredDocumentFileName(fileWithType("20251016_074951836_iOS.heic", "image/heic")), "20251016_074951836_iOS.jpg");
+  assert.equal(getStoredDocumentFileName(fileWithType("IMG_6829.PNG", "image/png")), "IMG_6829.jpg");
+  assert.equal(getStoredDocumentFileName(fileWithType("lease.pdf", "application/pdf")), "lease.pdf");
 });
 
 test("defaults document saves to final submit unless draft mode is requested", () => {

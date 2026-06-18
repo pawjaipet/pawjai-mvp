@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { submitVerificationDocuments } from "@/app/documents/actions";
 import {
   initialDocumentSubmissionState,
-  submitVerificationDocuments,
   type DocumentSubmissionState,
-} from "@/app/documents/actions";
+} from "@/app/documents/state";
 import {
   getDocumentExitSaveSummary,
   MAX_HOME_PHOTOS,
@@ -137,7 +137,7 @@ function UploadBox({
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#65584f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-            <p className="text-[13px] font-semibold text-[#65584f]/50" style={{ fontFamily: M }}>Click to upload · JPG, PNG or PDF</p>
+            <p className="text-[13px] font-semibold text-[#65584f]/50" style={{ fontFamily: M }}>Click to upload · JPG, PNG, WEBP, HEIC, or PDF</p>
           </>
         )}
       </button>
@@ -145,7 +145,7 @@ function UploadBox({
         ref={ref}
         name={name}
         type="file"
-        accept="image/*,.pdf"
+        accept="image/*,.heic,.heif,.pdf"
         className="hidden"
         onChange={(e) => {
           if (e.target.files?.[0]) onChange(e.target.files[0]);
@@ -182,7 +182,7 @@ function MultiUploadBox({
     <div className="mb-[28px]">
       <QuestionLabel>{label}</QuestionLabel>
       <p className="mb-[10px] text-[13px] text-[#65584f]/55" style={{ fontFamily: M }}>
-        Up to {max} files · JPG, PNG, WEBP, or PDF
+        Up to {max} files · JPG, PNG, WEBP, HEIC, or PDF
       </p>
       <div className="space-y-[10px]">
         {files.map((file, idx) => (
@@ -246,7 +246,7 @@ function MultiUploadBox({
         ref={ref}
         name={name}
         type="file"
-        accept="image/*,.pdf"
+        accept="image/*,.heic,.heif,.pdf"
         multiple
         className="hidden"
         onChange={(e) => {

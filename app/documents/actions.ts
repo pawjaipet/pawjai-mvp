@@ -6,29 +6,18 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import {
-  ALLOWED_DOCUMENT_MIME_TYPES,
   collectHomePhotoFiles,
   DOCUMENT_BUCKET,
+  getDocumentFileKind,
+  getStoredDocumentFileName,
   getVerificationSaveMode,
+  isHeicDocumentFile,
   MAX_DOCUMENT_BYTES,
   MAX_HOME_PHOTOS,
   parseUploadedDocumentMetadata,
 } from "@/utils/adopter-documents";
 import type { Database, Json } from "@/types/database";
-
-export type DocumentSubmissionState = {
-  completed?: boolean;
-  message: string | null;
-  status: "idle" | "error" | "success";
-};
-
-export const initialDocumentSubmissionState: DocumentSubmissionState = {
-  completed: false,
-  message: null,
-  status: "idle",
-};
-
-const ALLOWED_DOCUMENT_TYPES = new Set<string>(ALLOWED_DOCUMENT_MIME_TYPES);
+import type { DocumentSubmissionState } from "./state";
 
 function parseBoolean(value: FormDataEntryValue | null) {
   if (value === "true") return true;
@@ -70,13 +59,54 @@ function splitName(fullName: string | null) {
   };
 }
 
-function safeExtension(file: File) {
-  const fromName = file.name.split(".").pop()?.toLowerCase();
-  if (fromName && /^[a-z0-9]{2,5}$/.test(fromName)) return fromName;
-  if (file.type === "application/pdf") return "pdf";
-  if (file.type === "image/png") return "png";
-  if (file.type === "image/webp") return "webp";
-  return "jpg";
+async function convertHeicDocumentToJpeg(buffer: Buffer) {
+  try {
+    const heicConvert = (await import("heic-convert")).default;
+    const jpeg = await heicConvert({
+      buffer: buffer as unknown as ArrayBufferLike,
+      format: "JPEG",
+      quality: 0.82,
+    });
+
+    return Buffer.from(jpeg);
+  } catch {
+    throw new Error("We couldn't convert that HEIC photo. Please export it as JPG or upload a different photo.");
+  }
+}
+
+async function prepareDocumentUpload(file: File, kind: "image" | "pdf") {
+  const sourceBuffer = Buffer.from(await file.arrayBuffer());
+
+  if (kind === "pdf") {
+    return {
+      buffer: sourceBuffer,
+      extension: "pdf",
+      mimeType: "application/pdf",
+      originalFileName: getStoredDocumentFileName(file),
+    };
+  }
+
+  const imageBuffer = isHeicDocumentFile(file)
+    ? await convertHeicDocumentToJpeg(sourceBuffer)
+    : sourceBuffer;
+
+  try {
+    const sharp = (await import("sharp")).default;
+    const buffer = await sharp(imageBuffer, { failOn: "none" })
+      .rotate()
+      .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 82, mozjpeg: true })
+      .toBuffer();
+
+    return {
+      buffer,
+      extension: "jpg",
+      mimeType: "image/jpeg",
+      originalFileName: getStoredDocumentFileName(file),
+    };
+  } catch {
+    throw new Error("We couldn't process that image. Please upload a different photo or a PDF.");
+  }
 }
 
 async function uploadDocumentFile({
@@ -90,8 +120,9 @@ async function uploadDocumentFile({
   file: File;
   userId: string;
 }) {
-  if (!ALLOWED_DOCUMENT_TYPES.has(file.type)) {
-    throw new Error("Only JPG, PNG, WEBP, or PDF files are supported.");
+  const fileKind = getDocumentFileKind(file);
+  if (!fileKind) {
+    throw new Error("Only JPG, PNG, WEBP, HEIC, HEIF, or PDF files are supported.");
   }
 
   if (file.size <= 0 || file.size > MAX_DOCUMENT_BYTES) {
@@ -99,12 +130,13 @@ async function uploadDocumentFile({
   }
 
   const admin = createAdminClient();
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const preparedFile = await prepareDocumentUpload(file, fileKind);
+  const { buffer } = preparedFile;
   const digest = createHash("sha1").update(buffer).digest("hex").slice(0, 10);
-  const storagePath = `${userId}/${adopterId}/${documentType}-${Date.now()}-${digest}.${safeExtension(file)}`;
+  const storagePath = `${userId}/${adopterId}/${documentType}-${Date.now()}-${digest}.${preparedFile.extension}`;
 
   const { error } = await admin.storage.from(DOCUMENT_BUCKET).upload(storagePath, buffer, {
-    contentType: file.type,
+    contentType: preparedFile.mimeType,
     upsert: false,
   });
 
@@ -113,8 +145,8 @@ async function uploadDocumentFile({
   }
 
   return {
-    mimeType: file.type,
-    originalFileName: file.name,
+    mimeType: preparedFile.mimeType,
+    originalFileName: preparedFile.originalFileName,
     storagePath,
   };
 }

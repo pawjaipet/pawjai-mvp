@@ -3,6 +3,8 @@ export const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024;
 export const DOCUMENT_BUCKET = "adopter-documents";
 export const ALLOWED_DOCUMENT_MIME_TYPES = [
   "application/pdf",
+  "image/heic",
+  "image/heif",
   "image/jpeg",
   "image/png",
   "image/webp",
@@ -10,6 +12,8 @@ export const ALLOWED_DOCUMENT_MIME_TYPES = [
 
 const DOCUMENT_TYPES = new Set(["id_copy", "house_image", "income_statement", "other"]);
 const DOCUMENT_SECTIONS = ["A", "B", "C", "D"] as const;
+const IMAGE_DOCUMENT_EXTENSIONS = new Set(["heic", "heif", "jpeg", "jpg", "png", "webp"]);
+const IMAGE_DOCUMENT_MIME_TYPES = new Set(["image/heic", "image/heif", "image/jpeg", "image/png", "image/webp"]);
 const VERIFICATION_SAVE_MODES = new Set(["draft", "submit"]);
 
 export type VerificationSaveMode = "draft" | "submit";
@@ -23,6 +27,38 @@ export type UploadedAdopterDocument = {
 
 function isPresentFile(value: FormDataEntryValue | File | null): value is File {
   return value instanceof File && value.size > 0;
+}
+
+function fileExtension(file: File) {
+  const fromName = file.name.split(".").pop()?.toLowerCase();
+  return fromName && /^[a-z0-9]{2,5}$/.test(fromName) ? fromName : "";
+}
+
+function fileBaseName(file: File) {
+  return file.name.replace(/\.[^.]+$/, "") || "document";
+}
+
+export function getDocumentFileKind(file: File): "image" | "pdf" | null {
+  const mimeType = file.type.toLowerCase();
+  const extension = fileExtension(file);
+
+  if (mimeType === "application/pdf" || extension === "pdf") return "pdf";
+  if (IMAGE_DOCUMENT_MIME_TYPES.has(mimeType) || IMAGE_DOCUMENT_EXTENSIONS.has(extension)) return "image";
+  return null;
+}
+
+export function isHeicDocumentFile(file: File) {
+  const mimeType = file.type.split(";")[0]?.trim().toLowerCase();
+  const extension = fileExtension(file);
+
+  return mimeType === "image/heic" || mimeType === "image/heif" || extension === "heic" || extension === "heif";
+}
+
+export function getStoredDocumentFileName(file: File) {
+  const kind = getDocumentFileKind(file);
+  if (kind === "image") return `${fileBaseName(file)}.jpg`;
+  if (kind === "pdf") return `${fileBaseName(file)}.pdf`;
+  return file.name || "document";
 }
 
 export function syncVerificationFileFields(
