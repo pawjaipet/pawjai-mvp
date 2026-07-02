@@ -11,3 +11,9 @@ test("filter preferences render as one scrolling save page", () => {
   assert.equal(source.includes("<ScrollFilter"), true);
   assert.equal(source.includes("Show Dogs"), true);
 });
+
+test("saved backend preferences win when returning to the filter page", () => {
+  assert.equal(source.includes("const [hasLoadedInitialPreferences, setHasLoadedInitialPreferences] = useState(false);"), true);
+  assert.equal(source.includes("if (!hasLoadedInitialPreferences) return;"), true);
+  assert.equal(source.includes("setSelectedAnswers((current) => ({ ...current, ...saved }));"), true);
+});

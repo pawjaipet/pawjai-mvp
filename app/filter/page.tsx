@@ -256,6 +256,7 @@ export default function FilterPage() {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string[]>>({});
   const [ageRange, setAgeRange] = useState<[number, number]>([2, 4]);
   const [isDragging, setIsDragging] = useState<"min" | "max" | null>(null);
+  const [hasLoadedInitialPreferences, setHasLoadedInitialPreferences] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
   const [, startTransition] = useTransition();
 
@@ -269,13 +270,15 @@ export default function FilterPage() {
         setAgeRange(local.ageRange);
       }
     }
+    setHasLoadedInitialPreferences(true);
   }, []);
 
   // Persist to localStorage whenever selections change (no Save & Finish needed
   // for in-progress wizard state — covers tab close mid-flow).
   useEffect(() => {
+    if (!hasLoadedInitialPreferences) return;
     saveToLocal(selectedAnswers, ageRange);
-  }, [selectedAnswers, ageRange]);
+  }, [hasLoadedInitialPreferences, selectedAnswers, ageRange]);
 
   useEffect(() => {
     let active = true;
@@ -284,7 +287,7 @@ export default function FilterPage() {
     async function loadSavedPreferences() {
       const saved = await getSavedFilterPreferences();
       if (!active || !saved) return;
-      setSelectedAnswers((current) => ({ ...saved, ...current }));
+      setSelectedAnswers((current) => ({ ...current, ...saved }));
       const savedAgeRange = parseAgeAnswer(saved[1]?.[0]);
       if (savedAgeRange) setAgeRange(savedAgeRange);
     }
