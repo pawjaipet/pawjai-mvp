@@ -85,9 +85,12 @@ test("dog draft workflow includes current admin upload steps, filters, media con
   assert.ok(adminDogDraftWorkflow.bookingActions.includes("Ask to change date/time"));
 });
 
-test("local draft does not link into protected admin routes before sign-in", () => {
+test("draft launches the existing protected admin workflows", () => {
   const source = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
 
-  assert.equal(source.includes('href="/admin"'), false);
-  assert.equal(source.includes('href="/admin/bookings"'), false);
+  assert.equal(source.includes('href={`/admin?shelter=${shelter.id}`}'), true);
+  assert.equal(source.includes("href={`/admin/dogs/${dog.id}/edit`}"), true);
+  assert.equal(source.includes("href={`/admin/bookings?shelter=${shelter.id}&view=profile`}"), true);
+  assert.equal(source.includes('href="/admin/ads"'), true);
+  assert.equal(source.includes('href="/admin/pawjaiprofile"'), true);
 });

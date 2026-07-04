@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   Building2,
@@ -254,12 +255,18 @@ function DogCard({ dog }: { dog: AdminDraftDog }) {
         {dog.energyLevel ? <span>{formatStatus(dog.energyLevel)}</span> : null}
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <button className="rounded-full bg-[#d88c24] px-4 py-2 text-sm font-semibold text-white" type="button">
+        <Link
+          className="inline-flex items-center justify-center rounded-full bg-[#d88c24] px-4 py-2 text-sm font-semibold text-white"
+          href={`/admin/dogs/${dog.id}/edit`}
+        >
           Edit
-        </button>
-        <button className="rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]" type="button">
+        </Link>
+        <Link
+          className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]"
+          href={`/dogs/${dog.id}`}
+        >
           Open
-        </button>
+        </Link>
       </div>
       </div>
     </article>
@@ -399,9 +406,12 @@ function ShelterProfileTab({ shelter }: { shelter: AdminDraftShelter }) {
             </div>
           </div>
           <FieldGrid fields={profileFields} />
-          <button className="mt-5 rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white" type="button">
-            Save shelter profile
-          </button>
+          <Link
+            className="mt-5 inline-flex rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white"
+            href={`/admin/bookings?shelter=${shelter.id}&view=profile`}
+          >
+            Edit live shelter profile
+          </Link>
         </div>
       </div>
     </Section>
@@ -421,13 +431,21 @@ function ShelterDogsTab({ dogs, shelter }: { dogs: AdminDraftDog[]; shelter: Adm
           <p className="text-sm leading-6 text-[#74685d]">
             Shelter staff can manage their own dogs here. PawJai HQ can see the same list from the shelter umbrella.
           </p>
-          <button
-            className="rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white"
-            onClick={() => setShowCreate((current) => !current)}
-            type="button"
-          >
-            {showCreate ? "Hide create dog" : "Create dog profile"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              className="inline-flex rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white"
+              href={`/admin?shelter=${shelter.id}`}
+            >
+              Create dog profile
+            </Link>
+            <button
+              className="rounded-full border border-[#eadfce] bg-white px-6 py-3 text-sm font-semibold text-[#5b4d40]"
+              onClick={() => setShowCreate((current) => !current)}
+              type="button"
+            >
+              {showCreate ? "Hide field map" : "Show field map"}
+            </button>
+          </div>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]">
           <label className="sr-only" htmlFor="shelter-dog-search">Search shelter dogs</label>
@@ -480,10 +498,11 @@ function ShelterDogsTab({ dogs, shelter }: { dogs: AdminDraftDog[]; shelter: Adm
   );
 }
 
-function ShelterBookingsTab({ bookings }: { bookings: AdminDraftBooking[] }) {
+function ShelterBookingsTab({ bookings, shelterId }: { bookings: AdminDraftBooking[]; shelterId?: string }) {
   const today = new Date().toISOString().slice(0, 10);
   const todayCount = bookings.filter((booking) => booking.appointmentDate === today).length;
   const checkedInCount = bookings.filter((booking) => booking.checkedIn).length;
+  const liveBookingsHref = shelterId ? `/admin/bookings?shelter=${shelterId}&view=bookings` : "/admin/bookings";
 
   return (
     <Section eyebrow="Booking visits" title="Visit management">
@@ -505,6 +524,20 @@ function ShelterBookingsTab({ bookings }: { bookings: AdminDraftBooking[] }) {
             {action}
           </span>
         ))}
+      </div>
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Link
+          className="inline-flex rounded-full bg-[#d88c24] px-5 py-3 text-sm font-semibold text-white"
+          href={liveBookingsHref}
+        >
+          Open live booking workspace
+        </Link>
+        <Link
+          className="inline-flex rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40]"
+          href="/admin/bookings/check-in"
+        >
+          Open QR check-in
+        </Link>
       </div>
       <div className="mt-6 grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
         <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#8d7f72]">Date</div>
@@ -534,9 +567,12 @@ function ShelterBookingsTab({ bookings }: { bookings: AdminDraftBooking[] }) {
               <p className="mt-1 font-semibold text-[#4f4338]">{booking.bookingCode ?? booking.id.slice(0, 8)}</p>
               <p className="text-sm text-[#74685d]">{formatStatus(booking.status)}</p>
             </div>
-            <button className="rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]" type="button">
+            <Link
+              className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]"
+              href={`/admin/bookings/${booking.id}`}
+            >
               Open
-            </button>
+            </Link>
           </div>
         ))}
       </div>
@@ -560,9 +596,12 @@ function ShelterMessagesTab({ shelter }: { shelter: AdminDraftShelter }) {
             <div className="min-h-12 flex-1 rounded-full border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#8d7f72]">
               Write a shelter reply...
             </div>
-            <button className="flex h-12 w-12 items-center justify-center rounded-full bg-[#d88c24] text-white" type="button">
+            <Link
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-[#d88c24] text-white"
+              href={`/admin/bookings?shelter=${shelter.id}&view=messages`}
+            >
               <MessageCircle className="h-4 w-4" />
-            </button>
+            </Link>
           </div>
         </div>
       </div>
@@ -629,7 +668,7 @@ function ShelterWorkspace({
       </Section>
       {tab === "profile" ? <ShelterProfileTab shelter={shelter} /> : null}
       {tab === "dogs" ? <ShelterDogsTab dogs={dogs} shelter={shelter} /> : null}
-      {tab === "bookings" ? <ShelterBookingsTab bookings={bookings} /> : null}
+      {tab === "bookings" ? <ShelterBookingsTab bookings={bookings} shelterId={shelter.id} /> : null}
       {tab === "messages" ? <ShelterMessagesTab shelter={shelter} /> : null}
     </div>
   );
@@ -815,7 +854,7 @@ function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking
           Show all shelters
         </button>
       </div>
-      <ShelterBookingsTab bookings={filteredBookings} />
+      <ShelterBookingsTab bookings={filteredBookings} shelterId={shelterId === "all" ? undefined : shelterId} />
     </Section>
   );
 }
@@ -853,12 +892,18 @@ function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
                 </a>
               </div>
               <div className="flex flex-wrap items-start gap-2 md:flex-col">
-                <button className="rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]" type="button">
+                <Link
+                  className="inline-flex rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]"
+                  href="/admin/ads"
+                >
                   Edit dates
-                </button>
-                <button className="rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]" type="button">
+                </Link>
+                <Link
+                  className="inline-flex rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]"
+                  href="/admin/ads"
+                >
                   {ad.isActive ? "Pause" : "Resume"}
-                </button>
+                </Link>
               </div>
             </article>
           );
@@ -893,6 +938,12 @@ function AboutTab({ about }: { about: AdminDraftAboutContent | null }) {
         </div>
       </div>
       <FieldGrid fields={["Mission title", "Mission body", "Partner shelters", "Hero copy", "Impact numbers", "Save About content"]} />
+      <Link
+        className="mt-5 inline-flex rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white"
+        href="/admin/pawjaiprofile"
+      >
+        Edit live About content
+      </Link>
     </Section>
   );
 }
