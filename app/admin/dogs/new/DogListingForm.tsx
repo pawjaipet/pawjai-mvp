@@ -277,11 +277,23 @@ function ChipCheckboxGroup({
 }
 
 export default function DogListingForm({
+  cancelHref,
   personalityTags,
+  returnTo,
+  selectedShelterId,
   shelters,
+  showIntro = true,
+  submitLabel = "Create dog listing",
+  successListingsHref = "/admin/listings",
 }: {
+  cancelHref?: string;
   personalityTags: string[];
+  returnTo?: string;
+  selectedShelterId?: string;
   shelters: ShelterOption[];
+  showIntro?: boolean;
+  submitLabel?: string;
+  successListingsHref?: string;
 }) {
   const [state, formAction, pending] = useActionState(
     createDogListingAction,
@@ -293,7 +305,9 @@ export default function DogListingForm({
   const [coverMediaKey, setCoverMediaKey] = useState("");
   const [mediaPreparing, setMediaPreparing] = useState(false);
   const feedbackRef = useRef<HTMLDivElement>(null);
-  const defaultShelterId = shelters.length === 1 ? shelters[0].id : "";
+  const defaultShelterId = selectedShelterId && shelters.some((shelter) => shelter.id === selectedShelterId)
+    ? selectedShelterId
+    : shelters.length === 1 ? shelters[0].id : "";
   const mediaUploadError = state.fieldErrors?.media_files ?? mediaError;
 
   useEffect(() => {
@@ -380,53 +394,56 @@ export default function DogListingForm({
 
   return (
     <form action={formAction} aria-busy={pending || mediaPreparing} className="space-y-6">
-      <div className="rounded-[32px] bg-gradient-to-br from-[#fff6e8] via-[#fff1df] to-[#f9e4c0] p-7 shadow-[0_24px_60px_rgba(176,120,42,0.16)]">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">
-              Internal Dog Onboarding
-            </p>
-            <h1 className="mt-3 text-4xl font-semibold leading-tight text-[#4f4338]">
-              Create a new PawJai listing like a marketplace post.
-            </h1>
-            <p className="mt-3 text-sm leading-6 text-[#6f6256]">
-              Start with the essentials, choose the photo order yourself, and save the listing
-              when it is ready for the public browse flow.
-            </p>
-          </div>
-          <div className="rounded-3xl border border-white/70 bg-white/80 p-5 text-sm text-[#6f6256]">
-            <p className="font-medium text-[#4f4338]">Workflow tip</p>
-            <p className="mt-2 leading-6">
-              Save new dogs as <span className="font-semibold text-[#b77624]">draft</span> until
-              photos and copy feel right, then publish them by switching the adoption status to
-              <span className="font-semibold text-[#b77624]"> available</span>.
-            </p>
-          </div>
-        </div>
-        <div className="mt-6 grid gap-4 rounded-[28px] border border-white/80 bg-white/70 p-5 md:grid-cols-3">
-          {[
-            {
-              label: "Manual photo control",
-              value: "You decide image order",
-            },
-            {
-              label: "Team-friendly drafts",
-              value: "Save first, polish later",
-            },
-            {
-              label: "Future shelter flow",
-              value: "Same model, cleaner UX later",
-            },
-          ].map((item) => (
-            <div key={item.label}>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b77624]">
-                {item.label}
+      {returnTo ? <input name="returnTo" type="hidden" value={returnTo} /> : null}
+      {showIntro ? (
+        <div className="rounded-[32px] bg-gradient-to-br from-[#fff6e8] via-[#fff1df] to-[#f9e4c0] p-7 shadow-[0_24px_60px_rgba(176,120,42,0.16)]">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">
+                Internal Dog Onboarding
               </p>
-              <p className="mt-2 text-sm text-[#5f5348]">{item.value}</p>
+              <h1 className="mt-3 text-4xl font-semibold leading-tight text-[#4f4338]">
+                Create a new PawJai listing like a marketplace post.
+              </h1>
+              <p className="mt-3 text-sm leading-6 text-[#6f6256]">
+                Start with the essentials, choose the photo order yourself, and save the listing
+                when it is ready for the public browse flow.
+              </p>
             </div>
-          ))}
+            <div className="rounded-3xl border border-white/70 bg-white/80 p-5 text-sm text-[#6f6256]">
+              <p className="font-medium text-[#4f4338]">Workflow tip</p>
+              <p className="mt-2 leading-6">
+                Save new dogs as <span className="font-semibold text-[#b77624]">draft</span> until
+                photos and copy feel right, then publish them by switching the adoption status to
+                <span className="font-semibold text-[#b77624]"> available</span>.
+              </p>
+            </div>
+          </div>
+          <div className="mt-6 grid gap-4 rounded-[28px] border border-white/80 bg-white/70 p-5 md:grid-cols-3">
+            {[
+              {
+                label: "Manual photo control",
+                value: "You decide image order",
+              },
+              {
+                label: "Team-friendly drafts",
+                value: "Save first, polish later",
+              },
+              {
+                label: "Future shelter flow",
+                value: "Same model, cleaner UX later",
+              },
+            ].map((item) => (
+              <div key={item.label}>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b77624]">
+                  {item.label}
+                </p>
+                <p className="mt-2 text-sm text-[#5f5348]">{item.value}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <Section
         title="Core Listing"
@@ -841,7 +858,7 @@ export default function DogListingForm({
               <Link href={`/dogs/${state.dogId}`} className="font-semibold underline decoration-2 underline-offset-4">
                 Open the new dog profile
               </Link>
-              <Link href="/admin/listings" className="font-semibold underline decoration-2 underline-offset-4">
+              <Link href={successListingsHref} className="font-semibold underline decoration-2 underline-offset-4">
                 View in Manage listings
               </Link>
             </p>
@@ -857,14 +874,24 @@ export default function DogListingForm({
               Save as draft while details are incomplete, or choose available when the profile and cover image are ready.
             </p>
           </div>
-          <button
-            type="submit"
-            disabled={pending || mediaPreparing || Boolean(mediaError)}
-            aria-describedby="create-dog-submit-status"
-            className="inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {mediaPreparing ? "Preparing media..." : pending ? "Creating listing..." : "Create dog listing"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {cancelHref ? (
+              <Link
+                className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-7 py-3 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+                href={cancelHref}
+              >
+                Cancel
+              </Link>
+            ) : null}
+            <button
+              type="submit"
+              disabled={pending || mediaPreparing || Boolean(mediaError)}
+              aria-describedby="create-dog-submit-status"
+              className="inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {mediaPreparing ? "Preparing media..." : pending ? "Creating listing..." : submitLabel}
+            </button>
+          </div>
         </div>
         <p id="create-dog-submit-status" className="mt-3 text-xs leading-5 text-[#7a6d61]" aria-live="polite">
           {mediaPreparing

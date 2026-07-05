@@ -92,3 +92,18 @@ test("admin draft phrase unlock is accepted by shared admin shelter actions", ()
   assert.equal(authSource.includes('const ADMIN_DRAFT_COOKIE = "pawjai_admin_draft_unlocked"'), true);
   assert.equal(authSource.includes("ADMIN_DRAFT_COOKIE"), true);
 });
+
+test("admin draft has a focused create-dog route that reuses the real dog listing form", () => {
+  const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+  const draftCreateSource = readFileSync(new URL("../app/admindraft/dogs/new/page.tsx", import.meta.url), "utf8");
+  const formSource = readFileSync(new URL("../app/admin/dogs/new/DogListingForm.tsx", import.meta.url), "utf8");
+
+  assert.equal(panelSource.includes("`/admindraft/dogs/new?shelter=${shelter.id}`"), true);
+  assert.equal(draftCreateSource.includes("DogListingForm"), true);
+  assert.equal(draftCreateSource.includes("isAdminDraftUnlocked"), true);
+  assert.equal(draftCreateSource.includes("Cancel"), true);
+  assert.equal(draftCreateSource.includes("/admindraft?shelter="), true);
+  assert.equal(formSource.includes("showIntro = true"), true);
+  assert.equal(formSource.includes("successListingsHref"), true);
+  assert.equal(formSource.includes("submitLabel"), true);
+});

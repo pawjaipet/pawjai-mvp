@@ -832,7 +832,7 @@ function ShelterDogsTab({ dogs, shelter }: { dogs: AdminDraftDog[]; shelter: Adm
           <div className="flex flex-wrap gap-2">
             <Link
               className="inline-flex rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white"
-              href={`/admin?shelter=${shelter.id}`}
+              href={`/admindraft/dogs/new?shelter=${shelter.id}`}
             >
               Create dog profile
             </Link>

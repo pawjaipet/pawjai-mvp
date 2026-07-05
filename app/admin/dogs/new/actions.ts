@@ -742,6 +742,8 @@ export async function createDogListingAction(
   const fieldErrors: Record<string, string> = {};
   const name = getString(formData, "name");
   const shelterId = getString(formData, "shelter_id");
+  const returnTo = getString(formData, "returnTo");
+  const accessRedirectPath = returnTo.startsWith("/admindraft") ? "/admindraft/dogs/new" : "/admin";
   const ageMonths = getOptionalNumber(formData, "age_months");
   const weightKg = getOptionalNumber(formData, "weight_kg");
   const mediaFiles = normalizeMediaFiles(formData);
@@ -836,7 +838,7 @@ export async function createDogListingAction(
     };
   }
 
-  const adminContext = await requireShelterAccess(shelterId, "/admin");
+  const adminContext = await requireShelterAccess(shelterId, accessRedirectPath);
   const supabase = createAdminClient();
 
   const dogSocialStyle = getOptionalString(formData, "dog_social_style");
@@ -1310,6 +1312,8 @@ export async function createDogListingAction(
   revalidatePath("/admin");
   revalidatePath("/admin/listings");
   revalidatePath("/admin/dogs/new");
+  revalidatePath("/admindraft");
+  revalidatePath("/admindraft/dogs/new");
   revalidatePath(`/dogs/${insertedDog.id}`);
 
   return {
