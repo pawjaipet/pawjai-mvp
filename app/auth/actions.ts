@@ -12,6 +12,7 @@ import {
   parseAccountCredentials,
   sanitizeNextPath,
 } from "@/utils/account-model";
+import { assertRateLimit, getRequestIdentifier } from "@/utils/rate-limit";
 import { createClient } from "@/utils/supabase/server";
 
 type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
@@ -55,6 +56,18 @@ export async function signIn(formData: FormData) {
     authRedirect(error instanceof Error ? error.message : "Please check your details.", nextPath);
   }
 
+  try {
+    const requestIdentifier = await getRequestIdentifier();
+    await assertRateLimit({
+      action: "auth.sign_in",
+      identifier: `${credentials.email}:${requestIdentifier}`,
+      limit: 10,
+      windowSeconds: 15 * 60,
+    });
+  } catch (error) {
+    authRedirect(error instanceof Error ? error.message : "Please wait before trying again.", nextPath);
+  }
+
   const { data, error } = await supabase.auth.signInWithPassword({
     email: credentials.email,
     password: credentials.password,
@@ -82,6 +95,18 @@ export async function signUp(formData: FormData) {
     });
   } catch (error) {
     authRedirect(error instanceof Error ? error.message : "Please check your details.", nextPath);
+  }
+
+  try {
+    const requestIdentifier = await getRequestIdentifier();
+    await assertRateLimit({
+      action: "auth.sign_up",
+      identifier: `${credentials.email}:${requestIdentifier}`,
+      limit: 5,
+      windowSeconds: 60 * 60,
+    });
+  } catch (error) {
+    authRedirect(error instanceof Error ? error.message : "Please wait before creating another account.", nextPath);
   }
 
   const { data, error } = await supabase.auth.signUp({

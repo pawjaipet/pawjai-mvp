@@ -54,6 +54,28 @@ const dogs = [
     size: "large",
     special_needs: null,
   },
+  {
+    age_months: 36,
+    breed: "Thai Ridgeback",
+    energy_level: "medium",
+    good_with_cats: true,
+    good_with_dogs: true,
+    good_with_kids: true,
+    id: "ridgeback",
+    size: "large",
+    special_needs: null,
+  },
+  {
+    age_months: 18,
+    breed: "Thai mix",
+    energy_level: "medium",
+    good_with_cats: true,
+    good_with_dogs: true,
+    good_with_kids: true,
+    id: "thai-mix",
+    size: "medium",
+    special_needs: null,
+  },
 ];
 
 const traits = [
@@ -74,7 +96,7 @@ test("returns all dogs when there are no active preference filters", () => {
 
   const result = filterDogsByPreferences(dogs, traits, null);
 
-  assert.deepEqual(result.map((dog) => dog.id), ["match", "young", "unknown-age"]);
+  assert.deepEqual(result.map((dog) => dog.id), ["match", "young", "unknown-age", "ridgeback", "thai-mix"]);
 });
 
 test("filters by age range and trait-backed preferences", () => {
@@ -107,7 +129,7 @@ test("excludes unknown ages when an age preference is active", () => {
     preferred_age_min_months: 12,
   });
 
-  assert.deepEqual(result.map((dog) => dog.id), ["young"]);
+  assert.deepEqual(result.map((dog) => dog.id), ["young", "ridgeback", "thai-mix"]);
 });
 
 test("matches no-special-needs preference against dogs without medical traits", () => {
@@ -117,7 +139,7 @@ test("matches no-special-needs preference against dogs without medical traits", 
     preferred_special_needs: ["No special needs preferred"],
   });
 
-  assert.deepEqual(result.map((dog) => dog.id), ["unknown-age"]);
+  assert.deepEqual(result.map((dog) => dog.id), ["unknown-age", "ridgeback", "thai-mix"]);
 });
 
 test("matches behavioral and diet special-needs categories through medical traits", () => {
@@ -133,4 +155,24 @@ test("matches behavioral and diet special-needs categories through medical trait
     filterDogsByPreferences(dietDogs, dietTraits, { preferred_special_needs: ["Special diet requirements"] }).map((dog) => dog.id),
     ["diet"],
   );
+});
+
+test("mixed breed preference matches mixed labels without leaking named ridgebacks", () => {
+  const { filterDogsByPreferences } = loadDogPreferenceFilter();
+
+  const result = filterDogsByPreferences(dogs, traits, {
+    preferred_breeds: ["Mixed Breed"],
+  });
+
+  assert.deepEqual(result.map((dog) => dog.id), ["unknown-age", "thai-mix"]);
+});
+
+test("named ridgeback preference only matches exact ridgeback breed", () => {
+  const { filterDogsByPreferences } = loadDogPreferenceFilter();
+
+  const result = filterDogsByPreferences(dogs, traits, {
+    preferred_breeds: ["Thai Ridgeback"],
+  });
+
+  assert.deepEqual(result.map((dog) => dog.id), ["ridgeback"]);
 });

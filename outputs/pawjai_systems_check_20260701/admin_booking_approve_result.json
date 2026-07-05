@@ -1,0 +1,22 @@
+{
+  "appointmentId": "a5448767-ade6-48a1-bceb-5ec5b6d38cd7",
+  "bookingCode": "APT-A5448",
+  "shelterId": "5dd2d3f8-42c6-46f5-9bed-8c082aec9daa",
+  "steps": [
+    {
+      "step": "open bookings page",
+      "url": "https://www.pawjai.co.th/admin/bookings?shelter=5dd2d3f8-42c6-46f5-9bed-8c082aec9daa",
+      "text": "PAWJAI ADMIN\n\nBooking Management\n\nTrack shelter visits, verify appointment QR codes, and update booking status from the local admin workspace.\n\nCreate dog\nManage listings\nBookings\nAds\n\nVisible bookings\n\n1\n\nToday\n\n0\n\nChecked in\n\n0\n\nSHELTER\n\nQA Shelter 1782896841423\nThe Voice Foundation\n\nQA SHELTER 1782896841423 WORKSPACE\n\nShelter profile\nDog listings\nBooking visits\nMessaging\n\nVISIT TIMING\n\nUpcoming (1)\nNeeds follow-up (0)\nPast (0)\nAll (1)\n\nVisits move to past 24 hours after their scheduled time. Needs follow-up highlights visits where staff should record the outcome.\n\nDATE\nSTATUS\nAll statuses\nrequested\nconfirmed\ncompleted\ncancelled\nno show\nFilter\nReset\nSEARCH BOOKING CODE\nSearch code\n\nType the visitor booking ID from their appointment card or QR screen.\n\nQR check-in scanner\n\nScan a visitor appointment QR to open their booking profile.\n\nScan QR\nREQUESTED\nAPT-A5448\n\nVISIT\n\nWed, Jul 8, 2026\n\n9:00 AM\n\nADOPTER\n\nCodex PawJai QA\n\ncodex-pawjai-qa-1782895471164@example.com\n\n0812345678\n\nDOG AND SHELTER\n\nQA Draft Dog 1782896841423 - QA Mixed Breed\n\nQA Shelter 1782896841423\n\nQA District, Bangkok\n\nVISITOR NOTE\n\nSynthetic admin QA booking for approval workflow.\n\nSTATUS\n\nAwaiting decision\n\nSHELTER NOTE\nNEW DATE\nNEW TIME\n09:00\n10:00\n11:00\n13:00\n14:00\n15:00\n16:00\nAccept booking\nDeny booking\nAsk to change date/time\nOpen visitor profile\nOpen booking detail"
+    },
+    {
+      "step": "after accept click",
+      "url": "https://www.pawjai.co.th/admin/bookings?shelter=5dd2d3f8-42c6-46f5-9bed-8c082aec9daa",
+      "text": "PAWJAI ADMIN\n\nBooking Management\n\nTrack shelter visits, verify appointment QR codes, and update booking status from the local admin workspace.\n\nCreate dog\nManage listings\nBookings\nAds\n\nVisible bookings\n\n1\n\nToday\n\n0\n\nChecked in\n\n0\n\nSHELTER\n\nQA Shelter 1782896841423\nThe Voice Foundation\n\nQA SHELTER 1782896841423 WORKSPACE\n\nShelter profile\nDog listings\nBooking visits\nMessaging\n\nVISIT TIMING\n\nUpcoming (1)\nNeeds follow-up (0)\nPast (0)\nAll (1)\n\nVisits move to past 24 hours after their scheduled time. Needs follow-up highlights visits where staff should record the outcome.\n\nDATE\nSTATUS\nAll statuses\nrequested\nconfirmed\ncompleted\ncancelled\nno show\nFilter\nReset\nSEARCH BOOKING CODE\nSearch code\n\nType the visitor booking ID from their appointment card or QR screen.\n\nQR check-in scanner\n\nScan a visitor appointment QR to open their booking profile.\n\nScan QR\nCONFIRMED\nAPT-A5448\n\nVISIT\n\nWed, Jul 8, 2026\n\n9:00 AM\n\nADOPTER\n\nCodex PawJai QA\n\ncodex-pawjai-qa-1782895471164@example.com\n\n0812345678\n\nDOG AND SHELTER\n\nQA Draft Dog 1782896841423 - QA Mixed Breed\n\nQA Shelter 1782896841423\n\nQA District, Bangkok\n\nVISITOR NOTE\n\nSynthetic admin QA booking for approval workflow.\n\nSTATUS\n\nAccepted\n\nSHELTER NOTE\nEdit decision\nOpen visitor profile\nOpen booking detail"
+    }
+  ],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 ()"
+  ],
+  "bookingVisible": true,
+  "acceptButtonCount": 1
+}

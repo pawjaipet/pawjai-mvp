@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import AdminGateForm from "@/app/admin/dogs/new/AdminGateForm";
-import { isAdminGateOpen } from "@/utils/admin-auth";
+import { getAdminAuthContext, requireGlobalAdmin } from "@/utils/admin-auth";
 import {
   DEFAULT_PAWJAI_PROFILE_CONTENT,
   loadPawjaiProfileContent,
@@ -84,16 +84,18 @@ export default async function PawjaiProfileAdminPage({
 }: {
   searchParams?: Promise<{ message?: string }>;
 }) {
-  const gateOpen = await isAdminGateOpen();
+  const adminContext = await getAdminAuthContext();
   const resolvedSearchParams = await searchParams;
 
-  if (!gateOpen) {
+  if (!adminContext) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <AdminGateForm action={unlockAdminGateAction} initialState={initialPawjaiAdminGateState} />
       </div>
     );
   }
+
+  await requireGlobalAdmin("/admin/pawjaiprofile");
 
   const supabase = createAdminClient();
   const content = await loadPawjaiProfileContent(supabase);
@@ -122,6 +124,8 @@ export default async function PawjaiProfileAdminPage({
           <TabLink href="/admin/bookings" active={false}>Bookings</TabLink>
           <TabLink href="/admin/ads" active={false}>Ads</TabLink>
           <TabLink href="/admin/pawjaiprofile" active>About content</TabLink>
+          <TabLink href="/admin/accounts" active={false}>Accounts</TabLink>
+          <TabLink href="/admin/audit" active={false}>Audit</TabLink>
           <form action={lockAdminGateAction}>
             <button
               type="submit"

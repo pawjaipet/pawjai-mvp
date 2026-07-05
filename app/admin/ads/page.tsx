@@ -1,5 +1,8 @@
 import AdminAdsPage from "./AdminAdsPage";
+import { requireGlobalAdmin } from "@/utils/admin-auth";
 
-export default function AdminAdsRoute() {
+export default async function AdminAdsRoute() {
+  await requireGlobalAdmin("/admin/ads");
+
   return <AdminAdsPage />;
 }

@@ -2,13 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { unlockAdminGateAction as sharedUnlockAdminGateAction } from "@/app/admin/dogs/new/actions";
 import { createAdminClient } from "@/utils/supabase/admin";
 import {
-  isAdminGateOpen,
-  openAdminGate,
   closeAdminGate,
-  validateAdminPassphrase,
+  requireGlobalAdmin,
 } from "@/utils/admin-auth";
+import { logAdminAuditEvent } from "@/utils/admin-audit";
 import type { PawjaiContactItem, PawjaiContactItemType, PawjaiPartnerShelter } from "@/utils/pawjai-profile";
 import type { PawjaiAdminGateState } from "./form-state";
 
@@ -64,24 +64,10 @@ function collectContactItems(formData: FormData, maxRows: number): PawjaiContact
 }
 
 export async function unlockAdminGateAction(
-  _prevState: PawjaiAdminGateState,
+  prevState: PawjaiAdminGateState,
   formData: FormData,
 ): Promise<PawjaiAdminGateState> {
-  const passphrase = getString(formData, "passphrase");
-
-  if (!validateAdminPassphrase(passphrase)) {
-    return {
-      message: "That passphrase is incorrect.",
-      status: "error",
-    };
-  }
-
-  await openAdminGate();
-
-  return {
-    message: "Access granted. Reloading admin tools...",
-    status: "success",
-  };
+  return sharedUnlockAdminGateAction(prevState, formData);
 }
 
 export async function lockAdminGateAction() {
@@ -89,9 +75,7 @@ export async function lockAdminGateAction() {
 }
 
 export async function savePawjaiProfileAction(formData: FormData) {
-  if (!(await isAdminGateOpen())) {
-    profileRedirect("Unlock the admin page first.");
-  }
+  const adminContext = await requireGlobalAdmin("/admin/pawjaiprofile");
 
   const heroSlogan = getString(formData, "hero_slogan");
   const missionTitle = getString(formData, "mission_title");
@@ -133,6 +117,17 @@ export async function savePawjaiProfileAction(formData: FormData) {
 
     profileRedirect("PawJai profile could not be saved.");
   }
+
+  await logAdminAuditEvent({
+    action: "pawjai_profile.update",
+    context: adminContext,
+    metadata: {
+      contactItems: contactItems.length,
+      partnerShelters: partnerShelters.length,
+    },
+    targetId: "default",
+    targetTable: "pawjai_profile",
+  });
 
   revalidatePath("/about");
   revalidatePath("/more");

@@ -4,6 +4,7 @@ import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import type { AppointmentMessageRow } from "@/utils/appointment-messages";
 import { isAppointmentMessagesUnavailableError } from "@/utils/appointment-messages";
+import { loadAdopterMessageAppointments } from "@/utils/appointment-queries";
 import { formatBookingCode } from "@/utils/booking";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
@@ -38,12 +39,10 @@ export default async function MessagesPage() {
 
   const adopter = await ensureAdopterForUser(supabase, user);
   const admin = createAdminClient();
-  const { data: appointments } = await admin
-    .from("appointments")
-    .select("id, appointment_date, appointment_time, booking_code, dog_id, shelter_id, status")
-    .eq("adopter_id", adopter.id)
-    .order("appointment_date", { ascending: false })
-    .limit(50);
+  const { data: appointments, error: appointmentsError } = await loadAdopterMessageAppointments(admin, adopter.id);
+  if (appointmentsError) {
+    console.error("Message appointments failed to load", appointmentsError);
+  }
   const appointmentRows = appointments ?? [];
   const dogIds = [...new Set(appointmentRows.map((appointment) => appointment.dog_id).filter(Boolean))] as string[];
   const shelterIds = [...new Set(appointmentRows.map((appointment) => appointment.shelter_id))];

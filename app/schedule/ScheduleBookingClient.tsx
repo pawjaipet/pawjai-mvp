@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { bookAppointment } from "@/app/dogs/[id]/actions";
 import type { MonthAvailability } from "@/utils/shelter-availability";
 
@@ -79,6 +80,7 @@ export default function ScheduleBookingClient({
 }: ScheduleBookingClientProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [note, setNote] = useState("");
   const totalDays = daysInMonth(viewYear, viewMonth);
   const firstDay = firstDayOfMonth(viewYear, viewMonth);
@@ -90,6 +92,23 @@ export default function ScheduleBookingClient({
     if (!selectedDate) return "";
     return `${Number(selectedDate.slice(-2))} ${MONTH_NAMES[viewMonth]}`;
   }, [selectedDate, viewMonth]);
+  const selectedSlotsStatus = slotsLoading
+    ? "Loading visit times for this date..."
+    : selectedSlots.length > 0
+      ? `${selectedSlots.length} visit times available. Choose one below.`
+      : "No visit times are available for this date.";
+
+  useEffect(() => {
+    if (!selectedDate) {
+      setSlotsLoading(false);
+      return;
+    }
+
+    setSlotsLoading(true);
+    const timeout = window.setTimeout(() => setSlotsLoading(false), 800);
+
+    return () => window.clearTimeout(timeout);
+  }, [selectedDate]);
 
   return (
     <div
@@ -194,9 +213,11 @@ export default function ScheduleBookingClient({
                   disabled={unavailable}
                   title={dayAvailability?.unavailableReason ?? undefined}
                   onClick={() => {
+                    flushSync(() => setSlotsLoading(true));
                     setSelectedDate(dateKey);
                     setSelectedTime(null);
                   }}
+                  aria-pressed={selected}
                   className="relative flex h-[42px] items-center justify-center rounded-[8px] transition-all active:scale-95 disabled:active:scale-100"
                   style={{
                     background: selected ? "#cd8188" : unavailable && !past ? "#6b5d52" : past ? "transparent" : "#d6c8ad",
@@ -216,11 +237,18 @@ export default function ScheduleBookingClient({
         </div>
 
         {selectedDate && (
-          <div className="mb-[20px] rounded-[20px] bg-white p-[16px]">
+          <div className="mb-[20px] rounded-[20px] bg-white p-[16px]" aria-live="polite">
             <p className="mb-[12px] text-[13px] font-semibold text-[#65584f]/60" style={{ fontFamily: M }}>
               Available times — {selectedMonthLabel}
             </p>
-            {selectedSlots.length > 0 ? (
+            <p className="mb-[12px] rounded-[14px] bg-[#f5f1e8] px-[14px] py-[10px] text-[13px] font-medium text-[#65584f]/70" style={{ fontFamily: M }}>
+              {selectedSlotsStatus}
+            </p>
+            {slotsLoading ? (
+              <div className="rounded-[14px] bg-[#f5f1e8] px-[14px] py-[12px] text-[13px] font-medium text-[#65584f]/65" style={{ fontFamily: M }}>
+                Loading visit times for this date...
+              </div>
+            ) : selectedSlots.length > 0 ? (
               <div className="flex flex-wrap gap-[8px]">
                 {selectedSlots.map((slot) => {
                   const active = selectedTime === slot;
@@ -228,8 +256,10 @@ export default function ScheduleBookingClient({
                     <button
                       key={slot}
                       type="button"
+                      disabled={slotsLoading}
+                      aria-pressed={active}
                       onClick={() => setSelectedTime(slot)}
-                      className="rounded-full px-[16px] py-[8px] text-[13px] font-semibold transition-all active:scale-95"
+                      className="rounded-full px-[16px] py-[8px] text-[13px] font-semibold transition-all active:scale-95 disabled:cursor-wait disabled:opacity-60"
                       style={{
                         background: active ? "#cd8188" : "#d6c8ad",
                         color: active ? "white" : "#65584f",
@@ -270,11 +300,11 @@ export default function ScheduleBookingClient({
           <input type="hidden" name="appointmentTime" value={selectedTime ?? ""} />
           <input type="hidden" name="visitorNote" value={note} />
           <button
-            disabled={!selectedDate || !selectedTime}
+            disabled={!selectedDate || !selectedTime || slotsLoading}
             className="w-full rounded-full py-[15px] text-[16px] font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40"
             style={{ background: "#cd8188", fontFamily: M }}
           >
-            Confirm Visit
+            {slotsLoading ? "Loading visit times..." : "Confirm Visit"}
           </button>
         </form>
       </div>

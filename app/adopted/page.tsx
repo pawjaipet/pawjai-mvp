@@ -6,8 +6,6 @@ import { createClient } from "@/utils/supabase/server";
 
 const M = "Montserrat, sans-serif";
 
-// MVP heuristic: a "completed" appointment counts as having met the dog.
-// True adoption-record join can replace this when the adoption flow ships.
 async function getAdoptedDogs(adopterId: string) {
   const admin = createAdminClient();
   const { data: appts } = await admin
@@ -21,7 +19,7 @@ async function getAdoptedDogs(adopterId: string) {
   if (dogIds.length === 0) return [];
 
   const [{ data: dogs }, { data: photos }] = await Promise.all([
-    admin.from("dogs").select("id, name, breed, gender").in("id", dogIds),
+    admin.from("dogs").select("id, name, breed, gender").in("id", dogIds).eq("adoption_status", "adopted"),
     admin.from("dog_photos").select("dog_id, public_url").in("dog_id", dogIds).eq("is_cover", true),
   ]);
 

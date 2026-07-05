@@ -1,12 +1,12 @@
 import AdminAdsPage from "@/app/admin/ads/AdminAdsPage";
-import { isAdminGateOpen } from "@/utils/admin-auth";
+import { getAdminAuthContext, requireGlobalAdmin } from "@/utils/admin-auth";
 import AdsGateForm, { initialAdsGateState } from "./AdsGateForm";
 import { unlockAdsGateAction } from "./actions";
 
 export default async function AdsOnboardingPage() {
-  const gateOpen = await isAdminGateOpen();
+  const adminContext = await getAdminAuthContext();
 
-  if (!gateOpen) {
+  if (!adminContext) {
     return (
       <AdsGateForm
         action={unlockAdsGateAction}
@@ -14,6 +14,8 @@ export default async function AdsOnboardingPage() {
       />
     );
   }
+
+  await requireGlobalAdmin("/ads");
 
   return <AdminAdsPage />;
 }

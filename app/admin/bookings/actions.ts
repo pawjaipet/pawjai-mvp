@@ -8,11 +8,12 @@ import {
   APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE,
   isAppointmentMessagesUnavailableError,
 } from "@/utils/appointment-messages";
+import { logAdminAuditEvent } from "@/utils/admin-audit";
 import { buildLegacyRescheduleNote, isAppointmentTimeSlot, normalizeAppointmentTime } from "@/utils/appointments-model";
 import { sendBookingNotificationForAppointment } from "@/utils/booking-email";
 import { buildAdminBookingDetailPath, getCheckInTokenSecret, hashCheckInToken, verifySignedCheckInToken } from "@/utils/booking";
 import { parseShelterDonationDetails } from "@/utils/donations";
-import { isAdminGateOpen } from "@/utils/admin-auth";
+import { requireAdminWorkspace, requireShelterAccess } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 
 type AppointmentStatus = Database["public"]["Enums"]["appointment_status"];
@@ -205,9 +206,7 @@ async function updateAppointmentWithRescheduleFallback({
 }
 
 export async function decideBookingAction(formData: FormData) {
-  if (!(await isAdminGateOpen())) {
-    return;
-  }
+  await requireAdminWorkspace("/admin/bookings");
 
   const appointmentId = String(formData.get("appointmentId") ?? "");
   const decision = parseDecision(formData.get("decision"));
@@ -226,6 +225,12 @@ export async function decideBookingAction(formData: FormData) {
     .select("id, dog_id, shelter_id")
     .eq("id", appointmentId)
     .maybeSingle();
+
+  if (!appointment) {
+    return;
+  }
+
+  const adminContext = await requireShelterAccess(appointment.shelter_id, "/admin/bookings");
 
   let updateError = null;
 
@@ -296,8 +301,36 @@ export async function decideBookingAction(formData: FormData) {
     });
   }
 
-  if (!updateError && (decision === "accept" || decision === "deny")) {
-    await sendBookingNotificationForAppointment({ admin, appointmentId });
+  if (!updateError) {
+    await logAdminAuditEvent({
+      action: "appointment.decide",
+      context: adminContext,
+      metadata: {
+        decision,
+        status,
+      },
+      shelterId: appointment.shelter_id,
+      targetId: appointmentId,
+      targetTable: "appointments",
+    });
+
+    if (decision === "accept" || decision === "deny") {
+      await sendBookingNotificationForAppointment({
+        admin,
+        appointmentId,
+        event: decision === "accept" ? "booking_confirmed" : "booking_denied",
+      });
+    }
+
+    if (decision === "request_change") {
+      await sendBookingNotificationForAppointment({
+        admin,
+        appointmentId,
+        event: "date_change_requested",
+        visitDate: proposedAppointmentDate,
+        visitTime: proposedAppointmentTime,
+      });
+    }
   }
 
   if (decision === "adopted" && appointment?.dog_id) {
@@ -329,10 +362,6 @@ export async function decideBookingAction(formData: FormData) {
 }
 
 export async function sendShelterMessageAction(formData: FormData) {
-  if (!(await isAdminGateOpen())) {
-    return;
-  }
-
   const appointmentId = String(formData.get("appointmentId") ?? "");
   const shelterId = String(formData.get("shelterId") ?? "");
   const body = String(formData.get("body") ?? "").trim();
@@ -340,6 +369,8 @@ export async function sendShelterMessageAction(formData: FormData) {
   if (!appointmentId || !shelterId || !body) {
     return;
   }
+
+  const adminContext = await requireShelterAccess(shelterId, "/admin/bookings");
 
   const admin = createAdminClient();
   const { data: appointment } = await admin
@@ -369,6 +400,19 @@ export async function sendShelterMessageAction(formData: FormData) {
     shelter_id: appointment.shelter_id,
   });
 
+  if (!error) {
+    await logAdminAuditEvent({
+      action: "appointment.message.create",
+      context: adminContext,
+      metadata: {
+        bodyLength: body.length,
+      },
+      shelterId,
+      targetId: appointment.id,
+      targetTable: "appointment_messages",
+    });
+  }
+
   revalidatePath("/admin/bookings");
   revalidatePath("/messages");
   revalidatePath(`/appointments/${appointment.id}`);
@@ -384,16 +428,14 @@ export async function sendShelterMessageAction(formData: FormData) {
 }
 
 export async function updateShelterProfileAction(formData: FormData) {
-  if (!(await isAdminGateOpen())) {
-    return;
-  }
-
   const shelterId = String(formData.get("shelterId") ?? "");
   const name = cleanText(formData.get("name"));
 
   if (!shelterId || !name) {
     return;
   }
+
+  const adminContext = await requireShelterAccess(shelterId, "/admin/bookings");
 
   const admin = createAdminClient();
   let logoUrl = cleanText(formData.get("logoUrl"));
@@ -467,14 +509,23 @@ export async function updateShelterProfileAction(formData: FormData) {
       : uploadWarning
         ? `Shelter profile saved, but ${uploadWarning}`
         : "Shelter profile saved.";
+  if (!finalError) {
+    await logAdminAuditEvent({
+      action: "shelter.update",
+      context: adminContext,
+      metadata: {
+        changedDonationDetails: Boolean(donationDetails.bank_account_number || donationDetails.promptpay_id),
+        uploadedLogo: Boolean(logoFile instanceof File && logoFile.size > 0 && !uploadWarning),
+      },
+      shelterId,
+      targetId: shelterId,
+      targetTable: "shelters",
+    });
+  }
   bookingsRedirect(shelterId, message);
 }
 
 export async function updateShelterOperatingDaysAction(formData: FormData) {
-  if (!(await isAdminGateOpen())) {
-    return;
-  }
-
   const shelterId = String(formData.get("shelterId") ?? "");
   const opensAt = String(formData.get("opensAt") || "09:00");
   const closesAt = String(formData.get("closesAt") || "17:00");
@@ -489,6 +540,8 @@ export async function updateShelterOperatingDaysAction(formData: FormData) {
   if (!shelterId || !Number.isFinite(slotDuration) || slotDuration < 1) {
     return;
   }
+
+  const adminContext = await requireShelterAccess(shelterId, "/admin/bookings");
 
   const rows = Array.from({ length: 7 }, (_, dayOfWeek) => {
     const isClosed = closedDays.has(dayOfWeek);
@@ -513,6 +566,19 @@ export async function updateShelterOperatingDaysAction(formData: FormData) {
 
   revalidatePath("/admin/bookings");
   revalidatePath("/appointments");
+  if (!error && !fallbackError) {
+    await logAdminAuditEvent({
+      action: "shelter.hours.update",
+      context: adminContext,
+      metadata: {
+        closedDays: Array.from(closedDays),
+        slotDuration,
+      },
+      shelterId,
+      targetId: shelterId,
+      targetTable: "shelter_regular_hours",
+    });
+  }
   bookingsRedirect(
     shelterId,
     isMissingSchemaError(error)
@@ -526,10 +592,6 @@ export async function updateShelterOperatingDaysAction(formData: FormData) {
 }
 
 export async function createShelterBlockoutAction(formData: FormData) {
-  if (!(await isAdminGateOpen())) {
-    return;
-  }
-
   const shelterId = String(formData.get("shelterId") ?? "");
   const startDate = String(formData.get("startDate") ?? "");
   const endDate = String(formData.get("endDate") || startDate);
@@ -538,6 +600,8 @@ export async function createShelterBlockoutAction(formData: FormData) {
   if (!shelterId || !startDate || !endDate || endDate < startDate) {
     return;
   }
+
+  const adminContext = await requireShelterAccess(shelterId, "/admin/bookings");
 
   const admin = createAdminClient() as any;
   const { error } = await admin
@@ -552,14 +616,22 @@ export async function createShelterBlockoutAction(formData: FormData) {
 
   revalidatePath("/admin/bookings");
   revalidatePath("/appointments");
+  if (!error) {
+    await logAdminAuditEvent({
+      action: "shelter.blockout.create",
+      context: adminContext,
+      metadata: {
+        endDate,
+        startDate,
+      },
+      shelterId,
+      targetTable: "shelter_availability",
+    });
+  }
   bookingsRedirect(shelterId, error ? "Blockout date could not be added." : "Blockout date added.");
 }
 
 export async function toggleShelterBlockoutDateAction(formData: FormData) {
-  if (!(await isAdminGateOpen())) {
-    return;
-  }
-
   const shelterId = String(formData.get("shelterId") ?? "");
   const date = String(formData.get("date") ?? "");
   const existingAvailabilityId = String(formData.get("availabilityId") ?? "");
@@ -567,6 +639,8 @@ export async function toggleShelterBlockoutDateAction(formData: FormData) {
   if (!shelterId || !date) {
     return;
   }
+
+  const adminContext = await requireShelterAccess(shelterId, "/admin/bookings");
 
   const admin = createAdminClient() as any;
   const { error } = existingAvailabilityId
@@ -587,20 +661,30 @@ export async function toggleShelterBlockoutDateAction(formData: FormData) {
 
   revalidatePath("/admin/bookings");
   revalidatePath("/appointments");
+  if (!error) {
+    await logAdminAuditEvent({
+      action: existingAvailabilityId ? "shelter.blockout.delete" : "shelter.blockout.create",
+      context: adminContext,
+      metadata: {
+        date,
+      },
+      shelterId,
+      targetId: existingAvailabilityId || null,
+      targetTable: "shelter_availability",
+    });
+  }
   bookingsRedirect(shelterId, error ? "Calendar date could not be updated." : "Calendar date updated.");
 }
 
 export async function deleteShelterAvailabilityAction(formData: FormData) {
-  if (!(await isAdminGateOpen())) {
-    return;
-  }
-
   const shelterId = String(formData.get("shelterId") ?? "");
   const availabilityId = String(formData.get("availabilityId") ?? "");
 
   if (!shelterId || !availabilityId) {
     return;
   }
+
+  const adminContext = await requireShelterAccess(shelterId, "/admin/bookings");
 
   const admin = createAdminClient() as any;
   const { error } = await admin
@@ -611,13 +695,20 @@ export async function deleteShelterAvailabilityAction(formData: FormData) {
 
   revalidatePath("/admin/bookings");
   revalidatePath("/appointments");
+  if (!error) {
+    await logAdminAuditEvent({
+      action: "shelter.blockout.delete",
+      context: adminContext,
+      shelterId,
+      targetId: availabilityId,
+      targetTable: "shelter_availability",
+    });
+  }
   bookingsRedirect(shelterId, error ? "Blockout date could not be removed." : "Blockout date removed.");
 }
 
 export async function checkInBookingAction(formData: FormData) {
-  if (!(await isAdminGateOpen())) {
-    return;
-  }
+  await requireAdminWorkspace("/admin/bookings/check-in");
 
   const token = String(formData.get("token") ?? "");
   const note = String(formData.get("checkInNote") ?? "").trim();
@@ -629,7 +720,7 @@ export async function checkInBookingAction(formData: FormData) {
   const admin = createAdminClient();
   const { data: hashedAppointment } = await admin
     .from("appointments")
-    .select("id, status")
+    .select("id, shelter_id, status")
     .eq("check_in_token_hash", hashCheckInToken(token))
     .maybeSingle();
   const appointmentIdFromToken = verifySignedCheckInToken({
@@ -639,7 +730,7 @@ export async function checkInBookingAction(formData: FormData) {
   const { data: signedAppointment } = !hashedAppointment && appointmentIdFromToken
     ? await admin
         .from("appointments")
-        .select("id, status")
+        .select("id, shelter_id, status")
         .eq("id", appointmentIdFromToken)
         .maybeSingle()
     : { data: null };
@@ -648,6 +739,8 @@ export async function checkInBookingAction(formData: FormData) {
   if (!appointment) {
     redirect("/admin/bookings/check-in?invalid=1");
   }
+
+  const adminContext = await requireShelterAccess(appointment.shelter_id, "/admin/bookings/check-in");
 
   const updatePayload = {
     check_in_note: note || null,
@@ -675,5 +768,15 @@ export async function checkInBookingAction(formData: FormData) {
   revalidatePath("/admin/bookings");
   revalidatePath("/appointments");
   revalidatePath(`/appointments/${appointment.id}`);
+  await logAdminAuditEvent({
+    action: "appointment.check_in",
+    context: adminContext,
+    metadata: {
+      noteLength: note.length,
+    },
+    shelterId: appointment.shelter_id,
+    targetId: appointment.id,
+    targetTable: "appointments",
+  });
   redirect(`${buildAdminBookingDetailPath({ appointmentId: appointment.id, token })}&checkedIn=1`);
 }

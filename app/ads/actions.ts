@@ -1,6 +1,6 @@
 "use server";
 
-import { openAdminGate, validateAdminPassphrase } from "@/utils/admin-auth";
+import { unlockAdminGateAction as sharedUnlockAdminGateAction } from "@/app/admin/dogs/new/actions";
 
 export type AdsGateState = {
   message: string;
@@ -8,22 +8,8 @@ export type AdsGateState = {
 };
 
 export async function unlockAdsGateAction(
-  _prevState: AdsGateState,
+  prevState: AdsGateState,
   formData: FormData,
 ): Promise<AdsGateState> {
-  const passphrase = String(formData.get("passphrase") ?? "");
-
-  if (!validateAdminPassphrase(passphrase)) {
-    return {
-      message: "That password is incorrect.",
-      status: "error",
-    };
-  }
-
-  await openAdminGate();
-
-  return {
-    message: "Access granted. Reloading ads onboarding...",
-    status: "success",
-  };
+  return sharedUnlockAdminGateAction(prevState, formData);
 }

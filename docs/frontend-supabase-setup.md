@@ -7,7 +7,7 @@ The Next.js app is now wired for Supabase SSR using the current `@supabase/ssr` 
 - `/Users/sudlabha/Desktop/paw/lib/supabase/client.ts`
 - `/Users/sudlabha/Desktop/paw/lib/supabase/server.ts`
 - `/Users/sudlabha/Desktop/paw/lib/supabase/middleware.ts`
-- `/Users/sudlabha/Desktop/paw/middleware.ts`
+- `/Users/sudlabha/Desktop/paw/proxy.ts`
 - `/Users/sudlabha/Desktop/paw/.env.example`
 
 ## Environment variables

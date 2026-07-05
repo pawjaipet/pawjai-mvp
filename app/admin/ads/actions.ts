@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { parseAdDateRange } from "@/utils/ad-date-range";
-import { isAdminGateOpen } from "@/utils/admin-auth";
+import { requireGlobalAdmin } from "@/utils/admin-auth";
+import { logAdminAuditEvent } from "@/utils/admin-audit";
 
 function randomHex(bytes = 4) {
   return Math.floor(Math.random() * 16 ** (bytes * 2))
@@ -13,9 +14,7 @@ function randomHex(bytes = 4) {
 }
 
 export async function createAdAction(_prev: { error?: string; success?: string } | undefined, formData: FormData) {
-  if (!(await isAdminGateOpen())) {
-    return { error: "Admin password required." };
-  }
+  const adminContext = await requireGlobalAdmin("/admin/ads");
 
   const companyName = (formData.get("company_name") as string)?.trim();
   const contactInfo = (formData.get("contact_info") as string)?.trim() || null;
@@ -48,7 +47,7 @@ export async function createAdAction(_prev: { error?: string; success?: string }
   }
 
   const supabase = createAdminClient();
-  const { error: dbError } = await supabase.from("ads").insert({
+  const { data: ad, error: dbError } = await supabase.from("ads").insert({
     company_name: companyName,
     contact_info: contactInfo,
     image_url: imageUrl,
@@ -56,9 +55,19 @@ export async function createAdAction(_prev: { error?: string; success?: string }
     start_date: dateRange.startDate,
     end_date: dateRange.endDate,
     is_active: isActive,
-  });
+  }).select("id").single();
 
   if (dbError) return { error: `DB insert failed: ${dbError.message}` };
+  await logAdminAuditEvent({
+    action: "ad.create",
+    context: adminContext,
+    metadata: {
+      companyName,
+      isActive,
+    },
+    targetId: ad?.id ?? null,
+    targetTable: "ads",
+  });
 
   revalidatePath("/admin/ads");
   revalidatePath("/");
@@ -66,31 +75,40 @@ export async function createAdAction(_prev: { error?: string; success?: string }
 }
 
 export async function deleteAdAction(id: string) {
-  if (!(await isAdminGateOpen())) {
-    return;
-  }
+  const adminContext = await requireGlobalAdmin("/admin/ads");
 
   const supabase = createAdminClient();
   await supabase.from("ads").delete().eq("id", id);
+  await logAdminAuditEvent({
+    action: "ad.delete",
+    context: adminContext,
+    targetId: id,
+    targetTable: "ads",
+  });
   revalidatePath("/admin/ads");
   revalidatePath("/");
 }
 
 export async function toggleAdAction(id: string, isActive: boolean) {
-  if (!(await isAdminGateOpen())) {
-    return;
-  }
+  const adminContext = await requireGlobalAdmin("/admin/ads");
 
   const supabase = createAdminClient();
   await supabase.from("ads").update({ is_active: isActive }).eq("id", id);
+  await logAdminAuditEvent({
+    action: "ad.toggle",
+    context: adminContext,
+    metadata: {
+      isActive,
+    },
+    targetId: id,
+    targetTable: "ads",
+  });
   revalidatePath("/admin/ads");
   revalidatePath("/");
 }
 
 export async function updateAdDatesAction(id: string, startDateValue: string, endDateValue: string) {
-  if (!(await isAdminGateOpen())) {
-    return { error: "Admin password required." };
-  }
+  const adminContext = await requireGlobalAdmin("/admin/ads");
 
   let dateRange: ReturnType<typeof parseAdDateRange>;
   try {
@@ -112,6 +130,17 @@ export async function updateAdDatesAction(id: string, startDateValue: string, en
   if (error) {
     return { error: `DB update failed: ${error.message}` };
   }
+
+  await logAdminAuditEvent({
+    action: "ad.dates.update",
+    context: adminContext,
+    metadata: {
+      endDate: dateRange.endDate,
+      startDate: dateRange.startDate,
+    },
+    targetId: id,
+    targetTable: "ads",
+  });
 
   revalidatePath("/admin/ads");
   revalidatePath("/");

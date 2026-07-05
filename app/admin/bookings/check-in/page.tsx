@@ -7,7 +7,7 @@ import {
   hashCheckInToken,
   verifySignedCheckInToken,
 } from "@/utils/booking";
-import { isAdminGateOpen } from "@/utils/admin-auth";
+import { getAdminAuthContext, requireShelterAccess } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import AdminGateForm from "../../dogs/new/AdminGateForm";
 import { unlockAdminGateAction } from "../../dogs/new/actions";
@@ -37,11 +37,11 @@ export default async function AdminBookingCheckInPage({
 }: {
   searchParams?: Promise<{ invalid?: string; token?: string }>;
 }) {
-  const gateOpen = await isAdminGateOpen();
+  const adminContext = await getAdminAuthContext();
   const resolvedSearchParams = await searchParams;
   const token = resolvedSearchParams?.token ?? "";
 
-  if (!gateOpen) {
+  if (!adminContext) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <AdminGateForm
@@ -59,7 +59,7 @@ export default async function AdminBookingCheckInPage({
   const admin = createAdminClient();
   const { data: hashedAppointment } = await admin
     .from("appointments")
-    .select("id")
+    .select("id, shelter_id")
     .eq("check_in_token_hash", hashCheckInToken(token))
     .maybeSingle();
   const appointmentIdFromToken = verifySignedCheckInToken({
@@ -69,7 +69,7 @@ export default async function AdminBookingCheckInPage({
   const { data: signedAppointment } = !hashedAppointment && appointmentIdFromToken
     ? await admin
         .from("appointments")
-        .select("id")
+        .select("id, shelter_id")
         .eq("id", appointmentIdFromToken)
         .maybeSingle()
     : { data: null };
@@ -78,6 +78,8 @@ export default async function AdminBookingCheckInPage({
   if (!appointment) {
     return <InvalidQrCard retry />;
   }
+
+  await requireShelterAccess(appointment.shelter_id, "/admin/bookings/check-in");
 
   redirect(buildAdminBookingDetailPath({ appointmentId: appointment.id, token }));
 }

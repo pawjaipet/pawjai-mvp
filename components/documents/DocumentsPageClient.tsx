@@ -390,7 +390,16 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
         submitCurrentForm("submit");
       }}
       className="relative overflow-y-auto overflow-x-hidden"
-      style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", minHeight: "100vh", paddingBottom: "100px", background: "#F5F1E8", scrollbarWidth: "none", fontFamily: M }}
+      style={{
+        width: "402px",
+        maxWidth: "100vw",
+        margin: "0 auto",
+        minHeight: "100vh",
+        paddingBottom: "calc(156px + env(safe-area-inset-bottom))",
+        background: "#F5F1E8",
+        scrollbarWidth: "none",
+        fontFamily: M,
+      }}
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
@@ -755,11 +764,12 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
 
       {section !== "done" && (
         <div
-          className="fixed bottom-[70px] flex items-center gap-[12px] px-[20px] pb-[16px] pt-[24px]"
+          className="fixed flex items-center gap-[12px] px-[20px] pb-[16px] pt-[24px]"
           style={{
             width: "402px",
             maxWidth: "100vw",
             left: "50%",
+            bottom: "calc(84px + env(safe-area-inset-bottom))",
             transform: "translateX(-50%)",
             background: "linear-gradient(to top, #F5F1E8 60%, rgba(245,241,232,0) 100%)",
             pointerEvents: "none",
@@ -772,6 +782,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
               if (prev) setSection(prev);
             }}
             disabled={!PREV[section] || isSubmitting}
+            aria-label="Go back to previous verification section"
             className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] transition-all active:scale-95 disabled:opacity-25"
             style={{ border: "2px solid #65584f", background: "transparent", pointerEvents: "auto" }}
           >

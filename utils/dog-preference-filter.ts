@@ -84,6 +84,29 @@ function matchesOneOf(value: Nullable<string>, allowed: Nullable<string[]>) {
   return labels.some((label) => normalize(label) === normalizedValue);
 }
 
+function isMixedBreedLabel(value: string) {
+  const normalizedValue = normalize(value);
+  return (
+    normalizedValue === "mixed breed" ||
+    normalizedValue === "mixed" ||
+    normalizedValue === "mutt" ||
+    /\bmix(ed)?\b/.test(normalizedValue)
+  );
+}
+
+function matchesBreed(value: Nullable<string>, allowed: Nullable<string[]>) {
+  const labels = clean(allowed);
+  if (!labels.length) return true;
+  if (!value) return false;
+  const normalizedValue = normalize(value);
+
+  return labels.some((label) => {
+    const normalizedLabel = normalize(label);
+    if (normalizedLabel === "mixed breed") return isMixedBreedLabel(value);
+    return normalizedLabel === normalizedValue;
+  });
+}
+
 function matchesBoolean(value: Nullable<boolean>, required: Nullable<boolean>) {
   if (required === null || required === undefined) return true;
   return value === required;
@@ -156,7 +179,7 @@ export function filterDogsByPreferences<TDog extends DogForPreferenceFilter>(
   return dogs.filter((dog) => {
     const dogTraits = traitMap.get(dog.id);
     return (
-      matchesOneOf(dog.breed, preference!.preferred_breeds) &&
+      matchesBreed(dog.breed, preference!.preferred_breeds) &&
       matchesAge(dog, preference!) &&
       matchesOneOf(dog.size, preference!.preferred_size ? [preference!.preferred_size] : []) &&
       matchesOneOf(dog.energy_level, preference!.preferred_energy_level ? [preference!.preferred_energy_level] : []) &&

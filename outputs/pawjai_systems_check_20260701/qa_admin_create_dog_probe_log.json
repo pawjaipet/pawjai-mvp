@@ -1,0 +1,130 @@
+{
+  "cleanup": {
+    "deletedDogId": "77a79651-1135-42cd-8b2d-c3ef35f33bd4",
+    "removedStoragePath": "qa-codex/QA-Codex-CreateDog-20260702072327.jpg"
+  },
+  "dogName": "QA-Codex-CreateDog-20260702072327",
+  "endedAt": "2026-07-02T07:23:32.435Z",
+  "imagePath": "/Users/sudlabha/Desktop/paw/outputs/pawjai_systems_check_20260701/qa_assets/qa_codex_test_dog.jpg",
+  "startedAt": "2026-07-02T07:23:27.233Z",
+  "steps": [
+    {
+      "name": "select_shelter",
+      "ok": true,
+      "at": "2026-07-02T07:23:27.234Z",
+      "result": {
+        "id": "71c6197c-9b69-45f3-a6dc-b2d9f0948514",
+        "name": "The Voice Foundation"
+      }
+    },
+    {
+      "name": "upload_fake_image_to_storage",
+      "ok": true,
+      "at": "2026-07-02T07:23:28.712Z",
+      "result": {
+        "publicUrl": "https://bdnyvcvkyepipdcygkvn.supabase.co/storage/v1/object/public/dog-photos/qa-codex/QA-Codex-CreateDog-20260702072327.jpg",
+        "storagePath": "qa-codex/QA-Codex-CreateDog-20260702072327.jpg"
+      }
+    },
+    {
+      "name": "insert_draft_dog",
+      "ok": true,
+      "at": "2026-07-02T07:23:29.230Z",
+      "result": {
+        "id": "77a79651-1135-42cd-8b2d-c3ef35f33bd4",
+        "name": "QA-Codex-CreateDog-20260702072327",
+        "adoption_status": "draft",
+        "shelter_id": "71c6197c-9b69-45f3-a6dc-b2d9f0948514"
+      }
+    },
+    {
+      "name": "insert_cover_photo_row",
+      "ok": true,
+      "at": "2026-07-02T07:23:30.015Z",
+      "result": {
+        "id": "fe662e58-13f2-4828-879d-82bdd6f7bc72",
+        "dog_id": "77a79651-1135-42cd-8b2d-c3ef35f33bd4",
+        "public_url": "https://bdnyvcvkyepipdcygkvn.supabase.co/storage/v1/object/public/dog-photos/qa-codex/QA-Codex-CreateDog-20260702072327.jpg",
+        "storage_path": "qa-codex/QA-Codex-CreateDog-20260702072327.jpg"
+      }
+    },
+    {
+      "name": "set_cover_photo_id",
+      "ok": true,
+      "at": "2026-07-02T07:23:30.309Z",
+      "result": {
+        "dogId": "77a79651-1135-42cd-8b2d-c3ef35f33bd4",
+        "photoId": "fe662e58-13f2-4828-879d-82bdd6f7bc72"
+      }
+    },
+    {
+      "name": "verify_created_rows",
+      "ok": true,
+      "at": "2026-07-02T07:23:30.539Z",
+      "result": {
+        "dog": {
+          "id": "77a79651-1135-42cd-8b2d-c3ef35f33bd4",
+          "name": "QA-Codex-CreateDog-20260702072327",
+          "adoption_status": "draft",
+          "cover_photo_id": "fe662e58-13f2-4828-879d-82bdd6f7bc72"
+        },
+        "photos": [
+          {
+            "id": "fe662e58-13f2-4828-879d-82bdd6f7bc72",
+            "dog_id": "77a79651-1135-42cd-8b2d-c3ef35f33bd4",
+            "public_url": "https://bdnyvcvkyepipdcygkvn.supabase.co/storage/v1/object/public/dog-photos/qa-codex/QA-Codex-CreateDog-20260702072327.jpg",
+            "storage_path": "qa-codex/QA-Codex-CreateDog-20260702072327.jpg"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cleanup_delete_dog",
+      "ok": true,
+      "at": "2026-07-02T07:23:31.151Z",
+      "result": {
+        "dogId": "77a79651-1135-42cd-8b2d-c3ef35f33bd4"
+      }
+    },
+    {
+      "name": "cleanup_remove_storage_object",
+      "ok": true,
+      "at": "2026-07-02T07:23:31.750Z",
+      "result": [
+        {
+          "name": "qa-codex/QA-Codex-CreateDog-20260702072327.jpg",
+          "bucket_id": "dog-photos",
+          "owner": "",
+          "owner_id": "",
+          "version": "355b10c6-90a0-4ce5-98c5-a608e2ae58be",
+          "id": "a178591a-a4c2-4617-8dfc-3d85ec130943",
+          "updated_at": "2026-07-02T07:23:29.183Z",
+          "created_at": "2026-07-02T07:23:29.183Z",
+          "last_accessed_at": "2026-07-02T07:23:29.183Z",
+          "metadata": {
+            "eTag": "\"5e7d3b2d034867239b71fc290f5a9c27\"",
+            "size": 28456,
+            "mimetype": "image/jpeg",
+            "cacheControl": "max-age=60",
+            "lastModified": "2026-07-02T07:23:30.000Z",
+            "contentLength": 28456,
+            "httpStatusCode": 200
+          },
+          "user_metadata": {}
+        }
+      ]
+    },
+    {
+      "name": "verify_cleanup",
+      "ok": true,
+      "at": "2026-07-02T07:23:32.021Z",
+      "result": {
+        "remainingDog": null,
+        "remainingPhotos": 0
+      }
+    }
+  ],
+  "storagePath": "qa-codex/QA-Codex-CreateDog-20260702072327.jpg",
+  "createdDogId": "77a79651-1135-42cd-8b2d-c3ef35f33bd4",
+  "createdPhotoId": "fe662e58-13f2-4828-879d-82bdd6f7bc72"
+}

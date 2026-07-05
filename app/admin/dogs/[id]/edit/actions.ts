@@ -8,7 +8,8 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { Database } from "@/types/database";
-import { isAdminGateOpen } from "@/utils/admin-auth";
+import { logAdminAuditEvent } from "@/utils/admin-audit";
+import { requireAdminWorkspace, requireShelterAccess } from "@/utils/admin-auth";
 import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { buildDogMediaItems, parseDogMediaManifest } from "@/utils/dog-media";
 import { slugify } from "@/utils/slug";
@@ -621,14 +622,6 @@ export async function updateDogProfileAction(
   _prevState: EditDogProfileState,
   formData: FormData,
 ): Promise<EditDogProfileState> {
-  if (!(await isAdminGateOpen())) {
-    return {
-      message: "Admin access expired. Please unlock the admin page again.",
-      status: "error",
-    };
-  }
-
-  const supabase = createAdminClient();
   const fieldErrors: Record<string, string> = {};
   const dogId = getString(formData, "dog_id");
   const name = getString(formData, "name");
@@ -661,6 +654,9 @@ export async function updateDogProfileAction(
       status: "error",
     };
   }
+
+  const adminContext = await requireShelterAccess(shelterId, `/admin/dogs/${dogId}/edit`);
+  const supabase = createAdminClient();
 
   const dogSocialStyle = getOptionalString(formData, "dog_social_style");
   const peopleFriendliness = getOptionalString(formData, "people_friendliness");
@@ -801,6 +797,18 @@ export async function updateDogProfileAction(
   revalidateDogManagementPaths(dogId);
   revalidatePath("/appointments");
   revalidatePath("/admin/bookings");
+  await logAdminAuditEvent({
+    action: "dog.update",
+    context: adminContext,
+    metadata: {
+      cancelledFutureAppointments,
+      name,
+      status: dogPayload.adoption_status,
+    },
+    shelterId,
+    targetId: dogId,
+    targetTable: "dogs",
+  });
 
   return {
     message: cancelledFutureAppointments > 0
@@ -811,14 +819,21 @@ export async function updateDogProfileAction(
 }
 
 export async function deleteDogProfileAction(formData: FormData) {
-  if (!(await isAdminGateOpen())) {
-    return;
-  }
-
   const dogId = getString(formData, "dog_id");
   if (!dogId) return;
 
+  await requireAdminWorkspace(`/admin/dogs/${dogId}/edit`);
   const supabase = createAdminClient();
+  const { data: dog } = await supabase
+    .from("dogs")
+    .select("shelter_id")
+    .eq("id", dogId)
+    .maybeSingle();
+
+  if (!dog) return;
+
+  const adminContext = await requireShelterAccess(dog.shelter_id, `/admin/dogs/${dogId}/edit`);
+
   const [{ data: photos }, { data: mediaTraits }] = await Promise.all([
     supabase.from("dog_photos").select("storage_path").eq("dog_id", dogId),
     supabase
@@ -847,6 +862,17 @@ export async function deleteDogProfileAction(formData: FormData) {
   if (deleteDogError) {
     throw new Error(`Could not delete duplicate dog profile: ${deleteDogError.message}`);
   }
+
+  await logAdminAuditEvent({
+    action: "dog.delete",
+    context: adminContext,
+    metadata: {
+      removedStoragePaths: storagePaths.length,
+    },
+    shelterId: dog.shelter_id,
+    targetId: dogId,
+    targetTable: "dogs",
+  });
 
   revalidateDogManagementPaths(dogId);
   redirect("/admin/listings");

@@ -8,6 +8,7 @@ import {
   isAppointmentMessagesUnavailableError,
 } from "@/utils/appointment-messages";
 import { sendReturnInquiryNotificationForAppointment } from "@/utils/booking-email";
+import { assertRateLimit } from "@/utils/rate-limit";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -84,6 +85,16 @@ export async function cancelAppointmentAction(appointmentId: string) {
   if (!user) return { ok: false, error: "Not signed in" };
 
   const adopter = await ensureAdopterForUser(supabase, user);
+  try {
+    await assertRateLimit({
+      action: "appointment.message",
+      identifier: `${user.id}:${appointmentId}`,
+      limit: 20,
+      windowSeconds: 10 * 60,
+    });
+  } catch (error) {
+    redirect(`/appointments/${appointmentId}?tab=messages&message=${encodeURIComponent(error instanceof Error ? error.message : "Please wait before sending more messages.")}`);
+  }
   const admin = createAdminClient();
 
   // Confirm ownership before mutating
@@ -127,6 +138,16 @@ export async function sendAppointmentMessageAction(formData: FormData) {
   }
 
   const adopter = await ensureAdopterForUser(supabase, user);
+  try {
+    await assertRateLimit({
+      action: "return_inquiry.create",
+      identifier: user.id,
+      limit: 5,
+      windowSeconds: 60 * 60,
+    });
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Please wait before sending another return inquiry." };
+  }
   const admin = createAdminClient();
   const { data: appointment } = await admin
     .from("appointments")

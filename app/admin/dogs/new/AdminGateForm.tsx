@@ -21,27 +21,45 @@ export default function AdminGateForm({
   }, [router, state.status]);
 
   return (
-    <div className="rounded-[36px] bg-gradient-to-br from-[#fff5e6] via-[#fff0dc] to-[#f9e0b8] p-8 shadow-[0_24px_60px_rgba(176,120,42,0.16)]">
-      <div className="rounded-[28px] border border-white/80 bg-white/80 p-8 backdrop-blur">
-        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">
-          PawJai Internal
+    <div className="overflow-hidden rounded-[28px] border border-[#eadfce] bg-[#fffdfa] shadow-[0_24px_70px_rgba(92,66,38,0.12)]">
+      <div className="border-b border-[#f0e2cf] bg-[#4f4338] px-8 py-7 text-white">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f4c981]">
+          PawJai Admin
         </p>
-        <h1 className="mt-3 text-3xl font-semibold leading-tight text-[#4f4338]">
-          Unlock the dog onboarding workspace.
+        <h1 className="mt-3 text-3xl font-semibold leading-tight">
+          Sign in to the shelter workspace.
         </h1>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-[#74685d]">
-          This is a lightweight internal gate for the team while we shape the long-term shelter
-          onboarding UX. It is intentionally simple and not meant to be production-grade security.
+        <p className="mt-3 max-w-xl text-sm leading-6 text-[#f6eadb]">
+          Use the PawJai admin account or the shared account assigned to your shelter.
         </p>
+      </div>
+
+      <div className="p-8">
+        <div className="rounded-2xl border border-[#f0e2cf] bg-[#fff8ee] px-4 py-3 text-sm leading-6 text-[#6f5d4c]">
+          Shelter accounts can manage only their linked shelter. PawJai admin can manage the full
+          workspace.
+        </div>
 
         <form action={formAction} className="mt-8 space-y-4">
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Admin phrase</span>
+            <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Admin email</span>
+            <input
+              type="email"
+              name="email"
+              autoComplete="email"
+              className="w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none transition focus:border-[#d69546] focus:ring-4 focus:ring-[#f6d7ad]/50"
+              placeholder="shelter@pawjai.co.th"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Password</span>
             <input
               type="password"
-              name="passphrase"
+              name="password"
+              autoComplete="current-password"
               className="w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none transition focus:border-[#d69546] focus:ring-4 focus:ring-[#f6d7ad]/50"
-              placeholder="Enter the shared team phrase"
+              placeholder="Enter the account password"
             />
           </label>
 
@@ -62,7 +80,7 @@ export default function AdminGateForm({
             disabled={pending}
             className="inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pending ? "Checking phrase..." : "Unlock admin page"}
+            {pending ? "Signing in..." : "Sign in"}
           </button>
         </form>
       </div>

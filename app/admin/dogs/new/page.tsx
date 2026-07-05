@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { isAdminGateOpen } from "@/utils/admin-auth";
+import { getAdminAuthContext } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import {
   lockAdminGateAction,
@@ -132,11 +132,11 @@ export async function AdminDogManagementPage({
   activeTabOverride?: "create" | "listings";
   searchParams?: Promise<{ tab?: string }>;
 }) {
-  const gateOpen = await isAdminGateOpen();
+  const adminContext = await getAdminAuthContext();
   const resolvedSearchParams = await searchParams;
   const activeTab = activeTabOverride ?? (resolvedSearchParams?.tab === "listings" ? "listings" : "create");
 
-  if (!gateOpen) {
+  if (!adminContext) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <AdminGateForm
@@ -148,9 +148,22 @@ export async function AdminDogManagementPage({
   }
 
   const supabase = createAdminClient();
+  const scopedShelterIds = adminContext.isGlobalAdmin ? null : adminContext.shelterIds;
   const [{ data: shelters }, { data: dogs }] = await Promise.all([
-    supabase.from("shelters").select("id, name").order("name", { ascending: true }),
-    supabase
+    scopedShelterIds && scopedShelterIds.length === 0
+      ? Promise.resolve({ data: [] })
+      : scopedShelterIds
+        ? supabase.from("shelters").select("id, name").in("id", scopedShelterIds).order("name", { ascending: true })
+        : supabase.from("shelters").select("id, name").order("name", { ascending: true }),
+    scopedShelterIds && scopedShelterIds.length === 0
+      ? Promise.resolve({ data: [] })
+      : scopedShelterIds
+        ? supabase
+          .from("dogs")
+          .select("id, name, adoption_status, created_at, shelter_id")
+          .in("shelter_id", scopedShelterIds)
+          .order("created_at", { ascending: false })
+        : supabase
       .from("dogs")
       .select("id, name, adoption_status, created_at, shelter_id")
       .order("created_at", { ascending: false }),
@@ -203,7 +216,7 @@ export async function AdminDogManagementPage({
             PawJai Admin
           </p>
           <p className="mt-2 text-sm text-[#7a6d61]">
-            Internal onboarding mode is unlocked with the shared team phrase.
+            Signed in as {adminContext.userEmail ?? "admin"}.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -216,11 +229,23 @@ export async function AdminDogManagementPage({
           <TabLink href="/admin/bookings" active={false}>
             Bookings
           </TabLink>
-          <TabLink href="/admin/ads" active={false}>
-            Ads
-          </TabLink>
-          <TabLink href="/admin/pawjaiprofile" active={false}>
-            About content
+          {adminContext.isGlobalAdmin ? (
+            <TabLink href="/admin/ads" active={false}>
+              Ads
+            </TabLink>
+          ) : null}
+          {adminContext.isGlobalAdmin ? (
+            <TabLink href="/admin/pawjaiprofile" active={false}>
+              About content
+            </TabLink>
+          ) : null}
+          {adminContext.isGlobalAdmin ? (
+            <TabLink href="/admin/accounts" active={false}>
+              Accounts
+            </TabLink>
+          ) : null}
+          <TabLink href="/admin/audit" active={false}>
+            Audit
           </TabLink>
           <form action={lockAdminGateAction}>
             <button

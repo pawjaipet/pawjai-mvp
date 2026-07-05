@@ -1,6 +1,7 @@
 "use server";
 
 import { parseDonationIntentInput } from "@/utils/donations";
+import { assertRateLimit } from "@/utils/rate-limit";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -16,6 +17,13 @@ export async function createDonationIntent(input: {
   if (!user) {
     throw new Error("Sign in to sponsor a dog.");
   }
+
+  await assertRateLimit({
+    action: "donation_intent.create",
+    identifier: user.id,
+    limit: 20,
+    windowSeconds: 60 * 60,
+  });
 
   const payload = parseDonationIntentInput(input);
   const { data, error } = await supabase

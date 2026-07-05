@@ -14,6 +14,7 @@ import {
 } from "@/utils/booking";
 import { sendBookingNotificationForAppointment } from "@/utils/booking-email";
 import { normalizeAppointmentTime } from "@/utils/appointments-model";
+import { assertRateLimit } from "@/utils/rate-limit";
 import { getShelterDaySlots } from "@/utils/shelter-availability";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
@@ -66,7 +67,17 @@ export async function bookAppointment(formData: FormData) {
     redirect(`/auth?message=${encodeURIComponent("Sign in to book a shelter visit.")}`);
   }
 
-  const { adopter } = ctx;
+  const { adopter, user } = ctx;
+  try {
+    await assertRateLimit({
+      action: "booking.create",
+      identifier: user.id,
+      limit: 8,
+      windowSeconds: 60 * 60,
+    });
+  } catch (error) {
+    redirect(`/dogs/${dogId}?message=${encodeURIComponent(error instanceof Error ? error.message : "Please wait before booking again.")}`);
+  }
   const admin = createAdminClient();
 
   const { data: dog, error: dogError } = await admin
@@ -147,7 +158,11 @@ export async function bookAppointment(formData: FormData) {
     redirect(`/dogs/${dogId}?message=${encodeURIComponent(message)}`);
   }
 
-  await sendBookingNotificationForAppointment({ admin, appointmentId });
+  await sendBookingNotificationForAppointment({
+    admin,
+    appointmentId,
+    event: "booking_requested",
+  });
   revalidatePath("/appointments");
   redirect(`/appointments/${appointmentId}`);
 }

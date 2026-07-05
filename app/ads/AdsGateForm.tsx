@@ -33,20 +33,31 @@ export default function AdsGateForm({
             PawJai Internal
           </p>
           <h1 className="mt-3 text-3xl font-semibold leading-tight text-[#4f4338]">
-            Unlock the ads onboarding workspace.
+            Sign in to the ads workspace.
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-6 text-[#74685d]">
-            Enter the shared team password to add partner ads and manage campaign dates.
+            Use a PawJai admin account to add partner ads and manage campaign dates.
           </p>
 
           <form action={formAction} className="mt-8 space-y-4">
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Admin password</span>
+              <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Admin email</span>
+              <input
+                type="email"
+                name="email"
+                autoComplete="email"
+                className="w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none transition focus:border-[#d69546] focus:ring-4 focus:ring-[#f6d7ad]/50"
+                placeholder="admin@pawjai.co.th"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Password</span>
               <input
                 type="password"
-                name="passphrase"
+                name="password"
+                autoComplete="current-password"
                 className="w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none transition focus:border-[#d69546] focus:ring-4 focus:ring-[#f6d7ad]/50"
-                placeholder="Enter the shared team password"
+                placeholder="Enter the account password"
               />
             </label>
 
@@ -67,7 +78,7 @@ export default function AdsGateForm({
               disabled={pending}
               className="inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {pending ? "Checking password..." : "Unlock ads onboarding"}
+              {pending ? "Signing in..." : "Sign in"}
             </button>
           </form>
         </div>

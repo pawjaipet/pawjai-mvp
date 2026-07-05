@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import AdminGateForm from "@/app/admin/dogs/new/AdminGateForm";
 import { unlockAdminGateAction } from "@/app/admin/dogs/new/actions";
 import { initialAdminGateState } from "@/app/admin/dogs/new/form-state";
-import { isAdminGateOpen } from "@/utils/admin-auth";
+import { getAdminAuthContext, requireShelterAccess } from "@/utils/admin-auth";
 import { mergePersonalityTags } from "@/utils/personality-tags";
 import { createAdminClient } from "@/utils/supabase/admin";
 import DogEditForm from "./DogEditForm";
@@ -14,9 +14,9 @@ export default async function EditAdminDogPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const gateOpen = await isAdminGateOpen();
+  const adminContext = await getAdminAuthContext();
 
-  if (!gateOpen) {
+  if (!adminContext) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <AdminGateForm
@@ -41,6 +41,7 @@ export default async function EditAdminDogPage({
   ]);
 
   if (!dog) notFound();
+  await requireShelterAccess(dog.shelter_id, `/admin/dogs/${id}/edit`);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">

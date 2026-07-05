@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createDogListingAction } from "./actions";
 import { initialCreateDogListingState } from "./form-state";
 
@@ -225,17 +225,32 @@ function ChoiceCards({
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      {options.map((option) => (
-        <label key={option.value} className="cursor-pointer">
-          <input className="peer sr-only" name={name} type="radio" value={option.value} />
-          <span className="block h-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#5b4d40] transition peer-checked:border-[#cd8188] peer-checked:bg-[#cd8188] peer-checked:text-white peer-focus-visible:ring-4 peer-focus-visible:ring-[#f3cbd0]">
-            <span className="block font-semibold">{option.label}</span>
-            {option.description ? (
-              <span className="mt-1 block text-xs opacity-75">{option.description}</span>
-            ) : null}
-          </span>
-        </label>
-      ))}
+      {options.map((option) => {
+        const optionId = `${name}-${option.value.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+        const descriptionId = option.description ? `${optionId}-description` : undefined;
+
+        return (
+          <label key={option.value} className="relative block cursor-pointer" htmlFor={optionId}>
+            <input
+              aria-describedby={descriptionId}
+              className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+              data-testid={`admin-radio-${name}-${option.value.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+              id={optionId}
+              name={name}
+              type="radio"
+              value={option.value}
+            />
+            <span className="block h-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#5b4d40] transition peer-checked:border-[#cd8188] peer-checked:bg-[#cd8188] peer-checked:text-white peer-focus-visible:ring-4 peer-focus-visible:ring-[#f3cbd0]">
+              <span className="block font-semibold">{option.label}</span>
+              {option.description ? (
+                <span id={descriptionId} className="mt-1 block text-xs opacity-75">
+                  {option.description}
+                </span>
+              ) : null}
+            </span>
+          </label>
+        );
+      })}
     </div>
   );
 }
@@ -277,8 +292,15 @@ export default function DogListingForm({
   const [mediaItems, setMediaItems] = useState<PendingMediaItem[]>([]);
   const [coverMediaKey, setCoverMediaKey] = useState("");
   const [mediaPreparing, setMediaPreparing] = useState(false);
+  const feedbackRef = useRef<HTMLDivElement>(null);
   const defaultShelterId = shelters.length === 1 ? shelters[0].id : "";
   const mediaUploadError = state.fieldErrors?.media_files ?? mediaError;
+
+  useEffect(() => {
+    if (!state.message && !state.fieldErrors) return;
+
+    feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [state.fieldErrors, state.message]);
 
   function moveMediaItem(index: number, direction: -1 | 1) {
     setMediaItems((items) => {
@@ -357,7 +379,7 @@ export default function DogListingForm({
   }
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form action={formAction} aria-busy={pending || mediaPreparing} className="space-y-6">
       <div className="rounded-[32px] bg-gradient-to-br from-[#fff6e8] via-[#fff1df] to-[#f9e4c0] p-7 shadow-[0_24px_60px_rgba(176,120,42,0.16)]">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
@@ -804,6 +826,9 @@ export default function DogListingForm({
 
       {state.message ? (
         <div
+          ref={feedbackRef}
+          aria-live="polite"
+          role={state.status === "error" ? "alert" : "status"}
           className={`rounded-2xl border px-5 py-4 text-sm ${
             state.status === "success"
               ? "border-[#bfdcb5] bg-[#f1faee] text-[#2f6b33]"
@@ -812,9 +837,12 @@ export default function DogListingForm({
         >
           <p>{state.message}</p>
           {state.status === "success" && state.dogId ? (
-            <p className="mt-2">
+            <p className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
               <Link href={`/dogs/${state.dogId}`} className="font-semibold underline decoration-2 underline-offset-4">
                 Open the new dog profile
+              </Link>
+              <Link href="/admin/listings" className="font-semibold underline decoration-2 underline-offset-4">
+                View in Manage listings
               </Link>
             </p>
           ) : null}
@@ -832,11 +860,19 @@ export default function DogListingForm({
           <button
             type="submit"
             disabled={pending || mediaPreparing || Boolean(mediaError)}
+            aria-describedby="create-dog-submit-status"
             className="inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {mediaPreparing ? "Preparing media..." : pending ? "Creating listing..." : "Create dog listing"}
           </button>
         </div>
+        <p id="create-dog-submit-status" className="mt-3 text-xs leading-5 text-[#7a6d61]" aria-live="polite">
+          {mediaPreparing
+            ? "Preparing selected files before upload."
+            : pending
+              ? "Creating the listing now. Keep this page open until the result message appears."
+              : "If anything needs attention, the form will scroll to the fix list after submit."}
+        </p>
       </div>
     </form>
   );

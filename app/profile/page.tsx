@@ -9,10 +9,36 @@ import { createClient } from "@/utils/supabase/server";
 import type { DogWithCover } from "@/types/database";
 
 const M = "Montserrat, sans-serif";
+type ProfileBadgeId = "first_adopter" | "top_donater" | "premium_user";
 
 function getNickname(fullName: string | null | undefined, email: string) {
   if (fullName?.trim()) return fullName.trim().split(" ")[0];
   return email.split("@")[0];
+}
+
+async function getProfileBadges(adopterId: string): Promise<ProfileBadgeId[]> {
+  const admin = createAdminClient();
+  const badges: ProfileBadgeId[] = [];
+  const { data: completedAppointments } = await admin
+    .from("appointments")
+    .select("dog_id")
+    .eq("adopter_id", adopterId)
+    .eq("status", "completed")
+    .not("dog_id", "is", null);
+
+  const completedDogIds = [...new Set((completedAppointments ?? []).map((appointment) => appointment.dog_id))] as string[];
+
+  if (completedDogIds.length > 0) {
+    const { count: adoptedDogCount } = await admin
+      .from("dogs")
+      .select("id", { count: "exact", head: true })
+      .in("id", completedDogIds)
+      .eq("adoption_status", "adopted");
+
+    if ((adoptedDogCount ?? 0) > 0) badges.push("first_adopter");
+  }
+
+  return badges;
 }
 
 export default async function ProfilePage() {
@@ -32,9 +58,10 @@ export default async function ProfilePage() {
   const adopter = verification.adopter;
   const admin = createAdminClient();
 
-  const [{ data: profile }, { data: wishlist }] = await Promise.all([
+  const [{ data: profile }, { data: wishlist }, badges] = await Promise.all([
     admin.from("profiles").select("*").eq("id", user.id).single(),
     admin.from("wishlists").select("dog_id").eq("adopter_id", adopter.id),
+    getProfileBadges(adopter.id),
   ]);
 
   const dogIds = (wishlist ?? []).map((item) => item.dog_id);
@@ -53,12 +80,6 @@ export default async function ProfilePage() {
   }));
 
   const nickname = getNickname(profile?.full_name, user.email ?? "");
-  // TODO: derive from DB once badge tracking exists. Empty = blank space.
-  const badges: ("first_adopter" | "top_donater" | "premium_user")[] = [
-    "first_adopter",
-    "top_donater",
-    "premium_user",
-  ];
 
   return (
     <div

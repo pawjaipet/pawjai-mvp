@@ -37,6 +37,32 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["ads"]["Insert"]>
         Relationships: []
       }
+      admin_audit_events: {
+        Row: {
+          action: string
+          actor_profile_id: string | null
+          actor_role: Extract<Database["public"]["Enums"]["app_role"], "admin" | "shelter_admin">
+          created_at: string
+          id: string
+          metadata: Json
+          shelter_id: string | null
+          target_id: string | null
+          target_table: string | null
+        }
+        Insert: {
+          action: string
+          actor_profile_id?: string | null
+          actor_role: Extract<Database["public"]["Enums"]["app_role"], "admin" | "shelter_admin">
+          created_at?: string
+          id?: string
+          metadata?: Json
+          shelter_id?: string | null
+          target_id?: string | null
+          target_table?: string | null
+        }
+        Update: Partial<Database["public"]["Tables"]["admin_audit_events"]["Insert"]>
+        Relationships: []
+      }
       adopters: {
         Row: {
           address_line: string | null
@@ -459,6 +485,26 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>
         Relationships: []
       }
+      rate_limit_buckets: {
+        Row: {
+          action: string
+          bucket_key: string
+          count: number
+          identifier_hash: string
+          reset_at: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          bucket_key: string
+          count?: number
+          identifier_hash: string
+          reset_at: string
+          updated_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["rate_limit_buckets"]["Insert"]>
+        Relationships: []
+      }
       return_inquiries: {
         Row: {
           adopter_id: string
@@ -567,6 +613,24 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["shelter_regular_hours"]["Insert"]>
         Relationships: []
       }
+      shelter_users: {
+        Row: {
+          created_at: string
+          id: string
+          profile_id: string
+          role: Database["public"]["Enums"]["shelter_membership_role"]
+          shelter_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile_id: string
+          role?: Database["public"]["Enums"]["shelter_membership_role"]
+          shelter_id: string
+        }
+        Update: Partial<Database["public"]["Tables"]["shelter_users"]["Insert"]>
+        Relationships: []
+      }
       wishlists: {
         Row: {
           adopter_id: string
@@ -606,9 +670,12 @@ export type Database = {
 export type Dog = Database["public"]["Tables"]["dogs"]["Row"]
 export type DogPhoto = Database["public"]["Tables"]["dog_photos"]["Row"]
 export type DogTrait = Database["public"]["Tables"]["dog_traits"]["Row"]
+export type AdminAuditEvent = Database["public"]["Tables"]["admin_audit_events"]["Row"]
 export type PawjaiProfile = Database["public"]["Tables"]["pawjai_profile"]["Row"]
 export type Shelter = Database["public"]["Tables"]["shelters"]["Row"]
+export type ShelterUser = Database["public"]["Tables"]["shelter_users"]["Row"]
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"]
+export type RateLimitBucket = Database["public"]["Tables"]["rate_limit_buckets"]["Row"]
 export type Adopter = Database["public"]["Tables"]["adopters"]["Row"]
 export type AdopterDocument = Database["public"]["Tables"]["adopter_documents"]["Row"]
 export type AdopterPreference = Database["public"]["Tables"]["adopter_preferences"]["Row"]

@@ -5,7 +5,7 @@ import { APPOINTMENT_TIME_SLOTS, appointmentFollowUpDue, isPastAppointmentByTime
 import type { AppointmentMessageRow } from "@/utils/appointment-messages";
 import { isAppointmentMessagesUnavailableError } from "@/utils/appointment-messages";
 import { formatBookingCode, normalizeBookingCodeSearch } from "@/utils/booking";
-import { isAdminGateOpen } from "@/utils/admin-auth";
+import { getAdminAuthContext } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import AdminGateForm from "../dogs/new/AdminGateForm";
 import { unlockAdminGateAction } from "../dogs/new/actions";
@@ -191,7 +191,7 @@ function messageTimestamp(value: string) {
   });
 }
 
-function AdminNav() {
+function AdminNav({ isGlobalAdmin }: { isGlobalAdmin: boolean }) {
   return (
     <div className="flex flex-wrap gap-3">
       <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin">
@@ -203,8 +203,18 @@ function AdminNav() {
       <Link className="rounded-full bg-[#d38a2c] px-5 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(179,111,31,0.22)]" href="/admin/bookings">
         Bookings
       </Link>
-      <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin/ads">
-        Ads
+      {isGlobalAdmin ? (
+        <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin/ads">
+          Ads
+        </Link>
+      ) : null}
+      {isGlobalAdmin ? (
+        <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin/accounts">
+          Accounts
+        </Link>
+      ) : null}
+      <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin/audit">
+        Audit
       </Link>
     </div>
   );
@@ -215,10 +225,10 @@ export default async function AdminBookingsPage({
 }: {
   searchParams?: Promise<{ code?: string; date?: string; message?: string; month?: string; shelter?: string; status?: string; view?: string; visit?: string }>;
 }) {
-  const gateOpen = await isAdminGateOpen();
+  const adminContext = await getAdminAuthContext();
   const resolvedSearchParams = await searchParams;
 
-  if (!gateOpen) {
+  if (!adminContext) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <AdminGateForm
@@ -248,14 +258,33 @@ export default async function AdminBookingsPage({
   const nextCalendarMonth = new Date(calendarMonth);
   nextCalendarMonth.setMonth(nextCalendarMonth.getMonth() + 1);
   const admin = createAdminClient();
-  const { data: baseShelters } = await admin
-    .from("shelters")
-    .select("id, name, phone_number, email, address_line, subdistrict, district, province, postal_code, website_url, facebook_url, instagram_url, description")
-    .order("name", { ascending: true });
-  const { data: extendedShelters } = await (admin as any)
-    .from("shelters")
-    .select("id, logo_url, google_maps_url, meeting_instructions, promptpay_id, bank_name, bank_account_number, bank_account_name")
-    .order("name", { ascending: true });
+  const scopedShelterIds = adminContext.isGlobalAdmin ? null : adminContext.shelterIds;
+  const [{ data: baseShelters }, { data: extendedShelters }] = await Promise.all([
+    scopedShelterIds && scopedShelterIds.length === 0
+      ? Promise.resolve({ data: [] })
+      : scopedShelterIds
+        ? admin
+            .from("shelters")
+            .select("id, name, phone_number, email, address_line, subdistrict, district, province, postal_code, website_url, facebook_url, instagram_url, description")
+            .in("id", scopedShelterIds)
+            .order("name", { ascending: true })
+        : admin
+            .from("shelters")
+            .select("id, name, phone_number, email, address_line, subdistrict, district, province, postal_code, website_url, facebook_url, instagram_url, description")
+            .order("name", { ascending: true }),
+    scopedShelterIds && scopedShelterIds.length === 0
+      ? Promise.resolve({ data: [] })
+      : scopedShelterIds
+        ? (admin as any)
+            .from("shelters")
+            .select("id, logo_url, google_maps_url, meeting_instructions, promptpay_id, bank_name, bank_account_number, bank_account_name")
+            .in("id", scopedShelterIds)
+            .order("name", { ascending: true })
+        : (admin as any)
+            .from("shelters")
+            .select("id, logo_url, google_maps_url, meeting_instructions, promptpay_id, bank_name, bank_account_number, bank_account_name")
+            .order("name", { ascending: true }),
+  ]);
   const extendedShelterMap = new Map(
     ((extendedShelters ?? []) as Partial<Shelter>[]).map((shelter) => [shelter.id, shelter]),
   );
@@ -314,7 +343,9 @@ export default async function AdminBookingsPage({
     appointmentsQuery = appointmentsQuery.eq("shelter_id", selectedShelterId);
   }
 
-  const { data: appointments } = await appointmentsQuery;
+  const { data: appointments } = selectedShelterId
+    ? await appointmentsQuery
+    : { data: [] };
   const rawAppointmentRows = selectedBookingCode
     ? (appointments ?? []).filter((appointment) => {
         const displayCode = appointment.booking_code ?? formatBookingCode(appointment.id);
@@ -439,7 +470,7 @@ export default async function AdminBookingsPage({
               Track shelter visits, verify appointment QR codes, and update booking status from the local admin workspace.
             </p>
           </div>
-          <AdminNav />
+          <AdminNav isGlobalAdmin={adminContext.isGlobalAdmin} />
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -701,7 +732,7 @@ export default async function AdminBookingsPage({
                     <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.phone_number ?? ""} name="phoneNumber" />
                   </label>
                   <label>
-                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Email</span>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Booking notification email</span>
                     <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.email ?? ""} name="email" type="email" />
                   </label>
                   <label>

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { FileText, ShieldCheck, UserRound } from "lucide-react";
 import type { Database, Json } from "@/types/database";
 import { formatBookingCode } from "@/utils/booking";
-import { isAdminGateOpen } from "@/utils/admin-auth";
+import { getAdminAuthContext, requireShelterAccess } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import AdminGateForm from "../../../dogs/new/AdminGateForm";
 import { unlockAdminGateAction } from "../../../dogs/new/actions";
@@ -193,10 +193,10 @@ export default async function AdminVisitorProfilePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const gateOpen = await isAdminGateOpen();
+  const adminContext = await getAdminAuthContext();
   const { id } = await params;
 
-  if (!gateOpen) {
+  if (!adminContext) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <AdminGateForm
@@ -220,6 +220,7 @@ export default async function AdminVisitorProfilePage({
   }
 
   const typedAppointment = appointment as Appointment;
+  await requireShelterAccess(typedAppointment.shelter_id, `/admin/bookings/${id}/visitor-profile`);
   const [{ data: adopter }, { data: dog }, { data: shelter }] = await Promise.all([
     admin
       .from("adopters")

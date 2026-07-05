@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useRef, useTransition } from "react";
 import { createAdAction, deleteAdAction, toggleAdAction, updateAdDatesAction } from "./actions";
 import { useEffect, useState } from "react";
@@ -176,6 +177,29 @@ export default function AdminAdsPage() {
       <div className="mb-6">
         <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#b77624]">PawJai Admin</p>
         <h1 className="mt-1 text-2xl font-semibold text-[#4f4338]">Ads</h1>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin">
+            Create dog
+          </Link>
+          <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin/listings">
+            Manage listings
+          </Link>
+          <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin/bookings">
+            Bookings
+          </Link>
+          <Link className="rounded-full bg-[#d38a2c] px-5 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(179,111,31,0.22)]" href="/admin/ads">
+            Ads
+          </Link>
+          <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin/pawjaiprofile">
+            About content
+          </Link>
+          <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin/accounts">
+            Accounts
+          </Link>
+          <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href="/admin/audit">
+            Audit
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">

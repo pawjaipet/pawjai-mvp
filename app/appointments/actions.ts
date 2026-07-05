@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { isAppointmentTimeSlot, normalizeAppointmentTime, parseLegacyRescheduleNote } from "@/utils/appointments-model";
+import { sendBookingNotificationForAppointment } from "@/utils/booking-email";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -103,6 +104,13 @@ export async function updateAppointmentDateTimeAction(formData: FormData) {
         .eq("adopter_id", adopter.id);
 
       if (!fallbackError) {
+        await sendBookingNotificationForAppointment({
+          admin,
+          appointmentId,
+          event: "booking_requested",
+          visitDate: appointmentDate,
+          visitTime: appointmentTime,
+        });
         revalidatePath("/appointments");
         revalidatePath(`/appointments/${appointmentId}`);
         revalidatePath("/admin/bookings");
@@ -116,6 +124,13 @@ export async function updateAppointmentDateTimeAction(formData: FormData) {
     appointmentsRedirect(message);
   }
 
+  await sendBookingNotificationForAppointment({
+    admin,
+    appointmentId,
+    event: "booking_requested",
+    visitDate: appointmentDate,
+    visitTime: appointmentTime,
+  });
   revalidatePath("/appointments");
   revalidatePath(`/appointments/${appointmentId}`);
   revalidatePath("/admin/bookings");
@@ -220,6 +235,13 @@ export async function acceptRescheduleRequestAction(formData: FormData) {
         .eq("adopter_id", adopter.id);
 
       if (!fallbackError) {
+        await sendBookingNotificationForAppointment({
+          admin,
+          appointmentId,
+          event: "booking_confirmed",
+          visitDate: proposedDate,
+          visitTime: appointmentTime,
+        });
         revalidatePath("/appointments");
         revalidatePath(`/appointments/${appointmentId}`);
         revalidatePath("/admin/bookings");
@@ -230,6 +252,13 @@ export async function acceptRescheduleRequestAction(formData: FormData) {
     appointmentsRedirect("We could not accept that date change. Please try again.");
   }
 
+  await sendBookingNotificationForAppointment({
+    admin,
+    appointmentId,
+    event: "booking_confirmed",
+    visitDate: proposedDate,
+    visitTime: appointmentTime,
+  });
   revalidatePath("/appointments");
   revalidatePath(`/appointments/${appointmentId}`);
   revalidatePath("/admin/bookings");

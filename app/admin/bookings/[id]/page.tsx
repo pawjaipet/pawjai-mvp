@@ -4,7 +4,7 @@ import { CheckCircle2, ExternalLink, QrCode, ShieldCheck } from "lucide-react";
 import type { Database } from "@/types/database";
 import { APPOINTMENT_TIME_SLOTS, normalizeAppointmentTime } from "@/utils/appointments-model";
 import { formatBookingCode } from "@/utils/booking";
-import { isAdminGateOpen } from "@/utils/admin-auth";
+import { getAdminAuthContext, requireShelterAccess } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import AdminGateForm from "../../dogs/new/AdminGateForm";
 import { unlockAdminGateAction } from "../../dogs/new/actions";
@@ -91,12 +91,12 @@ export default async function AdminBookingDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ checkedIn?: string; token?: string }>;
 }) {
-  const gateOpen = await isAdminGateOpen();
+  const adminContext = await getAdminAuthContext();
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   const token = resolvedSearchParams?.token ?? "";
 
-  if (!gateOpen) {
+  if (!adminContext) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <AdminGateForm
@@ -119,6 +119,7 @@ export default async function AdminBookingDetailPage({
   }
 
   const typedAppointment = appointment as Appointment;
+  await requireShelterAccess(typedAppointment.shelter_id, `/admin/bookings/${id}`);
   const [{ data: adopter }, { data: dog }, { data: shelter }] = await Promise.all([
     admin
       .from("adopters")

@@ -7,15 +7,18 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { Database } from "@/types/database";
+import { logAdminAuditEvent } from "@/utils/admin-audit";
 import {
   closeAdminGate,
-  openAdminGate,
-  validateAdminPassphrase,
+  getAdminAuthContext,
+  requireShelterAccess,
 } from "@/utils/admin-auth";
 import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { fetchRemoteAsset } from "@/utils/onedrive";
+import { assertRateLimit, getRequestIdentifier } from "@/utils/rate-limit";
 import { slugify } from "@/utils/slug";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { createClient } from "@/utils/supabase/server";
 import type { AdminGateState, CreateDogListingState } from "./form-state";
 
 type DogInsert = Database["public"]["Tables"]["dogs"]["Insert"];
@@ -705,19 +708,53 @@ export async function unlockAdminGateAction(
   _prevState: AdminGateState,
   formData: FormData,
 ): Promise<AdminGateState> {
-  const passphrase = getString(formData, "passphrase");
+  const email = getString(formData, "email").toLowerCase();
+  const password = getString(formData, "password");
 
-  if (!validateAdminPassphrase(passphrase)) {
+  if (!email || !password) {
     return {
-      message: "That passphrase is incorrect.",
+      message: "Enter your admin email and password.",
       status: "error",
     };
   }
 
-  await openAdminGate();
+  try {
+    const requestIdentifier = await getRequestIdentifier();
+    await assertRateLimit({
+      action: "admin.sign_in",
+      identifier: `${email}:${requestIdentifier}`,
+      limit: 8,
+      windowSeconds: 15 * 60,
+    });
+  } catch (error) {
+    return {
+      message: error instanceof Error ? error.message : "Too many attempts. Please try again later.",
+      status: "error",
+    };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    return {
+      message: "Admin sign-in failed. Check the email and password.",
+      status: "error",
+    };
+  }
+
+  const context = await getAdminAuthContext();
+
+  if (!context) {
+    await closeAdminGate();
+    return {
+      message: "This account is not linked to PawJai admin access.",
+      status: "error",
+    };
+  }
 
   return {
-    message: "Access granted. Reloading admin tools...",
+    message: "Signed in. Loading the admin workspace...",
     status: "success",
   };
 }
@@ -730,8 +767,6 @@ export async function createDogListingAction(
   _prevState: CreateDogListingState,
   formData: FormData,
 ): Promise<CreateDogListingState> {
-  const supabase = createAdminClient();
-
   const fieldErrors: Record<string, string> = {};
   const name = getString(formData, "name");
   const shelterId = getString(formData, "shelter_id");
@@ -829,6 +864,9 @@ export async function createDogListingAction(
     };
   }
 
+  const adminContext = await requireShelterAccess(shelterId, "/admin");
+  const supabase = createAdminClient();
+
   const dogSocialStyle = getOptionalString(formData, "dog_social_style");
   const peopleFriendliness = getOptionalString(formData, "people_friendliness");
   const goodWithDogs =
@@ -890,6 +928,18 @@ export async function createDogListingAction(
       status: "error",
     };
   }
+
+  await logAdminAuditEvent({
+    action: "dog.create",
+    context: adminContext,
+    metadata: {
+      name,
+      status: dogPayload.adoption_status,
+    },
+    shelterId,
+    targetId: insertedDog.id,
+    targetTable: "dogs",
+  });
 
   let backblazeMirrorWarningCount = 0;
   let coverPhotoUrl: string | null = null;
