@@ -21,45 +21,28 @@ export default function AdminGateForm({
   }, [router, state.status]);
 
   return (
-    <div className="overflow-hidden rounded-[28px] border border-[#eadfce] bg-[#fffdfa] shadow-[0_24px_70px_rgba(92,66,38,0.12)]">
-      <div className="border-b border-[#f0e2cf] bg-[#4f4338] px-8 py-7 text-white">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f4c981]">
-          PawJai Admin
+    <div className="rounded-[36px] bg-[#ffecc9] p-5 shadow-[0_24px_80px_rgba(130,88,34,0.12)] sm:p-10">
+      <div className="rounded-[28px] bg-white/95 px-6 py-10 shadow-[inset_0_0_0_1px_rgba(234,223,206,0.75)] sm:px-12">
+        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#b77624]">
+          PawJai Internal
         </p>
-        <h1 className="mt-3 text-3xl font-semibold leading-tight">
-          Sign in to the shelter workspace.
+        <h1 className="mt-5 max-w-2xl text-4xl font-semibold leading-tight text-[#4f4338] sm:text-5xl">
+          Unlock the dog onboarding workspace.
         </h1>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-[#f6eadb]">
-          Use the PawJai admin account or the shared account assigned to your shelter.
+        <p className="mt-5 max-w-2xl text-base leading-7 text-[#7a6d61]">
+          This is a lightweight internal gate for the team while we shape the long-term shelter onboarding UX. It is intentionally simple and not meant to be production-grade security.
         </p>
-      </div>
 
-      <div className="p-8">
-        <div className="rounded-2xl border border-[#f0e2cf] bg-[#fff8ee] px-4 py-3 text-sm leading-6 text-[#6f5d4c]">
-          Shelter accounts can manage only their linked shelter. PawJai admin can manage the full
-          workspace.
-        </div>
-
-        <form action={formAction} className="mt-8 space-y-4">
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Admin email</span>
+        <form action={formAction} className="mt-10 max-w-2xl space-y-5">
+          <label className="block" htmlFor="admin-phrase">
+            <span className="mb-3 block text-sm font-semibold text-[#6b5b4d]">Admin phrase</span>
             <input
-              type="email"
-              name="email"
-              autoComplete="email"
-              className="w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none transition focus:border-[#d69546] focus:ring-4 focus:ring-[#f6d7ad]/50"
-              placeholder="shelter@pawjai.co.th"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Password</span>
-            <input
-              type="password"
-              name="password"
               autoComplete="current-password"
-              className="w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none transition focus:border-[#d69546] focus:ring-4 focus:ring-[#f6d7ad]/50"
-              placeholder="Enter the account password"
+              className="w-full rounded-2xl border border-[#e4d5bf] bg-[#eef4ff] px-5 py-4 text-base text-[#4f4338] outline-none transition focus:border-[#d88c24] focus:bg-white"
+              id="admin-phrase"
+              name="adminPhrase"
+              required
+              type="password"
             />
           </label>
 
@@ -78,9 +61,9 @@ export default function AdminGateForm({
           <button
             type="submit"
             disabled={pending}
-            className="inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center rounded-full bg-[#d88c24] px-8 py-4 text-base font-semibold text-white shadow-[0_14px_26px_rgba(172,105,27,0.2)] transition hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pending ? "Signing in..." : "Sign in"}
+            {pending ? "Unlocking..." : "Unlock admin page"}
           </button>
         </form>
       </div>

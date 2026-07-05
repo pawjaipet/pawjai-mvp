@@ -10,15 +10,14 @@ import type { Database } from "@/types/database";
 import { logAdminAuditEvent } from "@/utils/admin-audit";
 import {
   closeAdminGate,
-  getAdminAuthContext,
+  openAdminGate,
   requireShelterAccess,
+  validateAdminPassphrase,
 } from "@/utils/admin-auth";
 import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { fetchRemoteAsset } from "@/utils/onedrive";
-import { assertRateLimit, getRequestIdentifier } from "@/utils/rate-limit";
 import { slugify } from "@/utils/slug";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { createClient } from "@/utils/supabase/server";
 import type { AdminGateState, CreateDogListingState } from "./form-state";
 
 type DogInsert = Database["public"]["Tables"]["dogs"]["Insert"];
@@ -708,53 +707,26 @@ export async function unlockAdminGateAction(
   _prevState: AdminGateState,
   formData: FormData,
 ): Promise<AdminGateState> {
-  const email = getString(formData, "email").toLowerCase();
-  const password = getString(formData, "password");
+  const phrase = getString(formData, "adminPhrase");
 
-  if (!email || !password) {
+  if (!phrase) {
     return {
-      message: "Enter your admin email and password.",
+      message: "Enter the admin phrase.",
       status: "error",
     };
   }
 
-  try {
-    const requestIdentifier = await getRequestIdentifier();
-    await assertRateLimit({
-      action: "admin.sign_in",
-      identifier: `${email}:${requestIdentifier}`,
-      limit: 8,
-      windowSeconds: 15 * 60,
-    });
-  } catch (error) {
+  if (!validateAdminPassphrase(phrase)) {
     return {
-      message: error instanceof Error ? error.message : "Too many attempts. Please try again later.",
+      message: "Admin phrase did not match.",
       status: "error",
     };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    return {
-      message: "Admin sign-in failed. Check the email and password.",
-      status: "error",
-    };
-  }
-
-  const context = await getAdminAuthContext();
-
-  if (!context) {
-    await closeAdminGate();
-    return {
-      message: "This account is not linked to PawJai admin access.",
-      status: "error",
-    };
-  }
+  await openAdminGate();
 
   return {
-    message: "Signed in. Loading the admin workspace...",
+    message: "Admin page unlocked.",
     status: "success",
   };
 }

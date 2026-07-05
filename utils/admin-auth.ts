@@ -1,10 +1,14 @@
 import "server-only";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { canAccessShelter, isAdminWorkspaceRole } from "@/utils/admin-authorization";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import type { Database } from "@/types/database";
+
+const ADMIN_GATE_COOKIE = "pawjai_admin_gate_unlocked";
+const ADMIN_GATE_PASSPHRASE = "pawjaiadmin!";
 
 export type AdminAuthContext = {
   fullName: string | null;
@@ -12,7 +16,7 @@ export type AdminAuthContext = {
   role: Extract<Database["public"]["Enums"]["app_role"], "admin" | "shelter_admin">;
   shelterIds: string[];
   userEmail: string | null;
-  userId: string;
+  userId: string | null;
 };
 
 function buildAdminLoginPath(nextPath = "/admin", message?: string) {
@@ -23,6 +27,19 @@ function buildAdminLoginPath(nextPath = "/admin", message?: string) {
 }
 
 export async function getAdminAuthContext(): Promise<AdminAuthContext | null> {
+  const cookieStore = await cookies();
+
+  if (cookieStore.get(ADMIN_GATE_COOKIE)?.value === "1") {
+    return {
+      fullName: "PawJai Admin",
+      isGlobalAdmin: true,
+      role: "admin",
+      shelterIds: [],
+      userEmail: null,
+      userId: null,
+    };
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -89,12 +106,32 @@ export async function isAdminGateOpen() {
 export async function closeAdminGate() {
   const supabase = await createClient();
   await supabase.auth.signOut();
+
+  const cookieStore = await cookies();
+  cookieStore.set({
+    httpOnly: true,
+    maxAge: 0,
+    name: ADMIN_GATE_COOKIE,
+    path: "/admin",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    value: "",
+  });
 }
 
 export async function openAdminGate() {
-  throw new Error("Admin phrase unlock has been replaced by Supabase admin sign-in.");
+  const cookieStore = await cookies();
+  cookieStore.set({
+    httpOnly: true,
+    maxAge: 60 * 60 * 8,
+    name: ADMIN_GATE_COOKIE,
+    path: "/admin",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    value: "1",
+  });
 }
 
-export function validateAdminPassphrase() {
-  return false;
+export function validateAdminPassphrase(phrase: string) {
+  return phrase.trim() === ADMIN_GATE_PASSPHRASE;
 }
