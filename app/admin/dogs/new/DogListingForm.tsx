@@ -277,6 +277,7 @@ function ChipCheckboxGroup({
 }
 
 export default function DogListingForm({
+  cancelLabel = "Cancel",
   cancelHref,
   personalityTags,
   returnTo,
@@ -286,6 +287,7 @@ export default function DogListingForm({
   submitLabel = "Create dog listing",
   successListingsHref = "/admin/listings",
 }: {
+  cancelLabel?: string;
   cancelHref?: string;
   personalityTags: string[];
   returnTo?: string;
@@ -880,7 +882,7 @@ export default function DogListingForm({
                 className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-7 py-3 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
                 href={cancelHref}
               >
-                Cancel
+                {cancelLabel}
               </Link>
             ) : null}
             <button

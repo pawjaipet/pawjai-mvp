@@ -101,9 +101,12 @@ test("admin draft has a focused create-dog route that reuses the real dog listin
   assert.equal(panelSource.includes("`/admindraft/dogs/new?shelter=${shelter.id}`"), true);
   assert.equal(draftCreateSource.includes("DogListingForm"), true);
   assert.equal(draftCreateSource.includes("isAdminDraftUnlocked"), true);
-  assert.equal(draftCreateSource.includes("Cancel"), true);
+  assert.equal(draftCreateSource.includes("Exit"), true);
+  assert.equal(draftCreateSource.includes('cancelLabel="Exit"'), true);
+  assert.equal(draftCreateSource.includes('submitLabel="Save Draft"'), true);
   assert.equal(draftCreateSource.includes("/admindraft?shelter="), true);
   assert.equal(formSource.includes("showIntro = true"), true);
+  assert.equal(formSource.includes('cancelLabel = "Cancel"'), true);
   assert.equal(formSource.includes("successListingsHref"), true);
   assert.equal(formSource.includes("submitLabel"), true);
 });

@@ -87,18 +87,19 @@ export default async function AdminDraftNewDogPage({
             className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
             href={cancelHref}
           >
-            Cancel
+            Exit
           </Link>
         </header>
 
         <DogListingForm
+          cancelLabel="Exit"
           cancelHref={cancelHref}
           personalityTags={personalityTags}
           returnTo="/admindraft"
           selectedShelterId={selectedShelterId}
           shelters={shelterOptions}
           showIntro={false}
-          submitLabel="Save draft"
+          submitLabel="Save Draft"
           successListingsHref={cancelHref}
         />
       </div>
