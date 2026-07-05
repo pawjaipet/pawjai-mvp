@@ -6,7 +6,8 @@ test("/admindraft is the canonical Supabase-backed draft route", () => {
   const source = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
 
   assert.equal(source.includes("loadAdminDraftData"), true);
-  assert.equal(source.includes("<AdminReorgDraftPanel data={data} />"), true);
+  assert.equal(source.includes("initialShelterId={resolvedSearchParams?.shelter}"), true);
+  assert.equal(source.includes("initialShelterTab={resolvedSearchParams?.view}"), true);
   assert.equal(source.includes('dynamic = "force-dynamic"'), true);
 });
 
@@ -64,4 +65,30 @@ test("admin draft supports shelter-specific filters and square shelter workspace
   assert.equal(source.includes('id="all-dog-shelter"'), true);
   assert.equal(source.includes('id="booking-shelter-filter"'), true);
   assert.equal(source.includes("aspect-square"), true);
+});
+
+test("admin draft shelter profile reuses live shelter edit actions in place", () => {
+  const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+  const dataSource = readFileSync(new URL("../utils/admin-draft-data.ts", import.meta.url), "utf8");
+  const actionSource = readFileSync(new URL("../app/admin/bookings/actions.ts", import.meta.url), "utf8");
+
+  assert.equal(panelSource.includes("updateShelterProfileAction"), true);
+  assert.equal(panelSource.includes("updateShelterOperatingDaysAction"), true);
+  assert.equal(panelSource.includes("createShelterBlockoutAction"), true);
+  assert.equal(panelSource.includes("deleteShelterAvailabilityAction"), true);
+  assert.equal(panelSource.includes('const DRAFT_RETURN_TO = "/admindraft"'), true);
+  assert.equal(panelSource.includes('name="returnTo"'), true);
+  assert.equal(panelSource.includes("Save shelter profile"), true);
+  assert.equal(panelSource.includes("Save weekly schedule"), true);
+  assert.equal(dataSource.includes('.from("shelter_availability")'), true);
+  assert.equal(dataSource.includes('.from("shelter_regular_hours")'), true);
+  assert.equal(actionSource.includes("redirectAfterShelterMutation"), true);
+  assert.equal(actionSource.includes('returnTo === "/admindraft"'), true);
+});
+
+test("admin draft phrase unlock is accepted by shared admin shelter actions", () => {
+  const authSource = readFileSync(new URL("../utils/admin-auth.ts", import.meta.url), "utf8");
+
+  assert.equal(authSource.includes('const ADMIN_DRAFT_COOKIE = "pawjai_admin_draft_unlocked"'), true);
+  assert.equal(authSource.includes("ADMIN_DRAFT_COOKIE"), true);
 });

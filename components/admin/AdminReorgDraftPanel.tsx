@@ -5,7 +5,11 @@ import { useState } from "react";
 import {
   Building2,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
   FileText,
+  Globe,
   ImageIcon,
   Mail,
   MapPin,
@@ -14,8 +18,17 @@ import {
   PawPrint,
   Search,
   ShieldCheck,
+  Trash2,
   Users,
 } from "lucide-react";
+import {
+  createShelterBlockoutAction,
+  deleteShelterAvailabilityAction,
+  toggleShelterBlockoutDateAction,
+  updateShelterOperatingDaysAction,
+  updateShelterProfileAction,
+} from "@/app/admin/bookings/actions";
+import DonationDetailsFields from "@/app/admin/bookings/DonationDetailsFields";
 import type {
   AdminDraftAboutContent,
   AdminDraftAd,
@@ -28,6 +41,17 @@ import type {
 type RoleView = "pawjai" | "shelter";
 type MainTab = "shelters" | "dogs" | "bookings" | "ads" | "about";
 type ShelterTab = "profile" | "dogs" | "bookings" | "messages";
+
+const DRAFT_RETURN_TO = "/admindraft";
+const WEEKDAYS = [
+  { label: "Sun", value: 0 },
+  { label: "Mon", value: 1 },
+  { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 },
+  { label: "Sat", value: 6 },
+];
 
 const fallbackShelters: AdminDraftShelter[] = [
   {
@@ -226,6 +250,57 @@ function shelterFilterOptions(shelters: AdminDraftShelter[]) {
   return [{ id: "all", name: "All shelters" }, ...shelters.map((shelter) => ({ id: shelter.id, name: shelter.name }))];
 }
 
+function shelterAddressParts(shelter: AdminDraftShelter) {
+  return [
+    shelter.addressLine,
+    shelter.subdistrict,
+    shelter.district,
+    shelter.province,
+    shelter.postalCode,
+  ].filter(Boolean) as string[];
+}
+
+function shelterMapsUrl(shelter: AdminDraftShelter) {
+  if (shelter.googleMapsUrl) return shelter.googleMapsUrl;
+  const query = [shelter.name, ...shelterAddressParts(shelter)].filter(Boolean).join(" ");
+  return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : "";
+}
+
+function buildCalendarDays(monthStart: Date) {
+  const gridStart = new Date(monthStart);
+  gridStart.setDate(1 - monthStart.getDay());
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    return date;
+  });
+}
+
+function formatMonthLabel(date: Date) {
+  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+function formatShortDate(date: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function isoDate(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function DraftReturnFields({ shelterId }: { shelterId: string }) {
+  return (
+    <>
+      <input name="returnTo" type="hidden" value={DRAFT_RETURN_TO} />
+      <input name="shelterId" type="hidden" value={shelterId} />
+    </>
+  );
+}
+
 function DogCard({ dog }: { dog: AdminDraftDog }) {
   return (
     <article className="overflow-hidden rounded-2xl border border-[#eadfce] bg-[#fffdfa]">
@@ -378,43 +453,366 @@ function CreateDogPreview() {
 }
 
 function ShelterProfileTab({ shelter }: { shelter: AdminDraftShelter }) {
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const addressParts = shelterAddressParts(shelter);
+  const mapsUrl = shelterMapsUrl(shelter);
+  const unavailableRanges = (shelter.availability ?? []).filter((range) => range.availabilityType === "unavailable");
+  const singleDayBlockouts = new Map(
+    unavailableRanges
+      .filter((range) => range.startDate === range.endDate)
+      .map((range) => [range.startDate, range]),
+  );
+  const regularHours = shelter.regularHours ?? [];
+  const fallbackClosedDays = unavailableRanges
+    .map((range) => range.note?.match(/^Recurring weekly closure:(\d)$/)?.[1])
+    .filter(Boolean)
+    .map(Number);
+  const closedDays = new Set([
+    ...regularHours.filter((hours) => hours.isClosed).map((hours) => hours.dayOfWeek),
+    ...fallbackClosedDays,
+  ]);
+  const sampleOpenDay = regularHours.find((hours) => !hours.isClosed);
+  const defaultOpensAt = sampleOpenDay?.opensAt?.slice(0, 5) ?? "09:00";
+  const defaultClosesAt = sampleOpenDay?.closesAt?.slice(0, 5) ?? "17:00";
+  const defaultSlotDuration = sampleOpenDay?.slotDurationMinutes ?? regularHours[0]?.slotDurationMinutes ?? 60;
+  const calendarDays = buildCalendarDays(calendarMonth);
+  const previousCalendarMonth = new Date(calendarMonth);
+  previousCalendarMonth.setMonth(calendarMonth.getMonth() - 1);
+  const nextCalendarMonth = new Date(calendarMonth);
+  nextCalendarMonth.setMonth(calendarMonth.getMonth() + 1);
+  const inputClass = "w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]";
+  const labelClass = "mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]";
+
   return (
-    <Section eyebrow="Shelter profile" title={shelter.name}>
-      <div className="mt-5 grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <div className="rounded-3xl border border-[#eadfce] bg-[#fffdfa] p-5">
-          <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-[#eadfce] text-[#8d7f72]">
-            {shelter.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img alt={`${shelter.name} logo`} className="h-full w-full object-cover" src={shelter.logoUrl} />
-            ) : (
-              <ImageIcon className="h-8 w-8" />
-            )}
-          </div>
-          <p className="mt-4 font-semibold text-[#4f4338]">Shelter logo</p>
-          <p className="mt-1 text-sm leading-6 text-[#74685d]">{shelter.logoUrl ? "Connected from shelters.logo_url." : "No logo set yet."}</p>
-        </div>
-        <div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl bg-[#f8f0e5] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Contact</p>
-              <p className="mt-2 text-sm text-[#5b4d40]">{shelter.phoneNumber || "No phone set"}</p>
-              <p className="mt-1 text-sm text-[#5b4d40]">{shelter.email || "No email set"}</p>
+    <div className="space-y-6">
+      <Section eyebrow="Shelter profile" title={shelter.name}>
+        <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <div>
+            <p className="text-sm leading-6 text-[#74685d]">
+              This profile feeds meeting location, shelter contact, donation details, and shelter calendar data.
+            </p>
+            <div className="mt-5 flex items-center gap-4 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-[#eadfce] text-[#8d7f72]">
+                {shelter.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img alt={`${shelter.name} logo`} className="h-full w-full object-cover" src={shelter.logoUrl} />
+                ) : (
+                  <ImageIcon className="h-7 w-7" />
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#4f4338]">Shelter logo</p>
+                <p className="mt-1 text-xs leading-5 text-[#74685d]">
+                  Paste a hosted logo URL or upload a new PNG, JPG, or WEBP file.
+                </p>
+              </div>
             </div>
-            <div className="rounded-2xl bg-[#f8f0e5] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Meeting address</p>
-              <p className="mt-2 text-sm leading-6 text-[#5b4d40]">{shelter.address || shelter.location}</p>
+
+            <div className="mt-5 space-y-3">
+              <div className="rounded-2xl bg-[#f8f0e5] p-4">
+                <div className="flex items-start gap-3">
+                  <MapPin className="mt-0.5 text-[#9a6b2a]" size={18} />
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Meeting at</p>
+                    <p className="mt-1 text-base font-semibold text-[#4f4338]">{shelter.name}</p>
+                    <p className="mt-1 text-sm leading-6 text-[#74685d]">
+                      {addressParts.length > 0 ? addressParts.join(", ") : "No address set yet."}
+                    </p>
+                    {mapsUrl ? (
+                      <a
+                        className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-[#c97580] hover:text-[#ad5f6a]"
+                        href={mapsUrl}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        Open Google Maps
+                        <ExternalLink size={14} />
+                      </a>
+                    ) : null}
+                    {shelter.meetingInstructions ? (
+                      <p className="mt-2 text-xs leading-5 text-[#74685d]">{shelter.meetingInstructions}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-[#f8f0e5] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Shelter contact</p>
+                <div className="mt-3 grid gap-2 text-sm text-[#74685d]">
+                  <p>{shelter.phoneNumber || "No phone number set"}</p>
+                  <p className="inline-flex items-center gap-2">
+                    <Mail size={15} />
+                    {shelter.email || "No email set"}
+                  </p>
+                  {shelter.websiteUrl ? (
+                    <a
+                      className="inline-flex items-center gap-2 font-semibold text-[#c97580] hover:text-[#ad5f6a]"
+                      href={shelter.websiteUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <Globe size={15} />
+                      Shelter website
+                    </a>
+                  ) : (
+                    <p className="inline-flex items-center gap-2">
+                      <Globe size={15} />
+                      No website set
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-          <FieldGrid fields={profileFields} />
-          <Link
-            className="mt-5 inline-flex rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white"
-            href={`/admin/bookings?shelter=${shelter.id}&view=profile`}
-          >
-            Edit live shelter profile
-          </Link>
+
+          <form action={updateShelterProfileAction} className="grid gap-3" encType="multipart/form-data">
+            <DraftReturnFields shelterId={shelter.id} />
+            <div className="grid gap-3 md:grid-cols-2">
+              <label>
+                <span className={labelClass}>Shelter name</span>
+                <input className={inputClass} defaultValue={shelter.name} name="name" required />
+              </label>
+              <label>
+                <span className={labelClass}>Phone</span>
+                <input className={inputClass} defaultValue={shelter.phoneNumber ?? ""} name="phoneNumber" />
+              </label>
+              <label>
+                <span className={labelClass}>Booking notification email</span>
+                <input className={inputClass} defaultValue={shelter.email ?? ""} name="email" type="email" />
+              </label>
+              <label>
+                <span className={labelClass}>Website</span>
+                <input className={inputClass} defaultValue={shelter.websiteUrl ?? ""} name="websiteUrl" placeholder="https://example.org" />
+              </label>
+              <label>
+                <span className={labelClass}>Logo URL</span>
+                <input className={inputClass} defaultValue={shelter.logoUrl ?? ""} name="logoUrl" placeholder="https://.../logo.png" />
+              </label>
+              <label>
+                <span className={labelClass}>Upload logo</span>
+                <input
+                  accept="image/png,image/jpeg,image/webp"
+                  className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-2.5 text-sm text-[#4f4338] file:mr-3 file:rounded-full file:border-0 file:bg-[#d38a2c] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-[#d38a2c]"
+                  name="logoFile"
+                  type="file"
+                />
+              </label>
+              <label>
+                <span className={labelClass}>Google Maps URL</span>
+                <input className={inputClass} defaultValue={shelter.googleMapsUrl ?? ""} name="googleMapsUrl" placeholder="https://maps.google.com/..." />
+              </label>
+            </div>
+
+            <label>
+              <span className={labelClass}>Address</span>
+              <input className={inputClass} defaultValue={shelter.addressLine ?? ""} name="addressLine" placeholder="Street address / meeting entrance" />
+            </label>
+
+            <div className="grid gap-3 md:grid-cols-4">
+              <label>
+                <span className={labelClass}>Subdistrict</span>
+                <input className={inputClass} defaultValue={shelter.subdistrict ?? ""} name="subdistrict" />
+              </label>
+              <label>
+                <span className={labelClass}>District</span>
+                <input className={inputClass} defaultValue={shelter.district ?? ""} name="district" />
+              </label>
+              <label>
+                <span className={labelClass}>Province</span>
+                <input className={inputClass} defaultValue={shelter.province ?? ""} name="province" />
+              </label>
+              <label>
+                <span className={labelClass}>Postal code</span>
+                <input className={inputClass} defaultValue={shelter.postalCode ?? ""} name="postalCode" />
+              </label>
+            </div>
+
+            <label>
+              <span className={labelClass}>Meeting instructions</span>
+              <textarea className={`${inputClass} min-h-20 resize-none`} defaultValue={shelter.meetingInstructions ?? ""} name="meetingInstructions" placeholder="Gate, parking, front desk, or what visitors should say when they arrive" />
+            </label>
+
+            <label>
+              <span className={labelClass}>Internal profile note</span>
+              <textarea className={`${inputClass} min-h-24 resize-none`} defaultValue={shelter.description ?? ""} name="description" placeholder="Meeting instructions, parking notes, or shelter context for staff" />
+            </label>
+
+            <input name="facebookUrl" type="hidden" value={shelter.facebookUrl ?? ""} />
+            <input name="instagramUrl" type="hidden" value={shelter.instagramUrl ?? ""} />
+            <DonationDetailsFields
+              bankAccountName={shelter.bankAccountName ?? null}
+              bankAccountNumber={shelter.bankAccountNumber ?? null}
+              bankName={shelter.bankName ?? null}
+              promptpayId={shelter.promptpayId ?? null}
+            />
+            <button className="mt-1 inline-flex items-center justify-center rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]" type="submit">
+              Save shelter profile
+            </button>
+          </form>
         </div>
-      </div>
-    </Section>
+      </Section>
+
+      <Section eyebrow="Shelter calendar" title="Blockout dates">
+        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
+          <div>
+            <p className="text-sm leading-6 text-[#74685d]">
+              Click dates to close or reopen one-off holidays. Set recurring closed weekdays for regular non-operating days.
+            </p>
+            <form action={updateShelterOperatingDaysAction} className="mt-5 rounded-2xl bg-[#fffdfa] p-4">
+              <DraftReturnFields shelterId={shelter.id} />
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Weekly closed days</p>
+              <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7">
+                {WEEKDAYS.map((day) => (
+                  <label
+                    className="cursor-pointer rounded-2xl border border-[#eadfce] bg-white px-3 py-3 text-center text-xs font-semibold text-[#5b4d40] has-[:checked]:border-[#c46f75] has-[:checked]:bg-[#c46f75] has-[:checked]:text-white"
+                    key={day.value}
+                  >
+                    <input
+                      className="sr-only"
+                      defaultChecked={closedDays.has(day.value)}
+                      name="closedDays"
+                      type="checkbox"
+                      value={day.value}
+                    />
+                    {day.label}
+                  </label>
+                ))}
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <label>
+                  <span className={labelClass}>Opens</span>
+                  <input className={inputClass} defaultValue={defaultOpensAt} name="opensAt" type="time" />
+                </label>
+                <label>
+                  <span className={labelClass}>Closes</span>
+                  <input className={inputClass} defaultValue={defaultClosesAt} name="closesAt" type="time" />
+                </label>
+                <label>
+                  <span className={labelClass}>Slot minutes</span>
+                  <input className={inputClass} defaultValue={defaultSlotDuration} min="15" name="slotDuration" step="15" type="number" />
+                </label>
+              </div>
+              <button className="mt-4 w-full rounded-full bg-[#d88c24] px-5 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]" type="submit">
+                Save weekly schedule
+              </button>
+            </form>
+          </div>
+
+          <div>
+            <div className="rounded-2xl bg-[#fffdfa] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#eadfce] bg-white text-[#5b4d40] hover:bg-[#faf4ec]"
+                  onClick={() => setCalendarMonth(previousCalendarMonth)}
+                  type="button"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <p className="text-lg font-semibold text-[#4f4338]">{formatMonthLabel(calendarMonth)}</p>
+                <button
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#eadfce] bg-white text-[#5b4d40] hover:bg-[#faf4ec]"
+                  onClick={() => setCalendarMonth(nextCalendarMonth)}
+                  type="button"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+              <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">
+                {WEEKDAYS.map((day) => (
+                  <span key={day.value}>{day.label}</span>
+                ))}
+              </div>
+              <div className="mt-2 grid grid-cols-7 gap-2">
+                {calendarDays.map((date) => {
+                  const dateKey = isoDate(date);
+                  const inMonth = date.getMonth() === calendarMonth.getMonth();
+                  const recurringClosed = closedDays.has(date.getDay());
+                  const blockout = singleDayBlockouts.get(dateKey);
+                  const isClosed = recurringClosed || Boolean(blockout);
+                  return (
+                    <form action={toggleShelterBlockoutDateAction} key={dateKey}>
+                      <DraftReturnFields shelterId={shelter.id} />
+                      <input name="date" type="hidden" value={dateKey} />
+                      <input name="availabilityId" type="hidden" value={blockout?.id ?? ""} />
+                      <button
+                        className={`flex aspect-square w-full items-center justify-center rounded-xl border text-sm font-semibold transition ${
+                          isClosed
+                            ? "border-[#65584f] bg-[#65584f] text-white"
+                            : "border-[#eadfce] bg-white text-[#5b4d40] hover:bg-[#faf4ec]"
+                        } ${inMonth ? "" : "opacity-35"} ${recurringClosed ? "cursor-not-allowed" : ""}`}
+                        disabled={recurringClosed}
+                        title={recurringClosed ? "Recurring closed day" : blockout ? "Click to reopen this date" : "Click to block this date"}
+                        type="submit"
+                      >
+                        {date.getDate()}
+                      </button>
+                    </form>
+                  );
+                })}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3 text-xs text-[#74685d]">
+                <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded bg-[#65584f]" /> Closed</span>
+                <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded border border-[#eadfce] bg-white" /> Open</span>
+              </div>
+            </div>
+
+            <form action={createShelterBlockoutAction} className="mt-4 grid gap-3 rounded-2xl bg-[#fffdfa] p-4 md:grid-cols-[1fr_1fr_minmax(0,1.3fr)_auto] md:items-end">
+              <DraftReturnFields shelterId={shelter.id} />
+              <label>
+                <span className={labelClass}>From</span>
+                <input className={inputClass} name="startDate" required type="date" />
+              </label>
+              <label>
+                <span className={labelClass}>To</span>
+                <input className={inputClass} name="endDate" type="date" />
+              </label>
+              <label>
+                <span className={labelClass}>Reason</span>
+                <input className={inputClass} name="note" placeholder="Holiday, staff training, fully booked" />
+              </label>
+              <button className="rounded-full bg-[#d88c24] px-5 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]" type="submit">
+                Add
+              </button>
+            </form>
+
+            <div className="mt-4 grid gap-2">
+              {unavailableRanges.length > 0 ? (
+                unavailableRanges.map((range) => (
+                  <div className="flex flex-col gap-3 rounded-2xl border border-[#eadfce] bg-white px-4 py-3 md:flex-row md:items-center md:justify-between" key={range.id}>
+                    <div>
+                      <p className="text-sm font-semibold text-[#4f4338]">
+                        {formatShortDate(range.startDate)}
+                        {range.endDate !== range.startDate ? ` - ${formatShortDate(range.endDate)}` : ""}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-[#74685d]">
+                        {range.note?.startsWith("Recurring weekly closure:")
+                          ? "Weekly closure"
+                          : range.note || "Unavailable"}
+                      </p>
+                    </div>
+                    <form action={deleteShelterAvailabilityAction}>
+                      <DraftReturnFields shelterId={shelter.id} />
+                      <input name="availabilityId" type="hidden" value={range.id} />
+                      <button className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-4 py-2 text-xs font-semibold text-[#9a3129] hover:bg-[#fff6f4]" type="submit">
+                        <Trash2 size={14} />
+                        Remove
+                      </button>
+                    </form>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] px-4 py-5 text-sm text-[#74685d]">
+                  No blockout dates set for {shelter.name}.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </Section>
+    </div>
   );
 }
 
@@ -948,7 +1346,19 @@ function AboutTab({ about }: { about: AdminDraftAboutContent | null }) {
   );
 }
 
-export default function AdminReorgDraftPanel({ data }: { data?: AdminDraftData }) {
+function isShelterTab(value: string | undefined): value is ShelterTab {
+  return value === "profile" || value === "dogs" || value === "bookings" || value === "messages";
+}
+
+export default function AdminReorgDraftPanel({
+  data,
+  initialShelterId,
+  initialShelterTab,
+}: {
+  data?: AdminDraftData;
+  initialShelterId?: string;
+  initialShelterTab?: string;
+}) {
   const shelters = data?.shelters.length ? data.shelters : fallbackShelters;
   const dogs = data?.dogs.length ? data.dogs : fallbackDogs;
   const bookings = data?.bookings.length ? data.bookings : fallbackBookings;
@@ -956,8 +1366,12 @@ export default function AdminReorgDraftPanel({ data }: { data?: AdminDraftData }
   const about = data?.about ?? null;
   const [role, setRole] = useState<RoleView>("pawjai");
   const [mainTab, setMainTab] = useState<MainTab>("shelters");
-  const [selectedShelterId, setSelectedShelterId] = useState(shelters[0]?.id ?? "");
-  const [shelterTab, setShelterTab] = useState<ShelterTab>("profile");
+  const [selectedShelterId, setSelectedShelterId] = useState(
+    initialShelterId && shelters.some((shelter) => shelter.id === initialShelterId)
+      ? initialShelterId
+      : shelters[0]?.id ?? "",
+  );
+  const [shelterTab, setShelterTab] = useState<ShelterTab>(isShelterTab(initialShelterTab) ? initialShelterTab : "profile");
 
   const isPawjai = role === "pawjai";
   const selectedShelter = shelters.find((shelter) => shelter.id === selectedShelterId) ?? shelters[0] ?? fallbackShelters[0];

@@ -42,6 +42,20 @@ function shelterViewRedirect(shelterId: string, view: string, message: string) {
   redirect(`/admin/bookings?${params.toString()}`);
 }
 
+function redirectAfterShelterMutation(formData: FormData, shelterId: string, view: string, message: string) {
+  const returnTo = String(formData.get("returnTo") ?? "");
+
+  if (returnTo === "/admindraft") {
+    const params = new URLSearchParams();
+    if (shelterId) params.set("shelter", shelterId);
+    if (view) params.set("view", view);
+    if (message) params.set("message", message);
+    redirect(`/admindraft?${params.toString()}`);
+  }
+
+  shelterViewRedirect(shelterId, view, message);
+}
+
 function isMissingSchemaError(error: { message?: string } | null | undefined) {
   const message = error?.message ?? "";
   return message.includes("Could not find")
@@ -473,7 +487,7 @@ export async function updateShelterProfileAction(formData: FormData) {
       promptpayId: formData.get("promptpayId"),
     });
   } catch (error) {
-    bookingsRedirect(shelterId, error instanceof Error ? error.message : "Donation details could not be saved.");
+    redirectAfterShelterMutation(formData, shelterId, "profile", error instanceof Error ? error.message : "Donation details could not be saved.");
     return;
   }
 
@@ -501,6 +515,7 @@ export async function updateShelterProfileAction(formData: FormData) {
     : error;
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admindraft");
   revalidatePath("/appointments");
   const message = finalError
     ? "Shelter profile could not be saved."
@@ -522,7 +537,7 @@ export async function updateShelterProfileAction(formData: FormData) {
       targetTable: "shelters",
     });
   }
-  bookingsRedirect(shelterId, message);
+  redirectAfterShelterMutation(formData, shelterId, "profile", message);
 }
 
 export async function updateShelterOperatingDaysAction(formData: FormData) {
@@ -565,6 +580,7 @@ export async function updateShelterOperatingDaysAction(formData: FormData) {
     : null;
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admindraft");
   revalidatePath("/appointments");
   if (!error && !fallbackError) {
     await logAdminAuditEvent({
@@ -579,8 +595,10 @@ export async function updateShelterOperatingDaysAction(formData: FormData) {
       targetTable: "shelter_regular_hours",
     });
   }
-  bookingsRedirect(
+  redirectAfterShelterMutation(
+    formData,
     shelterId,
+    "profile",
     isMissingSchemaError(error)
       ? fallbackError
         ? `Weekly operating days could not be saved: ${fallbackError.message}`
@@ -615,6 +633,7 @@ export async function createShelterBlockoutAction(formData: FormData) {
     });
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admindraft");
   revalidatePath("/appointments");
   if (!error) {
     await logAdminAuditEvent({
@@ -628,7 +647,7 @@ export async function createShelterBlockoutAction(formData: FormData) {
       targetTable: "shelter_availability",
     });
   }
-  bookingsRedirect(shelterId, error ? "Blockout date could not be added." : "Blockout date added.");
+  redirectAfterShelterMutation(formData, shelterId, "profile", error ? "Blockout date could not be added." : "Blockout date added.");
 }
 
 export async function toggleShelterBlockoutDateAction(formData: FormData) {
@@ -660,6 +679,7 @@ export async function toggleShelterBlockoutDateAction(formData: FormData) {
         });
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admindraft");
   revalidatePath("/appointments");
   if (!error) {
     await logAdminAuditEvent({
@@ -673,7 +693,7 @@ export async function toggleShelterBlockoutDateAction(formData: FormData) {
       targetTable: "shelter_availability",
     });
   }
-  bookingsRedirect(shelterId, error ? "Calendar date could not be updated." : "Calendar date updated.");
+  redirectAfterShelterMutation(formData, shelterId, "profile", error ? "Calendar date could not be updated." : "Calendar date updated.");
 }
 
 export async function deleteShelterAvailabilityAction(formData: FormData) {
@@ -694,6 +714,7 @@ export async function deleteShelterAvailabilityAction(formData: FormData) {
     .eq("shelter_id", shelterId);
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admindraft");
   revalidatePath("/appointments");
   if (!error) {
     await logAdminAuditEvent({
@@ -704,7 +725,7 @@ export async function deleteShelterAvailabilityAction(formData: FormData) {
       targetTable: "shelter_availability",
     });
   }
-  bookingsRedirect(shelterId, error ? "Blockout date could not be removed." : "Blockout date removed.");
+  redirectAfterShelterMutation(formData, shelterId, "profile", error ? "Blockout date could not be removed." : "Blockout date removed.");
 }
 
 export async function checkInBookingAction(formData: FormData) {

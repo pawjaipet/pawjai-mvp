@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminDraftPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ unlock?: string }>;
+  searchParams?: Promise<{ shelter?: string; unlock?: string; view?: string }>;
 }) {
   const unlocked = await isAdminDraftUnlocked();
   const resolvedSearchParams = await searchParams;
@@ -19,5 +19,11 @@ export default async function AdminDraftPage({
 
   const data = await loadAdminDraftData();
 
-  return <AdminReorgDraftPanel data={data} />;
+  return (
+    <AdminReorgDraftPanel
+      data={data}
+      initialShelterId={resolvedSearchParams?.shelter}
+      initialShelterTab={resolvedSearchParams?.view}
+    />
+  );
 }

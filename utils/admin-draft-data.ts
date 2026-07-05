@@ -4,22 +4,50 @@ import { createAdminClient } from "@/utils/supabase/admin";
 
 export type AdminDraftShelter = {
   address: string;
+  addressLine?: string | null;
+  availability?: AdminDraftShelterAvailability[];
+  bankAccountName?: string | null;
+  bankAccountNumber?: string | null;
   bankConfigured: boolean;
+  bankName?: string | null;
   description: string | null;
   district: string | null;
   dogsCount: number;
   email: string | null;
+  facebookUrl?: string | null;
   googleMapsUrl: string | null;
   id: string;
+  instagramUrl?: string | null;
   location: string;
   logoUrl: string | null;
   meetingInstructions: string | null;
   name: string;
   pendingBookingsCount: number;
   phoneNumber: string | null;
+  postalCode?: string | null;
+  promptpayId?: string | null;
   province: string | null;
+  regularHours?: AdminDraftShelterRegularHours[];
+  subdistrict?: string | null;
   unreadMessageCount: number;
   websiteUrl: string | null;
+};
+
+export type AdminDraftShelterAvailability = {
+  availabilityType: string;
+  endDate: string;
+  id: string;
+  note: string | null;
+  startDate: string;
+};
+
+export type AdminDraftShelterRegularHours = {
+  closesAt: string | null;
+  dayOfWeek: number;
+  id: string;
+  isClosed: boolean;
+  opensAt: string | null;
+  slotDurationMinutes: number;
 };
 
 export type AdminDraftDog = {
@@ -122,10 +150,10 @@ export async function loadAdminDraftData(): Promise<AdminDraftData> {
     return fallbackData(error instanceof Error ? error.message : "Supabase admin client is unavailable.");
   }
 
-  const [sheltersResult, dogsResult, dogPhotosResult, bookingsResult, messagesResult, adsResult, aboutResult] = await Promise.all([
+  const [sheltersResult, dogsResult, dogPhotosResult, bookingsResult, messagesResult, adsResult, aboutResult, availabilityResult, regularHoursResult] = await Promise.all([
     supabase
       .from("shelters")
-      .select("id,name,phone_number,email,address_line,subdistrict,district,province,postal_code,description,website_url,logo_url,google_maps_url,meeting_instructions,promptpay_id,bank_name,bank_account_number,bank_account_name")
+      .select("id,name,phone_number,email,address_line,subdistrict,district,province,postal_code,description,website_url,facebook_url,instagram_url,logo_url,google_maps_url,meeting_instructions,promptpay_id,bank_name,bank_account_number,bank_account_name")
       .order("name", { ascending: true }),
     supabase
       .from("dogs")
@@ -157,6 +185,14 @@ export async function loadAdminDraftData(): Promise<AdminDraftData> {
       .select("hero_slogan,mission_title,mission_body,partner_shelters,updated_at")
       .eq("id", "default")
       .maybeSingle(),
+    (supabase as any)
+      .from("shelter_availability")
+      .select("id,shelter_id,availability_type,start_date,end_date,note")
+      .order("start_date", { ascending: true }),
+    supabase
+      .from("shelter_regular_hours")
+      .select("id,shelter_id,day_of_week,is_closed,opens_at,closes_at,slot_duration_minutes")
+      .order("day_of_week", { ascending: true }),
   ]);
 
   const firstError = sheltersResult.error ?? dogsResult.error ?? dogPhotosResult.error ?? bookingsResult.error ?? messagesResult.error ?? adsResult.error ?? aboutResult.error;
@@ -171,6 +207,8 @@ export async function loadAdminDraftData(): Promise<AdminDraftData> {
   const rawMessages = messagesResult.data ?? [];
   const rawAds = adsResult.data ?? [];
   const rawAbout = aboutResult.data ?? null;
+  const rawAvailability = availabilityResult.error ? [] : availabilityResult.data ?? [];
+  const rawRegularHours = regularHoursResult.error ? [] : regularHoursResult.data ?? [];
 
   const shelterNames = new Map(rawShelters.map((shelter) => [shelter.id, shelter.name]));
   const dogNames = new Map(rawDogs.map((dog) => [dog.id, dog.name]));
@@ -178,6 +216,8 @@ export async function loadAdminDraftData(): Promise<AdminDraftData> {
   const photoSummaryByDog = new Map<string, { coverUrl: string | null; photosCount: number }>();
   const pendingBookingsByShelter = new Map<string, number>();
   const messagesByShelter = new Map<string, number>();
+  const availabilityByShelter = new Map<string, AdminDraftShelterAvailability[]>();
+  const regularHoursByShelter = new Map<string, AdminDraftShelterRegularHours[]>();
 
   for (const dog of rawDogs) {
     dogsByShelter.set(dog.shelter_id, (dogsByShelter.get(dog.shelter_id) ?? 0) + 1);
@@ -200,6 +240,38 @@ export async function loadAdminDraftData(): Promise<AdminDraftData> {
 
   for (const message of rawMessages) {
     messagesByShelter.set(message.shelter_id, (messagesByShelter.get(message.shelter_id) ?? 0) + 1);
+  }
+
+  for (const range of rawAvailability as Array<{
+    availability_type: string;
+    end_date: string;
+    id: string;
+    note: string | null;
+    shelter_id: string;
+    start_date: string;
+  }>) {
+    const items = availabilityByShelter.get(range.shelter_id) ?? [];
+    items.push({
+      availabilityType: range.availability_type,
+      endDate: range.end_date,
+      id: range.id,
+      note: range.note,
+      startDate: range.start_date,
+    });
+    availabilityByShelter.set(range.shelter_id, items);
+  }
+
+  for (const hours of rawRegularHours) {
+    const items = regularHoursByShelter.get(hours.shelter_id) ?? [];
+    items.push({
+      closesAt: hours.closes_at,
+      dayOfWeek: hours.day_of_week,
+      id: hours.id,
+      isClosed: hours.is_closed,
+      opensAt: hours.opens_at,
+      slotDurationMinutes: hours.slot_duration_minutes,
+    });
+    regularHoursByShelter.set(hours.shelter_id, items);
   }
 
   return {
@@ -255,20 +327,31 @@ export async function loadAdminDraftData(): Promise<AdminDraftData> {
     error: null,
     shelters: rawShelters.map((shelter) => ({
       address: formatAddress(shelter),
+      addressLine: shelter.address_line,
+      availability: availabilityByShelter.get(shelter.id) ?? [],
+      bankAccountName: shelter.bank_account_name,
+      bankAccountNumber: shelter.bank_account_number,
       bankConfigured: Boolean(shelter.promptpay_id || shelter.bank_name || shelter.bank_account_number || shelter.bank_account_name),
+      bankName: shelter.bank_name,
       description: shelter.description,
       district: shelter.district,
       dogsCount: dogsByShelter.get(shelter.id) ?? 0,
       email: shelter.email,
+      facebookUrl: shelter.facebook_url,
       googleMapsUrl: shelter.google_maps_url,
       id: shelter.id,
+      instagramUrl: shelter.instagram_url,
       location: [shelter.district, shelter.province].filter(Boolean).join(", ") || shelter.province || "Thailand",
       logoUrl: shelter.logo_url,
       meetingInstructions: shelter.meeting_instructions,
       name: shelter.name,
       pendingBookingsCount: pendingBookingsByShelter.get(shelter.id) ?? 0,
       phoneNumber: shelter.phone_number,
+      postalCode: shelter.postal_code,
+      promptpayId: shelter.promptpay_id,
       province: shelter.province,
+      regularHours: regularHoursByShelter.get(shelter.id) ?? [],
+      subdistrict: shelter.subdistrict,
       unreadMessageCount: messagesByShelter.get(shelter.id) ?? 0,
       websiteUrl: shelter.website_url,
     })),

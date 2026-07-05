@@ -8,6 +8,7 @@ import { createClient } from "@/utils/supabase/server";
 import type { Database } from "@/types/database";
 
 const ADMIN_GATE_COOKIE = "pawjai_admin_gate_unlocked";
+const ADMIN_DRAFT_COOKIE = "pawjai_admin_draft_unlocked";
 const ADMIN_GATE_PASSPHRASE = "pawjaiadmin!";
 
 export type AdminAuthContext = {
@@ -29,7 +30,7 @@ function buildAdminLoginPath(nextPath = "/admin", message?: string) {
 export async function getAdminAuthContext(): Promise<AdminAuthContext | null> {
   const cookieStore = await cookies();
 
-  if (cookieStore.get(ADMIN_GATE_COOKIE)?.value === "1") {
+  if (cookieStore.get(ADMIN_GATE_COOKIE)?.value === "1" || cookieStore.get(ADMIN_DRAFT_COOKIE)?.value === "1") {
     return {
       fullName: "PawJai Admin",
       isGlobalAdmin: true,
