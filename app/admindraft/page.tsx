@@ -1,9 +1,22 @@
+import AdminDraftGate from "@/components/admin/AdminDraftGate";
 import AdminReorgDraftPanel from "@/components/admin/AdminReorgDraftPanel";
 import { loadAdminDraftData } from "@/utils/admin-draft-data";
+import { isAdminDraftUnlocked } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDraftPage() {
+export default async function AdminDraftPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ unlock?: string }>;
+}) {
+  const unlocked = await isAdminDraftUnlocked();
+  const resolvedSearchParams = await searchParams;
+
+  if (!unlocked) {
+    return <AdminDraftGate showError={resolvedSearchParams?.unlock === "failed"} />;
+  }
+
   const data = await loadAdminDraftData();
 
   return <AdminReorgDraftPanel data={data} />;

@@ -1049,7 +1049,7 @@ export default function AdminReorgDraftPanel({ data }: { data?: AdminDraftData }
         ) : null}
 
         <footer className="mt-6 rounded-[24px] border border-[#eadfce] bg-white p-4 text-sm leading-6 text-[#74685d]">
-          No sign-in gate or protected route links in this draft. It is just the local structure before replacing the old admin page.
+          This draft is phrase-gated while we reorganize the admin hierarchy. Live workflow links still use the existing PawJai admin pages.
         </footer>
       </div>
     </main>

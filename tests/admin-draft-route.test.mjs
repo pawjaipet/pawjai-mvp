@@ -10,6 +10,19 @@ test("/admindraft is the canonical Supabase-backed draft route", () => {
   assert.equal(source.includes('dynamic = "force-dynamic"'), true);
 });
 
+test("/admindraft requires the lightweight draft phrase gate before loading data", () => {
+  const pageSource = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
+  const gateSource = readFileSync(new URL("../components/admin/AdminDraftGate.tsx", import.meta.url), "utf8");
+  const actionSource = readFileSync(new URL("../app/admindraft/actions.ts", import.meta.url), "utf8");
+
+  assert.equal(pageSource.includes("isAdminDraftUnlocked"), true);
+  assert.equal(pageSource.includes("<AdminDraftGate"), true);
+  assert.equal(actionSource.includes("pawjaiadmin!"), true);
+  assert.equal(actionSource.includes("httpOnly: true"), true);
+  assert.equal(gateSource.includes("Unlock the admin draft workspace."), true);
+  assert.equal(gateSource.includes("Admin phrase"), true);
+});
+
 test("legacy admin reorg draft route aliases /admindraft", () => {
   const source = readFileSync(new URL("../app/admin/reorg-draft/page.tsx", import.meta.url), "utf8");
 
