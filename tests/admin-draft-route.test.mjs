@@ -110,3 +110,30 @@ test("admin draft has a focused create-dog route that reuses the real dog listin
   assert.equal(formSource.includes("successListingsHref"), true);
   assert.equal(formSource.includes("submitLabel"), true);
 });
+
+test("admin draft opens booking detail and visitor profile in draft-native routes", () => {
+  const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+  const bookingDetailSource = readFileSync(new URL("../app/admindraft/bookings/[id]/page.tsx", import.meta.url), "utf8");
+  const visitorProfileSource = readFileSync(new URL("../app/admindraft/bookings/[id]/visitor-profile/page.tsx", import.meta.url), "utf8");
+  const checkInSource = readFileSync(new URL("../app/admindraft/bookings/check-in/page.tsx", import.meta.url), "utf8");
+  const actionSource = readFileSync(new URL("../app/admin/bookings/actions.ts", import.meta.url), "utf8");
+
+  assert.equal(panelSource.includes("`/admindraft/bookings/${booking.id}`"), true);
+  assert.equal(panelSource.includes("Open draft booking workspace"), true);
+  assert.equal(panelSource.includes('href="/admindraft/bookings/check-in"'), true);
+  assert.equal(bookingDetailSource.includes("decideBookingAction"), true);
+  assert.equal(bookingDetailSource.includes("isAdminDraftUnlocked"), true);
+  assert.equal(bookingDetailSource.includes("Back to booking list"), true);
+  assert.equal(bookingDetailSource.includes('name="returnTo"'), true);
+  assert.equal(bookingDetailSource.includes("/admindraft?shelter="), true);
+  assert.equal(bookingDetailSource.includes("/admindraft/bookings/${typedAppointment.id}/visitor-profile"), true);
+  assert.equal(visitorProfileSource.includes("isAdminDraftUnlocked"), true);
+  assert.equal(visitorProfileSource.includes("Back to booking detail"), true);
+  assert.equal(visitorProfileSource.includes("Back to booking list"), true);
+  assert.equal(visitorProfileSource.includes("/admindraft/bookings/${typedAppointment.id}"), true);
+  assert.equal(checkInSource.includes("isAdminDraftUnlocked"), true);
+  assert.equal(checkInSource.includes("/admindraft/bookings/${appointment.id}?token="), true);
+  assert.equal(checkInSource.includes("Back to booking list"), true);
+  assert.equal(actionSource.includes("redirectAfterBookingDecision"), true);
+  assert.equal(actionSource.includes('returnTo.startsWith("/admindraft/bookings/")'), true);
+});

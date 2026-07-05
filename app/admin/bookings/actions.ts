@@ -56,6 +56,31 @@ function redirectAfterShelterMutation(formData: FormData, shelterId: string, vie
   shelterViewRedirect(shelterId, view, message);
 }
 
+function redirectAfterBookingDecision(formData: FormData, message: string) {
+  const returnTo = String(formData.get("returnTo") ?? "");
+
+  if (returnTo.startsWith("/admindraft/bookings/")) {
+    const params = new URLSearchParams();
+    if (message) params.set("message", message);
+    const separator = returnTo.includes("?") ? "&" : "?";
+    redirect(`${returnTo}${params.toString() ? `${separator}${params.toString()}` : ""}`);
+  }
+}
+
+function redirectAfterCheckIn(formData: FormData, appointmentId: string, token: string) {
+  const returnTo = String(formData.get("returnTo") ?? "");
+
+  if (returnTo.startsWith("/admindraft/bookings/")) {
+    const params = new URLSearchParams();
+    if (token) params.set("token", token);
+    params.set("checkedIn", "1");
+    const separator = returnTo.includes("?") ? "&" : "?";
+    redirect(`${returnTo}${separator}${params.toString()}`);
+  }
+
+  redirect(`${buildAdminBookingDetailPath({ appointmentId, token })}&checkedIn=1`);
+}
+
 function isMissingSchemaError(error: { message?: string } | null | undefined) {
   const message = error?.message ?? "";
   return message.includes("Could not find")
@@ -371,8 +396,15 @@ export async function decideBookingAction(formData: FormData) {
   }
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admindraft");
+  revalidatePath(`/admindraft/bookings/${appointmentId}`);
+  revalidatePath(`/admindraft/bookings/${appointmentId}/visitor-profile`);
   revalidatePath("/appointments");
   revalidatePath(`/appointments/${appointmentId}`);
+  redirectAfterBookingDecision(
+    formData,
+    updateError ? "Booking decision could not be saved." : "Booking decision saved.",
+  );
 }
 
 export async function sendShelterMessageAction(formData: FormData) {
@@ -787,6 +819,9 @@ export async function checkInBookingAction(formData: FormData) {
   }
 
   revalidatePath("/admin/bookings");
+  revalidatePath("/admindraft");
+  revalidatePath(`/admindraft/bookings/${appointment.id}`);
+  revalidatePath(`/admindraft/bookings/${appointment.id}/visitor-profile`);
   revalidatePath("/appointments");
   revalidatePath(`/appointments/${appointment.id}`);
   await logAdminAuditEvent({
@@ -799,5 +834,5 @@ export async function checkInBookingAction(formData: FormData) {
     targetId: appointment.id,
     targetTable: "appointments",
   });
-  redirect(`${buildAdminBookingDetailPath({ appointmentId: appointment.id, token })}&checkedIn=1`);
+  redirectAfterCheckIn(formData, appointment.id, token);
 }

@@ -568,7 +568,7 @@ function ShelterProfileTab({ shelter }: { shelter: AdminDraftShelter }) {
             </div>
           </div>
 
-          <form action={updateShelterProfileAction} className="grid gap-3" encType="multipart/form-data">
+          <form action={updateShelterProfileAction} className="grid gap-3">
             <DraftReturnFields shelterId={shelter.id} />
             <div className="grid gap-3 md:grid-cols-2">
               <label>
@@ -900,7 +900,7 @@ function ShelterBookingsTab({ bookings, shelterId }: { bookings: AdminDraftBooki
   const today = new Date().toISOString().slice(0, 10);
   const todayCount = bookings.filter((booking) => booking.appointmentDate === today).length;
   const checkedInCount = bookings.filter((booking) => booking.checkedIn).length;
-  const liveBookingsHref = shelterId ? `/admin/bookings?shelter=${shelterId}&view=bookings` : "/admin/bookings";
+  const draftBookingsHref = shelterId ? `/admindraft?shelter=${shelterId}&view=bookings` : "/admindraft";
 
   return (
     <Section eyebrow="Booking visits" title="Visit management">
@@ -926,13 +926,13 @@ function ShelterBookingsTab({ bookings, shelterId }: { bookings: AdminDraftBooki
       <div className="mt-5 flex flex-wrap gap-2">
         <Link
           className="inline-flex rounded-full bg-[#d88c24] px-5 py-3 text-sm font-semibold text-white"
-          href={liveBookingsHref}
+          href={draftBookingsHref}
         >
-          Open live booking workspace
+          Open draft booking workspace
         </Link>
         <Link
           className="inline-flex rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40]"
-          href="/admin/bookings/check-in"
+          href="/admindraft/bookings/check-in"
         >
           Open QR check-in
         </Link>
@@ -967,7 +967,7 @@ function ShelterBookingsTab({ bookings, shelterId }: { bookings: AdminDraftBooki
             </div>
             <Link
               className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]"
-              href={`/admin/bookings/${booking.id}`}
+              href={`/admindraft/bookings/${booking.id}`}
             >
               Open
             </Link>
