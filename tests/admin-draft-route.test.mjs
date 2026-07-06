@@ -99,9 +99,11 @@ test("admin draft phrase unlock is accepted by shared admin shelter actions", ()
 test("admin draft has a focused create-dog route that reuses the real dog listing form", () => {
   const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
   const draftCreateSource = readFileSync(new URL("../app/admindraft/dogs/new/page.tsx", import.meta.url), "utf8");
+  const draftCreateAliasSource = readFileSync(new URL("../app/admindraft/dog-creation/page.tsx", import.meta.url), "utf8");
   const formSource = readFileSync(new URL("../app/admin/dogs/new/DogListingForm.tsx", import.meta.url), "utf8");
 
-  assert.equal(panelSource.includes("`/admindraft/dogs/new?shelter=${shelter.id}`"), true);
+  assert.equal(panelSource.includes("`/admindraft/dog-creation?shelter=${shelter.id}`"), true);
+  assert.equal(draftCreateAliasSource.includes("../dogs/new/page"), true);
   assert.equal(draftCreateSource.includes("DogListingForm"), true);
   assert.equal(draftCreateSource.includes("isAdminDraftUnlocked"), true);
   assert.equal(draftCreateSource.includes("Exit"), true);
@@ -112,6 +114,19 @@ test("admin draft has a focused create-dog route that reuses the real dog listin
   assert.equal(formSource.includes('cancelLabel = "Cancel"'), true);
   assert.equal(formSource.includes("successListingsHref"), true);
   assert.equal(formSource.includes("submitLabel"), true);
+});
+
+test("admin draft dog listings remove the inline field map and expose creation as a shelter workspace tab", () => {
+  const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+
+  assert.equal(panelSource.includes("Show field map"), false);
+  assert.equal(panelSource.includes("Hide field map"), false);
+  assert.equal(panelSource.includes("CreateDogPreview"), false);
+  assert.equal(panelSource.includes("coreListingFields"), false);
+  assert.equal(panelSource.includes("matchingGroups"), false);
+  assert.equal(panelSource.includes("ShelterWorkspaceLinkTab"), true);
+  assert.equal(panelSource.includes("Create dog profile"), true);
+  assert.equal(panelSource.includes("md:grid-cols-5"), true);
 });
 
 test("admin draft opens booking detail and visitor profile in draft-native routes", () => {

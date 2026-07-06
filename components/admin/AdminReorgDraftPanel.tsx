@@ -17,6 +17,7 @@ import {
   Megaphone,
   MessageCircle,
   PawPrint,
+  PlusCircle,
   QrCode,
   Search,
   ShieldCheck,
@@ -199,28 +200,6 @@ const profileFields = [
   "Meeting instructions",
   "Description",
   "Donation details",
-];
-
-const coreListingFields = [
-  "Dog name",
-  "Shelter",
-  "Breed",
-  "Adoption status",
-  "Gender",
-  "Size",
-  "Age in months",
-  "Weight in kg",
-  "My Story",
-  "Medical needs shown on profile",
-];
-
-const matchingGroups = [
-  { label: "How active is this dog?", values: ["Low", "Medium", "High"] },
-  { label: "Protectiveness", values: ["Chill", "Alert barker", "Protective"] },
-  { label: "Affection style", values: ["Cuddly", "Subtle", "Independent"] },
-  { label: "Training status", values: ["Well-trained", "Still training", "Needs basics"] },
-  { label: "People friendliness", values: ["Social", "Slow warm-up", "Owner-focused"] },
-  { label: "Friendliness to other dogs", values: ["Friendly", "Selective", "Solo dog"] },
 ];
 
 const bookingActions = [
@@ -552,63 +531,43 @@ function ShelterWorkspaceTabButton({
   );
 }
 
-function CreateDogPreview() {
+function ShelterWorkspaceLinkTab({
+  adminMode,
+  children,
+  href,
+  icon,
+  meta,
+}: {
+  adminMode: boolean;
+  children: React.ReactNode;
+  href: string;
+  icon: React.ReactNode;
+  meta: string;
+}) {
+  if (adminMode) {
+    return (
+      <Link
+        className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2 text-center text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+        href={href}
+      >
+        {children}
+      </Link>
+    );
+  }
+
   return (
-    <div className="mt-6 space-y-6">
-      <Section eyebrow="Create dog profile" title="Core Listing">
-        <p className="mt-2 text-sm leading-6 text-[#74685d]">
-          This stays in the same format you already built: clear fields and clickable choice buttons.
-        </p>
-        <FieldGrid fields={coreListingFields} />
-      </Section>
-
-      <Section title="Matching Template">
-        <div className="mt-5 space-y-5">
-          {matchingGroups.map((group) => (
-            <div key={group.label}>
-              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">{group.label}</p>
-              <div className="grid gap-3 md:grid-cols-3">
-                {group.values.map((value, index) => (
-                  <button
-                    className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold ${
-                      index === 0 ? "border-[#cd8188] bg-[#cd8188] text-white" : "border-[#eadfce] bg-white text-[#5b4d40]"
-                    }`}
-                    key={value}
-                    type="button"
-                  >
-                    {value}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Photos and videos">
-        <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
-            <div className="flex items-center gap-3">
-              <ImageIcon className="h-5 w-5 text-[#9a6b2a]" />
-              <p className="font-semibold text-[#4f4338]">Upload photos and videos</p>
-            </div>
-            <p className="mt-2 text-sm leading-6 text-[#74685d]">
-              Upload files, use photo URL slots, or pull from local `pawjaidogs` folders. Choose cover and display order.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
-            <p className="font-semibold text-[#4f4338]">Cover and display order</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {["Choose cover", "Move up", "Move down", "Add photo slot", "Remove slot"].map((action) => (
-                <span className="rounded-full border border-[#d6c8ad] bg-white px-3 py-1.5 text-xs font-semibold text-[#65584f]" key={action}>
-                  {action}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </Section>
-    </div>
+    <Link
+      className="flex aspect-square min-h-32 flex-col justify-between rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 text-left text-[#5b4d40] transition hover:bg-[#faf4ec]"
+      href={href}
+    >
+      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[#b77624]">
+        {icon}
+      </span>
+      <span>
+        <span className="block text-base font-semibold">{children}</span>
+        <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">{meta}</span>
+      </span>
+    </Link>
   );
 }
 
@@ -977,7 +936,6 @@ function ShelterProfileTab({ shelter }: { shelter: AdminDraftShelter }) {
 }
 
 function ShelterDogsTab({ dogs, shelter }: { dogs: AdminDraftDog[]; shelter: AdminDraftShelter }) {
-  const [showCreate, setShowCreate] = useState(false);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const filteredDogs = dogs.filter((dog) => matchesDogFilters(dog, search, status));
@@ -989,21 +947,6 @@ function ShelterDogsTab({ dogs, shelter }: { dogs: AdminDraftDog[]; shelter: Adm
           <p className="text-sm leading-6 text-[#74685d]">
             Shelter staff can manage their own dogs here. PawJai HQ can see the same list from the shelter umbrella.
           </p>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              className="inline-flex rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white"
-              href={`/admindraft/dogs/new?shelter=${shelter.id}`}
-            >
-              Create dog profile
-            </Link>
-            <button
-              className="rounded-full border border-[#eadfce] bg-white px-6 py-3 text-sm font-semibold text-[#5b4d40]"
-              onClick={() => setShowCreate((current) => !current)}
-              type="button"
-            >
-              {showCreate ? "Hide field map" : "Show field map"}
-            </button>
-          </div>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]">
           <label className="sr-only" htmlFor="shelter-dog-search">Search shelter dogs</label>
@@ -1051,7 +994,6 @@ function ShelterDogsTab({ dogs, shelter }: { dogs: AdminDraftDog[]; shelter: Adm
         </div>
       </Section>
 
-      {showCreate ? <CreateDogPreview /> : null}
     </div>
   );
 }
@@ -1441,7 +1383,7 @@ function ShelterWorkspace({
   return (
     <div className="space-y-6">
       <Section eyebrow={adminMode ? "Partner shelter workspace" : "My Shelter Workspace powered by PAWJAI"} title={shelter.name}>
-        <div className={`mt-5 grid gap-3 ${adminMode ? "md:grid-cols-4" : "grid-cols-2 md:grid-cols-4"}`}>
+        <div className={`mt-5 grid gap-3 ${adminMode ? "md:grid-cols-5" : "grid-cols-2 md:grid-cols-5"}`}>
           <ShelterWorkspaceTabButton
             active={tab === "profile"}
             adminMode={adminMode}
@@ -1460,6 +1402,14 @@ function ShelterWorkspace({
           >
             Dog listings
           </ShelterWorkspaceTabButton>
+          <ShelterWorkspaceLinkTab
+            adminMode={adminMode}
+            href={`/admindraft/dog-creation?shelter=${shelter.id}`}
+            icon={<PlusCircle className="h-5 w-5" />}
+            meta="New listing"
+          >
+            Create dog profile
+          </ShelterWorkspaceLinkTab>
           <ShelterWorkspaceTabButton
             active={tab === "bookings"}
             adminMode={adminMode}
@@ -1511,7 +1461,7 @@ function PartnerSheltersTab({
     <div className="space-y-6">
       <Section eyebrow="Partner shelters" title="Shelter umbrella">
         <p className="mt-2 text-sm leading-6 text-[#74685d]">
-          PawJai HQ lands here first instead of Create dog. Open a shelter to see its profile, dog listings, booking visits, and messaging.
+          PawJai HQ lands here first. Open a shelter to see its profile, create dog profiles, dog listings, booking visits, and messaging.
         </p>
         <div className="mt-5 flex gap-2 overflow-x-auto rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-2">
           {shelters.map((shelter) => (
