@@ -20,6 +20,10 @@ export type AdminAuthContext = {
   userId: string | null;
 };
 
+type AdminAuthContextOptions = {
+  includePhraseGate?: boolean;
+};
+
 function buildAdminLoginPath(nextPath = "/admin", message?: string) {
   const params = new URLSearchParams();
   params.set("next", nextPath);
@@ -27,10 +31,14 @@ function buildAdminLoginPath(nextPath = "/admin", message?: string) {
   return `/admin/login?${params.toString()}`;
 }
 
-export async function getAdminAuthContext(): Promise<AdminAuthContext | null> {
+export async function getAdminAuthContext(options: AdminAuthContextOptions = {}): Promise<AdminAuthContext | null> {
+  const includePhraseGate = options.includePhraseGate ?? true;
   const cookieStore = await cookies();
 
-  if (cookieStore.get(ADMIN_GATE_COOKIE)?.value === "1" || cookieStore.get(ADMIN_DRAFT_COOKIE)?.value === "1") {
+  if (
+    includePhraseGate &&
+    (cookieStore.get(ADMIN_GATE_COOKIE)?.value === "1" || cookieStore.get(ADMIN_DRAFT_COOKIE)?.value === "1")
+  ) {
     return {
       fullName: "PawJai Admin",
       isGlobalAdmin: true,

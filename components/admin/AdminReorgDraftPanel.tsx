@@ -1718,19 +1718,23 @@ function isShelterTab(value: string | undefined): value is ShelterTab {
 
 export default function AdminReorgDraftPanel({
   data,
+  initialRoleView = "pawjai",
   initialShelterId,
   initialShelterTab,
+  lockRoleView = false,
 }: {
   data?: AdminDraftData;
+  initialRoleView?: RoleView;
   initialShelterId?: string;
   initialShelterTab?: string;
+  lockRoleView?: boolean;
 }) {
   const shelters = data?.shelters.length ? data.shelters : fallbackShelters;
   const dogs = data?.dogs.length ? data.dogs : fallbackDogs;
   const bookings = data?.bookings.length ? data.bookings : fallbackBookings;
   const ads = data?.ads ?? [];
   const about = data?.about ?? null;
-  const [role, setRole] = useState<RoleView>("pawjai");
+  const [role, setRole] = useState<RoleView>(initialRoleView);
   const [mainTab, setMainTab] = useState<MainTab>("shelters");
   const [selectedShelterId, setSelectedShelterId] = useState(
     initialShelterId && shelters.some((shelter) => shelter.id === initialShelterId)
@@ -1765,10 +1769,16 @@ export default function AdminReorgDraftPanel({
                 : `Using fallback draft data${data?.error ? `: ${data.error}` : ""}`}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <PillButton active={role === "pawjai"} onClick={() => setRole("pawjai")}>View as PawJai</PillButton>
-            <PillButton active={role === "shelter"} onClick={() => setRole("shelter")}>View as shelter</PillButton>
-          </div>
+          {lockRoleView ? (
+            <div className="rounded-full border border-[#eadfce] bg-white px-5 py-2.5 text-sm font-semibold text-[#5b4d40]">
+              View as shelter
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <PillButton active={role === "pawjai"} onClick={() => setRole("pawjai")}>View as PawJai</PillButton>
+              <PillButton active={role === "shelter"} onClick={() => setRole("shelter")}>View as shelter</PillButton>
+            </div>
+          )}
         </header>
 
         {isPawjai ? (

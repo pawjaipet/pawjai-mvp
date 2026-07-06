@@ -6,7 +6,7 @@ test("/admindraft is the canonical Supabase-backed draft route", () => {
   const source = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
 
   assert.equal(source.includes("loadAdminDraftData"), true);
-  assert.equal(source.includes("initialShelterId={resolvedSearchParams?.shelter}"), true);
+  assert.equal(source.includes("initialShelterId={initialShelterId}"), true);
   assert.equal(source.includes("initialShelterTab={resolvedSearchParams?.view}"), true);
   assert.equal(source.includes('dynamic = "force-dynamic"'), true);
 });
@@ -22,6 +22,35 @@ test("/admindraft requires the lightweight draft phrase gate before loading data
   assert.equal(actionSource.includes("httpOnly: true"), true);
   assert.equal(gateSource.includes("Unlock the admin draft workspace."), true);
   assert.equal(gateSource.includes("Admin phrase"), true);
+  assert.equal(gateSource.includes("/admindraft/login"), true);
+});
+
+test("/admindraft also supports real shelter account login and scoped shelter mode", () => {
+  const pageSource = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
+  const loginPageSource = readFileSync(new URL("../app/admindraft/login/page.tsx", import.meta.url), "utf8");
+  const loginActionSource = readFileSync(new URL("../app/admindraft/login/actions.ts", import.meta.url), "utf8");
+  const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+  const dataSource = readFileSync(new URL("../utils/admin-draft-data.ts", import.meta.url), "utf8");
+
+  assert.equal(pageSource.includes("getAdminAuthContext"), true);
+  assert.equal(pageSource.includes("scopedShelterIds"), true);
+  assert.equal(pageSource.includes("initialRoleView={isShelterAccount ? \"shelter\" : \"pawjai\"}"), true);
+  assert.equal(pageSource.includes("lockRoleView={isShelterAccount}"), true);
+  assert.equal(loginPageSource.includes("Sign in to your shelter portal."), true);
+  assert.equal(loginPageSource.includes("Username"), true);
+  assert.equal(loginPageSource.includes('name="identifier"'), true);
+  assert.equal(loginPageSource.includes("includePhraseGate: false"), true);
+  assert.equal(loginActionSource.includes("signInWithPassword"), true);
+  assert.equal(loginActionSource.includes("includePhraseGate: false"), true);
+  assert.equal(loginActionSource.includes("thevoice@pawjai.co.th"), true);
+  assert.equal(loginActionSource.includes("rescuedog@pawjai.co.th"), true);
+  assert.equal(loginActionSource.includes("shelterIds[0]"), true);
+  assert.equal(loginActionSource.includes("This account is not linked to a PawJai admin or shelter workspace."), true);
+  assert.equal(panelSource.includes("lockRoleView"), true);
+  assert.equal(panelSource.includes("View as shelter"), true);
+  assert.equal(dataSource.includes("LoadAdminDraftDataOptions"), true);
+  assert.equal(dataSource.includes("shouldScopeShelters"), true);
+  assert.equal(dataSource.includes("returnedShelterIds.has"), true);
 });
 
 test("legacy admin reorg draft route aliases /admindraft", () => {

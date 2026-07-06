@@ -119,6 +119,10 @@ export type AdminDraftData = {
   updatedAt: string;
 };
 
+export type LoadAdminDraftDataOptions = {
+  shelterIds?: string[] | null;
+};
+
 function fallbackData(error: string): AdminDraftData {
   return {
     about: null,
@@ -152,7 +156,7 @@ function countJsonArray(value: unknown) {
   return Array.isArray(value) ? value.length : 0;
 }
 
-export async function loadAdminDraftData(): Promise<AdminDraftData> {
+export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}): Promise<AdminDraftData> {
   let supabase: ReturnType<typeof createAdminClient>;
 
   try {
@@ -211,15 +215,34 @@ export async function loadAdminDraftData(): Promise<AdminDraftData> {
     return fallbackData(firstError.message);
   }
 
-  const rawShelters = sheltersResult.data ?? [];
-  const rawDogs = dogsResult.data ?? [];
-  const rawDogPhotos = dogPhotosResult.data ?? [];
-  const rawBookings = bookingsResult.data ?? [];
-  const rawMessages = messagesResult.data ?? [];
+  const scopedShelterIds = options.shelterIds ?? null;
+  const shouldScopeShelters = Array.isArray(scopedShelterIds);
+  const visibleShelterIds = new Set(scopedShelterIds ?? []);
+  const rawShelters = (sheltersResult.data ?? []).filter((shelter) => (
+    shouldScopeShelters ? visibleShelterIds.has(shelter.id) : true
+  ));
+  const returnedShelterIds = new Set(rawShelters.map((shelter) => shelter.id));
+  const rawDogs = (dogsResult.data ?? []).filter((dog) => (
+    shouldScopeShelters ? returnedShelterIds.has(dog.shelter_id) : true
+  ));
+  const visibleDogIds = new Set(rawDogs.map((dog) => dog.id));
+  const rawDogPhotos = (dogPhotosResult.data ?? []).filter((photo) => (
+    shouldScopeShelters ? visibleDogIds.has(photo.dog_id) : true
+  ));
+  const rawBookings = (bookingsResult.data ?? []).filter((booking) => (
+    shouldScopeShelters ? returnedShelterIds.has(booking.shelter_id) : true
+  ));
+  const rawMessages = (messagesResult.data ?? []).filter((message) => (
+    shouldScopeShelters ? returnedShelterIds.has(message.shelter_id) : true
+  ));
   const rawAds = adsResult.data ?? [];
   const rawAbout = aboutResult.data ?? null;
-  const rawAvailability = availabilityResult.error ? [] : availabilityResult.data ?? [];
-  const rawRegularHours = regularHoursResult.error ? [] : regularHoursResult.data ?? [];
+  const rawAvailability = (availabilityResult.error ? [] : availabilityResult.data ?? []).filter((range: { shelter_id: string }) => (
+    shouldScopeShelters ? returnedShelterIds.has(range.shelter_id) : true
+  ));
+  const rawRegularHours = (regularHoursResult.error ? [] : regularHoursResult.data ?? []).filter((hours) => (
+    shouldScopeShelters ? returnedShelterIds.has(hours.shelter_id) : true
+  ));
   const bookingAdopterIds = [...new Set(rawBookings.map((booking) => booking.adopter_id).filter(Boolean))];
   const adoptersResult = bookingAdopterIds.length
     ? await supabase
