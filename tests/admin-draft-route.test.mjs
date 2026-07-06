@@ -6,7 +6,7 @@ test("/admindraft is the canonical Supabase-backed draft route", () => {
   const source = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
 
   assert.equal(source.includes("loadAdminDraftData"), true);
-  assert.equal(source.includes("initialShelterId={initialShelterId}"), true);
+  assert.equal(source.includes("initialShelterId={resolvedSearchParams?.shelter}"), true);
   assert.equal(source.includes("initialShelterTab={resolvedSearchParams?.view}"), true);
   assert.equal(source.includes('dynamic = "force-dynamic"'), true);
 });
@@ -22,30 +22,37 @@ test("/admindraft requires the lightweight draft phrase gate before loading data
   assert.equal(actionSource.includes("httpOnly: true"), true);
   assert.equal(gateSource.includes("Unlock the admin draft workspace."), true);
   assert.equal(gateSource.includes("Admin phrase"), true);
-  assert.equal(gateSource.includes("/admindraft/login"), true);
+  assert.equal(gateSource.includes("/shelter"), true);
+  assert.equal(pageSource.includes("getAdminAuthContext"), false);
 });
 
-test("/admindraft also supports real shelter account login and scoped shelter mode", () => {
+test("/shelter supports real shelter account login and scoped shelter mode", () => {
   const pageSource = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
-  const loginPageSource = readFileSync(new URL("../app/admindraft/login/page.tsx", import.meta.url), "utf8");
-  const loginActionSource = readFileSync(new URL("../app/admindraft/login/actions.ts", import.meta.url), "utf8");
+  const oldLoginPageSource = readFileSync(new URL("../app/admindraft/login/page.tsx", import.meta.url), "utf8");
+  const shelterLoginPageSource = readFileSync(new URL("../app/shelter/page.tsx", import.meta.url), "utf8");
+  const shelterPortalPageSource = readFileSync(new URL("../app/shelter/[slug]/page.tsx", import.meta.url), "utf8");
+  const shelterActionSource = readFileSync(new URL("../app/shelter/actions.ts", import.meta.url), "utf8");
   const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
   const dataSource = readFileSync(new URL("../utils/admin-draft-data.ts", import.meta.url), "utf8");
+  const portalSource = readFileSync(new URL("../utils/shelter-portal.ts", import.meta.url), "utf8");
 
-  assert.equal(pageSource.includes("getAdminAuthContext"), true);
-  assert.equal(pageSource.includes("scopedShelterIds"), true);
-  assert.equal(pageSource.includes("initialRoleView={isShelterAccount ? \"shelter\" : \"pawjai\"}"), true);
-  assert.equal(pageSource.includes("lockRoleView={isShelterAccount}"), true);
-  assert.equal(loginPageSource.includes("Sign in to your shelter portal."), true);
-  assert.equal(loginPageSource.includes("Username"), true);
-  assert.equal(loginPageSource.includes('name="identifier"'), true);
-  assert.equal(loginPageSource.includes("includePhraseGate: false"), true);
-  assert.equal(loginActionSource.includes("signInWithPassword"), true);
-  assert.equal(loginActionSource.includes("includePhraseGate: false"), true);
-  assert.equal(loginActionSource.includes("thevoice@pawjai.co.th"), true);
-  assert.equal(loginActionSource.includes("rescuedog@pawjai.co.th"), true);
-  assert.equal(loginActionSource.includes("shelterIds[0]"), true);
-  assert.equal(loginActionSource.includes("This account is not linked to a PawJai admin or shelter workspace."), true);
+  assert.equal(pageSource.includes("scopedShelterIds"), false);
+  assert.equal(oldLoginPageSource.includes('redirect("/shelter")'), true);
+  assert.equal(shelterLoginPageSource.includes("Sign in to your shelter workspace."), true);
+  assert.equal(shelterLoginPageSource.includes("PawJai Shelter Portal"), true);
+  assert.equal(shelterLoginPageSource.includes("Username"), true);
+  assert.equal(shelterLoginPageSource.includes('name="identifier"'), true);
+  assert.equal(shelterLoginPageSource.includes("signInShelterPortalAction"), true);
+  assert.equal(shelterPortalPageSource.includes("getShelterByPortalSlug"), true);
+  assert.equal(shelterPortalPageSource.includes("loadAdminDraftData({ shelterIds: [shelter.id] })"), true);
+  assert.equal(shelterPortalPageSource.includes('initialRoleView="shelter"'), true);
+  assert.equal(shelterPortalPageSource.includes("lockRoleView"), true);
+  assert.equal(shelterActionSource.includes("signInWithPassword"), true);
+  assert.equal(shelterActionSource.includes("includePhraseGate: false"), true);
+  assert.equal(shelterActionSource.includes('context.role !== "shelter_admin"'), true);
+  assert.equal(portalSource.includes("thevoice@pawjai.co.th"), true);
+  assert.equal(portalSource.includes("rescuedog@pawjai.co.th"), true);
+  assert.equal(portalSource.includes("slugifyShelterName"), true);
   assert.equal(panelSource.includes("lockRoleView"), true);
   assert.equal(panelSource.includes("View as shelter"), true);
   assert.equal(dataSource.includes("LoadAdminDraftDataOptions"), true);

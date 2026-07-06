@@ -45,7 +45,7 @@ export default function AdminDraftGate({ showError = false }: { showError?: bool
 
           <div className="mt-8 rounded-2xl border border-[#eadfce] bg-[#faf4ec] px-5 py-4 text-sm text-[#6b5b4d]">
             Shelter employee account?{" "}
-            <Link className="font-semibold text-[#b77624] underline-offset-4 hover:underline" href="/admindraft/login">
+            <Link className="font-semibold text-[#b77624] underline-offset-4 hover:underline" href="/shelter">
               Sign in to your shelter portal
             </Link>
             .
