@@ -30,14 +30,17 @@ test("legacy admin reorg draft route aliases /admindraft", () => {
   assert.equal(source.includes("@/app/admindraft/page"), true);
 });
 
-test("admin draft data loader does not select adopter contact details for public draft", () => {
+test("admin draft data loader includes booking workspace fields for inline decisions", () => {
   const source = readFileSync(new URL("../utils/admin-draft-data.ts", import.meta.url), "utf8");
 
   assert.equal(source.includes("createAdminClient"), true);
-  assert.equal(source.includes("adopters"), false);
-  assert.equal(source.includes("adopter_id"), false);
-  assert.equal(source.includes("visitor_note"), false);
-  assert.equal(source.includes("shelter_note"), false);
+  assert.equal(source.includes("booking_code"), true);
+  assert.equal(source.includes("checked_in_at"), true);
+  assert.equal(source.includes("visitor_note"), true);
+  assert.equal(source.includes("shelter_note"), true);
+  assert.equal(source.includes('.from("adopters")'), true);
+  assert.equal(source.includes("adopterEmail"), true);
+  assert.equal(source.includes("adopterPhoneNumber"), true);
 });
 
 test("admin draft pulls supporting records used by the existing admin pages", () => {
@@ -119,7 +122,6 @@ test("admin draft opens booking detail and visitor profile in draft-native route
   const actionSource = readFileSync(new URL("../app/admin/bookings/actions.ts", import.meta.url), "utf8");
 
   assert.equal(panelSource.includes("`/admindraft/bookings/${booking.id}`"), true);
-  assert.equal(panelSource.includes("Open draft booking workspace"), true);
   assert.equal(panelSource.includes('href="/admindraft/bookings/check-in"'), true);
   assert.equal(bookingDetailSource.includes("decideBookingAction"), true);
   assert.equal(bookingDetailSource.includes("isAdminDraftUnlocked"), true);
@@ -135,5 +137,20 @@ test("admin draft opens booking detail and visitor profile in draft-native route
   assert.equal(checkInSource.includes("/admindraft/bookings/${appointment.id}?token="), true);
   assert.equal(checkInSource.includes("Back to booking list"), true);
   assert.equal(actionSource.includes("redirectAfterBookingDecision"), true);
-  assert.equal(actionSource.includes('returnTo.startsWith("/admindraft/bookings/")'), true);
+  assert.equal(actionSource.includes('returnTo.startsWith("/admindraft")'), true);
+});
+
+test("admin draft booking tab duplicates the low-friction old booking workspace flow", () => {
+  const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+
+  assert.equal(panelSource.includes("VISIT_BUCKETS"), true);
+  assert.equal(panelSource.includes("bookingSearch"), true);
+  assert.equal(panelSource.includes("bookingStatusFilter"), true);
+  assert.equal(panelSource.includes("Search booking code"), true);
+  assert.equal(panelSource.includes("QR check-in scanner"), true);
+  assert.equal(panelSource.includes("decideBookingAction"), true);
+  assert.equal(panelSource.includes("Edit decision"), true);
+  assert.equal(panelSource.includes("Open visitor profile"), true);
+  assert.equal(panelSource.includes("Open booking detail"), true);
+  assert.equal(panelSource.includes("/admindraft/bookings/${booking.id}/visitor-profile"), true);
 });

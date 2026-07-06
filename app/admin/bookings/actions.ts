@@ -59,7 +59,7 @@ function redirectAfterShelterMutation(formData: FormData, shelterId: string, vie
 function redirectAfterBookingDecision(formData: FormData, message: string) {
   const returnTo = String(formData.get("returnTo") ?? "");
 
-  if (returnTo.startsWith("/admindraft/bookings/")) {
+  if (returnTo.startsWith("/admindraft")) {
     const params = new URLSearchParams();
     if (message) params.set("message", message);
     const separator = returnTo.includes("?") ? "&" : "?";

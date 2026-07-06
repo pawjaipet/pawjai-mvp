@@ -67,16 +67,27 @@ export type AdminDraftDog = {
 };
 
 export type AdminDraftBooking = {
+  adopterEmail: string | null;
+  adopterId: string;
+  adopterName: string;
+  adopterPhoneNumber: string | null;
   appointmentDate: string;
   appointmentTime: string;
   bookingCode: string | null;
   checkedIn: boolean;
+  dogBreed: string | null;
   dogId: string | null;
   dogName: string;
   id: string;
+  proposedAppointmentDate: string | null;
+  proposedAppointmentTime: string | null;
+  shelterDistrict: string | null;
   shelterId: string;
   shelterName: string;
+  shelterNote: string | null;
+  shelterProvince: string | null;
   status: string;
+  visitorNote: string | null;
 };
 
 export type AdminDraftAd = {
@@ -167,7 +178,7 @@ export async function loadAdminDraftData(): Promise<AdminDraftData> {
       .limit(1000),
     supabase
       .from("appointments")
-      .select("id,shelter_id,dog_id,appointment_date,appointment_time,status,created_at")
+      .select("*")
       .order("appointment_date", { ascending: true })
       .limit(200),
     supabase
@@ -209,7 +220,17 @@ export async function loadAdminDraftData(): Promise<AdminDraftData> {
   const rawAbout = aboutResult.data ?? null;
   const rawAvailability = availabilityResult.error ? [] : availabilityResult.data ?? [];
   const rawRegularHours = regularHoursResult.error ? [] : regularHoursResult.data ?? [];
+  const bookingAdopterIds = [...new Set(rawBookings.map((booking) => booking.adopter_id).filter(Boolean))];
+  const adoptersResult = bookingAdopterIds.length
+    ? await supabase
+        .from("adopters")
+        .select("id,first_name,last_name,email,phone_number")
+        .in("id", bookingAdopterIds)
+    : { data: [], error: null };
 
+  const shelterSummary = new Map(rawShelters.map((shelter) => [shelter.id, shelter]));
+  const dogSummary = new Map(rawDogs.map((dog) => [dog.id, dog]));
+  const adopterSummary = new Map((adoptersResult.data ?? []).map((adopter) => [adopter.id, adopter]));
   const shelterNames = new Map(rawShelters.map((shelter) => [shelter.id, shelter.name]));
   const dogNames = new Map(rawDogs.map((dog) => [dog.id, dog.name]));
   const dogsByShelter = new Map<string, number>();
@@ -294,16 +315,30 @@ export async function loadAdminDraftData(): Promise<AdminDraftData> {
       startDate: ad.start_date,
     })),
     bookings: rawBookings.map((booking) => ({
+      adopterEmail: adopterSummary.get(booking.adopter_id)?.email ?? null,
+      adopterId: booking.adopter_id,
+      adopterName: [
+        adopterSummary.get(booking.adopter_id)?.first_name,
+        adopterSummary.get(booking.adopter_id)?.last_name,
+      ].filter(Boolean).join(" ") || "Unknown adopter",
+      adopterPhoneNumber: adopterSummary.get(booking.adopter_id)?.phone_number ?? null,
       appointmentDate: booking.appointment_date,
       appointmentTime: booking.appointment_time,
-      bookingCode: null,
-      checkedIn: false,
+      bookingCode: booking.booking_code,
+      checkedIn: Boolean(booking.checked_in_at),
+      dogBreed: booking.dog_id ? dogSummary.get(booking.dog_id)?.breed ?? null : null,
       dogId: booking.dog_id,
       dogName: booking.dog_id ? dogNames.get(booking.dog_id) ?? "Dog profile" : "Shelter visit",
       id: booking.id,
+      proposedAppointmentDate: (booking as { proposed_appointment_date?: string | null }).proposed_appointment_date ?? null,
+      proposedAppointmentTime: (booking as { proposed_appointment_time?: string | null }).proposed_appointment_time ?? null,
+      shelterDistrict: shelterSummary.get(booking.shelter_id)?.district ?? null,
       shelterId: booking.shelter_id,
       shelterName: shelterNames.get(booking.shelter_id) ?? "Unknown shelter",
+      shelterNote: booking.shelter_note,
+      shelterProvince: shelterSummary.get(booking.shelter_id)?.province ?? null,
       status: booking.status,
+      visitorNote: booking.visitor_note,
     })),
     dogs: rawDogs.map((dog) => {
       const photoSummary = photoSummaryByDog.get(dog.id) ?? { coverUrl: null, photosCount: 0 };

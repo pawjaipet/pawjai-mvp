@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Building2,
   CalendarDays,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -16,14 +17,22 @@ import {
   Megaphone,
   MessageCircle,
   PawPrint,
+  QrCode,
   Search,
   ShieldCheck,
   Trash2,
   Users,
 } from "lucide-react";
 import {
+  APPOINTMENT_TIME_SLOTS,
+  appointmentFollowUpDue,
+  isPastAppointmentByTime,
+  normalizeAppointmentTime,
+} from "@/utils/appointments-model";
+import {
   createShelterBlockoutAction,
   deleteShelterAvailabilityAction,
+  decideBookingAction,
   toggleShelterBlockoutDateAction,
   updateShelterOperatingDaysAction,
   updateShelterProfileAction,
@@ -41,8 +50,16 @@ import type {
 type RoleView = "pawjai" | "shelter";
 type MainTab = "shelters" | "dogs" | "bookings" | "ads" | "about";
 type ShelterTab = "profile" | "dogs" | "bookings" | "messages";
+type VisitBucket = "upcoming" | "needs_follow_up" | "past" | "all";
 
 const DRAFT_RETURN_TO = "/admindraft";
+const BOOKING_STATUS_OPTIONS = ["requested", "confirmed", "completed", "cancelled", "no_show"];
+const VISIT_BUCKETS: { label: string; value: VisitBucket }[] = [
+  { label: "Upcoming", value: "upcoming" },
+  { label: "Needs follow-up", value: "needs_follow_up" },
+  { label: "Past", value: "past" },
+  { label: "All", value: "all" },
+];
 const WEEKDAYS = [
   { label: "Sun", value: 0 },
   { label: "Mon", value: 1 },
@@ -123,8 +140,52 @@ const fallbackDogs: AdminDraftDog[] = [
 ];
 
 const fallbackBookings: AdminDraftBooking[] = [
-  { appointmentDate: "2026-07-23", appointmentTime: "16:00", bookingCode: "APT-D5A8A", checkedIn: false, dogId: "won", dogName: "วอน", id: "booking-1", shelterId: "voice", shelterName: "The Voice Foundation", status: "confirmed" },
-  { appointmentDate: "2026-07-30", appointmentTime: "11:00", bookingCode: "APT-86496", checkedIn: false, dogId: "tua-daang", dogName: "ตัวแดง (Tua Daang)", id: "booking-2", shelterId: "voice", shelterName: "The Voice Foundation", status: "requested" },
+  {
+    adopterEmail: "proudxd@gmail.com",
+    adopterId: "adopter-1",
+    adopterName: "Polchaya Sudlabha",
+    adopterPhoneNumber: "0970974747",
+    appointmentDate: "2026-07-23",
+    appointmentTime: "16:00",
+    bookingCode: "APT-D5A8A",
+    checkedIn: false,
+    dogBreed: "Ridgeback",
+    dogId: "won",
+    dogName: "วอน",
+    id: "booking-1",
+    proposedAppointmentDate: null,
+    proposedAppointmentTime: null,
+    shelterDistrict: "Bangkok",
+    shelterId: "voice",
+    shelterName: "The Voice Foundation",
+    shelterNote: null,
+    shelterProvince: "Bangkok",
+    status: "confirmed",
+    visitorNote: "Tester",
+  },
+  {
+    adopterEmail: "proudxd@gmail.com",
+    adopterId: "adopter-1",
+    adopterName: "Polchaya Sudlabha",
+    adopterPhoneNumber: "0970974747",
+    appointmentDate: "2026-07-30",
+    appointmentTime: "11:00",
+    bookingCode: "APT-86496",
+    checkedIn: false,
+    dogBreed: "Poodle Terrier Mix",
+    dogId: "tua-daang",
+    dogName: "ตัวแดง (Tua Daang)",
+    id: "booking-2",
+    proposedAppointmentDate: "2026-07-30",
+    proposedAppointmentTime: "11:00",
+    shelterDistrict: "Bangkok",
+    shelterId: "voice",
+    shelterName: "The Voice Foundation",
+    shelterNote: null,
+    shelterProvince: "Bangkok",
+    status: "requested",
+    visitorNote: null,
+  },
 ];
 
 const profileFields = [
@@ -234,6 +295,105 @@ function FieldGrid({ fields }: { fields: string[] }) {
 
 function formatStatus(status: string) {
   return status.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatBookingDisplayCode(booking: AdminDraftBooking) {
+  if (booking.bookingCode) return booking.bookingCode;
+  const compact = booking.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  return `APT-${compact.slice(0, 5)}`;
+}
+
+function normalizeBookingSearch(value: string) {
+  const compact = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  if (!compact) return "";
+  return compact.startsWith("APT") ? `APT-${compact.slice(3)}` : `APT-${compact}`;
+}
+
+function formatBookingDate(date: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    weekday: "short",
+    year: "numeric",
+  });
+}
+
+function formatBookingTime(time: string) {
+  return new Date(`1970-01-01T${normalizeAppointmentTime(time)}`).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function bookingStatusClass(status: string) {
+  switch (status) {
+    case "confirmed":
+      return "bg-[#eaf6df] text-[#3f6f24]";
+    case "completed":
+      return "bg-[#e9f2ff] text-[#285f9d]";
+    case "cancelled":
+      return "bg-[#f7e3e1] text-[#9a3129]";
+    case "no_show":
+      return "bg-[#f1e7db] text-[#8a5825]";
+    default:
+      return "bg-[#fff1dc] text-[#a86a1f]";
+  }
+}
+
+function bookingDecisionLabel(status: string) {
+  switch (status) {
+    case "confirmed":
+      return "Accepted";
+    case "cancelled":
+      return "Denied";
+    case "completed":
+      return "Completed";
+    case "no_show":
+      return "No show";
+    default:
+      return "Awaiting decision";
+  }
+}
+
+function bookingDogLabel(booking: AdminDraftBooking) {
+  return `${booking.dogName}${booking.dogBreed ? ` - ${booking.dogBreed}` : ""}`;
+}
+
+function matchesBookingFilters({
+  booking,
+  date,
+  search,
+  status,
+  visitBucket,
+}: {
+  booking: AdminDraftBooking;
+  date: string;
+  search: string;
+  status: string;
+  visitBucket: VisitBucket;
+}) {
+  const normalizedSearch = normalizeBookingSearch(search);
+  const displayCode = formatBookingDisplayCode(booking).toUpperCase();
+  const now = new Date();
+  const followUpDue = appointmentFollowUpDue({
+    appointment_date: booking.appointmentDate,
+    appointment_time: booking.appointmentTime,
+    status: booking.status,
+  }, now);
+  const isPast = isPastAppointmentByTime({
+    appointment_date: booking.appointmentDate,
+    appointment_time: booking.appointmentTime,
+    status: booking.status,
+  }, now);
+
+  if (date && booking.appointmentDate !== date) return false;
+  if (status !== "all" && booking.status !== status) return false;
+  if (normalizedSearch && !displayCode.startsWith(normalizedSearch)) return false;
+  if (date || status !== "all" || normalizedSearch) return true;
+  if (visitBucket === "past") return isPast;
+  if (visitBucket === "needs_follow_up") return followUpDue;
+  if (visitBucket === "all") return true;
+  return !isPast;
 }
 
 function matchesDogFilters(dog: AdminDraftDog, search: string, status: string) {
@@ -897,10 +1057,43 @@ function ShelterDogsTab({ dogs, shelter }: { dogs: AdminDraftDog[]; shelter: Adm
 }
 
 function ShelterBookingsTab({ bookings, shelterId }: { bookings: AdminDraftBooking[]; shelterId?: string }) {
+  const [visitBucket, setVisitBucket] = useState<VisitBucket>("upcoming");
+  const [bookingDateFilter, setBookingDateFilter] = useState("");
+  const [bookingStatusFilter, setBookingStatusFilter] = useState("all");
+  const [bookingSearch, setBookingSearch] = useState("");
   const today = new Date().toISOString().slice(0, 10);
   const todayCount = bookings.filter((booking) => booking.appointmentDate === today).length;
   const checkedInCount = bookings.filter((booking) => booking.checkedIn).length;
-  const draftBookingsHref = shelterId ? `/admindraft?shelter=${shelterId}&view=bookings` : "/admindraft";
+  const draftBookingsHref = shelterId ? `/admindraft?shelter=${shelterId}&view=bookings` : "/admindraft?view=bookings";
+  const now = new Date();
+  const bucketCounts = useMemo(() => ({
+    all: bookings.length,
+    needs_follow_up: bookings.filter((booking) => appointmentFollowUpDue({
+      appointment_date: booking.appointmentDate,
+      appointment_time: booking.appointmentTime,
+      status: booking.status,
+    }, now)).length,
+    past: bookings.filter((booking) => isPastAppointmentByTime({
+      appointment_date: booking.appointmentDate,
+      appointment_time: booking.appointmentTime,
+      status: booking.status,
+    }, now)).length,
+    upcoming: bookings.filter((booking) => !isPastAppointmentByTime({
+      appointment_date: booking.appointmentDate,
+      appointment_time: booking.appointmentTime,
+      status: booking.status,
+    }, now)).length,
+  }), [bookings, now]);
+  const visibleBookings = useMemo(
+    () => bookings.filter((booking) => matchesBookingFilters({
+      booking,
+      date: bookingDateFilter,
+      search: bookingSearch,
+      status: bookingStatusFilter,
+      visitBucket,
+    })),
+    [bookingDateFilter, bookingSearch, bookingStatusFilter, bookings, visitBucket],
+  );
 
   return (
     <Section eyebrow="Booking visits" title="Visit management">
@@ -916,63 +1109,286 @@ function ShelterBookingsTab({ bookings, shelterId }: { bookings: AdminDraftBooki
           </div>
         ))}
       </div>
-      <div className="mt-5 flex flex-wrap gap-2">
-        {bookingActions.map((action) => (
-          <span className="rounded-full border border-[#d6c8ad] bg-white px-3 py-1.5 text-xs font-semibold text-[#65584f]" key={action}>
-            {action}
-          </span>
-        ))}
+
+      <div className="mt-6 rounded-[24px] border border-[#eadfce] bg-white p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
+          Visit timing
+        </p>
+        <div className="mt-3 grid gap-2 md:grid-cols-4">
+          {VISIT_BUCKETS.map((bucket) => (
+            <button
+              className={`rounded-2xl px-4 py-3 text-center text-sm font-semibold transition ${
+                visitBucket === bucket.value
+                  ? "bg-[#d88c24] text-white shadow-[0_10px_24px_rgba(179,111,31,0.18)]"
+                  : "border border-[#eadfce] bg-[#fffdfa] text-[#5b4d40] hover:bg-[#faf4ec]"
+              }`}
+              key={bucket.value}
+              onClick={() => setVisitBucket(bucket.value)}
+              type="button"
+            >
+              {bucket.label} ({bucketCounts[bucket.value]})
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-xs leading-5 text-[#74685d]">
+          Visits move to past 24 hours after their scheduled time. Needs follow-up highlights visits where staff should record the outcome.
+        </p>
       </div>
-      <div className="mt-5 flex flex-wrap gap-2">
-        <Link
-          className="inline-flex rounded-full bg-[#d88c24] px-5 py-3 text-sm font-semibold text-white"
-          href={draftBookingsHref}
-        >
-          Open draft booking workspace
-        </Link>
-        <Link
-          className="inline-flex rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40]"
-          href="/admindraft/bookings/check-in"
-        >
-          Open QR check-in
-        </Link>
-      </div>
-      <div className="mt-6 grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
-        <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#8d7f72]">Date</div>
-        <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#8d7f72]">All statuses</div>
-        <button className="rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white" type="button">
+
+      <div className="mt-5 grid gap-4 rounded-[24px] border border-[#eadfce] bg-white p-4 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
+        <label>
+          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Date</span>
+          <input
+            className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+            onChange={(event) => setBookingDateFilter(event.target.value)}
+            type="date"
+            value={bookingDateFilter}
+          />
+        </label>
+        <label>
+          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Status</span>
+          <select
+            className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+            onChange={(event) => setBookingStatusFilter(event.target.value)}
+            value={bookingStatusFilter}
+          >
+            <option value="all">All statuses</option>
+            {BOOKING_STATUS_OPTIONS.map((status) => (
+              <option key={status} value={status}>
+                {status.replace("_", " ")}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white" type="button">
+          <Search className="h-4 w-4" />
           Filter
         </button>
-        <button className="rounded-full border border-[#eadfce] bg-white px-6 py-3 text-sm font-semibold text-[#5b4d40]" type="button">
+        <button
+          className="rounded-full border border-[#eadfce] bg-white px-6 py-3 text-sm font-semibold text-[#5b4d40]"
+          onClick={() => {
+            setBookingDateFilter("");
+            setBookingSearch("");
+            setBookingStatusFilter("all");
+            setVisitBucket("upcoming");
+          }}
+          type="button"
+        >
           Reset
         </button>
       </div>
-      <div className="mt-5 grid gap-3">
-        {bookings.slice(0, 6).map((booking) => (
-          <div className="grid gap-3 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 md:grid-cols-[1fr_1fr_1fr_auto]" key={booking.id}>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Visit</p>
-              <p className="mt-1 font-semibold text-[#4f4338]">{booking.appointmentDate}</p>
-              <p className="text-sm text-[#74685d]">{booking.appointmentTime}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Dog</p>
-              <p className="mt-1 font-semibold text-[#4f4338]">{booking.dogName}</p>
-              <p className="text-sm text-[#74685d]">{booking.shelterName}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Booking</p>
-              <p className="mt-1 font-semibold text-[#4f4338]">{booking.bookingCode ?? booking.id.slice(0, 8)}</p>
-              <p className="text-sm text-[#74685d]">{formatStatus(booking.status)}</p>
-            </div>
+
+      <form
+        className="mt-5 rounded-[24px] border border-[#eadfce] bg-white p-4"
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <label>
+          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
+            Search booking code
+          </span>
+          <div className="flex flex-col gap-3 md:flex-row">
+            <input
+              className="min-w-0 flex-1 rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-[#4f4338] outline-none focus:border-[#d88c24]"
+              onChange={(event) => setBookingSearch(event.target.value)}
+              placeholder="APT-FA5C9"
+              value={bookingSearch}
+            />
+            <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white" type="submit">
+              <Search className="h-4 w-4" />
+              Search code
+            </button>
+          </div>
+        </label>
+        <p className="mt-3 text-xs leading-5 text-[#74685d]">
+          Type the visitor booking ID from their appointment card or QR screen.
+        </p>
+      </form>
+
+      <div className="mt-5 flex flex-col gap-3 rounded-[24px] border border-[#eadfce] bg-white p-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-[#4f4338]">QR check-in scanner</p>
+          <p className="mt-1 text-sm text-[#74685d]">Scan a visitor appointment QR to open their booking profile.</p>
+        </div>
+        <Link
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white"
+          href="/admindraft/bookings/check-in"
+        >
+          <QrCode className="h-4 w-4" />
+          Scan QR
+        </Link>
+      </div>
+
+      <div className="mt-6 space-y-4">
+        {visibleBookings.length === 0 ? (
+          <div className="rounded-[28px] border border-dashed border-[#eadfce] bg-white p-8 text-center">
+            <p className="text-xl font-semibold text-[#4f4338]">No bookings match this view.</p>
+            <p className="mt-2 text-sm text-[#74685d]">Try clearing filters or choosing a different date.</p>
+          </div>
+        ) : (
+          visibleBookings.map((booking) => {
+            const followUpDue = appointmentFollowUpDue({
+              appointment_date: booking.appointmentDate,
+              appointment_time: booking.appointmentTime,
+              status: booking.status,
+            });
+
+            return (
+              <section
+                className="rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]"
+                key={booking.id}
+              >
+                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] ${bookingStatusClass(booking.status)}`}>
+                        {booking.status.replace("_", " ")}
+                      </span>
+                      {booking.checkedIn ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[#eaf6df] px-3 py-1 text-xs font-bold text-[#3f6f24]">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Checked in
+                        </span>
+                      ) : null}
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[#f7ecda] px-3 py-1 text-xs font-bold text-[#8a5825]">
+                        <QrCode className="h-3.5 w-3.5" />
+                        {formatBookingDisplayCode(booking)}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Visit</p>
+                        <p className="mt-1 text-lg font-semibold text-[#4f4338]">{formatBookingDate(booking.appointmentDate)}</p>
+                        <p className="text-sm text-[#74685d]">{formatBookingTime(booking.appointmentTime)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Adopter</p>
+                        <p className="mt-1 text-lg font-semibold text-[#4f4338]">{booking.adopterName}</p>
+                        <p className="break-words text-sm text-[#74685d]">{booking.adopterEmail ?? "No email"}</p>
+                        <p className="text-sm text-[#74685d]">{booking.adopterPhoneNumber ?? "No phone"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Dog and Shelter</p>
+                        <p className="mt-1 text-lg font-semibold text-[#4f4338]">{bookingDogLabel(booking)}</p>
+                        <p className="text-sm text-[#74685d]">{booking.shelterName}</p>
+                        <p className="text-sm text-[#74685d]">{[booking.shelterDistrict, booking.shelterProvince].filter(Boolean).join(", ")}</p>
+                      </div>
+                    </div>
+
+                    {booking.visitorNote ? (
+                      <div className="mt-4 rounded-2xl bg-[#f8f0e5] p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Visitor note</p>
+                        <p className="mt-1 text-sm leading-6 text-[#5b4d40]">{booking.visitorNote}</p>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <form action={decideBookingAction} className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+                    <input name="appointmentId" type="hidden" value={booking.id} />
+                    <input name="returnTo" type="hidden" value={draftBookingsHref} />
+                    <div className="rounded-2xl bg-white px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Status</p>
+                      <p className="mt-1 text-lg font-semibold text-[#4f4338]">{bookingDecisionLabel(booking.status)}</p>
+                      {booking.shelterNote ? (
+                        <p className="mt-2 text-sm leading-6 text-[#74685d]">{booking.shelterNote}</p>
+                      ) : null}
+                      {booking.proposedAppointmentDate && booking.proposedAppointmentTime ? (
+                        <p className="mt-2 rounded-xl bg-[#fff1dc] px-3 py-2 text-xs font-semibold text-[#8a5825]">
+                          Proposed: {formatBookingDate(booking.proposedAppointmentDate)} at {formatBookingTime(booking.proposedAppointmentTime)}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <label className="mt-3 block">
+                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Shelter note</span>
+                      <textarea
+                        className="min-h-[92px] w-full resize-none rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                        defaultValue={booking.shelterNote ?? ""}
+                        name="shelterNote"
+                        placeholder="Optional note for denial, date change, or staff context"
+                      />
+                    </label>
+
+                    <details className="mt-3 rounded-2xl border border-[#eadfce] bg-white p-3" open={booking.status === "requested"}>
+                      <summary className="cursor-pointer text-sm font-semibold text-[#5b4d40]">
+                        Edit decision
+                      </summary>
+                      <div className="mt-3 grid gap-2">
+                        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#fffaf3] p-3">
+                          <label className="block">
+                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New date</span>
+                            <input
+                              className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                              defaultValue={booking.proposedAppointmentDate ?? booking.appointmentDate}
+                              min={new Date().toISOString().slice(0, 10)}
+                              name="proposedAppointmentDate"
+                              type="date"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New time</span>
+                            <select
+                              className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                              defaultValue={normalizeAppointmentTime(booking.proposedAppointmentTime ?? booking.appointmentTime)}
+                              name="proposedAppointmentTime"
+                            >
+                              {APPOINTMENT_TIME_SLOTS.map((slot) => (
+                                <option key={slot} value={slot}>{slot}</option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+                        <button className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" name="decision" type="submit" value="accept">
+                          {booking.status === "requested" ? "Accept booking" : "Mark accepted"}
+                        </button>
+                        <button className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64]" name="decision" type="submit" value="deny">
+                          {booking.status === "requested" ? "Deny booking" : "Mark denied"}
+                        </button>
+                        <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" name="decision" type="submit" value="request_change">
+                          Ask to change date/time
+                        </button>
+                      </div>
+                    </details>
+
+                    {followUpDue ? (
+                      <div className="mt-3 rounded-2xl border border-[#eadfce] bg-white p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Post-visit outcome</p>
+                        <div className="mt-3 grid gap-2">
+                          <button className="w-full rounded-full bg-[#65584f] px-5 py-3 text-sm font-semibold text-white hover:bg-[#50443b]" name="decision" type="submit" value="complete">
+                            Mark visit completed
+                          </button>
+                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" name="decision" type="submit" value="no_show">
+                            Visitor did not show
+                          </button>
+                          {booking.dogId ? (
+                            <button className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" name="decision" type="submit" value="adopted">
+                              Mark dog adopted
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <Link
+                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                      href={`/admindraft/bookings/${booking.id}/visitor-profile`}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open visitor profile
+                    </Link>
             <Link
-              className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]"
+                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
               href={`/admindraft/bookings/${booking.id}`}
             >
-              Open
+                      <ExternalLink className="h-4 w-4" />
+                      Open booking detail
             </Link>
-          </div>
-        ))}
+                  </form>
+                </div>
+              </section>
+            );
+          })
+        )}
       </div>
     </Section>
   );
