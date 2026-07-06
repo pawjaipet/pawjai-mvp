@@ -129,6 +129,22 @@ test("admin draft dog listings remove the inline field map and expose creation a
   assert.equal(panelSource.includes("md:grid-cols-5"), true);
 });
 
+test("admin draft dog cards edit through a draft-native dog edit route", () => {
+  const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+  const draftEditSource = readFileSync(new URL("../app/admindraft/dogs/[id]/edit/page.tsx", import.meta.url), "utf8");
+  const adminEditSource = readFileSync(new URL("../app/admin/dogs/[id]/edit/page.tsx", import.meta.url), "utf8");
+
+  assert.equal(panelSource.includes("`/admindraft/dogs/${dog.id}/edit`"), true);
+  assert.equal(panelSource.includes("`/admin/dogs/${dog.id}/edit`"), false);
+  assert.equal(draftEditSource.includes("DogEditForm"), true);
+  assert.equal(draftEditSource.includes("isAdminDraftUnlocked"), true);
+  assert.equal(draftEditSource.includes("AdminDraftGate"), true);
+  assert.equal(draftEditSource.includes("Back to dog listings"), true);
+  assert.equal(draftEditSource.includes("/admindraft?shelter=${dog.shelter_id}&view=dogs"), true);
+  assert.equal(draftEditSource.includes("PawJai Admin Draft"), true);
+  assert.equal(adminEditSource.includes("DogEditForm"), true);
+});
+
 test("admin draft opens booking detail and visitor profile in draft-native routes", () => {
   const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
   const bookingDetailSource = readFileSync(new URL("../app/admindraft/bookings/[id]/page.tsx", import.meta.url), "utf8");
