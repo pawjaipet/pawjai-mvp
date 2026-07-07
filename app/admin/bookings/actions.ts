@@ -45,12 +45,23 @@ function shelterViewRedirect(shelterId: string, view: string, message: string) {
 function redirectAfterShelterMutation(formData: FormData, shelterId: string, view: string, message: string) {
   const returnTo = String(formData.get("returnTo") ?? "");
 
-  if (returnTo === "/admindraft") {
+  if (returnTo.startsWith("/admindraft")) {
     const params = new URLSearchParams();
     if (shelterId) params.set("shelter", shelterId);
     if (view) params.set("view", view);
     if (message) params.set("message", message);
-    redirect(`/admindraft?${params.toString()}`);
+    if (returnTo === "/admindraft") {
+      redirect(`/admindraft?${params.toString()}`);
+    }
+    const separator = returnTo.includes("?") ? "&" : "?";
+    redirect(`${returnTo}${params.toString() ? `${separator}${params.toString()}` : ""}`);
+  }
+
+  if (returnTo.startsWith("/shelter/")) {
+    const params = new URLSearchParams();
+    if (message) params.set("message", message);
+    const separator = returnTo.includes("?") ? "&" : "?";
+    redirect(`${returnTo}${params.toString() ? `${separator}${params.toString()}` : ""}`);
   }
 
   shelterViewRedirect(shelterId, view, message);
@@ -59,7 +70,7 @@ function redirectAfterShelterMutation(formData: FormData, shelterId: string, vie
 function redirectAfterBookingDecision(formData: FormData, message: string) {
   const returnTo = String(formData.get("returnTo") ?? "");
 
-  if (returnTo.startsWith("/admindraft")) {
+  if (returnTo.startsWith("/admindraft") || returnTo.startsWith("/booking/") || returnTo.startsWith("/shelter/")) {
     const params = new URLSearchParams();
     if (message) params.set("message", message);
     const separator = returnTo.includes("?") ? "&" : "?";
@@ -70,7 +81,7 @@ function redirectAfterBookingDecision(formData: FormData, message: string) {
 function redirectAfterCheckIn(formData: FormData, appointmentId: string, token: string) {
   const returnTo = String(formData.get("returnTo") ?? "");
 
-  if (returnTo.startsWith("/admindraft/bookings/")) {
+  if (returnTo.startsWith("/admindraft/bookings/") || returnTo.startsWith("/booking/")) {
     const params = new URLSearchParams();
     if (token) params.set("token", token);
     params.set("checkedIn", "1");
@@ -399,6 +410,8 @@ export async function decideBookingAction(formData: FormData) {
   revalidatePath("/admindraft");
   revalidatePath(`/admindraft/bookings/${appointmentId}`);
   revalidatePath(`/admindraft/bookings/${appointmentId}/visitor-profile`);
+  revalidatePath(`/booking/${appointmentId}`);
+  revalidatePath(`/booking/${appointmentId}/visitor-profile`);
   revalidatePath("/appointments");
   revalidatePath(`/appointments/${appointmentId}`);
   redirectAfterBookingDecision(
@@ -822,6 +835,8 @@ export async function checkInBookingAction(formData: FormData) {
   revalidatePath("/admindraft");
   revalidatePath(`/admindraft/bookings/${appointment.id}`);
   revalidatePath(`/admindraft/bookings/${appointment.id}/visitor-profile`);
+  revalidatePath(`/booking/${appointment.id}`);
+  revalidatePath(`/booking/${appointment.id}/visitor-profile`);
   revalidatePath("/appointments");
   revalidatePath(`/appointments/${appointment.id}`);
   await logAdminAuditEvent({

@@ -72,6 +72,11 @@ const WEEKDAYS = [
   { label: "Sat", value: 6 },
 ];
 
+function withReturnTo(path: string, returnTo: string) {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}returnTo=${encodeURIComponent(returnTo)}`;
+}
+
 const fallbackShelters: AdminDraftShelter[] = [
   {
     address: "Bangkok",
@@ -432,16 +437,16 @@ function isoDate(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function DraftReturnFields({ shelterId }: { shelterId: string }) {
+function DraftReturnFields({ returnTo = DRAFT_RETURN_TO, shelterId }: { returnTo?: string; shelterId: string }) {
   return (
     <>
-      <input name="returnTo" type="hidden" value={DRAFT_RETURN_TO} />
+      <input name="returnTo" type="hidden" value={returnTo} />
       <input name="shelterId" type="hidden" value={shelterId} />
     </>
   );
 }
 
-function DogCard({ dog }: { dog: AdminDraftDog }) {
+function DogCard({ dog, editHref }: { dog: AdminDraftDog; editHref: string }) {
   return (
     <article className="overflow-hidden rounded-2xl border border-[#eadfce] bg-[#fffdfa]">
       <div className="flex aspect-[16/9] items-center justify-center bg-[#f3e7d5] text-[#9a6b2a]">
@@ -472,7 +477,7 @@ function DogCard({ dog }: { dog: AdminDraftDog }) {
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Link
           className="inline-flex items-center justify-center rounded-full bg-[#d88c24] px-4 py-2 text-sm font-semibold text-white"
-          href={`/admindraft/dogs/${dog.id}/edit`}
+          href={editHref}
         >
           Edit
         </Link>
@@ -572,7 +577,7 @@ function ShelterWorkspaceLinkTab({
   );
 }
 
-function ShelterProfileTab({ shelter }: { shelter: AdminDraftShelter }) {
+function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: AdminDraftShelter }) {
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -689,7 +694,7 @@ function ShelterProfileTab({ shelter }: { shelter: AdminDraftShelter }) {
           </div>
 
           <form action={updateShelterProfileAction} className="grid gap-3">
-            <DraftReturnFields shelterId={shelter.id} />
+            <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
             <div className="grid gap-3 md:grid-cols-2">
               <label>
                 <span className={labelClass}>Shelter name</span>
@@ -782,7 +787,7 @@ function ShelterProfileTab({ shelter }: { shelter: AdminDraftShelter }) {
               Click dates to close or reopen one-off holidays. Set recurring closed weekdays for regular non-operating days.
             </p>
             <form action={updateShelterOperatingDaysAction} className="mt-5 rounded-2xl bg-[#fffdfa] p-4">
-              <DraftReturnFields shelterId={shelter.id} />
+              <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Weekly closed days</p>
               <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7">
                 {WEEKDAYS.map((day) => (
@@ -854,7 +859,7 @@ function ShelterProfileTab({ shelter }: { shelter: AdminDraftShelter }) {
                   const isClosed = recurringClosed || Boolean(blockout);
                   return (
                     <form action={toggleShelterBlockoutDateAction} key={dateKey}>
-                      <DraftReturnFields shelterId={shelter.id} />
+                      <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
                       <input name="date" type="hidden" value={dateKey} />
                       <input name="availabilityId" type="hidden" value={blockout?.id ?? ""} />
                       <button
@@ -880,7 +885,7 @@ function ShelterProfileTab({ shelter }: { shelter: AdminDraftShelter }) {
             </div>
 
             <form action={createShelterBlockoutAction} className="mt-4 grid gap-3 rounded-2xl bg-[#fffdfa] p-4 md:grid-cols-[1fr_1fr_minmax(0,1.3fr)_auto] md:items-end">
-              <DraftReturnFields shelterId={shelter.id} />
+              <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
               <label>
                 <span className={labelClass}>From</span>
                 <input className={inputClass} name="startDate" required type="date" />
@@ -914,7 +919,7 @@ function ShelterProfileTab({ shelter }: { shelter: AdminDraftShelter }) {
                       </p>
                     </div>
                     <form action={deleteShelterAvailabilityAction}>
-                      <DraftReturnFields shelterId={shelter.id} />
+                      <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
                       <input name="availabilityId" type="hidden" value={range.id} />
                       <button className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-4 py-2 text-xs font-semibold text-[#9a3129] hover:bg-[#fff6f4]" type="submit">
                         <Trash2 size={14} />
@@ -936,7 +941,15 @@ function ShelterProfileTab({ shelter }: { shelter: AdminDraftShelter }) {
   );
 }
 
-function ShelterDogsTab({ dogs, shelter }: { dogs: AdminDraftDog[]; shelter: AdminDraftShelter }) {
+function ShelterDogsTab({
+  dogEditHref,
+  dogs,
+  shelter,
+}: {
+  dogEditHref: (dog: AdminDraftDog) => string;
+  dogs: AdminDraftDog[];
+  shelter: AdminDraftShelter;
+}) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const filteredDogs = dogs.filter((dog) => matchesDogFilters(dog, search, status));
@@ -985,7 +998,7 @@ function ShelterDogsTab({ dogs, shelter }: { dogs: AdminDraftDog[]; shelter: Adm
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filteredDogs.slice(0, 12).map((dog) => (
-            <DogCard dog={dog} key={dog.id} />
+            <DogCard dog={dog} editHref={dogEditHref(dog)} key={dog.id} />
           ))}
           {filteredDogs.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
@@ -999,7 +1012,15 @@ function ShelterDogsTab({ dogs, shelter }: { dogs: AdminDraftDog[]; shelter: Adm
   );
 }
 
-function ShelterBookingsTab({ bookings, shelterId }: { bookings: AdminDraftBooking[]; shelterId?: string }) {
+function ShelterBookingsTab({
+  bookingListHref,
+  bookings,
+  checkInHref,
+}: {
+  bookingListHref: string;
+  bookings: AdminDraftBooking[];
+  checkInHref: string;
+}) {
   const [visitBucket, setVisitBucket] = useState<VisitBucket>("upcoming");
   const [bookingDateFilter, setBookingDateFilter] = useState("");
   const [bookingStatusFilter, setBookingStatusFilter] = useState("all");
@@ -1007,7 +1028,6 @@ function ShelterBookingsTab({ bookings, shelterId }: { bookings: AdminDraftBooki
   const today = new Date().toISOString().slice(0, 10);
   const todayCount = bookings.filter((booking) => booking.appointmentDate === today).length;
   const checkedInCount = bookings.filter((booking) => booking.checkedIn).length;
-  const draftBookingsHref = shelterId ? `/admindraft?shelter=${shelterId}&view=bookings` : "/admindraft?view=bookings";
   const now = new Date();
   const bucketCounts = useMemo(() => ({
     all: bookings.length,
@@ -1154,7 +1174,7 @@ function ShelterBookingsTab({ bookings, shelterId }: { bookings: AdminDraftBooki
         </div>
         <Link
           className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white"
-          href="/admindraft/bookings/check-in"
+          href={checkInHref}
         >
           <QrCode className="h-4 w-4" />
           Scan QR
@@ -1228,7 +1248,7 @@ function ShelterBookingsTab({ bookings, shelterId }: { bookings: AdminDraftBooki
 
                   <form action={decideBookingAction} className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
                     <input name="appointmentId" type="hidden" value={booking.id} />
-                    <input name="returnTo" type="hidden" value={draftBookingsHref} />
+                    <input name="returnTo" type="hidden" value={bookingListHref} />
                     <div className="rounded-2xl bg-white px-4 py-3">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Status</p>
                       <p className="mt-1 text-lg font-semibold text-[#4f4338]">{bookingDecisionLabel(booking.status)}</p>
@@ -1314,14 +1334,14 @@ function ShelterBookingsTab({ bookings, shelterId }: { bookings: AdminDraftBooki
 
                     <Link
                       className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
-                      href={`/admindraft/bookings/${booking.id}/visitor-profile`}
+                      href={withReturnTo(`/booking/${booking.id}/visitor-profile`, bookingListHref)}
                     >
                       <ExternalLink className="h-4 w-4" />
                       Open visitor profile
                     </Link>
             <Link
                       className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
-              href={`/admindraft/bookings/${booking.id}`}
+              href={withReturnTo(`/booking/${booking.id}`, bookingListHref)}
             >
                       <ExternalLink className="h-4 w-4" />
                       Open booking detail
@@ -1368,15 +1388,25 @@ function ShelterMessagesTab({ shelter }: { shelter: AdminDraftShelter }) {
 
 function ShelterWorkspace({
   adminMode,
+  bookingListHref,
   bookings,
+  checkInHref,
+  createDogHref,
+  dogEditHref,
   dogs,
+  profileReturnTo,
   shelter,
   tab,
   setTab,
 }: {
   adminMode: boolean;
+  bookingListHref: string;
   bookings: AdminDraftBooking[];
+  checkInHref: string;
+  createDogHref: string;
+  dogEditHref: (dog: AdminDraftDog) => string;
   dogs: AdminDraftDog[];
+  profileReturnTo: string;
   shelter: AdminDraftShelter;
   tab: ShelterTab;
   setTab: (tab: ShelterTab) => void;
@@ -1405,7 +1435,7 @@ function ShelterWorkspace({
           </ShelterWorkspaceTabButton>
           <ShelterWorkspaceLinkTab
             adminMode={adminMode}
-            href={`/admindraft/dog-creation?shelter=${shelter.id}`}
+            href={createDogHref}
             icon={<PlusCircle className="h-5 w-5" />}
             meta="New listing"
           >
@@ -1431,9 +1461,9 @@ function ShelterWorkspace({
           </ShelterWorkspaceTabButton>
         </div>
       </Section>
-      {tab === "profile" ? <ShelterProfileTab shelter={shelter} /> : null}
-      {tab === "dogs" ? <ShelterDogsTab dogs={dogs} shelter={shelter} /> : null}
-      {tab === "bookings" ? <ShelterBookingsTab bookings={bookings} shelterId={shelter.id} /> : null}
+      {tab === "profile" ? <ShelterProfileTab returnTo={profileReturnTo} shelter={shelter} /> : null}
+      {tab === "dogs" ? <ShelterDogsTab dogEditHref={dogEditHref} dogs={dogs} shelter={shelter} /> : null}
+      {tab === "bookings" ? <ShelterBookingsTab bookingListHref={bookingListHref} bookings={bookings} checkInHref={checkInHref} /> : null}
       {tab === "messages" ? <ShelterMessagesTab shelter={shelter} /> : null}
     </div>
   );
@@ -1503,8 +1533,13 @@ function PartnerSheltersTab({
       </Section>
       <ShelterWorkspace
         adminMode
+        bookingListHref={`/admindraft?shelter=${selectedShelter.id}&view=bookings`}
         bookings={bookings}
+        checkInHref={withReturnTo("/booking/check-in", `/admindraft?shelter=${selectedShelter.id}&view=bookings`)}
+        createDogHref={`/admindraft/dog-creation?shelter=${selectedShelter.id}`}
+        dogEditHref={(dog) => `/admindraft/dogs/${dog.id}/edit`}
         dogs={dogs}
+        profileReturnTo={`/admindraft?shelter=${selectedShelter.id}&view=profile`}
         shelter={selectedShelter}
         tab={shelterTab}
         setTab={setShelterTab}
@@ -1578,7 +1613,7 @@ function AllDogsTab({ dogs, shelters }: { dogs: AdminDraftDog[]; shelters: Admin
       </div>
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {filteredDogs.map((dog) => (
-          <DogCard dog={dog} key={dog.id} />
+          <DogCard dog={dog} editHref={`/admindraft/dogs/${dog.id}/edit`} key={dog.id} />
         ))}
         {filteredDogs.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
@@ -1593,6 +1628,7 @@ function AllDogsTab({ dogs, shelters }: { dogs: AdminDraftDog[]; shelters: Admin
 function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking[]; shelters: AdminDraftShelter[] }) {
   const [shelterId, setShelterId] = useState("all");
   const filteredBookings = bookings.filter((booking) => shelterId === "all" || booking.shelterId === shelterId);
+  const bookingListHref = shelterId === "all" ? "/admindraft?view=bookings" : `/admindraft?shelter=${shelterId}&view=bookings`;
 
   return (
     <Section eyebrow="Bookings" title="All shelter visits">
@@ -1619,7 +1655,11 @@ function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking
           Show all shelters
         </button>
       </div>
-      <ShelterBookingsTab bookings={filteredBookings} shelterId={shelterId === "all" ? undefined : shelterId} />
+      <ShelterBookingsTab
+        bookingListHref={bookingListHref}
+        bookings={filteredBookings}
+        checkInHref={withReturnTo("/booking/check-in", bookingListHref)}
+      />
     </Section>
   );
 }
@@ -1724,6 +1764,7 @@ export default function AdminReorgDraftPanel({
   initialShelterId,
   initialShelterTab,
   lockRoleView = false,
+  workspaceBaseHref = DRAFT_RETURN_TO,
 }: {
   accountSettingsHref?: string;
   data?: AdminDraftData;
@@ -1731,6 +1772,7 @@ export default function AdminReorgDraftPanel({
   initialShelterId?: string;
   initialShelterTab?: string;
   lockRoleView?: boolean;
+  workspaceBaseHref?: string;
 }) {
   const shelters = data?.shelters.length ? data.shelters : fallbackShelters;
   const dogs = data?.dogs.length ? data.dogs : fallbackDogs;
@@ -1751,6 +1793,16 @@ export default function AdminReorgDraftPanel({
   const selectedShelterDogs = dogs.filter((dog) => dog.shelterId === selectedShelter.id);
   const selectedShelterBookings = bookings.filter((booking) => booking.shelterId === selectedShelter.id);
   const connected = data?.source === "supabase";
+  const isShelterPortal = workspaceBaseHref.startsWith("/shelter/");
+  const shelterWorkspaceBookingsHref = isShelterPortal
+    ? `${workspaceBaseHref}?view=bookings`
+    : `/admindraft?shelter=${selectedShelter.id}&view=bookings`;
+  const shelterWorkspaceCreateDogHref = isShelterPortal
+    ? `${workspaceBaseHref}/dogs/new`
+    : `/admindraft/dog-creation?shelter=${selectedShelter.id}`;
+  const shelterWorkspaceDogEditHref = (dog: AdminDraftDog) => isShelterPortal
+    ? `${workspaceBaseHref}/dogs/${dog.id}/edit`
+    : `/admindraft/dogs/${dog.id}/edit`;
 
   return (
     <main className="min-h-screen bg-[#f5efe6] px-4 py-8 text-[#4f4338]">
@@ -1848,8 +1900,13 @@ export default function AdminReorgDraftPanel({
         {!isPawjai ? (
           <ShelterWorkspace
             adminMode={false}
+            bookingListHref={shelterWorkspaceBookingsHref}
             bookings={selectedShelterBookings}
+            checkInHref={withReturnTo("/booking/check-in", shelterWorkspaceBookingsHref)}
+            createDogHref={shelterWorkspaceCreateDogHref}
+            dogEditHref={shelterWorkspaceDogEditHref}
             dogs={selectedShelterDogs}
+            profileReturnTo={isShelterPortal ? `${workspaceBaseHref}?view=profile` : `/admindraft?shelter=${selectedShelter.id}&view=profile`}
             shelter={selectedShelter}
             tab={shelterTab}
             setTab={setShelterTab}
@@ -1857,7 +1914,7 @@ export default function AdminReorgDraftPanel({
         ) : null}
 
         <footer className="mt-6 rounded-[24px] border border-[#eadfce] bg-white p-4 text-sm leading-6 text-[#74685d]">
-          This draft is phrase-gated while we reorganize the admin hierarchy. Live workflow links still use the existing PawJai admin pages.
+          This draft is phrase-gated while we reorganize the admin hierarchy. Deep workflow links now keep PawJai admin and shelter portal users in their own lanes.
         </footer>
       </div>
     </main>

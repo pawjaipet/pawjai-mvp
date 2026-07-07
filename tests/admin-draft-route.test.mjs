@@ -133,7 +133,8 @@ test("admin draft shelter profile reuses live shelter edit actions in place", ()
   assert.equal(dataSource.includes('.from("shelter_availability")'), true);
   assert.equal(dataSource.includes('.from("shelter_regular_hours")'), true);
   assert.equal(actionSource.includes("redirectAfterShelterMutation"), true);
-  assert.equal(actionSource.includes('returnTo === "/admindraft"'), true);
+  assert.equal(actionSource.includes('returnTo.startsWith("/admindraft")'), true);
+  assert.equal(actionSource.includes('returnTo.startsWith("/shelter/")'), true);
 });
 
 test("admin draft phrase unlock is accepted by shared admin shelter actions", () => {
@@ -147,9 +148,11 @@ test("admin draft has a focused create-dog route that reuses the real dog listin
   const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
   const draftCreateSource = readFileSync(new URL("../app/admindraft/dogs/new/page.tsx", import.meta.url), "utf8");
   const draftCreateAliasSource = readFileSync(new URL("../app/admindraft/dog-creation/page.tsx", import.meta.url), "utf8");
+  const shelterCreateSource = readFileSync(new URL("../app/shelter/[slug]/dogs/new/page.tsx", import.meta.url), "utf8");
   const formSource = readFileSync(new URL("../app/admin/dogs/new/DogListingForm.tsx", import.meta.url), "utf8");
 
-  assert.equal(panelSource.includes("`/admindraft/dog-creation?shelter=${shelter.id}`"), true);
+  assert.equal(panelSource.includes("`/admindraft/dog-creation?shelter=${selectedShelter.id}`"), true);
+  assert.equal(panelSource.includes("`${workspaceBaseHref}/dogs/new`"), true);
   assert.equal(draftCreateAliasSource.includes("../dogs/new/page"), true);
   assert.equal(draftCreateSource.includes("DogListingForm"), true);
   assert.equal(draftCreateSource.includes("isAdminDraftUnlocked"), true);
@@ -161,6 +164,10 @@ test("admin draft has a focused create-dog route that reuses the real dog listin
   assert.equal(formSource.includes('cancelLabel = "Cancel"'), true);
   assert.equal(formSource.includes("successListingsHref"), true);
   assert.equal(formSource.includes("submitLabel"), true);
+  assert.equal(shelterCreateSource.includes("getAdminAuthContext({ includePhraseGate: false })"), true);
+  assert.equal(shelterCreateSource.includes("getShelterByPortalSlug"), true);
+  assert.equal(shelterCreateSource.includes("successListingsHref={cancelHref}"), true);
+  assert.equal(shelterCreateSource.includes("returnTo={`/shelter/${slug}/dogs/new`}"), true);
 });
 
 test("admin draft dog listings remove the inline field map and expose creation as a shelter workspace tab", () => {
@@ -179,9 +186,11 @@ test("admin draft dog listings remove the inline field map and expose creation a
 test("admin draft dog cards edit through a draft-native dog edit route", () => {
   const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
   const draftEditSource = readFileSync(new URL("../app/admindraft/dogs/[id]/edit/page.tsx", import.meta.url), "utf8");
+  const shelterEditSource = readFileSync(new URL("../app/shelter/[slug]/dogs/[id]/edit/page.tsx", import.meta.url), "utf8");
   const adminEditSource = readFileSync(new URL("../app/admin/dogs/[id]/edit/page.tsx", import.meta.url), "utf8");
 
   assert.equal(panelSource.includes("`/admindraft/dogs/${dog.id}/edit`"), true);
+  assert.equal(panelSource.includes("`${workspaceBaseHref}/dogs/${dog.id}/edit`"), true);
   assert.equal(panelSource.includes("`/admin/dogs/${dog.id}/edit`"), false);
   assert.equal(draftEditSource.includes("DogEditForm"), true);
   assert.equal(draftEditSource.includes("isAdminDraftUnlocked"), true);
@@ -189,33 +198,45 @@ test("admin draft dog cards edit through a draft-native dog edit route", () => {
   assert.equal(draftEditSource.includes("Back to dog listings"), true);
   assert.equal(draftEditSource.includes("/admindraft?shelter=${dog.shelter_id}&view=dogs"), true);
   assert.equal(draftEditSource.includes("PawJai Admin Draft"), true);
+  assert.equal(shelterEditSource.includes("getAdminAuthContext({ includePhraseGate: false })"), true);
+  assert.equal(shelterEditSource.includes("getShelterByPortalSlug"), true);
+  assert.equal(shelterEditSource.includes("dog.shelter_id !== shelter.id"), true);
+  assert.equal(shelterEditSource.includes("returnTo={`/shelter/${slug}/dogs/${dog.id}/edit`}"), true);
   assert.equal(adminEditSource.includes("DogEditForm"), true);
 });
 
-test("admin draft opens booking detail and visitor profile in draft-native routes", () => {
+test("admin draft and shelter portal open booking detail and visitor profile through shared guarded routes", () => {
   const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
-  const bookingDetailSource = readFileSync(new URL("../app/admindraft/bookings/[id]/page.tsx", import.meta.url), "utf8");
-  const visitorProfileSource = readFileSync(new URL("../app/admindraft/bookings/[id]/visitor-profile/page.tsx", import.meta.url), "utf8");
-  const checkInSource = readFileSync(new URL("../app/admindraft/bookings/check-in/page.tsx", import.meta.url), "utf8");
+  const bookingDetailSource = readFileSync(new URL("../app/booking/[id]/page.tsx", import.meta.url), "utf8");
+  const visitorProfileSource = readFileSync(new URL("../app/booking/[id]/visitor-profile/page.tsx", import.meta.url), "utf8");
+  const checkInSource = readFileSync(new URL("../app/booking/check-in/page.tsx", import.meta.url), "utf8");
   const actionSource = readFileSync(new URL("../app/admin/bookings/actions.ts", import.meta.url), "utf8");
 
-  assert.equal(panelSource.includes("`/admindraft/bookings/${booking.id}`"), true);
-  assert.equal(panelSource.includes('href="/admindraft/bookings/check-in"'), true);
+  assert.equal(panelSource.includes("withReturnTo(`/booking/${booking.id}`"), true);
+  assert.equal(panelSource.includes("withReturnTo(`/booking/${booking.id}/visitor-profile`"), true);
+  assert.equal(panelSource.includes('withReturnTo("/booking/check-in"'), true);
+  assert.equal(panelSource.includes("bookingListHref"), true);
   assert.equal(bookingDetailSource.includes("decideBookingAction"), true);
-  assert.equal(bookingDetailSource.includes("isAdminDraftUnlocked"), true);
+  assert.equal(bookingDetailSource.includes("getAdminAuthContext"), true);
+  assert.equal(bookingDetailSource.includes("safeBookingReturnTo"), true);
+  assert.equal(bookingDetailSource.includes('requested.startsWith("/admindraft")'), true);
+  assert.equal(bookingDetailSource.includes('requested.startsWith("/shelter/")'), true);
+  assert.equal(bookingDetailSource.includes('requested.startsWith("/admin/bookings")'), true);
   assert.equal(bookingDetailSource.includes("Back to booking list"), true);
   assert.equal(bookingDetailSource.includes('name="returnTo"'), true);
-  assert.equal(bookingDetailSource.includes("/admindraft?shelter="), true);
-  assert.equal(bookingDetailSource.includes("/admindraft/bookings/${typedAppointment.id}/visitor-profile"), true);
-  assert.equal(visitorProfileSource.includes("isAdminDraftUnlocked"), true);
+  assert.equal(bookingDetailSource.includes("withReturnTo(`/booking/${typedAppointment.id}/visitor-profile`"), true);
+  assert.equal(visitorProfileSource.includes("getAdminAuthContext"), true);
+  assert.equal(visitorProfileSource.includes("safeBookingReturnTo"), true);
   assert.equal(visitorProfileSource.includes("Back to booking detail"), true);
   assert.equal(visitorProfileSource.includes("Back to booking list"), true);
-  assert.equal(visitorProfileSource.includes("/admindraft/bookings/${typedAppointment.id}"), true);
-  assert.equal(checkInSource.includes("isAdminDraftUnlocked"), true);
-  assert.equal(checkInSource.includes("/admindraft/bookings/${appointment.id}?token="), true);
+  assert.equal(visitorProfileSource.includes("withReturnTo(`/booking/${typedAppointment.id}`"), true);
+  assert.equal(checkInSource.includes("getAdminAuthContext"), true);
+  assert.equal(checkInSource.includes("/booking/${appointment.id}?token="), true);
   assert.equal(checkInSource.includes("Back to booking list"), true);
   assert.equal(actionSource.includes("redirectAfterBookingDecision"), true);
   assert.equal(actionSource.includes('returnTo.startsWith("/admindraft")'), true);
+  assert.equal(actionSource.includes('returnTo.startsWith("/booking/")'), true);
+  assert.equal(actionSource.includes('returnTo.startsWith("/shelter/")'), true);
 });
 
 test("admin draft booking tab duplicates the low-friction old booking workspace flow", () => {
@@ -230,5 +251,5 @@ test("admin draft booking tab duplicates the low-friction old booking workspace 
   assert.equal(panelSource.includes("Edit decision"), true);
   assert.equal(panelSource.includes("Open visitor profile"), true);
   assert.equal(panelSource.includes("Open booking detail"), true);
-  assert.equal(panelSource.includes("/admindraft/bookings/${booking.id}/visitor-profile"), true);
+  assert.equal(panelSource.includes("/booking/${booking.id}/visitor-profile"), true);
 });

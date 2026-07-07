@@ -395,15 +395,19 @@ function MediaOrderEditor({ dogName, items }: { dogName: string; items: DogMedia
 }
 
 export default function DogEditForm({
+  deleteReturnTo,
   dog,
   personalityTags,
   photos,
+  returnTo,
   shelters,
   traits,
 }: {
+  deleteReturnTo?: string;
   dog: Dog;
   personalityTags: string[];
   photos: DogPhoto[];
+  returnTo?: string;
   shelters: ShelterOption[];
   traits: DogTrait[];
 }) {
@@ -522,6 +526,7 @@ export default function DogEditForm({
 
       <form action={formAction} className="space-y-6">
         <input type="hidden" name="dog_id" value={dog.id} />
+        {returnTo ? <input name="returnTo" type="hidden" value={returnTo} /> : null}
 
         <Section
           title="Core Profile"
@@ -888,6 +893,7 @@ export default function DogEditForm({
           </p>
           <form action={deleteDogProfileAction} className="mt-5">
             <input type="hidden" name="dog_id" value={dog.id} />
+            {deleteReturnTo ? <input name="returnTo" type="hidden" value={deleteReturnTo} /> : null}
             <button
               type="submit"
               className="w-full rounded-full border border-[#d94b41] bg-[#b42318] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#8f1f18]"

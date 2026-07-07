@@ -624,6 +624,7 @@ export async function updateDogProfileAction(
 ): Promise<EditDogProfileState> {
   const fieldErrors: Record<string, string> = {};
   const dogId = getString(formData, "dog_id");
+  const returnTo = getString(formData, "returnTo");
   const name = getString(formData, "name");
   const shelterId = getString(formData, "shelter_id");
   const ageMonths = getOptionalNumber(formData, "age_months");
@@ -655,7 +656,10 @@ export async function updateDogProfileAction(
     };
   }
 
-  const adminContext = await requireShelterAccess(shelterId, `/admin/dogs/${dogId}/edit`);
+  const accessRedirectPath = returnTo.startsWith("/shelter/") || returnTo.startsWith("/admindraft")
+    ? returnTo
+    : `/admin/dogs/${dogId}/edit`;
+  const adminContext = await requireShelterAccess(shelterId, accessRedirectPath);
   const supabase = createAdminClient();
 
   const dogSocialStyle = getOptionalString(formData, "dog_social_style");
@@ -820,6 +824,7 @@ export async function updateDogProfileAction(
 
 export async function deleteDogProfileAction(formData: FormData) {
   const dogId = getString(formData, "dog_id");
+  const returnTo = getString(formData, "returnTo");
   if (!dogId) return;
 
   await requireAdminWorkspace(`/admin/dogs/${dogId}/edit`);
@@ -875,5 +880,8 @@ export async function deleteDogProfileAction(formData: FormData) {
   });
 
   revalidateDogManagementPaths(dogId);
+  if (returnTo.startsWith("/shelter/") || returnTo.startsWith("/admindraft")) {
+    redirect(returnTo);
+  }
   redirect("/admin/listings");
 }

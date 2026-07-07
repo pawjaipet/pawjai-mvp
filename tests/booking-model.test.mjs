@@ -95,7 +95,7 @@ test("creates stable signed check-in tokens for appointment QR codes", () => {
   assert.equal(verifySignedCheckInToken({ token, secret: "wrong-secret" }), null);
 });
 
-test("builds admin check-in URLs with the opaque scan token", () => {
+test("builds shared check-in URLs with the opaque scan token", () => {
   const { buildAdminBookingDetailPath, buildCheckInUrl } = loadBookingModel();
 
   assert.equal(
@@ -103,7 +103,7 @@ test("builds admin check-in URLs with the opaque scan token", () => {
       origin: "https://pawjai.co.th",
       token: "scan-token",
     }),
-    "https://pawjai.co.th/admin/bookings/check-in?token=scan-token",
+    "https://pawjai.co.th/booking/check-in?token=scan-token",
   );
   assert.equal(
     buildAdminBookingDetailPath({

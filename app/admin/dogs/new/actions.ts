@@ -743,7 +743,9 @@ export async function createDogListingAction(
   const name = getString(formData, "name");
   const shelterId = getString(formData, "shelter_id");
   const returnTo = getString(formData, "returnTo");
-  const accessRedirectPath = returnTo.startsWith("/admindraft") ? "/admindraft/dogs/new" : "/admin";
+  const accessRedirectPath = returnTo.startsWith("/admindraft") || returnTo.startsWith("/shelter/")
+    ? returnTo
+    : "/admin";
   const ageMonths = getOptionalNumber(formData, "age_months");
   const weightKg = getOptionalNumber(formData, "weight_kg");
   const mediaFiles = normalizeMediaFiles(formData);

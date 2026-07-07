@@ -69,7 +69,7 @@ export function buildCheckInUrl({
   origin: string;
   token: string;
 }) {
-  const url = new URL("/admin/bookings/check-in", origin);
+  const url = new URL("/booking/check-in", origin);
   url.searchParams.set("token", token);
   return url.toString();
 }

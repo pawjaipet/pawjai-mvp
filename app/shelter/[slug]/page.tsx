@@ -43,6 +43,7 @@ export default async function ShelterPortalPage({
       initialShelterId={shelter.id}
       initialShelterTab={resolvedSearchParams?.view}
       lockRoleView
+      workspaceBaseHref={`/shelter/${slug}`}
     />
   );
 }

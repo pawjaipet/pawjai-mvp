@@ -17,16 +17,19 @@ function resolveScanTarget(rawValue: string) {
   const value = rawValue.trim();
   if (!value) return null;
 
+  const checkInPath = "/booking/check-in";
+  const returnTo = "/admin/bookings";
+
   try {
     const url = new URL(value, window.location.origin);
     const token = url.searchParams.get("token");
     if (token) {
-      return `/admin/bookings/check-in?token=${encodeURIComponent(token)}`;
+      return `${checkInPath}?token=${encodeURIComponent(token)}&returnTo=${encodeURIComponent(returnTo)}`;
     }
   } catch {}
 
   if (value.includes(".") && !value.includes("/") && !value.includes("?")) {
-    return `/admin/bookings/check-in?token=${encodeURIComponent(value)}`;
+    return `${checkInPath}?token=${encodeURIComponent(value)}&returnTo=${encodeURIComponent(returnTo)}`;
   }
 
   return null;
