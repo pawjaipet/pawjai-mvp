@@ -37,6 +37,7 @@ export default async function ShelterPortalPage({
 
   return (
     <AdminReorgDraftPanel
+      accountSettingsHref={`/shelter/${slug}/settings`}
       data={data}
       initialRoleView="shelter"
       initialShelterId={shelter.id}

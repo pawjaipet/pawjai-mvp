@@ -38,6 +38,7 @@ import {
   updateShelterOperatingDaysAction,
   updateShelterProfileAction,
 } from "@/app/admin/bookings/actions";
+import { signOutShelterPortalAction } from "@/app/shelter/actions";
 import DonationDetailsFields from "@/app/admin/bookings/DonationDetailsFields";
 import type {
   AdminDraftAboutContent,
@@ -1717,12 +1718,14 @@ function isShelterTab(value: string | undefined): value is ShelterTab {
 }
 
 export default function AdminReorgDraftPanel({
+  accountSettingsHref,
   data,
   initialRoleView = "pawjai",
   initialShelterId,
   initialShelterTab,
   lockRoleView = false,
 }: {
+  accountSettingsHref?: string;
   data?: AdminDraftData;
   initialRoleView?: RoleView;
   initialShelterId?: string;
@@ -1769,10 +1772,25 @@ export default function AdminReorgDraftPanel({
                 : `Using fallback draft data${data?.error ? `: ${data.error}` : ""}`}
             </div>
           </div>
-          {lockRoleView ? (
-            <div className="rounded-full border border-[#eadfce] bg-white px-5 py-2.5 text-sm font-semibold text-[#5b4d40]">
-              View as shelter
+          {accountSettingsHref ? (
+            <div className="flex flex-wrap gap-2">
+              <Link
+                className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2.5 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+                href={accountSettingsHref}
+              >
+                Account settings
+              </Link>
+              <form action={signOutShelterPortalAction}>
+                <button
+                  className="inline-flex items-center justify-center rounded-full bg-[#65584f] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#4f4338]"
+                  type="submit"
+                >
+                  Sign out
+                </button>
+              </form>
             </div>
+          ) : lockRoleView ? (
+            null
           ) : (
             <div className="flex flex-wrap gap-2">
               <PillButton active={role === "pawjai"} onClick={() => setRole("pawjai")}>View as PawJai</PillButton>

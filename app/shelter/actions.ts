@@ -3,11 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAdminAuthContext } from "@/utils/admin-auth";
-import { sanitizeNextPath } from "@/utils/account-model";
+import { logAdminAuditEvent } from "@/utils/admin-audit";
 import {
   getShelterPortalTarget,
+  isValidShelterPortalUsername,
+  normalizeShelterPortalUsername,
   resolveShelterPilotLoginIdentifier,
 } from "@/utils/shelter-portal";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
 function shelterLoginRedirect(message: string): never {
@@ -23,7 +26,7 @@ function getString(formData: FormData, name: string) {
 
 export async function signInShelterPortalAction(formData: FormData) {
   const identifier = getString(formData, "identifier") || getString(formData, "email");
-  const email = resolveShelterPilotLoginIdentifier(identifier);
+  const email = await resolveShelterPilotLoginIdentifier(identifier);
   const password = getString(formData, "password");
 
   if (!email) {
@@ -48,13 +51,82 @@ export async function signInShelterPortalAction(formData: FormData) {
   }
 
   const redirectTo = await getShelterPortalTarget(context);
-  if (!redirectTo || sanitizeNextPath(redirectTo) !== redirectTo) {
+  if (!redirectTo || !redirectTo.startsWith("/shelter/")) {
     await supabase.auth.signOut();
     shelterLoginRedirect("This shelter account is not linked to a shelter yet.");
   }
 
   revalidatePath("/shelter");
   redirect(redirectTo);
+}
+
+export async function updateShelterPortalAccountAction(formData: FormData) {
+  const context = await getAdminAuthContext({ includePhraseGate: false });
+
+  if (!context || context.role !== "shelter_admin" || !context.userId) {
+    redirect("/shelter?message=Sign in to update your shelter account.");
+  }
+
+  const username = normalizeShelterPortalUsername(getString(formData, "username"));
+  const email = getString(formData, "email").toLowerCase();
+  const newPassword = getString(formData, "newPassword");
+  const returnTo = getString(formData, "returnTo");
+  const portalTarget = await getShelterPortalTarget(context);
+  const safeReturnTo = returnTo.startsWith("/shelter/") ? returnTo : portalTarget ?? "/shelter";
+
+  if (!isValidShelterPortalUsername(username)) {
+    redirect(`${safeReturnTo}?account=invalid-username`);
+  }
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    redirect(`${safeReturnTo}?account=invalid-email`);
+  }
+
+  if (newPassword && newPassword.length < 6) {
+    redirect(`${safeReturnTo}?account=weak-password`);
+  }
+
+  const admin = createAdminClient();
+  const { error: usernameError } = await (admin as any)
+    .from("shelter_portal_accounts")
+    .upsert({
+      profile_id: context.userId,
+      username,
+    }, { onConflict: "profile_id" });
+
+  if (usernameError) {
+    const message = String(usernameError.message ?? "").toLowerCase().includes("duplicate")
+      ? "username-taken"
+      : "account-error";
+    redirect(`${safeReturnTo}?account=${message}`);
+  }
+
+  const { error: authError } = await admin.auth.admin.updateUserById(context.userId, {
+    email,
+    email_confirm: true,
+    ...(newPassword ? { password: newPassword } : {}),
+  });
+
+  if (authError) {
+    redirect(`${safeReturnTo}?account=auth-error`);
+  }
+
+  await logAdminAuditEvent({
+    action: "shelter_portal_account.update",
+    context,
+    metadata: {
+      changedEmail: email !== context.userEmail,
+      changedPassword: Boolean(newPassword),
+      username,
+    },
+    shelterId: context.shelterIds[0] ?? null,
+    targetId: context.userId,
+    targetTable: "shelter_portal_accounts",
+  });
+
+  revalidatePath("/shelter");
+  revalidatePath(safeReturnTo);
+  redirect(`${safeReturnTo}?account=saved`);
 }
 
 export async function signOutShelterPortalAction() {

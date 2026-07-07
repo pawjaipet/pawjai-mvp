@@ -15,7 +15,7 @@ const TABS = [
 export default function BottomNavBar() {
   const pathname = usePathname();
 
-  if (pathname.startsWith("/admin") || pathname.startsWith("/doglistings") || pathname.startsWith("/onboarding")) {
+  if (pathname.startsWith("/admin") || pathname.startsWith("/shelter") || pathname.startsWith("/doglistings") || pathname.startsWith("/onboarding")) {
     return null;
   }
 
