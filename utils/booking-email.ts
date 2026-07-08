@@ -58,6 +58,12 @@ type ReturnInquiryNotificationDetails = {
 
 const FALLBACK_NOTIFICATION_TO = "pawjaipet@gmail.com";
 const DEFAULT_FROM = "PawJai <onboarding@resend.dev>";
+const BLOCKED_NOTIFICATION_DOMAINS = new Set([
+  "example.com",
+  "example.net",
+  "example.org",
+]);
+const BLOCKED_NOTIFICATION_TLDS = [".example", ".invalid", ".localhost", ".test"];
 
 function compactJoin(parts: Array<string | null | undefined>) {
   return parts.map((part) => String(part ?? "").trim()).filter(Boolean).join(", ");
@@ -70,6 +76,17 @@ function escapeHtml(value: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function normalizeDeliverableEmail(value: string | null | undefined) {
+  const email = String(value ?? "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "";
+
+  const domain = email.split("@").pop() ?? "";
+  if (BLOCKED_NOTIFICATION_DOMAINS.has(domain)) return "";
+  if (BLOCKED_NOTIFICATION_TLDS.some((suffix) => domain.endsWith(suffix))) return "";
+
+  return email;
 }
 
 function eventFromStatus(status: BookingEmailStatus): BookingNotificationEvent {
@@ -111,7 +128,8 @@ function eventCopy(event: BookingNotificationEvent, audience: BookingNotificatio
 export function getBookingNotificationRecipient({
   recipientEmail,
 }: BookingNotificationRecipientInput) {
-  return String(recipientEmail || FALLBACK_NOTIFICATION_TO).trim();
+  if (!String(recipientEmail ?? "").trim()) return FALLBACK_NOTIFICATION_TO;
+  return normalizeDeliverableEmail(recipientEmail);
 }
 
 function formatVisit(appointment: BookingEmailDetails["appointment"]) {
@@ -183,7 +201,7 @@ function buildBookingNotificationEmailForAudience(
   const event = eventCopy(notificationEvent, audience);
   const lines = buildNotificationLines(details, audience);
   const to = audience === "shelter"
-    ? String(details.shelter.email ?? "").trim()
+    ? normalizeDeliverableEmail(details.shelter.email)
     : getBookingNotificationRecipient({ recipientEmail: details.recipientEmail });
 
   if (!to) return null;
@@ -298,7 +316,7 @@ export async function sendBookingNotificationForAppointment({
 }
 
 export function buildReturnInquiryNotificationEmail(details: ReturnInquiryNotificationDetails) {
-  const to = String(details.shelter.email ?? "").trim();
+  const to = normalizeDeliverableEmail(details.shelter.email);
   if (!to) return null;
 
   const lines = [

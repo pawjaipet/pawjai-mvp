@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Calendar, ShieldCheck, Bookmark } from "lucide-react";
@@ -9,6 +10,7 @@ import DogPhotoGallery from "@/components/dogs/DogPhotoGallery";
 import TreatButton from "@/components/donations/TreatButton";
 import type { DogPhoto, DogTrait } from "@/types/database";
 import { buildDogMediaItems } from "@/utils/dog-media";
+import { NOINDEX_ROBOTS, canonicalUrl } from "@/utils/seo";
 import { toggleWishlist } from "./actions";
 
 const M = "Montserrat, sans-serif";
@@ -42,6 +44,56 @@ function StatCard({ label, value }: { label: string; value: string }) {
       </p>
     </div>
   );
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const canonicalPath = `/dogs/${id}`;
+
+  try {
+    const supabase = await createClient();
+    const { data: dog } = await supabase
+      .from("dogs")
+      .select("name, breed, background, adoption_status")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (!dog) {
+      return {
+        title: "Dog profile",
+        alternates: { canonical: canonicalPath },
+        robots: NOINDEX_ROBOTS,
+      };
+    }
+
+    const isAvailable = dog.adoption_status === "available";
+    const title = isAvailable ? `Adopt ${dog.name}` : `${dog.name} profile`;
+    const description =
+      dog.background?.trim().slice(0, 155) ||
+      `${dog.name}${dog.breed ? `, a ${dog.breed}` : ""}, is listed on PawJai.`;
+
+    return {
+      title,
+      description,
+      alternates: { canonical: canonicalPath },
+      robots: isAvailable ? { index: true, follow: true } : NOINDEX_ROBOTS,
+      openGraph: {
+        title,
+        description,
+        url: canonicalUrl(canonicalPath),
+        type: "article",
+      },
+    };
+  } catch {
+    return {
+      title: "Dog profile",
+      alternates: { canonical: canonicalPath },
+    };
+  }
 }
 
 export default async function DogProfilePage({

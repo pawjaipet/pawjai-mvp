@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -7,8 +8,23 @@ import type { Database } from "@/types/database";
 import { fetchActiveAds } from "@/utils/ads";
 import { buildDogMediaItems } from "@/utils/dog-media";
 import { filterDogsByPreferences, hasActiveDogPreference, type PreferenceForDogFilter } from "@/utils/dog-preference-filter";
+import { canonicalUrl } from "@/utils/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Adopt a Dog in Thailand",
+  description: "Browse adoptable dogs from Thai shelters and find a companion who matches your home, lifestyle, and heart.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "PawJai - Adopt a Dog in Thailand",
+    description: "Browse adoptable dogs from Thai shelters and find your match.",
+    url: canonicalUrl("/"),
+    type: "website",
+  },
+};
 
 function hasUploadedPhoto(dog: SwipeDog) {
   const urls = [

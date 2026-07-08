@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import {
   buildPawjaiContactHref,
@@ -5,6 +6,7 @@ import {
   pawjaiContactIcon,
 } from "@/utils/pawjai-profile";
 import { createClient } from "@/utils/supabase/server";
+import { canonicalUrl } from "@/utils/seo";
 
 const M = "Montserrat, sans-serif";
 
@@ -13,6 +15,20 @@ const HOW_IT_WORKS = [
   { step: "2", icon: "📅", title: "Book a Visit", desc: "Schedule a meet-and-greet at the shelter at a time that suits you. No adoption pressure — just a friendly visit." },
   { step: "3", icon: "🏠", title: "Adopt & Celebrate", desc: "Complete the adoption paperwork with the shelter and bring your new companion home!" },
 ];
+
+export const metadata: Metadata = {
+  title: "About PawJai",
+  description: "Learn how PawJai helps people in Thailand discover, match with, and adopt dogs from shelter partners.",
+  alternates: {
+    canonical: "/about",
+  },
+  openGraph: {
+    title: "About PawJai",
+    description: "Learn how PawJai helps people in Thailand adopt dogs from shelter partners.",
+    url: canonicalUrl("/about"),
+    type: "website",
+  },
+};
 
 export default async function AboutPage() {
   const supabase = await createClient();

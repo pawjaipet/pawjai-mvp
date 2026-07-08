@@ -134,11 +134,11 @@ const details = {
     status: "requested",
   },
   dogName: "Mali",
-  recipientEmail: "adopter@example.com",
+  recipientEmail: "adopter@pawjai.pet",
   shelter: {
     addressLine: "123 Happy Road",
     district: "Watthana",
-    email: "shelter@example.com",
+    email: "shelter@pawjai.pet",
     name: "Bangkok Dog Shelter",
     phoneNumber: "02-123-4567",
     postalCode: "10110",
@@ -151,12 +151,12 @@ test("builds a pending adopter email with booking number, contact, location, and
   const { buildBookingNotificationEmail } = loadBookingEmail();
   const email = buildBookingNotificationEmail(details);
 
-  assert.equal(email.to, "adopter@example.com");
+  assert.equal(email.to, "adopter@pawjai.pet");
   assert.equal(email.subject, "PawJai booking APT-5F1A2 is pending");
   assert.match(email.text, /Booking number: APT-5F1A2/);
   assert.match(email.text, /Status: Pending/);
   assert.match(email.text, /Visit: 2026-05-30 at 13:00/);
-  assert.match(email.text, /Shelter contact: Bangkok Dog Shelter, shelter@example.com, 02-123-4567/);
+  assert.match(email.text, /Shelter contact: Bangkok Dog Shelter, shelter@pawjai.pet, 02-123-4567/);
   assert.match(email.text, /Shelter location: 123 Happy Road, Khlong Tan Nuea, Watthana, Bangkok, 10110/);
 });
 
@@ -165,11 +165,11 @@ test("builds role-aware booking emails for the adopter and shelter", () => {
   const emails = buildBookingNotificationEmails(details);
 
   assert.equal(emails.length, 2);
-  assert.equal(emails[0].to, "adopter@example.com");
+  assert.equal(emails[0].to, "adopter@pawjai.pet");
   assert.equal(emails[0].subject, "PawJai booking APT-5F1A2 is pending");
-  assert.equal(emails[1].to, "shelter@example.com");
+  assert.equal(emails[1].to, "shelter@pawjai.pet");
   assert.equal(emails[1].subject, "New PawJai booking APT-5F1A2 is pending");
-  assert.match(emails[1].text, /Adopter: adopter@example.com/);
+  assert.match(emails[1].text, /Adopter: adopter@pawjai.pet/);
   assert.match(emails[1].text, /Dog: Mali/);
   assert.match(emails[1].text, /Visit: 2026-05-30 at 13:00/);
 });
@@ -219,19 +219,19 @@ test("builds shelter-only return inquiry email", () => {
       appointmentTime: "13:00",
       bookingCode: "APT-5F1A2",
     },
-    adopterName: "Mali Visitor, adopter@example.com",
+    adopterName: "Mali Visitor, adopter@pawjai.pet",
     dogName: "Yala",
     shelter: {
-      email: "shelter@example.com",
+      email: "shelter@pawjai.pet",
       name: "Bangkok Dog Shelter",
     },
   });
 
-  assert.equal(email.to, "shelter@example.com");
+  assert.equal(email.to, "shelter@pawjai.pet");
   assert.equal(email.subject, "PawJai return inquiry for booking APT-5F1A2");
   assert.match(email.text, /Status: Return inquiry/);
   assert.match(email.text, /Visit: 2026-05-30 at 13:00/);
-  assert.match(email.text, /Adopter: Mali Visitor, adopter@example.com/);
+  assert.match(email.text, /Adopter: Mali Visitor, adopter@pawjai.pet/);
   assert.match(email.text, /Dog: Yala/);
 });
 
@@ -243,7 +243,36 @@ test("skips the shelter email when the shelter profile has no email", () => {
   });
 
   assert.equal(emails.length, 1);
-  assert.equal(emails[0].to, "adopter@example.com");
+  assert.equal(emails[0].to, "adopter@pawjai.pet");
+});
+
+test("skips reserved example.com recipients so QA bookings do not bounce", () => {
+  const { buildBookingNotificationEmails, buildReturnInquiryNotificationEmail, getBookingNotificationRecipient } = loadBookingEmail();
+  const emails = buildBookingNotificationEmails({
+    ...details,
+    recipientEmail: "codex-pawjai-qa-1782895471164@example.com",
+    shelter: {
+      ...details.shelter,
+      email: "qa-shelter-1782896841423@example.com",
+    },
+  });
+
+  assert.equal(emails.length, 0);
+  assert.equal(
+    getBookingNotificationRecipient({
+      recipientEmail: "codex-pawjai-qa-1782895471164@example.com",
+    }),
+    "",
+  );
+  assert.equal(
+    buildReturnInquiryNotificationEmail({
+      appointment: details.appointment,
+      adopterName: "QA Visitor",
+      dogName: "Yala",
+      shelter: { email: "qa-shelter-1782896841423@example.com", name: "QA Shelter" },
+    }),
+    null,
+  );
 });
 
 test("falls back to the PawJai inbox only when the adopter email is missing", () => {
@@ -251,9 +280,9 @@ test("falls back to the PawJai inbox only when the adopter email is missing", ()
 
   assert.equal(
     getBookingNotificationRecipient({
-      recipientEmail: "adopter@example.com",
+      recipientEmail: "adopter@pawjai.pet",
     }),
-    "adopter@example.com",
+    "adopter@pawjai.pet",
   );
   assert.equal(
     getBookingNotificationRecipient({

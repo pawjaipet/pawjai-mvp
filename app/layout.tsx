@@ -3,6 +3,7 @@ import { Montserrat } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import BottomNavBar from "@/components/BottomNavBar";
+import { SITE_URL } from "@/utils/seo";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -11,8 +12,25 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "PawJai — Find Your Perfect Companion",
-  description: "Thai dog adoption and matching platform",
+  metadataBase: new URL(SITE_URL),
+  applicationName: "PawJai",
+  title: {
+    default: "PawJai - Find Your Perfect Companion",
+    template: "%s | PawJai",
+  },
+  description: "Thai dog adoption and matching platform.",
+  openGraph: {
+    title: "PawJai - Find Your Perfect Companion",
+    description: "Thai dog adoption and matching platform.",
+    siteName: "PawJai",
+    url: SITE_URL,
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "PawJai - Find Your Perfect Companion",
+    description: "Thai dog adoption and matching platform.",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
