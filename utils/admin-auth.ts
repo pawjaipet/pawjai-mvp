@@ -10,6 +10,7 @@ import type { Database } from "@/types/database";
 const ADMIN_GATE_COOKIE = "pawjai_admin_gate_unlocked";
 const ADMIN_DRAFT_COOKIE = "pawjai_admin_draft_unlocked";
 const ADMIN_GATE_PASSPHRASE = "pawjaiadmin!";
+const ADMIN_GATE_COOKIE_PATHS = ["/admin", "/booking"];
 
 export type AdminAuthContext = {
   fullName: string | null;
@@ -117,28 +118,32 @@ export async function closeAdminGate() {
   await supabase.auth.signOut();
 
   const cookieStore = await cookies();
-  cookieStore.set({
-    httpOnly: true,
-    maxAge: 0,
-    name: ADMIN_GATE_COOKIE,
-    path: "/admin",
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    value: "",
-  });
+  for (const path of ADMIN_GATE_COOKIE_PATHS) {
+    cookieStore.set({
+      httpOnly: true,
+      maxAge: 0,
+      name: ADMIN_GATE_COOKIE,
+      path,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      value: "",
+    });
+  }
 }
 
 export async function openAdminGate() {
   const cookieStore = await cookies();
-  cookieStore.set({
-    httpOnly: true,
-    maxAge: 60 * 60 * 8,
-    name: ADMIN_GATE_COOKIE,
-    path: "/admin",
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    value: "1",
-  });
+  for (const path of ADMIN_GATE_COOKIE_PATHS) {
+    cookieStore.set({
+      httpOnly: true,
+      maxAge: 60 * 60 * 8,
+      name: ADMIN_GATE_COOKIE,
+      path,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      value: "1",
+    });
+  }
 }
 
 export function validateAdminPassphrase(phrase: string) {

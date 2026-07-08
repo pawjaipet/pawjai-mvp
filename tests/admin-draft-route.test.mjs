@@ -20,6 +20,7 @@ test("/admindraft requires the lightweight draft phrase gate before loading data
   assert.equal(pageSource.includes("<AdminDraftGate"), true);
   assert.equal(actionSource.includes("pawjaiadmin!"), true);
   assert.equal(actionSource.includes("httpOnly: true"), true);
+  assert.equal(actionSource.includes('const ADMIN_DRAFT_COOKIE_PATHS = ["/admindraft", "/booking"]'), true);
   assert.equal(gateSource.includes("Unlock the admin draft workspace."), true);
   assert.equal(gateSource.includes("Admin phrase"), true);
   assert.equal(gateSource.includes("/shelter"), true);
