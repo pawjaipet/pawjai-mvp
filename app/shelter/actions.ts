@@ -17,6 +17,15 @@ import {
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
+const SHELTER_CHAT_ATTACHMENTS_BUCKET = "dog-photos";
+const SHELTER_CHAT_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+const SHELTER_CHAT_ATTACHMENT_MIME_TO_EXTENSION: Record<string, string> = {
+  "application/pdf": "pdf",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
 function shelterLoginRedirect(message: string): never {
   const params = new URLSearchParams();
   params.set("message", message);
@@ -31,6 +40,65 @@ function getString(formData: FormData, name: string) {
 function appendShelterPortalParam(path: string, key: string, value: string) {
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}${key}=${encodeURIComponent(value)}`;
+}
+
+function getShelterAttachmentFile(formData: FormData) {
+  const file = formData.get("attachment");
+  if (!(file instanceof File) || file.size <= 0) return null;
+  return file;
+}
+
+function getShelterAttachmentExtension(file: File) {
+  const fromType = SHELTER_CHAT_ATTACHMENT_MIME_TO_EXTENSION[file.type];
+  if (fromType) return fromType;
+
+  const match = file.name.match(/\.([a-z0-9]+)$/i);
+  return match?.[1]?.toLowerCase() ?? "file";
+}
+
+async function uploadShelterAppointmentAttachment({
+  appointmentId,
+  file,
+  userId,
+}: {
+  appointmentId: string;
+  file: File;
+  userId: string | null;
+}) {
+  if (!Object.hasOwn(SHELTER_CHAT_ATTACHMENT_MIME_TO_EXTENSION, file.type)) {
+    throw new Error("Only JPG, PNG, WebP, or PDF files can be attached to shelter messages.");
+  }
+
+  if (file.size > SHELTER_CHAT_ATTACHMENT_MAX_BYTES) {
+    throw new Error("Files must be 10 MB or smaller.");
+  }
+
+  const admin = createAdminClient();
+  const extension = getShelterAttachmentExtension(file);
+  const storagePath = `appointment-messages/${appointmentId}/${crypto.randomUUID()}.${extension}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error: uploadError } = await admin.storage.from(SHELTER_CHAT_ATTACHMENTS_BUCKET).upload(storagePath, buffer, {
+    contentType: file.type,
+    metadata: {
+      appointmentId,
+      originalName: file.name,
+      uploadedBy: userId ?? "shelter",
+    },
+    upsert: false,
+  });
+
+  if (uploadError) {
+    throw new Error(`Supabase attachment upload failed: ${uploadError.message}`);
+  }
+
+  const { data } = admin.storage.from(SHELTER_CHAT_ATTACHMENTS_BUCKET).getPublicUrl(storagePath);
+
+  return {
+    name: file.name,
+    type: file.type,
+    url: data.publicUrl,
+  };
 }
 
 export async function signInShelterPortalAction(formData: FormData) {
@@ -148,6 +216,7 @@ export async function signOutShelterPortalAction() {
 export async function sendShelterAppointmentMessageAction(formData: FormData) {
   const appointmentId = getString(formData, "appointmentId");
   const body = getString(formData, "body");
+  const attachmentFile = getShelterAttachmentFile(formData);
   const returnTo = getString(formData, "returnTo");
   const context = await getAdminAuthContext({ includePhraseGate: false });
 
@@ -162,7 +231,7 @@ export async function sendShelterAppointmentMessageAction(formData: FormData) {
       ? `${portalTarget}?view=messages`
       : "/shelter";
 
-  if (!appointmentId || !body) {
+  if (!appointmentId || (!body && !attachmentFile)) {
     redirect(safeReturnTo);
   }
 
@@ -177,12 +246,31 @@ export async function sendShelterAppointmentMessageAction(formData: FormData) {
     redirect(appendShelterPortalParam(safeReturnTo, "message", "thread-unavailable"));
   }
 
+  let attachment: Awaited<ReturnType<typeof uploadShelterAppointmentAttachment>> | null = null;
+  if (attachmentFile) {
+    try {
+      attachment = await uploadShelterAppointmentAttachment({
+        appointmentId: appointment.id,
+        file: attachmentFile,
+        userId: context.userId,
+      });
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : "Attachment could not be uploaded. Please try again.";
+      redirect(appendShelterPortalParam(safeReturnTo, "message", message));
+    }
+  }
+
   const senderLabel = context.fullName || context.userEmail || "Shelter team";
   const now = new Date().toISOString();
   const { error } = await admin.from("appointment_messages").insert({
     adopter_id: appointment.adopter_id,
     appointment_id: appointment.id,
-    body,
+    attachment_name: attachment?.name ?? null,
+    attachment_type: attachment?.type ?? null,
+    attachment_url: attachment?.url ?? null,
+    body: body || (attachment ? `Attachment: ${attachment.name}` : body),
     read_by_shelter_at: now,
     sender_label: senderLabel,
     sender_role: "shelter",

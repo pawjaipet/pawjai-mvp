@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { acceptRescheduleRequestAction, cancelAppointmentFromListAction } from "@/app/appointments/actions";
-import { cancelAppointmentAction, createReturnInquiryAction, sendAppointmentMessageAction } from "@/app/appointments/[id]/actions";
+import { cancelAppointmentAction, sendAppointmentMessageAction, submitReturnInquiryAction } from "@/app/appointments/[id]/actions";
 
 const M = "Montserrat, sans-serif";
 
@@ -212,6 +212,7 @@ export default function AppointmentDetailClient({
           dogName={dog?.name ?? "the shelter"}
           initialMessages={initialMessages}
           messagesUnavailable={messagesUnavailable}
+          shelter={shelter}
         />
       )}
 
@@ -615,17 +616,20 @@ function MessagesTab({
   dogName,
   initialMessages,
   messagesUnavailable,
+  shelter,
 }: {
   appointmentId: string;
   dogName: string;
   initialMessages: AppointmentThreadMessage[];
   messagesUnavailable: boolean;
+  shelter: Props["shelter"];
 }) {
   const attachRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
-  const [isReturnPending, startReturnTransition] = useTransition();
+  const [showComposerActions, setShowComposerActions] = useState(false);
 
   function prefillDraft(text: string, opts?: { attach?: boolean }) {
     setDraft(text);
@@ -639,31 +643,14 @@ function MessagesTab({
   }
 
   useEffect(() => {
-    if (!returnOpen) return;
+    if (!returnOpen && !helpOpen) return;
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setHelpOpen(false);
       if (e.key === "Escape") setReturnOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [returnOpen]);
-
-  const quickActions = [
-    {
-      emoji: "📷",
-      label: "Send update photo",
-      onClick: () => prefillDraft(`Just wanted to share an update on ${dogName}! 📷`, { attach: true }),
-    },
-    {
-      emoji: "🆘",
-      label: "I need help",
-      onClick: () => prefillDraft(`Hi, I could use some help with ${dogName}. `),
-    },
-    {
-      emoji: "💔",
-      label: "Return inquiry",
-      onClick: () => setReturnOpen(true),
-    },
-  ];
+  }, [helpOpen, returnOpen]);
   const chatMessages = [
     ...(initialMessages.length > 0
       ? initialMessages
@@ -702,26 +689,6 @@ function MessagesTab({
         onChange={(e) => handleAttachment(e.target.files)}
       />
 
-      {/* Quick-action chip row */}
-      <div
-        className="flex gap-[8px] overflow-x-auto px-[14px] pt-[12px] pb-[10px] shrink-0"
-        style={{ scrollbarWidth: "none" }}
-      >
-        {quickActions.map((c) => (
-          <button
-            key={c.label}
-            type="button"
-            onClick={c.onClick}
-            disabled={messagesUnavailable}
-            className="flex items-center gap-[6px] rounded-full px-[14px] py-[8px] whitespace-nowrap shrink-0 active:scale-95 transition-transform disabled:opacity-55"
-            style={{ background: "#f5f0e8", color: "#65584f", fontFamily: M, fontSize: "13px", fontWeight: 600 }}
-          >
-            <span aria-hidden>{c.emoji}</span>
-            {c.label}
-          </button>
-        ))}
-      </div>
-
       <div className="flex-1 px-[16px] py-[20px] space-y-[16px] overflow-y-auto">
         {messagesUnavailable && (
           <div className="rounded-[14px] border border-[#eadfce] bg-[#fffaf2] px-[14px] py-[12px]">
@@ -753,6 +720,16 @@ function MessagesTab({
                   />
                 )}
                 <p className="text-[14px] leading-[1.45]" style={{ fontFamily: M }}>{msg.body}</p>
+                {msg.attachmentUrl && !msg.attachmentType?.startsWith("image/") && (
+                  <a
+                    className={`mt-[10px] inline-flex text-[13px] font-semibold underline ${fromMe ? "text-white" : "text-[#9a6b2a]"}`}
+                    href={msg.attachmentUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    View attachment
+                  </a>
+                )}
               </div>
               <p
                 className={`text-[11px] mt-[4px] ${fromMe ? "text-right" : ""}`}
@@ -767,90 +744,130 @@ function MessagesTab({
       </div>
 
       {/* Composer */}
-      <form
-        action={async (formData) => {
-          const attachment = attachRef.current?.files?.[0];
-          if (attachment) {
-            formData.set("attachment", attachment);
-          }
-          await sendAppointmentMessageAction(formData);
-          setDraft("");
-          if (attachRef.current) attachRef.current.value = "";
-        }}
-        className="sticky bottom-[70px] flex items-center gap-[10px] px-[14px] py-[12px] bg-white border-t border-[#d6c8ad]/40"
-      >
-        <input name="appointmentId" type="hidden" value={appointmentId} />
-        <button
-          type="button"
-          onClick={() => attachRef.current?.click()}
-          disabled={messagesUnavailable}
-          className="w-[40px] h-[40px] rounded-full flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform disabled:opacity-55"
-          style={{ background: "#d6c8ad" }}
-          aria-label="Attach"
+      <div className="sticky bottom-[70px] bg-white border-t border-[#d6c8ad]/40">
+        <form
+          action={async (formData) => {
+            const attachment = attachRef.current?.files?.[0];
+            if (attachment) {
+              formData.set("attachment", attachment);
+            }
+            await sendAppointmentMessageAction(formData);
+            setDraft("");
+            setShowComposerActions(false);
+            if (attachRef.current) attachRef.current.value = "";
+          }}
+          className="flex items-center gap-[10px] px-[14px] py-[12px]"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#65584f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </button>
-        <input
-          ref={bodyRef}
-          type="text"
-          name="body"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Write your message here"
-          disabled={messagesUnavailable}
-          className="flex-1 rounded-full px-[18px] py-[12px] text-[14px] outline-none"
-          style={{ background: "#f5f0e8", color: "#65584f", fontFamily: M }}
-        />
-        <button
-          aria-label="Send message"
-          className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full active:scale-95 disabled:opacity-55"
-          style={{ background: "#cd8188" }}
-          disabled={messagesUnavailable}
-          type="submit"
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13" />
-            <polygon points="22 2 15 22 11 13 2 9 22 2" />
-          </svg>
-        </button>
-      </form>
+          <input name="appointmentId" type="hidden" value={appointmentId} />
+          <button
+            type="button"
+            onClick={() => attachRef.current?.click()}
+            disabled={messagesUnavailable}
+            className="w-[40px] h-[40px] rounded-full flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform disabled:opacity-55"
+            style={{ background: "#d6c8ad" }}
+            aria-label="Attach"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#65584f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+          <input
+            ref={bodyRef}
+            type="text"
+            name="body"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onFocus={() => setShowComposerActions(true)}
+            placeholder="Write your message here"
+            disabled={messagesUnavailable}
+            className="flex-1 rounded-full px-[18px] py-[12px] text-[14px] outline-none"
+            style={{ background: "#f5f0e8", color: "#65584f", fontFamily: M }}
+          />
+          <button
+            aria-label="Send message"
+            className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full active:scale-95 disabled:opacity-55"
+            style={{ background: "#cd8188" }}
+            disabled={messagesUnavailable}
+            type="submit"
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        </form>
+        {showComposerActions && (
+          <div className="grid grid-cols-2 gap-[8px] px-[14px] pb-[12px]">
+            <button
+              className="rounded-full px-[12px] py-[10px] text-[13px] font-bold active:scale-95 disabled:opacity-55"
+              disabled={messagesUnavailable}
+              onClick={() => setHelpOpen(true)}
+              style={{ background: "#f5f0e8", color: "#65584f", fontFamily: M }}
+              type="button"
+            >
+              SOS I need help
+            </button>
+            <button
+              className="rounded-full px-[12px] py-[10px] text-[13px] font-bold text-white active:scale-95 disabled:opacity-55"
+              disabled={messagesUnavailable}
+              onClick={() => setReturnOpen(true)}
+              style={{ background: "#cd8188", fontFamily: M }}
+              type="button"
+            >
+              Return inquiry
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Return Inquiry modal */}
       {returnOpen && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-[18px]"
           onClick={() => setReturnOpen(false)}
+          style={{ paddingTop: "max(24px, env(safe-area-inset-top))", paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}
         >
-          <div
+          <form
+            action={submitReturnInquiryAction}
             role="dialog"
             aria-modal="true"
-            aria-label={`Thinking about returning ${dogName}?`}
-            className="w-full max-w-[340px] rounded-[20px] bg-white px-[26px] py-[28px]"
+            aria-label={`Return inquiry for ${dogName}`}
+            className="w-full max-w-[340px] rounded-[20px] bg-white px-[22px] py-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.24)]"
             onClick={(e) => e.stopPropagation()}
           >
+            <input name="appointmentId" type="hidden" value={appointmentId} />
             <p className="text-[21px] font-bold leading-[1.2] text-[#65584f]" style={{ fontFamily: M }}>
-              Thinking about returning {dogName}?
+              Return inquiry for {dogName}
             </p>
-            <p className="mt-[12px] text-[15px] leading-[1.5] text-[#65584f]/80" style={{ fontFamily: M }}>
-              Life changes, and shelters understand. Let them know what&apos;s going on — they can offer training support, resources, or help with rehoming if that&apos;s the best path.
+            <p className="mt-[10px] text-[14px] leading-[1.5] text-[#65584f]/75" style={{ fontFamily: M }}>
+              Share what is happening so the shelter and PawJai team can respond in this conversation.
             </p>
+            <label className="mt-[18px] block text-[12px] font-bold uppercase tracking-[0.14em] text-[#65584f]/60" htmlFor="returnReason" style={{ fontFamily: M }}>
+              Reason
+            </label>
+            <textarea
+              className="mt-[8px] min-h-[118px] w-full rounded-[16px] border border-[#eadfce] bg-[#fffdfa] px-[14px] py-[12px] text-[14px] text-[#65584f] outline-none focus:border-[#cd8188]"
+              id="returnReason"
+              name="returnReason"
+              placeholder="Tell us why you need to return"
+              style={{ fontFamily: M }}
+            />
+            {shelter?.phone && (
+              <a
+                className="mt-[14px] flex w-full items-center justify-center rounded-full border border-[#eadfce] px-[14px] py-[11px] text-[13px] font-bold text-[#65584f] active:scale-95"
+                href={`tel:${shelter.phone}`}
+                style={{ fontFamily: M }}
+              >
+                Call shelter employee
+              </a>
+            )}
             <button
-              type="button"
-              onClick={() => {
-                startReturnTransition(async () => {
-                  await createReturnInquiryAction(appointmentId);
-                  setReturnOpen(false);
-                  prefillDraft(`Hi, I'm considering returning ${dogName}. Could we talk about what's going on?`);
-                });
-              }}
-              disabled={isReturnPending}
-              className="mt-[22px] w-full rounded-full py-[13px] text-[15px] font-semibold text-white active:scale-95 transition-transform"
+              className="mt-[14px] w-full rounded-full py-[13px] text-[15px] font-semibold text-white active:scale-95 transition-transform"
               style={{ background: "#cd8188", fontFamily: M }}
+              type="submit"
             >
-              Start the conversation
+              Send return inquiry
             </button>
             <button
               type="button"
@@ -859,6 +876,58 @@ function MessagesTab({
               style={{ fontFamily: M }}
             >
               Not right now
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* SOS help modal */}
+      {helpOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-[18px]"
+          onClick={() => setHelpOpen(false)}
+          style={{ paddingTop: "max(24px, env(safe-area-inset-top))", paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="SOS I need help"
+            className="w-full max-w-[340px] rounded-[20px] bg-white px-[22px] py-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.24)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-[21px] font-bold leading-[1.2] text-[#65584f]" style={{ fontFamily: M }}>
+              SOS I need help
+            </p>
+            <p className="mt-[10px] text-[14px] leading-[1.5] text-[#65584f]/75" style={{ fontFamily: M }}>
+              Contact the shelter for urgent visit or adoption details, or reach PawJai for platform support.
+            </p>
+            {shelter?.phone ? (
+              <a
+                className="mt-[18px] flex w-full items-center justify-center rounded-full bg-[#65584f] px-[14px] py-[13px] text-[14px] font-bold text-white active:scale-95"
+                href={`tel:${shelter.phone}`}
+                style={{ fontFamily: M }}
+              >
+                Call shelter employee
+              </a>
+            ) : (
+              <p className="mt-[18px] rounded-[14px] bg-[#f5f0e8] px-[14px] py-[12px] text-[13px] leading-[1.45] text-[#65584f]/75" style={{ fontFamily: M }}>
+                This shelter has not added a phone number yet.
+              </p>
+            )}
+            <a
+              className="mt-[10px] flex w-full items-center justify-center rounded-full border border-[#eadfce] bg-[#fffdfa] px-[14px] py-[13px] text-[14px] font-bold text-[#65584f] active:scale-95"
+              href="mailto:pawjaipet@gmail.com"
+              style={{ fontFamily: M }}
+            >
+              Contact PawJai admin
+            </a>
+            <button
+              type="button"
+              onClick={() => setHelpOpen(false)}
+              className="mt-[14px] w-full text-center text-[14px] text-[#65584f]/60 active:opacity-70"
+              style={{ fontFamily: M }}
+            >
+              Close
             </button>
           </div>
         </div>

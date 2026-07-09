@@ -140,13 +140,13 @@ export async function sendAppointmentMessageAction(formData: FormData) {
   const adopter = await ensureAdopterForUser(supabase, user);
   try {
     await assertRateLimit({
-      action: "return_inquiry.create",
-      identifier: user.id,
-      limit: 5,
-      windowSeconds: 60 * 60,
+      action: "appointment.message",
+      identifier: `${user.id}:${appointmentId}`,
+      limit: 20,
+      windowSeconds: 10 * 60,
     });
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Please wait before sending another return inquiry." };
+    return { ok: false, error: error instanceof Error ? error.message : "Please wait before sending more messages." };
   }
   const admin = createAdminClient();
   const { data: appointment } = await admin
@@ -240,4 +240,71 @@ export async function createReturnInquiryAction(appointmentId: string) {
   revalidatePath(`/appointments/${appointment.id}`);
   revalidatePath("/admin/bookings");
   return { ok: true };
+}
+
+export async function submitReturnInquiryAction(formData: FormData) {
+  const appointmentId = String(formData.get("appointmentId") ?? "");
+  const reason = String(formData.get("returnReason") ?? "").trim();
+
+  if (!appointmentId) return;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect(`/auth?next=${encodeURIComponent(`/appointments/${appointmentId}?tab=messages`)}&message=${encodeURIComponent("Sign in to contact the shelter.")}`);
+  }
+
+  const adopter = await ensureAdopterForUser(supabase, user);
+  const admin = createAdminClient();
+  const { data: appointment } = await admin
+    .from("appointments")
+    .select("id, adopter_id, dog_id, shelter_id")
+    .eq("id", appointmentId)
+    .eq("adopter_id", adopter.id)
+    .maybeSingle();
+
+  if (!appointment) {
+    redirect("/appointments");
+  }
+
+  const { error: inquiryError } = await admin.from("return_inquiries").insert({
+    adopter_id: adopter.id,
+    appointment_id: appointment.id,
+    dog_id: appointment.dog_id,
+    shelter_id: appointment.shelter_id,
+  });
+
+  if (inquiryError && inquiryError.code !== "23505") {
+    console.error("Return inquiry could not be recorded", inquiryError);
+    redirect(`/appointments/${appointment.id}?tab=messages&message=${encodeURIComponent("Return inquiry could not be sent.")}`);
+  }
+
+  const returnReason = reason || "No reason provided yet.";
+  const { error: messageError } = await admin.from("appointment_messages").insert({
+    adopter_id: adopter.id,
+    appointment_id: appointment.id,
+    body: `Return inquiry requested.\n\nReason: ${returnReason}`,
+    sender_label: [adopter.first_name, adopter.last_name].filter(Boolean).join(" ") || user.email || "Visitor",
+    sender_role: "adopter",
+    shelter_id: appointment.shelter_id,
+  });
+
+  if (messageError) {
+    const message = isAppointmentMessagesUnavailableError(messageError)
+      ? APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE
+      : "Return inquiry message could not be sent.";
+    redirect(`/appointments/${appointment.id}?tab=messages&message=${encodeURIComponent(message)}`);
+  }
+
+  if (!inquiryError) {
+    await sendReturnInquiryNotificationForAppointment({
+      admin,
+      appointmentId: appointment.id,
+    });
+  }
+
+  revalidatePath("/messages");
+  revalidatePath(`/appointments/${appointment.id}`);
+  revalidatePath("/admindraft");
+  redirect(`/appointments/${appointment.id}?tab=messages`);
 }

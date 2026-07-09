@@ -1504,13 +1504,22 @@ function ShelterMessagesTab({
                     {formatBookingDate(selectedThread.appointmentDate)} at {formatBookingTime(selectedThread.appointmentTime)} · {formatStatus(selectedThread.status)}
                   </p>
                 </div>
-                <Link
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-[#fffdfa] px-4 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
-                  href={withReturnTo(`/booking/${selectedThread.appointmentId}`, returnTo)}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Booking
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-[#fffdfa] px-4 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                    href={withReturnTo(`/booking/${selectedThread.appointmentId}`, returnTo)}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Booking
+                  </Link>
+                  <Link
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-[#fffdfa] px-4 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                    href={withReturnTo(`/booking/${selectedThread.appointmentId}/visitor-profile`, returnTo)}
+                  >
+                    <Users className="h-4 w-4" />
+                    Visitor profile
+                  </Link>
+                </div>
               </div>
               <div className="mt-4 max-h-[460px] space-y-3 overflow-y-auto pr-1">
                 {selectedThread.messages.length > 0 ? selectedThread.messages.map((message) => {
@@ -1552,25 +1561,41 @@ function ShelterMessagesTab({
                   Read-only PawJai admin view. Admin can review this conversation but cannot reply, edit, or mark shelter messages read.
                 </div>
               ) : (
-                <form action={sendShelterAppointmentMessageAction} className="mt-4 flex gap-2">
+                <form action={sendShelterAppointmentMessageAction} className="mt-4 grid gap-2" encType="multipart/form-data">
                   <input name="appointmentId" type="hidden" value={selectedThread.appointmentId} />
                   <input name="returnTo" type="hidden" value={returnTo} />
                   <label className="sr-only" htmlFor={`message-body-${selectedThread.appointmentId}`}>Write a shelter reply</label>
-                  <textarea
-                    className="min-h-12 flex-1 rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
-                    disabled={messagesUnavailable}
-                    id={`message-body-${selectedThread.appointmentId}`}
-                    name="body"
-                    placeholder={messagesUnavailable ? "Messaging temporarily unavailable" : "Write a shelter reply..."}
-                    required
-                  />
-                  <button
-                    className="h-12 rounded-full bg-[#d88c24] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#d6c8ad]"
-                    disabled={messagesUnavailable}
-                    type="submit"
+                  <div className="flex gap-2">
+                    <textarea
+                      className="min-h-12 flex-1 rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                      disabled={messagesUnavailable}
+                      id={`message-body-${selectedThread.appointmentId}`}
+                      name="body"
+                      placeholder={messagesUnavailable ? "Messaging temporarily unavailable" : "Write a shelter reply..."}
+                    />
+                    <button
+                      className="h-12 rounded-full bg-[#d88c24] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#d6c8ad]"
+                      disabled={messagesUnavailable}
+                      type="submit"
+                    >
+                      Send
+                    </button>
+                  </div>
+                  <label
+                    className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-[#eadfce] bg-[#fffdfa] px-4 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                    htmlFor={`shelter-attachment-${selectedThread.appointmentId}`}
                   >
-                    Send
-                  </button>
+                    <FileText className="h-4 w-4" />
+                    Attach file
+                  </label>
+                  <input
+                    accept="image/png,image/jpeg,image/webp,application/pdf"
+                    className="sr-only"
+                    disabled={messagesUnavailable}
+                    id={`shelter-attachment-${selectedThread.appointmentId}`}
+                    name="attachment"
+                    type="file"
+                  />
                 </form>
               )}
             </div>
