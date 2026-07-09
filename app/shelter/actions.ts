@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import { getAdminAuthContext } from "@/utils/admin-auth";
 import { logAdminAuditEvent } from "@/utils/admin-audit";
 import {
+  APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE,
+  isAppointmentMessagesUnavailableError,
+} from "@/utils/appointment-messages";
+import {
   getShelterPortalTarget,
   isValidShelterPortalUsername,
   normalizeShelterPortalUsername,
@@ -22,6 +26,11 @@ function shelterLoginRedirect(message: string): never {
 function getString(formData: FormData, name: string) {
   const value = formData.get(name);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function appendShelterPortalParam(path: string, key: string, value: string) {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}${key}=${encodeURIComponent(value)}`;
 }
 
 export async function signInShelterPortalAction(formData: FormData) {
@@ -134,4 +143,73 @@ export async function signOutShelterPortalAction() {
   await supabase.auth.signOut();
   revalidatePath("/shelter");
   redirect("/shelter");
+}
+
+export async function sendShelterAppointmentMessageAction(formData: FormData) {
+  const appointmentId = getString(formData, "appointmentId");
+  const body = getString(formData, "body");
+  const returnTo = getString(formData, "returnTo");
+  const context = await getAdminAuthContext({ includePhraseGate: false });
+
+  if (!context || context.role !== "shelter_admin") {
+    redirect("/shelter?message=Sign in with a shelter account to send messages.");
+  }
+
+  const portalTarget = await getShelterPortalTarget(context);
+  const safeReturnTo = returnTo.startsWith("/shelter/")
+    ? returnTo
+    : portalTarget
+      ? `${portalTarget}?view=messages`
+      : "/shelter";
+
+  if (!appointmentId || !body) {
+    redirect(safeReturnTo);
+  }
+
+  const admin = createAdminClient();
+  const { data: appointment } = await admin
+    .from("appointments")
+    .select("id,adopter_id,shelter_id")
+    .eq("id", appointmentId)
+    .maybeSingle();
+
+  if (!appointment || !context.shelterIds.includes(appointment.shelter_id)) {
+    redirect(appendShelterPortalParam(safeReturnTo, "message", "thread-unavailable"));
+  }
+
+  const senderLabel = context.fullName || context.userEmail || "Shelter team";
+  const now = new Date().toISOString();
+  const { error } = await admin.from("appointment_messages").insert({
+    adopter_id: appointment.adopter_id,
+    appointment_id: appointment.id,
+    body,
+    read_by_shelter_at: now,
+    sender_label: senderLabel,
+    sender_role: "shelter",
+    shelter_id: appointment.shelter_id,
+  });
+
+  if (error) {
+    const message = isAppointmentMessagesUnavailableError(error)
+      ? APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE
+      : "Shelter message could not be sent.";
+    redirect(appendShelterPortalParam(safeReturnTo, "message", message));
+  }
+
+  await logAdminAuditEvent({
+    action: "appointment_message.shelter_send",
+    context,
+    metadata: {
+      appointmentId: appointment.id,
+    },
+    shelterId: appointment.shelter_id,
+    targetId: appointment.id,
+    targetTable: "appointment_messages",
+  });
+
+  revalidatePath("/messages");
+  revalidatePath(`/appointments/${appointment.id}`);
+  revalidatePath("/admindraft");
+  revalidatePath(safeReturnTo);
+  redirect(safeReturnTo);
 }

@@ -38,7 +38,7 @@ import {
   updateShelterOperatingDaysAction,
   updateShelterProfileAction,
 } from "@/app/admin/bookings/actions";
-import { signOutShelterPortalAction } from "@/app/shelter/actions";
+import { sendShelterAppointmentMessageAction, signOutShelterPortalAction } from "@/app/shelter/actions";
 import DonationDetailsFields from "@/app/admin/bookings/DonationDetailsFields";
 import type {
   AdminDraftAboutContent,
@@ -53,6 +53,8 @@ type RoleView = "pawjai" | "shelter";
 type MainTab = "shelters" | "dogs" | "bookings" | "ads" | "about";
 type ShelterTab = "profile" | "dogs" | "bookings" | "messages";
 type VisitBucket = "upcoming" | "needs_follow_up" | "past" | "all";
+type MessageFilter = "all" | "unread" | "upcoming" | "needs_reply";
+type AdminDraftMessageThread = AdminDraftData["messageThreads"][number];
 
 const DRAFT_RETURN_TO = "/admindraft";
 const BOOKING_STATUS_OPTIONS = ["requested", "confirmed", "completed", "cancelled", "no_show"];
@@ -310,6 +312,16 @@ function formatBookingTime(time: string) {
   });
 }
 
+function formatMessageTime(value: string | null | undefined) {
+  if (!value) return "No messages yet";
+  return new Date(value).toLocaleString("en-US", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+  });
+}
+
 function bookingStatusClass(status: string) {
   switch (status) {
     case "confirmed":
@@ -389,6 +401,19 @@ function matchesDogFilters(dog: AdminDraftDog, search: string, status: string) {
     .toLowerCase();
 
   return (!query || searchable.includes(query)) && (status === "all" || dog.status === status);
+}
+
+function matchesMessageThread(thread: AdminDraftMessageThread, messageSearch: string, messageFilter: MessageFilter) {
+  const query = messageSearch.trim().toLowerCase();
+
+  if (query && !thread.searchableText.includes(query)) return false;
+  if (messageFilter === "unread") return thread.unreadForShelterCount > 0;
+  if (messageFilter === "needs_reply") return thread.needsReply;
+  if (messageFilter === "upcoming") {
+    const visitDate = new Date(`${thread.appointmentDate}T${thread.appointmentTime || "00:00"}`);
+    return Number.isNaN(visitDate.getTime()) ? true : visitDate >= new Date();
+  }
+  return true;
 }
 
 function shelterFilterOptions(shelters: AdminDraftShelter[]) {
@@ -1357,29 +1382,203 @@ function ShelterBookingsTab({
   );
 }
 
-function ShelterMessagesTab({ shelter }: { shelter: AdminDraftShelter }) {
+function ShelterMessagesTab({
+  adminMode,
+  messageThreads,
+  messagesUnavailable,
+  returnTo,
+  shelter,
+}: {
+  adminMode: boolean;
+  messageThreads: AdminDraftMessageThread[];
+  messagesUnavailable: boolean;
+  returnTo: string;
+  shelter: AdminDraftShelter;
+}) {
+  const [messageFilter, setMessageFilter] = useState<MessageFilter>("all");
+  const [messageSearch, setMessageSearch] = useState("");
+  const [selectedThreadId, setSelectedThreadId] = useState("");
+  const shelterThreads = messageThreads.filter((thread) => thread.shelterId === shelter.id);
+  const filteredThreads = shelterThreads.filter((thread) => matchesMessageThread(thread, messageSearch, messageFilter));
+  const selectedThread = filteredThreads.find((thread) => thread.appointmentId === selectedThreadId) ?? filteredThreads[0] ?? null;
+  const filterOptions: { label: string; value: MessageFilter }[] = [
+    { label: "All", value: "all" },
+    { label: "Unread", value: "unread" },
+    { label: "Upcoming visits", value: "upcoming" },
+    { label: "Needs reply", value: "needs_reply" },
+  ];
+
   return (
     <Section eyebrow="Messaging" title="Visitor conversations">
-      <div className="mt-5 grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+      {adminMode ? (
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#f8ecd8] px-4 py-2 text-xs font-semibold text-[#9a6b2a]">
+          <ShieldCheck className="h-4 w-4" />
+          Read-only PawJai admin view
+        </div>
+      ) : null}
+      {messagesUnavailable ? (
+        <div className="mt-4 rounded-2xl border border-[#eadfce] bg-[#fff8ed] p-4 text-sm leading-6 text-[#7a5a2e]">
+          Messages are temporarily unavailable. Booking and dog management remain available.
+        </div>
+      ) : null}
+      <div className="mt-5 grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
         <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
-          <p className="font-semibold text-[#4f4338]">{shelter.unreadMessageCount} recent message records</p>
-          <p className="mt-2 text-sm text-[#74685d]">Message counts are connected. Full message body stays out of the public draft.</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold text-[#4f4338]">{shelterThreads.length} appointment threads</p>
+              <p className="mt-1 text-sm text-[#74685d]">{shelter.unreadMessageCount} unread adopter messages</p>
+            </div>
+            <MessageCircle className="h-5 w-5 text-[#d88c24]" />
+          </div>
+          <label className="sr-only" htmlFor={`message-search-${shelter.id}`}>Search message threads</label>
+          <input
+            className="mt-4 w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+            id={`message-search-${shelter.id}`}
+            onChange={(event) => setMessageSearch(event.target.value)}
+            placeholder="Search adopter, dog, booking code"
+            type="search"
+            value={messageSearch}
+          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            {filterOptions.map((option) => (
+              <button
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                  messageFilter === option.value
+                    ? "border-[#d88c24] bg-[#d88c24] text-white"
+                    : "border-[#eadfce] bg-white text-[#5b4d40]"
+                }`}
+                key={option.value}
+                onClick={() => setMessageFilter(option.value)}
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-4 grid gap-2">
+            {filteredThreads.map((thread) => (
+              <button
+                className={`rounded-2xl border p-3 text-left transition ${
+                  selectedThread?.appointmentId === thread.appointmentId
+                    ? "border-[#d88c24] bg-[#fff7eb]"
+                    : "border-[#eadfce] bg-white hover:bg-[#faf4ec]"
+                }`}
+                key={thread.appointmentId}
+                onClick={() => setSelectedThreadId(thread.appointmentId)}
+                type="button"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[#4f4338]">{thread.adopterName}</p>
+                    <p className="mt-1 truncate text-xs text-[#74685d]">{thread.dogName} · {thread.bookingCode}</p>
+                  </div>
+                  {thread.unreadForShelterCount > 0 ? (
+                    <span className="rounded-full bg-[#d88c24] px-2 py-0.5 text-xs font-semibold text-white">
+                      {thread.unreadForShelterCount}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#74685d]">
+                  {thread.latestMessage?.body ?? "No messages yet. Conversation opens after a booked visit."}
+                </p>
+                <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9a8b7b]">
+                  {formatMessageTime(thread.latestMessage?.created_at ?? `${thread.appointmentDate}T${thread.appointmentTime}`)}
+                </p>
+              </button>
+            ))}
+            {filteredThreads.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-[#eadfce] bg-white p-4 text-sm text-[#74685d]">
+                No message threads match these filters.
+              </div>
+            ) : null}
+          </div>
         </div>
         <div className="rounded-2xl border border-[#eadfce] bg-white p-4">
-          <div className="rounded-2xl bg-[#f8f0e5] px-4 py-3 text-sm text-[#5b4d40]">
-            Hi, should I bring anything for the visit?
-          </div>
-          <div className="mt-4 flex gap-2">
-            <div className="min-h-12 flex-1 rounded-full border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#8d7f72]">
-              Write a shelter reply...
+          {selectedThread ? (
+            <div>
+              <div className="flex flex-col gap-3 border-b border-[#eadfce] pb-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">{selectedThread.bookingCode}</p>
+                  <h3 className="mt-1 text-xl font-semibold text-[#4f4338]">{selectedThread.dogName} with {selectedThread.adopterName}</h3>
+                  <p className="mt-1 text-sm text-[#74685d]">
+                    {formatBookingDate(selectedThread.appointmentDate)} at {formatBookingTime(selectedThread.appointmentTime)} · {formatStatus(selectedThread.status)}
+                  </p>
+                </div>
+                <Link
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-[#fffdfa] px-4 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                  href={withReturnTo(`/booking/${selectedThread.appointmentId}`, returnTo)}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Booking
+                </Link>
+              </div>
+              <div className="mt-4 max-h-[460px] space-y-3 overflow-y-auto pr-1">
+                {selectedThread.messages.length > 0 ? selectedThread.messages.map((message) => {
+                  const isShelter = message.sender_role === "shelter";
+
+                  return (
+                    <div className={`flex ${isShelter ? "justify-end" : "justify-start"}`} key={message.id}>
+                      <div className={`max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-6 ${
+                        isShelter ? "bg-[#65584f] text-white" : "bg-[#f8f0e5] text-[#4f4338]"
+                      }`}>
+                        <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${isShelter ? "text-white/70" : "text-[#8d7f72]"}`}>
+                          {message.sender_role === "system" ? "PawJai/system" : message.sender_label ?? (isShelter ? shelter.name : selectedThread.adopterName)}
+                        </p>
+                        <p className="mt-1 whitespace-pre-wrap">{message.body}</p>
+                        {message.attachment_url ? (
+                          <a
+                            className={`mt-2 inline-flex text-xs font-semibold underline ${isShelter ? "text-white" : "text-[#9a6b2a]"}`}
+                            href={message.attachment_url}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            {message.attachment_name ?? "View attachment"}
+                          </a>
+                        ) : null}
+                        <p className={`mt-2 text-[11px] ${isShelter ? "text-white/60" : "text-[#74685d]/70"}`}>
+                          {formatMessageTime(message.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-5 text-sm text-[#74685d]">
+                    No conversation selected yet. The first adopter or shelter message will appear here.
+                  </div>
+                )}
+              </div>
+              {adminMode ? (
+                <div className="mt-4 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 text-sm text-[#74685d]">
+                  Read-only PawJai admin view. Admin can review this conversation but cannot reply, edit, or mark shelter messages read.
+                </div>
+              ) : (
+                <form action={sendShelterAppointmentMessageAction} className="mt-4 flex gap-2">
+                  <input name="appointmentId" type="hidden" value={selectedThread.appointmentId} />
+                  <input name="returnTo" type="hidden" value={returnTo} />
+                  <label className="sr-only" htmlFor={`message-body-${selectedThread.appointmentId}`}>Write a shelter reply</label>
+                  <textarea
+                    className="min-h-12 flex-1 rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                    disabled={messagesUnavailable}
+                    id={`message-body-${selectedThread.appointmentId}`}
+                    name="body"
+                    placeholder={messagesUnavailable ? "Messaging temporarily unavailable" : "Write a shelter reply..."}
+                    required
+                  />
+                  <button
+                    className="h-12 rounded-full bg-[#d88c24] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#d6c8ad]"
+                    disabled={messagesUnavailable}
+                    type="submit"
+                  >
+                    Send
+                  </button>
+                </form>
+              )}
             </div>
-            <Link
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-[#d88c24] text-white"
-              href={`/admin/bookings?shelter=${shelter.id}&view=messages`}
-            >
-              <MessageCircle className="h-4 w-4" />
-            </Link>
-          </div>
+          ) : (
+            <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-center text-sm text-[#74685d]">
+              No conversation selected. Appointment conversations will appear here after visitors book shelter visits.
+            </div>
+          )}
         </div>
       </div>
     </Section>
@@ -1394,6 +1593,8 @@ function ShelterWorkspace({
   createDogHref,
   dogEditHref,
   dogs,
+  messageThreads,
+  messagesUnavailable,
   profileReturnTo,
   shelter,
   tab,
@@ -1406,6 +1607,8 @@ function ShelterWorkspace({
   createDogHref: string;
   dogEditHref: (dog: AdminDraftDog) => string;
   dogs: AdminDraftDog[];
+  messageThreads: AdminDraftMessageThread[];
+  messagesUnavailable: boolean;
   profileReturnTo: string;
   shelter: AdminDraftShelter;
   tab: ShelterTab;
@@ -1464,7 +1667,15 @@ function ShelterWorkspace({
       {tab === "profile" ? <ShelterProfileTab returnTo={profileReturnTo} shelter={shelter} /> : null}
       {tab === "dogs" ? <ShelterDogsTab dogEditHref={dogEditHref} dogs={dogs} shelter={shelter} /> : null}
       {tab === "bookings" ? <ShelterBookingsTab bookingListHref={bookingListHref} bookings={bookings} checkInHref={checkInHref} /> : null}
-      {tab === "messages" ? <ShelterMessagesTab shelter={shelter} /> : null}
+      {tab === "messages" ? (
+        <ShelterMessagesTab
+          adminMode={adminMode}
+          messageThreads={messageThreads}
+          messagesUnavailable={messagesUnavailable}
+          returnTo={adminMode ? `/admindraft?shelter=${shelter.id}&view=messages` : profileReturnTo.replace("view=profile", "view=messages")}
+          shelter={shelter}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1478,9 +1689,13 @@ function PartnerSheltersTab({
   shelterTab,
   shelters,
   setShelterTab,
+  messageThreads,
+  messagesUnavailable,
 }: {
   bookings: AdminDraftBooking[];
   dogs: AdminDraftDog[];
+  messageThreads: AdminDraftMessageThread[];
+  messagesUnavailable: boolean;
   selectedShelter: AdminDraftShelter;
   selectedShelterId: string;
   setSelectedShelterId: (id: string) => void;
@@ -1539,6 +1754,8 @@ function PartnerSheltersTab({
         createDogHref={`/admindraft/dog-creation?shelter=${selectedShelter.id}`}
         dogEditHref={(dog) => `/admindraft/dogs/${dog.id}/edit`}
         dogs={dogs}
+        messageThreads={messageThreads}
+        messagesUnavailable={messagesUnavailable}
         profileReturnTo={`/admindraft?shelter=${selectedShelter.id}&view=profile`}
         shelter={selectedShelter}
         tab={shelterTab}
@@ -1777,6 +1994,8 @@ export default function AdminReorgDraftPanel({
   const shelters = data?.shelters.length ? data.shelters : fallbackShelters;
   const dogs = data?.dogs.length ? data.dogs : fallbackDogs;
   const bookings = data?.bookings.length ? data.bookings : fallbackBookings;
+  const messageThreads = data?.messageThreads ?? [];
+  const messagesUnavailable = data?.messagesUnavailable ?? false;
   const ads = data?.ads ?? [];
   const about = data?.about ?? null;
   const [role, setRole] = useState<RoleView>(initialRoleView);
@@ -1890,6 +2109,8 @@ export default function AdminReorgDraftPanel({
             shelters={shelters}
             shelterTab={shelterTab}
             setShelterTab={setShelterTab}
+            messageThreads={messageThreads}
+            messagesUnavailable={messagesUnavailable}
           />
         ) : null}
         {isPawjai && mainTab === "dogs" ? <AllDogsTab dogs={dogs} shelters={shelters} /> : null}
@@ -1906,6 +2127,8 @@ export default function AdminReorgDraftPanel({
             createDogHref={shelterWorkspaceCreateDogHref}
             dogEditHref={shelterWorkspaceDogEditHref}
             dogs={selectedShelterDogs}
+            messageThreads={messageThreads}
+            messagesUnavailable={messagesUnavailable}
             profileReturnTo={isShelterPortal ? `${workspaceBaseHref}?view=profile` : `/admindraft?shelter=${selectedShelter.id}&view=profile`}
             shelter={selectedShelter}
             tab={shelterTab}

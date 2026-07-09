@@ -90,7 +90,7 @@ test("draft launches dog editing natively and leaves unfinished workflows on old
 
   assert.equal(source.includes("`/admindraft/dogs/${dog.id}/edit`"), true);
   assert.equal(source.includes("`${workspaceBaseHref}/dogs/${dog.id}/edit`"), true);
-  assert.equal(source.includes("href={`/admin/bookings?shelter=${shelter.id}&view=messages`}"), true);
+  assert.equal(source.includes("href={`/admin/bookings?shelter=${shelter.id}&view=messages`}"), false);
   assert.equal(source.includes('href="/admin/ads"'), true);
   assert.equal(source.includes('href="/admin/pawjaiprofile"'), true);
 });

@@ -1,6 +1,10 @@
 import "server-only";
 
 import { createAdminClient } from "@/utils/supabase/admin";
+import {
+  loadAppointmentMessageThreads,
+  type AppointmentMessageThread,
+} from "@/utils/message-threads";
 
 export type AdminDraftShelter = {
   address: string;
@@ -114,6 +118,8 @@ export type AdminDraftData = {
   bookings: AdminDraftBooking[];
   dogs: AdminDraftDog[];
   error: string | null;
+  messageThreads: AppointmentMessageThread[];
+  messagesUnavailable: boolean;
   shelters: AdminDraftShelter[];
   source: "fallback" | "supabase";
   updatedAt: string;
@@ -130,6 +136,8 @@ function fallbackData(error: string): AdminDraftData {
     bookings: [],
     dogs: [],
     error,
+    messageThreads: [],
+    messagesUnavailable: false,
     shelters: [],
     source: "fallback",
     updatedAt: new Date().toISOString(),
@@ -165,7 +173,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     return fallbackData(error instanceof Error ? error.message : "Supabase admin client is unavailable.");
   }
 
-  const [sheltersResult, dogsResult, dogPhotosResult, bookingsResult, messagesResult, adsResult, aboutResult, availabilityResult, regularHoursResult] = await Promise.all([
+  const [sheltersResult, dogsResult, dogPhotosResult, bookingsResult, messageThreadsResult, adsResult, aboutResult, availabilityResult, regularHoursResult] = await Promise.all([
     supabase
       .from("shelters")
       .select("id,name,phone_number,email,address_line,subdistrict,district,province,postal_code,description,website_url,facebook_url,instagram_url,logo_url,google_maps_url,meeting_instructions,promptpay_id,bank_name,bank_account_number,bank_account_name")
@@ -185,11 +193,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
       .select("*")
       .order("appointment_date", { ascending: true })
       .limit(200),
-    supabase
-      .from("appointment_messages")
-      .select("id,shelter_id,created_at")
-      .order("created_at", { ascending: false })
-      .limit(200),
+    loadAppointmentMessageThreads({ shelterIds: options.shelterIds }),
     supabase
       .from("ads")
       .select("id,company_name,image_url,click_url,is_active,start_date,end_date")
@@ -210,7 +214,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
       .order("day_of_week", { ascending: true }),
   ]);
 
-  const firstError = sheltersResult.error ?? dogsResult.error ?? dogPhotosResult.error ?? bookingsResult.error ?? messagesResult.error ?? adsResult.error ?? aboutResult.error;
+  const firstError = sheltersResult.error ?? dogsResult.error ?? dogPhotosResult.error ?? bookingsResult.error ?? adsResult.error ?? aboutResult.error;
   if (firstError) {
     return fallbackData(firstError.message);
   }
@@ -232,8 +236,8 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
   const rawBookings = (bookingsResult.data ?? []).filter((booking) => (
     shouldScopeShelters ? returnedShelterIds.has(booking.shelter_id) : true
   ));
-  const rawMessages = (messagesResult.data ?? []).filter((message) => (
-    shouldScopeShelters ? returnedShelterIds.has(message.shelter_id) : true
+  const messageThreads = messageThreadsResult.threads.filter((thread) => (
+    shouldScopeShelters ? returnedShelterIds.has(thread.shelterId) : true
   ));
   const rawAds = adsResult.data ?? [];
   const rawAbout = aboutResult.data ?? null;
@@ -282,8 +286,8 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     }
   }
 
-  for (const message of rawMessages) {
-    messagesByShelter.set(message.shelter_id, (messagesByShelter.get(message.shelter_id) ?? 0) + 1);
+  for (const thread of messageThreads) {
+    messagesByShelter.set(thread.shelterId, (messagesByShelter.get(thread.shelterId) ?? 0) + thread.unreadForShelterCount);
   }
 
   for (const range of rawAvailability as Array<{
@@ -383,6 +387,8 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
       };
     }),
     error: null,
+    messageThreads,
+    messagesUnavailable: messageThreadsResult.messagesUnavailable,
     shelters: rawShelters.map((shelter) => ({
       address: formatAddress(shelter),
       addressLine: shelter.address_line,

@@ -10,3 +10,17 @@ test("documents server action file only exports async server actions", () => {
 
   assert.deepEqual(exportedValues, []);
 });
+
+test("shelter message action is shelter scoped and writes shelter messages", () => {
+  const source = readFileSync(new URL("../app/shelter/actions.ts", import.meta.url), "utf8");
+
+  assert.equal(source.includes("sendShelterAppointmentMessageAction"), true);
+  assert.equal(source.includes("getAdminAuthContext({ includePhraseGate: false })"), true);
+  assert.equal(source.includes('context.role !== "shelter_admin"'), true);
+  assert.equal(source.includes("context.shelterIds.includes(appointment.shelter_id)"), true);
+  assert.equal(source.includes('sender_role: "shelter"'), true);
+  assert.equal(source.includes("read_by_shelter_at"), true);
+  assert.equal(source.includes('revalidatePath("/messages")'), true);
+  assert.equal(source.includes('revalidatePath("/admindraft")'), true);
+  assert.equal(source.includes('revalidatePath(safeReturnTo)'), true);
+});

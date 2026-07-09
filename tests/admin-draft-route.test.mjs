@@ -254,3 +254,18 @@ test("admin draft booking tab duplicates the low-friction old booking workspace 
   assert.equal(panelSource.includes("Open booking detail"), true);
   assert.equal(panelSource.includes("/booking/${booking.id}/visitor-profile"), true);
 });
+
+test("admin draft and shelter portal message tabs use real appointment threads", () => {
+  const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+  const dataSource = readFileSync(new URL("../utils/admin-draft-data.ts", import.meta.url), "utf8");
+
+  assert.equal(dataSource.includes("loadAppointmentMessageThreads"), true);
+  assert.equal(dataSource.includes("messageThreads"), true);
+  assert.equal(dataSource.includes("messagesUnavailable"), true);
+  assert.equal(panelSource.includes("sendShelterAppointmentMessageAction"), true);
+  assert.equal(panelSource.includes("Read-only PawJai admin view"), true);
+  assert.equal(panelSource.includes("messageFilter"), true);
+  assert.equal(panelSource.includes("messageSearch"), true);
+  assert.equal(panelSource.includes("No conversation selected"), true);
+  assert.equal(panelSource.includes("/admin/bookings?shelter="), false);
+});
