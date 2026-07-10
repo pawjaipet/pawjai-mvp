@@ -33,8 +33,12 @@ function buildAdminLoginPath(nextPath = "/admin") {
     ["/booking", "bookings"],
     ["/admin/dogs", "dogs"],
     ["/admin/listings", "dogs"],
-    ["/admin/pawjaiprofile", "about"],
   ];
+
+  if (nextPath.startsWith("/admin/pawjaiprofile") || nextPath.startsWith("/admindraft/aboutcontent")) {
+    return "/admindraft/aboutcontent";
+  }
+
   const matchedView = viewByLegacyPath.find(([path]) => nextPath.startsWith(path))?.[1];
 
   if (matchedView) params.set("view", matchedView);

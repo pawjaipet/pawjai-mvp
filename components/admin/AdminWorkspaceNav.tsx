@@ -35,7 +35,7 @@ function navHref(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) 
       case "ads":
         return "/admindraft?view=ads";
       case "about":
-        return "/admindraft/pawjaiprofile";
+        return "/admindraft/aboutcontent";
       case "accounts":
         return "/admindraft/accounts";
       case "audit":

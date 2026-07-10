@@ -12,7 +12,11 @@ import { logAdminAuditEvent } from "@/utils/admin-audit";
 import type { PawjaiContactItem, PawjaiContactItemType, PawjaiPartnerShelter } from "@/utils/pawjai-profile";
 import type { PawjaiAdminGateState } from "./form-state";
 
-const PROFILE_PATHS = new Set(["/admin/pawjaiprofile", "/admindraft/pawjaiprofile"]);
+const PROFILE_PATHS = new Set([
+  "/admin/pawjaiprofile",
+  "/admindraft/aboutcontent",
+  "/admindraft/pawjaiprofile",
+]);
 
 function getProfileReturnPath(formData: FormData) {
   const requested = getString(formData, "returnTo");
@@ -141,6 +145,7 @@ export async function savePawjaiProfileAction(formData: FormData) {
   revalidatePath("/more");
   revalidatePath("/admin/pawjaiprofile");
   revalidatePath("/admindraft");
+  revalidatePath("/admindraft/aboutcontent");
   revalidatePath("/admindraft/pawjaiprofile");
   profileRedirect("PawJai profile updated.", returnTo);
 }

@@ -78,7 +78,7 @@ const pawjaiHqDraft: AdminWorkspaceDraft = {
       description: "Public PawJai About page copy, contact links, and partner shelter content.",
       globalOnly: true,
       label: "About content",
-      path: "/admindraft/pawjaiprofile",
+      path: "/admindraft/aboutcontent",
       status: "current",
     },
     {

@@ -60,14 +60,17 @@ function withEmptyContactRows(items: PawjaiContactItem[], totalRows = 5) {
 export async function PawjaiProfileAdminPageContent({
   basePath = "/admin",
   lockedFallback,
+  routePath,
   searchParams,
   showLock = true,
 }: {
   basePath?: "/admin" | "/admindraft";
   lockedFallback?: ReactNode;
+  routePath?: "/admin/pawjaiprofile" | "/admindraft/aboutcontent" | "/admindraft/pawjaiprofile";
   searchParams?: Promise<{ message?: string }>;
   showLock?: boolean;
 }) {
+  const currentRoutePath = routePath ?? `${basePath}/pawjaiprofile`;
   const adminContext = await getAdminAuthContext();
   const resolvedSearchParams = await searchParams;
 
@@ -79,7 +82,7 @@ export async function PawjaiProfileAdminPageContent({
     );
   }
 
-  await requireGlobalAdmin(`${basePath}/pawjaiprofile`);
+  await requireGlobalAdmin(currentRoutePath);
 
   const supabase = createAdminClient();
   const content = await loadPawjaiProfileContent(supabase);
@@ -129,7 +132,7 @@ export async function PawjaiProfileAdminPageContent({
       ) : null}
 
       <form action={savePawjaiProfileAction} className="space-y-6">
-        <input name="returnTo" type="hidden" value={`${basePath}/pawjaiprofile`} />
+        <input name="returnTo" type="hidden" value={currentRoutePath} />
         {sectionCard(
           "Hero Copy",
           "This controls the short line under the PawJai logo at the top of the About page.",

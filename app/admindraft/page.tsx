@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import AdminDraftGate from "@/components/admin/AdminDraftGate";
 import AdminReorgDraftPanel from "@/components/admin/AdminReorgDraftPanel";
 import { loadAdminDraftData } from "@/utils/admin-draft-data";
@@ -12,6 +13,10 @@ export default async function AdminDraftPage({
 }) {
   const unlocked = await isAdminDraftUnlocked();
   const resolvedSearchParams = await searchParams;
+
+  if (resolvedSearchParams?.view === "about") {
+    redirect("/admindraft/aboutcontent");
+  }
 
   if (!unlocked) {
     return <AdminDraftGate showError={resolvedSearchParams?.unlock === "failed"} />;
