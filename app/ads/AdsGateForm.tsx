@@ -30,24 +30,24 @@ export default function AdsGateForm({
       <div className="rounded-[36px] bg-gradient-to-br from-[#fff5e6] via-[#fff0dc] to-[#f9e0b8] p-8 shadow-[0_24px_60px_rgba(176,120,42,0.16)]">
         <div className="rounded-[28px] border border-white/80 bg-white/80 p-8 backdrop-blur">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">
-            PawJai Internal
+            PawJai Ads
           </p>
           <h1 className="mt-3 text-3xl font-semibold leading-tight text-[#4f4338]">
-            Sign in to the ads workspace.
+            Partner ads login.
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-6 text-[#74685d]">
-            Use a PawJai admin account to add partner ads and manage campaign dates.
+            Enter your partner key to create a PawJai ad.
           </p>
 
           <form action={formAction} className="mt-8 space-y-4">
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Admin email</span>
+              <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Username</span>
               <input
-                type="email"
-                name="email"
-                autoComplete="email"
+                type="text"
+                name="username"
+                autoComplete="username"
                 className="w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none transition focus:border-[#d69546] focus:ring-4 focus:ring-[#f6d7ad]/50"
-                placeholder="admin@pawjai.co.th"
+                placeholder="Enter username"
               />
             </label>
             <label className="block">
@@ -57,7 +57,7 @@ export default function AdsGateForm({
                 name="password"
                 autoComplete="current-password"
                 className="w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none transition focus:border-[#d69546] focus:ring-4 focus:ring-[#f6d7ad]/50"
-                placeholder="Enter the account password"
+                placeholder="Enter password"
               />
             </label>
 
@@ -78,7 +78,7 @@ export default function AdsGateForm({
               disabled={pending}
               className="inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {pending ? "Signing in..." : "Sign in"}
+              {pending ? "Unlocking..." : "Unlock ads page"}
             </button>
           </form>
         </div>

@@ -1912,7 +1912,7 @@ function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
   return (
     <Section eyebrow="Ads" title="PawJai-managed ads">
       <p className="mt-2 text-sm leading-6 text-[#74685d]">
-        This remains a PawJai admin page for onboarding ads internally. Brands do not need their own login yet. Connected ads: {ads.length}.
+        Partner submissions from /ads land in the same ads table. PawJai reviews, pauses, and date-edits records internally. Connected ads: {ads.length}.
       </p>
       <FieldGrid fields={["Advertiser", "Placement", "Image/video asset", "Destination URL", "Live status", "Start date", "End date"]} />
       <div className="mt-6 grid gap-3">

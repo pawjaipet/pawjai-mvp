@@ -10,7 +10,7 @@ import type { Database } from "@/types/database";
 const ADMIN_GATE_COOKIE = "pawjai_admin_gate_unlocked";
 const ADMIN_DRAFT_COOKIE = "pawjai_admin_draft_unlocked";
 const ADMIN_GATE_PASSPHRASES = new Set(["pawjaiadmin", "pawjaiadmin!"]);
-const ADMIN_GATE_COOKIE_PATHS = ["/admin", "/booking", "/ads"];
+const ADMIN_GATE_COOKIE_PATHS = ["/admin", "/booking"];
 
 export type AdminAuthContext = {
   fullName: string | null;
