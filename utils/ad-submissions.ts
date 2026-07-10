@@ -3,6 +3,7 @@ import "server-only";
 import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { parseAdDateRange } from "@/utils/ad-date-range";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { normalizeAdClickUrl } from "@/utils/ad-click-url";
 
 export type AdSubmissionResult = {
   adId?: string;
@@ -21,7 +22,12 @@ function randomHex(bytes = 4) {
 export async function createAdFromFormData(formData: FormData): Promise<AdSubmissionResult> {
   const companyName = (formData.get("company_name") as string)?.trim();
   const contactInfo = (formData.get("contact_info") as string)?.trim() || null;
-  const clickUrl = (formData.get("click_url") as string)?.trim();
+  let clickUrl: string;
+  try {
+    clickUrl = normalizeAdClickUrl(formData.get("click_url"));
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Enter a valid click URL." };
+  }
   const isActive = formData.has("is_active") ? formData.get("is_active") === "on" : true;
   const imageFile = formData.get("image_file") as File | null;
 

@@ -73,9 +73,9 @@ export default function PartnerAdCreatePage() {
             <input
               className="w-full rounded-xl border border-[#eadfce] px-3 py-2 text-sm text-[#4f4338] focus:border-[#b77624] focus:outline-none"
               name="click_url"
-              placeholder="https://..."
+              placeholder="pawjai.co.th/ads"
               required
-              type="url"
+              type="text"
             />
           </div>
 
