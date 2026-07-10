@@ -54,6 +54,7 @@ type MainTab = "shelters" | "dogs" | "bookings" | "ads" | "about";
 type ShelterTab = "profile" | "dogs" | "bookings" | "messages";
 type VisitBucket = "upcoming" | "needs_follow_up" | "past" | "all";
 type MessageFilter = "all" | "unread" | "upcoming" | "needs_reply";
+type AdStatusFilter = "all" | "live" | "paused" | "expired";
 type AdminDraftMessageThread = AdminDraftData["messageThreads"][number];
 
 const DRAFT_RETURN_TO = "/admindraft";
@@ -406,6 +407,26 @@ function matchesDogFilters(dog: AdminDraftDog, search: string, status: string) {
     .toLowerCase();
 
   return (!query || searchable.includes(query)) && (status === "all" || dog.status === status);
+}
+
+function getAdStatus(ad: AdminDraftAd, today: string): Exclude<AdStatusFilter, "all"> {
+  if (ad.endDate < today) return "expired";
+  return ad.isActive ? "live" : "paused";
+}
+
+function adStatusLabel(status: Exclude<AdStatusFilter, "all">) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function matchesAdFilters(ad: AdminDraftAd, search: string, status: AdStatusFilter, today: string) {
+  const query = search.trim().toLowerCase();
+  const searchable = [ad.companyName, ad.clickUrl, ad.startDate, ad.endDate]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const adStatus = getAdStatus(ad, today);
+
+  return (!query || searchable.includes(query)) && (status === "all" || adStatus === status);
 }
 
 function matchesMessageThread(thread: AdminDraftMessageThread, messageSearch: string, messageFilter: MessageFilter) {
@@ -1912,18 +1933,57 @@ function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking
 }
 
 function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<AdStatusFilter>("all");
   const today = new Date().toISOString().slice(0, 10);
+  const filteredAds = ads.filter((ad) => matchesAdFilters(ad, search, status, today));
 
   return (
     <Section eyebrow="Ads" title="PawJai-managed ads">
       <p className="mt-2 text-sm leading-6 text-[#74685d]">
         Partner submissions from /ads land in the same ads table. PawJai reviews, pauses, and date-edits records internally. Connected ads: {ads.length}.
       </p>
-      <FieldGrid fields={["Advertiser", "Placement", "Image/video asset", "Destination URL", "Live status", "Start date", "End date"]} />
+      <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
+        <label className="sr-only" htmlFor="admin-ad-search">Search ads</label>
+        <input
+          className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+          id="admin-ad-search"
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search advertiser or URL"
+          type="search"
+          value={search}
+        />
+        <label className="sr-only" htmlFor="admin-ad-status">Filter ads by status</label>
+        <select
+          className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+          id="admin-ad-status"
+          onChange={(event) => setStatus(event.target.value as AdStatusFilter)}
+          value={status}
+        >
+          <option value="all">All statuses</option>
+          <option value="live">Live</option>
+          <option value="paused">Paused</option>
+          <option value="expired">Expired</option>
+        </select>
+        <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d88c24] px-5 py-3 text-sm font-semibold text-white" type="button">
+          <Search className="h-4 w-4" />
+          {filteredAds.length} ads
+        </button>
+        <button
+          className="rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40]"
+          onClick={() => {
+            setSearch("");
+            setStatus("all");
+          }}
+          type="button"
+        >
+          Reset
+        </button>
+      </div>
       <div className="mt-6 grid gap-3">
-        {ads.map((ad) => {
-          const expired = ad.endDate < today;
-          const label = expired ? "Expired" : ad.isActive ? "Live" : "Paused";
+        {filteredAds.map((ad) => {
+          const adStatus = getAdStatus(ad, today);
+          const label = adStatusLabel(adStatus);
 
           return (
             <article className="grid gap-4 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 md:grid-cols-[96px_minmax(0,1fr)_auto]" key={ad.id}>
@@ -1963,6 +2023,11 @@ function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
         {ads.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
             No ad records are connected yet.
+          </div>
+        ) : null}
+        {ads.length > 0 && filteredAds.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
+            No ads match these filters.
           </div>
         ) : null}
       </div>

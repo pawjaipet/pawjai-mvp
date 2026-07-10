@@ -109,6 +109,20 @@ test("admin draft panel renders real media, ad, and about data", () => {
   assert.equal(source.includes("AboutTab about={about}"), true);
 });
 
+test("admin draft ad tab uses real search and status filters", () => {
+  const source = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+
+  assert.equal(source.includes("matchesAdFilters"), true);
+  assert.equal(source.includes('id="admin-ad-search"'), true);
+  assert.equal(source.includes('id="admin-ad-status"'), true);
+  assert.equal(source.includes('placeholder="Search advertiser or URL"'), true);
+  assert.equal(source.includes('<option value="live">Live</option>'), true);
+  assert.equal(source.includes('<option value="paused">Paused</option>'), true);
+  assert.equal(source.includes('<option value="expired">Expired</option>'), true);
+  assert.equal(source.includes("No ads match these filters."), true);
+  assert.equal(source.includes('FieldGrid fields={["Advertiser", "Placement", "Image/video asset", "Destination URL", "Live status", "Start date", "End date"]}'), false);
+});
+
 test("admin draft supports shelter-specific filters and square shelter workspace tabs", () => {
   const source = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
 
