@@ -7,7 +7,8 @@ test("adopter message composer keeps help and return actions under the message b
 
   assert.equal(source.includes("const quickActions = ["), false);
   assert.equal(source.includes("Send update photo"), false);
-  assert.equal(source.includes("showComposerActions"), true);
+  assert.equal(source.includes("{showComposerActions && ("), false);
+  assert.equal(source.includes("onFocus={() => setShowComposerActions(true)}"), false);
   assert.equal(source.includes("SOS I need help"), true);
   assert.equal(source.includes("Return inquiry"), true);
   assert.equal(source.includes("Contact PawJai admin"), true);

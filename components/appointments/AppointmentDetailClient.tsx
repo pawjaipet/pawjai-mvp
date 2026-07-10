@@ -629,7 +629,6 @@ function MessagesTab({
   const [draft, setDraft] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
-  const [showComposerActions, setShowComposerActions] = useState(false);
 
   function prefillDraft(text: string, opts?: { attach?: boolean }) {
     setDraft(text);
@@ -753,7 +752,6 @@ function MessagesTab({
             }
             await sendAppointmentMessageAction(formData);
             setDraft("");
-            setShowComposerActions(false);
             if (attachRef.current) attachRef.current.value = "";
           }}
           className="flex items-center gap-[10px] px-[14px] py-[12px]"
@@ -778,7 +776,6 @@ function MessagesTab({
             name="body"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onFocus={() => setShowComposerActions(true)}
             placeholder="Write your message here"
             disabled={messagesUnavailable}
             className="flex-1 rounded-full px-[18px] py-[12px] text-[14px] outline-none"
@@ -797,28 +794,26 @@ function MessagesTab({
             </svg>
           </button>
         </form>
-        {showComposerActions && (
-          <div className="grid grid-cols-2 gap-[8px] px-[14px] pb-[12px]">
-            <button
-              className="rounded-full px-[12px] py-[10px] text-[13px] font-bold active:scale-95 disabled:opacity-55"
-              disabled={messagesUnavailable}
-              onClick={() => setHelpOpen(true)}
-              style={{ background: "#f5f0e8", color: "#65584f", fontFamily: M }}
-              type="button"
-            >
-              SOS I need help
-            </button>
-            <button
-              className="rounded-full px-[12px] py-[10px] text-[13px] font-bold text-white active:scale-95 disabled:opacity-55"
-              disabled={messagesUnavailable}
-              onClick={() => setReturnOpen(true)}
-              style={{ background: "#cd8188", fontFamily: M }}
-              type="button"
-            >
-              Return inquiry
-            </button>
-          </div>
-        )}
+        <div className="grid grid-cols-2 gap-[8px] px-[14px] pb-[12px]">
+          <button
+            className="rounded-full px-[12px] py-[10px] text-[13px] font-bold active:scale-95 disabled:opacity-55"
+            disabled={messagesUnavailable}
+            onClick={() => setHelpOpen(true)}
+            style={{ background: "#f5f0e8", color: "#65584f", fontFamily: M }}
+            type="button"
+          >
+            SOS I need help
+          </button>
+          <button
+            className="rounded-full px-[12px] py-[10px] text-[13px] font-bold text-white active:scale-95 disabled:opacity-55"
+            disabled={messagesUnavailable}
+            onClick={() => setReturnOpen(true)}
+            style={{ background: "#cd8188", fontFamily: M }}
+            type="button"
+          >
+            Return inquiry
+          </button>
+        </div>
       </div>
 
       {/* Return Inquiry modal */}
