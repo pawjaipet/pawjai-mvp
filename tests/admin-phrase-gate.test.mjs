@@ -14,7 +14,8 @@ test("temporary admin gate uses the shared phrase form instead of account login"
   assert.equal(formSource.includes('name="password"'), false);
   assert.equal(actionSource.includes("openAdminGate"), true);
   assert.equal(actionSource.includes("signInWithPassword"), false);
+  assert.equal(authSource.includes("pawjaiadmin"), true);
   assert.equal(authSource.includes("pawjaiadmin!"), true);
   assert.equal(authSource.includes("pawjai_admin_gate_unlocked"), true);
-  assert.equal(authSource.includes('const ADMIN_GATE_COOKIE_PATHS = ["/admin", "/booking"]'), true);
+  assert.equal(authSource.includes('const ADMIN_GATE_COOKIE_PATHS = ["/admin", "/booking", "/ads"]'), true);
 });
