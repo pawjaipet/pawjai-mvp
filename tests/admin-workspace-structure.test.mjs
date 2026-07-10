@@ -32,10 +32,10 @@ test("global admins see the PawJai HQ umbrella first", () => {
   const draft = getAdminWorkspaceDraft("admin");
 
   assert.equal(draft.title, "PawJai HQ");
-  assert.equal(draft.defaultPath, "/admin");
+  assert.equal(draft.defaultPath, "/admindraft");
   assertArrayValues(
     draft.primarySections.map((section) => section.label),
-    ["Overview", "Shelters", "Dogs", "Bookings", "Ads", "Accounts", "Audit"],
+    ["Overview", "Shelters", "Dogs", "Bookings", "Ads", "About content", "Accounts", "Audit"],
   );
 });
 
@@ -63,7 +63,7 @@ test("draft structure marks global-only sections", () => {
     .filter((section) => section.globalOnly)
     .map((section) => section.label);
 
-  assertArrayValues(globalOnly, ["Ads", "Accounts", "Audit"]);
+  assertArrayValues(globalOnly, ["Ads", "About content", "Accounts", "Audit"]);
 });
 
 test("dog draft workflow includes current admin upload steps, filters, media controls, and booking actions", () => {
@@ -92,5 +92,7 @@ test("draft launches dog editing natively and leaves unfinished workflows on old
   assert.equal(source.includes("`${workspaceBaseHref}/dogs/${dog.id}/edit`"), true);
   assert.equal(source.includes("href={`/admin/bookings?shelter=${shelter.id}&view=messages`}"), false);
   assert.equal(source.includes('href="/admin/ads"'), true);
-  assert.equal(source.includes('href="/admin/pawjaiprofile"'), true);
+  assert.equal(source.includes('href="/admindraft/pawjaiprofile"'), true);
+  assert.equal(source.includes('href="/admindraft/accounts"'), true);
+  assert.equal(source.includes('href="/admindraft/audit"'), true);
 });

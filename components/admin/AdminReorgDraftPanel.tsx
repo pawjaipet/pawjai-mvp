@@ -2057,7 +2057,7 @@ function AboutTab({ about }: { about: AdminDraftAboutContent | null }) {
       <FieldGrid fields={["Mission title", "Mission body", "Partner shelters", "Hero copy", "Impact numbers", "Save About content"]} />
       <Link
         className="mt-5 inline-flex rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white"
-        href="/admin/pawjaiprofile"
+        href="/admindraft/pawjaiprofile"
       >
         Edit live About content
       </Link>
@@ -2189,6 +2189,20 @@ export default function AdminReorgDraftPanel({
               <FileText className="mr-2 inline h-4 w-4" />
               About content
             </PillButton>
+            <Link
+              className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+              href="/admindraft/accounts"
+            >
+              <Users className="mr-2 inline h-4 w-4" />
+              Accounts
+            </Link>
+            <Link
+              className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+              href="/admindraft/audit"
+            >
+              <ShieldCheck className="mr-2 inline h-4 w-4" />
+              Audit
+            </Link>
             <div className="ml-auto flex items-center gap-2 rounded-full bg-[#f8ecd8] px-4 py-2 text-xs font-semibold text-[#9a6b2a]">
               <ShieldCheck className="h-4 w-4" />
               PawJai HQ only

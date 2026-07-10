@@ -39,53 +39,60 @@ export type AdminDogDraftWorkflow = {
 };
 
 const pawjaiHqDraft: AdminWorkspaceDraft = {
-  defaultPath: "/admin",
+  defaultPath: "/admindraft",
   subtitle: "umbrella admin",
   title: "PawJai HQ",
   primarySections: [
     {
       description: "Platform-level snapshot across shelters, listings, visits, and launch readiness.",
       label: "Overview",
-      path: "/admin",
+      path: "/admindraft",
       status: "new",
     },
     {
       description: "Directory of partner shelters, each opening into its own workspace.",
       label: "Shelters",
-      path: "/admin/shelters",
+      path: "/admindraft",
       status: "new",
     },
     {
       description: "All dog listings across every shelter, reusing the current listings surface.",
       label: "Dogs",
-      path: "/admin/dogs",
+      path: "/admindraft?view=dogs",
       status: "move",
     },
     {
       description: "Visit requests, QR check-in, follow-ups, and adopter communication.",
       label: "Bookings",
-      path: "/admin/bookings",
+      path: "/admindraft?view=bookings",
       status: "current",
     },
     {
       description: "PawJai-managed brand placements. This stays internal for now.",
       globalOnly: true,
       label: "Ads",
-      path: "/admin/ads",
+      path: "/admindraft?view=ads",
+      status: "current",
+    },
+    {
+      description: "Public PawJai About page copy, contact links, and partner shelter content.",
+      globalOnly: true,
+      label: "About content",
+      path: "/admindraft/pawjaiprofile",
       status: "current",
     },
     {
       description: "PawJai admins and shelter workspace accounts.",
       globalOnly: true,
       label: "Accounts",
-      path: "/admin/accounts",
+      path: "/admindraft/accounts",
       status: "current",
     },
     {
       description: "Privileged activity across shelter workspaces and platform tools.",
       globalOnly: true,
       label: "Audit",
-      path: "/admin/audit",
+      path: "/admindraft/audit",
       status: "current",
     },
   ],

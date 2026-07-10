@@ -12,8 +12,15 @@ import { logAdminAuditEvent } from "@/utils/admin-audit";
 import type { PawjaiContactItem, PawjaiContactItemType, PawjaiPartnerShelter } from "@/utils/pawjai-profile";
 import type { PawjaiAdminGateState } from "./form-state";
 
-function profileRedirect(message: string) {
-  redirect(`/admin/pawjaiprofile?message=${encodeURIComponent(message)}`);
+const PROFILE_PATHS = new Set(["/admin/pawjaiprofile", "/admindraft/pawjaiprofile"]);
+
+function getProfileReturnPath(formData: FormData) {
+  const requested = getString(formData, "returnTo");
+  return PROFILE_PATHS.has(requested) ? requested : "/admin/pawjaiprofile";
+}
+
+function profileRedirect(message: string, returnTo = "/admin/pawjaiprofile") {
+  redirect(`${returnTo}?message=${encodeURIComponent(message)}`);
 }
 
 function getString(formData: FormData, name: string) {
@@ -75,7 +82,8 @@ export async function lockAdminGateAction() {
 }
 
 export async function savePawjaiProfileAction(formData: FormData) {
-  const adminContext = await requireGlobalAdmin("/admin/pawjaiprofile");
+  const returnTo = getProfileReturnPath(formData);
+  const adminContext = await requireGlobalAdmin(returnTo);
 
   const heroSlogan = getString(formData, "hero_slogan");
   const missionTitle = getString(formData, "mission_title");
@@ -84,15 +92,15 @@ export async function savePawjaiProfileAction(formData: FormData) {
   const contactItems = collectContactItems(formData, 8);
 
   if (!heroSlogan) {
-    profileRedirect("Slogan is required.");
+    profileRedirect("Slogan is required.", returnTo);
   }
 
   if (!missionTitle) {
-    profileRedirect("Mission title is required.");
+    profileRedirect("Mission title is required.", returnTo);
   }
 
   if (!missionBody) {
-    profileRedirect("Mission copy is required.");
+    profileRedirect("Mission copy is required.", returnTo);
   }
 
   const supabase = createAdminClient();
@@ -112,10 +120,10 @@ export async function savePawjaiProfileAction(formData: FormData) {
 
   if (error) {
     if (error.message.toLowerCase().includes("pawjai_profile")) {
-      profileRedirect("Save failed because the pawjai_profile migration has not been applied yet.");
+      profileRedirect("Save failed because the pawjai_profile migration has not been applied yet.", returnTo);
     }
 
-    profileRedirect("PawJai profile could not be saved.");
+    profileRedirect("PawJai profile could not be saved.", returnTo);
   }
 
   await logAdminAuditEvent({
@@ -132,5 +140,7 @@ export async function savePawjaiProfileAction(formData: FormData) {
   revalidatePath("/about");
   revalidatePath("/more");
   revalidatePath("/admin/pawjaiprofile");
-  profileRedirect("PawJai profile updated.");
+  revalidatePath("/admindraft");
+  revalidatePath("/admindraft/pawjaiprofile");
+  profileRedirect("PawJai profile updated.", returnTo);
 }

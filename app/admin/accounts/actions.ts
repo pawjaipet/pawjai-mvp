@@ -14,8 +14,15 @@ function getString(formData: FormData, name: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function accountsRedirect(message: string): never {
-  redirect(`/admin/accounts?message=${encodeURIComponent(message)}`);
+const ACCOUNT_PATHS = new Set(["/admin/accounts", "/admindraft/accounts"]);
+
+function getAccountsReturnPath(formData: FormData) {
+  const requested = getString(formData, "returnTo");
+  return ACCOUNT_PATHS.has(requested) ? requested : "/admin/accounts";
+}
+
+function accountsRedirect(message: string, returnTo = "/admin/accounts"): never {
+  redirect(`${returnTo}?message=${encodeURIComponent(message)}`);
 }
 
 function parseAdminRole(value: string): AdminRole | null {
@@ -23,7 +30,8 @@ function parseAdminRole(value: string): AdminRole | null {
 }
 
 export async function createAdminAccountAction(formData: FormData) {
-  const adminContext = await requireGlobalAdmin("/admin/accounts");
+  const returnTo = getAccountsReturnPath(formData);
+  const adminContext = await requireGlobalAdmin(returnTo);
   const email = getString(formData, "email").toLowerCase();
   const password = getString(formData, "password");
   const fullName = getString(formData, "fullName") || null;
@@ -31,19 +39,19 @@ export async function createAdminAccountAction(formData: FormData) {
   const shelterId = getString(formData, "shelterId");
 
   if (!email || !email.includes("@")) {
-    accountsRedirect("Enter a valid email address.");
+    accountsRedirect("Enter a valid email address.", returnTo);
   }
 
   if (!password || password.length < 12) {
-    accountsRedirect("Use a temporary password with at least 12 characters.");
+    accountsRedirect("Use a temporary password with at least 12 characters.", returnTo);
   }
 
   if (!role) {
-    accountsRedirect("Choose an admin role.");
+    accountsRedirect("Choose an admin role.", returnTo);
   }
 
   if (role === "shelter_admin" && !shelterId) {
-    accountsRedirect("Choose a shelter for shelter admin accounts.");
+    accountsRedirect("Choose a shelter for shelter admin accounts.", returnTo);
   }
 
   const supabase = createAdminClient();
@@ -57,7 +65,7 @@ export async function createAdminAccountAction(formData: FormData) {
   });
 
   if (createUserError || !createdUser.user) {
-    accountsRedirect(createUserError?.message ?? "Admin account could not be created.");
+    accountsRedirect(createUserError?.message ?? "Admin account could not be created.", returnTo);
   }
 
   const userId = createdUser.user.id;
@@ -69,7 +77,7 @@ export async function createAdminAccountAction(formData: FormData) {
   });
 
   if (profileError) {
-    accountsRedirect(`Auth user was created, but profile role could not be saved: ${profileError.message}`);
+    accountsRedirect(`Auth user was created, but profile role could not be saved: ${profileError.message}`, returnTo);
   }
 
   if (role === "shelter_admin") {
@@ -80,7 +88,7 @@ export async function createAdminAccountAction(formData: FormData) {
     }, { onConflict: "shelter_id,profile_id" });
 
     if (linkError) {
-      accountsRedirect(`Admin user was created, but shelter access could not be linked: ${linkError.message}`);
+      accountsRedirect(`Admin user was created, but shelter access could not be linked: ${linkError.message}`, returnTo);
     }
   }
 
@@ -97,19 +105,21 @@ export async function createAdminAccountAction(formData: FormData) {
   });
 
   revalidatePath("/admin/accounts");
-  accountsRedirect(role === "shelter_admin" ? "Shelter admin account created and linked." : "PawJai admin account created.");
+  revalidatePath("/admindraft/accounts");
+  accountsRedirect(role === "shelter_admin" ? "Shelter admin account created and linked." : "PawJai admin account created.", returnTo);
 }
 
 export async function revokeAdminAccountAction(formData: FormData) {
-  const adminContext = await requireGlobalAdmin("/admin/accounts");
+  const returnTo = getAccountsReturnPath(formData);
+  const adminContext = await requireGlobalAdmin(returnTo);
   const profileId = getString(formData, "profileId");
 
   if (!profileId) {
-    accountsRedirect("Missing admin account.");
+    accountsRedirect("Missing admin account.", returnTo);
   }
 
   if (profileId === adminContext.userId) {
-    accountsRedirect("You cannot revoke your own admin access from this page.");
+    accountsRedirect("You cannot revoke your own admin access from this page.", returnTo);
   }
 
   const supabase = createAdminClient();
@@ -123,7 +133,7 @@ export async function revokeAdminAccountAction(formData: FormData) {
     .eq("id", profileId);
 
   if (error) {
-    accountsRedirect(`Admin access could not be revoked: ${error.message}`);
+    accountsRedirect(`Admin access could not be revoked: ${error.message}`, returnTo);
   }
 
   await logAdminAuditEvent({
@@ -134,5 +144,6 @@ export async function revokeAdminAccountAction(formData: FormData) {
   });
 
   revalidatePath("/admin/accounts");
-  accountsRedirect("Admin access revoked.");
+  revalidatePath("/admindraft/accounts");
+  accountsRedirect("Admin access revoked.", returnTo);
 }
