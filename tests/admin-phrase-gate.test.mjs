@@ -19,3 +19,16 @@ test("temporary admin gate uses the shared phrase form instead of account login"
   assert.equal(authSource.includes("pawjai_admin_gate_unlocked"), true);
   assert.equal(authSource.includes('const ADMIN_GATE_COOKIE_PATHS = ["/admin", "/booking"]'), true);
 });
+
+test("legacy admin login page is retired in favor of the admin draft gate", () => {
+  const loginSource = readFileSync(new URL("../app/admin/login/page.tsx", import.meta.url), "utf8");
+  const authSource = readFileSync(new URL("../utils/admin-auth.ts", import.meta.url), "utf8");
+  const draftSource = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
+
+  assert.equal(loginSource.includes('redirect("/admindraft")'), true);
+  assert.equal(loginSource.includes("AdminGateForm"), false);
+  assert.equal(loginSource.includes("Unlock the dog onboarding workspace"), false);
+  assert.equal(authSource.includes("/admin/login"), false);
+  assert.equal(authSource.includes("/admindraft"), true);
+  assert.equal(draftSource.includes("initialMainTab={resolvedSearchParams?.view}"), true);
+});

@@ -25,11 +25,22 @@ type AdminAuthContextOptions = {
   includePhraseGate?: boolean;
 };
 
-function buildAdminLoginPath(nextPath = "/admin", message?: string) {
+function buildAdminLoginPath(nextPath = "/admin") {
   const params = new URLSearchParams();
-  params.set("next", nextPath);
-  if (message) params.set("message", message);
-  return `/admin/login?${params.toString()}`;
+  const viewByLegacyPath: Array<[string, string]> = [
+    ["/admin/ads", "ads"],
+    ["/admin/bookings", "bookings"],
+    ["/booking", "bookings"],
+    ["/admin/dogs", "dogs"],
+    ["/admin/listings", "dogs"],
+    ["/admin/pawjaiprofile", "about"],
+  ];
+  const matchedView = viewByLegacyPath.find(([path]) => nextPath.startsWith(path))?.[1];
+
+  if (matchedView) params.set("view", matchedView);
+
+  const query = params.toString();
+  return query ? `/admindraft?${query}` : "/admindraft";
 }
 
 export async function getAdminAuthContext(options: AdminAuthContextOptions = {}): Promise<AdminAuthContext | null> {
@@ -83,7 +94,7 @@ export async function requireAdminWorkspace(nextPath = "/admin") {
   const context = await getAdminAuthContext();
 
   if (!context) {
-    redirect(buildAdminLoginPath(nextPath, "Sign in with an admin or shelter account."));
+    redirect(buildAdminLoginPath(nextPath));
   }
 
   return context;
@@ -93,7 +104,7 @@ export async function requireGlobalAdmin(nextPath = "/admin") {
   const context = await requireAdminWorkspace(nextPath);
 
   if (!context.isGlobalAdmin) {
-    redirect(buildAdminLoginPath(nextPath, "This page is only available to PawJai admin."));
+    redirect(buildAdminLoginPath(nextPath));
   }
 
   return context;
@@ -103,7 +114,7 @@ export async function requireShelterAccess(shelterId: string, nextPath = "/admin
   const context = await requireAdminWorkspace(nextPath);
 
   if (!canAccessShelter({ role: context.role, shelterIds: context.shelterIds, targetShelterId: shelterId })) {
-    redirect(buildAdminLoginPath(nextPath, "This shelter is not linked to your admin account."));
+    redirect(buildAdminLoginPath(nextPath));
   }
 
   return context;

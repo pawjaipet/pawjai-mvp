@@ -22,6 +22,7 @@ export default async function AdminDraftPage({
   return (
     <AdminReorgDraftPanel
       data={data}
+      initialMainTab={resolvedSearchParams?.view}
       initialShelterId={resolvedSearchParams?.shelter}
       initialShelterTab={resolvedSearchParams?.view}
     />

@@ -57,6 +57,7 @@ type MessageFilter = "all" | "unread" | "upcoming" | "needs_reply";
 type AdminDraftMessageThread = AdminDraftData["messageThreads"][number];
 
 const DRAFT_RETURN_TO = "/admindraft";
+const MAIN_TABS: MainTab[] = ["shelters", "dogs", "bookings", "ads", "about"];
 const BOOKING_STATUS_OPTIONS = ["requested", "confirmed", "completed", "cancelled", "no_show"];
 const VISIT_BUCKETS: { label: string; value: VisitBucket }[] = [
   { label: "Upcoming", value: "upcoming" },
@@ -77,6 +78,10 @@ const WEEKDAYS = [
 function withReturnTo(path: string, returnTo: string) {
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}returnTo=${encodeURIComponent(returnTo)}`;
+}
+
+function isMainTab(value: string | undefined): value is MainTab {
+  return MAIN_TABS.includes(value as MainTab);
 }
 
 const fallbackShelters: AdminDraftShelter[] = [
@@ -2002,6 +2007,7 @@ function isShelterTab(value: string | undefined): value is ShelterTab {
 export default function AdminReorgDraftPanel({
   accountSettingsHref,
   data,
+  initialMainTab,
   initialRoleView = "pawjai",
   initialShelterId,
   initialShelterTab,
@@ -2010,6 +2016,7 @@ export default function AdminReorgDraftPanel({
 }: {
   accountSettingsHref?: string;
   data?: AdminDraftData;
+  initialMainTab?: string;
   initialRoleView?: RoleView;
   initialShelterId?: string;
   initialShelterTab?: string;
@@ -2024,7 +2031,7 @@ export default function AdminReorgDraftPanel({
   const ads = data?.ads ?? [];
   const about = data?.about ?? null;
   const [role, setRole] = useState<RoleView>(initialRoleView);
-  const [mainTab, setMainTab] = useState<MainTab>("shelters");
+  const [mainTab, setMainTab] = useState<MainTab>(isMainTab(initialMainTab) ? initialMainTab : "shelters");
   const [selectedShelterId, setSelectedShelterId] = useState(
     initialShelterId && shelters.some((shelter) => shelter.id === initialShelterId)
       ? initialShelterId
