@@ -88,15 +88,20 @@ export default async function AdminBookingDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ checkedIn?: string; token?: string }>;
+  searchParams?: Promise<{ checkedIn?: string; token?: string; unlock?: string }>;
 }) {
   const unlocked = await isAdminDraftUnlocked();
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   const token = resolvedSearchParams?.token ?? "";
+  const gateParams = new URLSearchParams();
+  if (token) gateParams.set("token", token);
+  const gateReturnTo = gateParams.toString()
+    ? `/admindraft/bookings/${id}?${gateParams.toString()}`
+    : `/admindraft/bookings/${id}`;
 
   if (!unlocked) {
-    return <AdminDraftGate />;
+    return <AdminDraftGate returnTo={gateReturnTo} showError={resolvedSearchParams?.unlock === "failed"} />;
   }
 
   const admin = createAdminClient();

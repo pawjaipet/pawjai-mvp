@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { unlockAdminDraftAction } from "@/app/admindraft/actions";
 
-export default function AdminDraftGate({ showError = false }: { showError?: boolean }) {
+type AdminDraftGateProps = {
+  returnTo?: string;
+  showError?: boolean;
+};
+
+export default function AdminDraftGate({ returnTo = "/admindraft", showError = false }: AdminDraftGateProps) {
   return (
     <main className="min-h-screen bg-[#f5efe6] px-4 py-16 text-[#4f4338]">
       <section className="mx-auto max-w-4xl rounded-[36px] bg-[#ffecc9] p-5 shadow-[0_24px_80px_rgba(130,88,34,0.12)] sm:p-10">
@@ -17,6 +22,7 @@ export default function AdminDraftGate({ showError = false }: { showError?: bool
           </p>
 
           <form action={unlockAdminDraftAction} className="mt-10 max-w-2xl space-y-5">
+            <input name="returnTo" type="hidden" value={returnTo} />
             <label className="block" htmlFor="admin-draft-phrase">
               <span className="mb-3 block text-sm font-semibold text-[#6b5b4d]">Admin phrase</span>
               <input

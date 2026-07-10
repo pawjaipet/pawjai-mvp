@@ -6,6 +6,16 @@ import { isAdminDraftUnlocked } from "./actions";
 
 export const dynamic = "force-dynamic";
 
+function buildAdminDraftReturnTo(searchParams?: { shelter?: string; view?: string }) {
+  const params = new URLSearchParams();
+
+  if (searchParams?.shelter) params.set("shelter", searchParams.shelter);
+  if (searchParams?.view && searchParams.view !== "about") params.set("view", searchParams.view);
+
+  const query = params.toString();
+  return query ? `/admindraft?${query}` : "/admindraft";
+}
+
 export default async function AdminDraftPage({
   searchParams,
 }: {
@@ -19,7 +29,12 @@ export default async function AdminDraftPage({
   }
 
   if (!unlocked) {
-    return <AdminDraftGate showError={resolvedSearchParams?.unlock === "failed"} />;
+    return (
+      <AdminDraftGate
+        returnTo={buildAdminDraftReturnTo(resolvedSearchParams)}
+        showError={resolvedSearchParams?.unlock === "failed"}
+      />
+    );
   }
 
   const data = await loadAdminDraftData();

@@ -18,15 +18,16 @@ export default async function EditAdminDraftDogPage({
 }) {
   const [{ id }, resolvedSearchParams] = await Promise.all([params, searchParams]);
   const unlocked = await isAdminDraftUnlocked();
+  const gateReturnTo = `/admindraft/dogs/${id}/edit`;
 
   if (!unlocked) {
-    return <AdminDraftGate showError={resolvedSearchParams?.unlock === "failed"} />;
+    return <AdminDraftGate returnTo={gateReturnTo} showError={resolvedSearchParams?.unlock === "failed"} />;
   }
 
   const adminContext = await getAdminAuthContext();
 
   if (!adminContext) {
-    return <AdminDraftGate />;
+    return <AdminDraftGate returnTo={gateReturnTo} />;
   }
 
   const supabase = createAdminClient();

@@ -33,14 +33,19 @@ function InvalidQrCard({ retry }: { retry?: boolean }) {
 export default async function AdminDraftBookingCheckInPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ invalid?: string; token?: string }>;
+  searchParams?: Promise<{ invalid?: string; token?: string; unlock?: string }>;
 }) {
   const unlocked = await isAdminDraftUnlocked();
   const resolvedSearchParams = await searchParams;
   const token = resolvedSearchParams?.token ?? "";
+  const gateParams = new URLSearchParams();
+  if (token) gateParams.set("token", token);
+  const gateReturnTo = gateParams.toString()
+    ? `/admindraft/bookings/check-in?${gateParams.toString()}`
+    : "/admindraft/bookings/check-in";
 
   if (!unlocked) {
-    return <AdminDraftGate />;
+    return <AdminDraftGate returnTo={gateReturnTo} showError={resolvedSearchParams?.unlock === "failed"} />;
   }
 
   if (!token || resolvedSearchParams?.invalid === "1") {

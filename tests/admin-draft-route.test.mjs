@@ -21,8 +21,12 @@ test("/admindraft requires the lightweight draft phrase gate before loading data
   assert.equal(actionSource.includes("pawjaiadmin!"), true);
   assert.equal(actionSource.includes("httpOnly: true"), true);
   assert.equal(actionSource.includes('const ADMIN_DRAFT_COOKIE_PATHS = ["/admindraft", "/booking"]'), true);
+  assert.equal(actionSource.includes("getAdminDraftReturnPath"), true);
+  assert.equal(actionSource.includes("withUnlockFailed(returnTo)"), true);
+  assert.equal(actionSource.includes("redirect(returnTo)"), true);
   assert.equal(gateSource.includes("Unlock the admin draft workspace."), true);
   assert.equal(gateSource.includes("Admin phrase"), true);
+  assert.equal(gateSource.includes('name="returnTo"'), true);
   assert.equal(gateSource.includes("/shelter"), true);
   assert.equal(pageSource.includes("getAdminAuthContext"), false);
 });
@@ -76,6 +80,18 @@ test("legacy admin reorg draft route aliases /admindraft", () => {
   const source = readFileSync(new URL("../app/admin/reorg-draft/page.tsx", import.meta.url), "utf8");
 
   assert.equal(source.includes("@/app/admindraft/page"), true);
+});
+
+test("admin draft direct pages unlock back to their own route", () => {
+  const aboutSource = readFileSync(new URL("../app/admindraft/aboutcontent/page.tsx", import.meta.url), "utf8");
+  const accountsSource = readFileSync(new URL("../app/admindraft/accounts/page.tsx", import.meta.url), "utf8");
+  const auditSource = readFileSync(new URL("../app/admindraft/audit/page.tsx", import.meta.url), "utf8");
+  const mainSource = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
+
+  assert.equal(aboutSource.includes('returnTo="/admindraft/aboutcontent"'), true);
+  assert.equal(accountsSource.includes('returnTo="/admindraft/accounts"'), true);
+  assert.equal(auditSource.includes('returnTo="/admindraft/audit"'), true);
+  assert.equal(mainSource.includes("buildAdminDraftReturnTo"), true);
 });
 
 test("admin draft data loader includes booking workspace fields for inline decisions", () => {

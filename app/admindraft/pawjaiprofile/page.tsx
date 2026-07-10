@@ -3,15 +3,17 @@ import { PawjaiProfileAdminPageContent } from "@/components/admin/PawjaiProfileA
 
 export const dynamic = "force-dynamic";
 
-export default function AdminDraftPawjaiProfilePage({
+export default async function AdminDraftPawjaiProfilePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ message?: string }>;
+  searchParams?: Promise<{ message?: string; unlock?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
+
   return (
     <PawjaiProfileAdminPageContent
       basePath="/admindraft"
-      lockedFallback={<AdminDraftGate />}
+      lockedFallback={<AdminDraftGate returnTo="/admindraft/pawjaiprofile" showError={resolvedSearchParams?.unlock === "failed"} />}
       searchParams={searchParams}
       showLock={false}
     />

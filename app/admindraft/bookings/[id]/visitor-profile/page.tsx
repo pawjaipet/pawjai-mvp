@@ -189,14 +189,17 @@ async function signedDocumentUrl(
 
 export default async function AdminVisitorProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ unlock?: string }>;
 }) {
   const unlocked = await isAdminDraftUnlocked();
-  const { id } = await params;
+  const [{ id }, resolvedSearchParams] = await Promise.all([params, searchParams]);
+  const gateReturnTo = `/admindraft/bookings/${id}/visitor-profile`;
 
   if (!unlocked) {
-    return <AdminDraftGate />;
+    return <AdminDraftGate returnTo={gateReturnTo} showError={resolvedSearchParams?.unlock === "failed"} />;
   }
 
   const admin = createAdminClient();

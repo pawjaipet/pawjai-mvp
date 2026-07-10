@@ -15,15 +15,18 @@ export default async function AdminDraftNewDogPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const unlocked = await isAdminDraftUnlocked();
+  const gateReturnTo = resolvedSearchParams?.shelter
+    ? `/admindraft/dogs/new?shelter=${encodeURIComponent(resolvedSearchParams.shelter)}`
+    : "/admindraft/dogs/new";
 
   if (!unlocked) {
-    return <AdminDraftGate showError={resolvedSearchParams?.unlock === "failed"} />;
+    return <AdminDraftGate returnTo={gateReturnTo} showError={resolvedSearchParams?.unlock === "failed"} />;
   }
 
   const adminContext = await getAdminAuthContext();
 
   if (!adminContext) {
-    return <AdminDraftGate />;
+    return <AdminDraftGate returnTo={gateReturnTo} />;
   }
 
   const supabase = createAdminClient();

@@ -3,15 +3,17 @@ import { AdminAccountsPageContent } from "@/components/admin/AdminAccountsPageCo
 
 export const dynamic = "force-dynamic";
 
-export default function AdminDraftAccountsPage({
+export default async function AdminDraftAccountsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ message?: string }>;
+  searchParams?: Promise<{ message?: string; unlock?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
+
   return (
     <AdminAccountsPageContent
       basePath="/admindraft"
-      lockedFallback={<AdminDraftGate />}
+      lockedFallback={<AdminDraftGate returnTo="/admindraft/accounts" showError={resolvedSearchParams?.unlock === "failed"} />}
       searchParams={searchParams}
     />
   );
