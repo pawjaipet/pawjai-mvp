@@ -1615,7 +1615,7 @@ function ShelterMessagesTab({
                     Attach file
                   </label>
                   <input
-                    accept="image/png,image/jpeg,image/webp,application/pdf"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov,application/pdf,image/heic,image/heif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
                     className="sr-only"
                     disabled={messagesUnavailable}
                     id={`shelter-attachment-${selectedThread.appointmentId}`}

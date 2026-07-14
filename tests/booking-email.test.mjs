@@ -235,6 +235,61 @@ test("builds shelter-only return inquiry email", () => {
   assert.match(email.text, /Dog: Yala/);
 });
 
+test("builds appointment message email for the opposite party", () => {
+  const { buildAppointmentMessageNotificationEmail } = loadBookingEmail();
+  const shelterEmail = buildAppointmentMessageNotificationEmail({
+    appointment: {
+      appointmentDate: "2026-05-30",
+      appointmentId: "appointment-1",
+      appointmentTime: "13:00",
+      bookingCode: "APT-5F1A2",
+    },
+    adopter: {
+      email: "adopter@pawjai.pet",
+      name: "Mali Visitor",
+    },
+    attachmentName: "home-video.mov",
+    body: "Here is the update from home.",
+    dogName: "Yala",
+    senderLabel: "Mali Visitor",
+    senderRole: "adopter",
+    shelter: {
+      email: "shelter@pawjai.pet",
+      name: "Bangkok Dog Shelter",
+    },
+  });
+  const adopterEmail = buildAppointmentMessageNotificationEmail({
+    appointment: {
+      appointmentDate: "2026-05-30",
+      appointmentId: "appointment-1",
+      appointmentTime: "13:00",
+      bookingCode: "APT-5F1A2",
+    },
+    adopter: {
+      email: "adopter@pawjai.pet",
+      name: "Mali Visitor",
+    },
+    attachmentName: null,
+    body: "Thanks, please send more photos.",
+    dogName: "Yala",
+    senderLabel: "Shelter team",
+    senderRole: "shelter",
+    shelter: {
+      email: "shelter@pawjai.pet",
+      name: "Bangkok Dog Shelter",
+    },
+  });
+
+  assert.equal(shelterEmail.to, "shelter@pawjai.pet");
+  assert.equal(shelterEmail.subject, "New PawJai message for booking APT-5F1A2");
+  assert.match(shelterEmail.text, /From: Mali Visitor/);
+  assert.match(shelterEmail.text, /Attachment: home-video.mov/);
+  assert.match(shelterEmail.text, /Open conversation: https:\/\/pawjai.co.th\/shelter\/bangkokdogshelter\?view=messages/);
+  assert.equal(adopterEmail.to, "adopter@pawjai.pet");
+  assert.match(adopterEmail.text, /From: Shelter team/);
+  assert.match(adopterEmail.text, /Open conversation: https:\/\/pawjai.co.th\/appointments\/appointment-1\?tab=messages/);
+});
+
 test("skips the shelter email when the shelter profile has no email", () => {
   const { buildBookingNotificationEmails } = loadBookingEmail();
   const emails = buildBookingNotificationEmails({
@@ -332,4 +387,26 @@ test("sends return inquiry notification to shelter", async () => {
   assert.equal(sentMessages[0].subject, "PawJai return inquiry for booking APT-6BFC0");
   assert.match(sentMessages[0].text, /Adopter: Polchaya Sudlabha, proudxd@gmail.com/);
   assert.match(sentMessages[0].text, /Dog: Yala/);
+});
+
+test("sends appointment message notification to the opposite party", async () => {
+  const sentMessages = [];
+  const { sendAppointmentMessageNotificationForAppointment } = loadBookingEmailWithSentMessages(sentMessages);
+  const admin = createFakeAdmin();
+
+  await sendAppointmentMessageNotificationForAppointment({
+    admin,
+    appointmentId: "6bfc0abc-1111-2222-3333-444455556666",
+    attachmentName: "home-video.mov",
+    body: "Here is the update from home.",
+    senderLabel: "Polchaya Sudlabha",
+    senderRole: "adopter",
+  });
+
+  assert.equal(sentMessages.length, 1);
+  assert.equal(sentMessages[0].to, "test@test.com");
+  assert.equal(sentMessages[0].subject, "New PawJai message for booking APT-6BFC0");
+  assert.match(sentMessages[0].text, /From: Polchaya Sudlabha/);
+  assert.match(sentMessages[0].text, /Attachment: home-video.mov/);
+  assert.match(sentMessages[0].text, /Open conversation: https:\/\/pawjai.co.th\/shelter\/thevoicefoundation\?view=messages/);
 });

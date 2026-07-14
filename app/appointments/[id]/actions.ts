@@ -7,77 +7,17 @@ import {
   APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE,
   isAppointmentMessagesUnavailableError,
 } from "@/utils/appointment-messages";
-import { sendReturnInquiryNotificationForAppointment } from "@/utils/booking-email";
+import {
+  sendAppointmentMessageNotificationForAppointment,
+  sendReturnInquiryNotificationForAppointment,
+} from "@/utils/booking-email";
+import {
+  getAppointmentMessageAttachmentFile,
+  uploadAppointmentMessageAttachment,
+} from "@/utils/appointment-message-attachments";
 import { assertRateLimit } from "@/utils/rate-limit";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
-
-const CHAT_ATTACHMENTS_BUCKET = "dog-photos";
-const CHAT_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
-const CHAT_ATTACHMENT_MIME_TO_EXTENSION: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
-
-function getAttachmentExtension(file: File) {
-  const fromType = CHAT_ATTACHMENT_MIME_TO_EXTENSION[file.type];
-  if (fromType) return fromType;
-
-  const match = file.name.match(/\.([a-z0-9]+)$/i);
-  return match?.[1]?.toLowerCase() ?? "jpg";
-}
-
-function getAppointmentAttachmentFile(formData: FormData) {
-  const file = formData.get("attachment");
-  if (!(file instanceof File) || file.size <= 0) return null;
-  return file;
-}
-
-async function uploadAppointmentAttachment({
-  appointmentId,
-  file,
-  userId,
-}: {
-  appointmentId: string;
-  file: File;
-  userId: string;
-}) {
-  if (!Object.hasOwn(CHAT_ATTACHMENT_MIME_TO_EXTENSION, file.type)) {
-    throw new Error("Only JPG, PNG, and WebP photos can be attached to appointment messages.");
-  }
-
-  if (file.size > CHAT_ATTACHMENT_MAX_BYTES) {
-    throw new Error("Photos must be 10 MB or smaller.");
-  }
-
-  const admin = createAdminClient();
-  const extension = getAttachmentExtension(file);
-  const storagePath = `appointment-messages/${appointmentId}/${crypto.randomUUID()}.${extension}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  const { error: uploadError } = await admin.storage.from(CHAT_ATTACHMENTS_BUCKET).upload(storagePath, buffer, {
-    contentType: file.type,
-    metadata: {
-      appointmentId,
-      originalName: file.name,
-      uploadedBy: userId,
-    },
-    upsert: false,
-  });
-
-  if (uploadError) {
-    throw new Error(`Supabase attachment upload failed: ${uploadError.message}`);
-  }
-
-  const { data } = admin.storage.from(CHAT_ATTACHMENTS_BUCKET).getPublicUrl(storagePath);
-
-  return {
-    name: file.name,
-    type: file.type,
-    url: data.publicUrl,
-  };
-}
 
 export async function cancelAppointmentAction(appointmentId: string) {
   const supabase = await createClient();
@@ -125,7 +65,7 @@ export async function cancelAppointmentAction(appointmentId: string) {
 export async function sendAppointmentMessageAction(formData: FormData) {
   const appointmentId = String(formData.get("appointmentId") ?? "");
   const body = String(formData.get("body") ?? "").trim();
-  const attachmentFile = getAppointmentAttachmentFile(formData);
+  const attachmentFile = getAppointmentMessageAttachmentFile(formData);
 
   if (!appointmentId || (!body && !attachmentFile)) {
     return;
@@ -160,10 +100,10 @@ export async function sendAppointmentMessageAction(formData: FormData) {
     redirect("/appointments");
   }
 
-  let attachment: Awaited<ReturnType<typeof uploadAppointmentAttachment>> | null = null;
+  let attachment: Awaited<ReturnType<typeof uploadAppointmentMessageAttachment>> | null = null;
   if (attachmentFile) {
     try {
-      attachment = await uploadAppointmentAttachment({
+      attachment = await uploadAppointmentMessageAttachment({
         appointmentId: appointment.id,
         file: attachmentFile,
         userId: user.id,
@@ -171,19 +111,20 @@ export async function sendAppointmentMessageAction(formData: FormData) {
     } catch (error) {
       const message = error instanceof Error
         ? error.message
-        : "Photo could not be uploaded. Please try again.";
+        : "Attachment could not be uploaded. Please try again.";
       redirect(`/appointments/${appointmentId}?tab=messages&message=${encodeURIComponent(message)}`);
     }
   }
 
+  const senderLabel = [adopter.first_name, adopter.last_name].filter(Boolean).join(" ") || user.email || "Visitor";
   const { error } = await admin.from("appointment_messages").insert({
     adopter_id: adopter.id,
     appointment_id: appointment.id,
     attachment_name: attachment?.name ?? null,
     attachment_type: attachment?.type ?? null,
     attachment_url: attachment?.url ?? null,
-    body: body || (attachment ? `Photo attached: ${attachment.name}` : body),
-    sender_label: [adopter.first_name, adopter.last_name].filter(Boolean).join(" ") || user.email || "Visitor",
+    body: body || (attachment ? `Attachment: ${attachment.name}` : body),
+    sender_label: senderLabel,
     sender_role: "adopter",
     shelter_id: appointment.shelter_id,
   });
@@ -194,6 +135,15 @@ export async function sendAppointmentMessageAction(formData: FormData) {
       : "Message could not be sent. Please try again.";
     redirect(`/appointments/${appointmentId}?tab=messages&message=${encodeURIComponent(message)}`);
   }
+
+  await sendAppointmentMessageNotificationForAppointment({
+    admin,
+    appointmentId: appointment.id,
+    attachmentName: attachment?.name ?? null,
+    body: body || (attachment ? `Attachment: ${attachment.name}` : ""),
+    senderLabel,
+    senderRole: "adopter",
+  });
 
   revalidatePath("/messages");
   revalidatePath(`/appointments/${appointmentId}`);

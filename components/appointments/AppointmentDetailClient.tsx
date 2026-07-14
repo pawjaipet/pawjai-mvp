@@ -683,7 +683,7 @@ function MessagesTab({
         ref={attachRef}
         name="attachment"
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov,application/pdf,image/heic,image/heif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
         className="hidden"
         onChange={(e) => handleAttachment(e.target.files)}
       />

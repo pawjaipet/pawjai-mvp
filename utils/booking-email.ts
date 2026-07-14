@@ -55,8 +55,38 @@ type ReturnInquiryNotificationDetails = {
     name?: string | null;
   };
 };
+type AppointmentMessageNotificationDetails = {
+  appointment: {
+    appointmentDate?: string | null;
+    appointmentId: string;
+    appointmentTime?: string | null;
+    bookingCode: string;
+  };
+  adopter: {
+    email?: string | null;
+    name?: string | null;
+  };
+  attachmentName?: string | null;
+  body?: string | null;
+  dogName?: string | null;
+  senderLabel?: string | null;
+  senderRole: "adopter" | "shelter";
+  shelter: {
+    email?: string | null;
+    name?: string | null;
+  };
+};
+type SendAppointmentMessageNotificationInput = {
+  admin: any;
+  appointmentId: string;
+  attachmentName?: string | null;
+  body?: string | null;
+  senderLabel?: string | null;
+  senderRole: "adopter" | "shelter";
+};
 
 const FALLBACK_NOTIFICATION_TO = "pawjaipet@gmail.com";
+const DEFAULT_SITE_ORIGIN = "https://pawjai.co.th";
 const DEFAULT_FROM = "PawJai <onboarding@resend.dev>";
 const BLOCKED_NOTIFICATION_DOMAINS = new Set([
   "example.com",
@@ -144,6 +174,31 @@ function formatVisit(appointment: BookingEmailDetails["appointment"]) {
 
 function formatName(parts: Array<string | null | undefined>) {
   return parts.map((part) => String(part ?? "").trim()).filter(Boolean).join(" ");
+}
+
+function formatAppointmentBookingCode(appointmentId: string) {
+  return `APT-${appointmentId.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5)}`;
+}
+
+function getNotificationOrigin() {
+  return (process.env.NEXT_PUBLIC_SITE_URL ?? process.env.PAWJAI_SITE_ORIGIN ?? DEFAULT_SITE_ORIGIN).replace(/\/+$/, "");
+}
+
+function slugifyNotificationShelterName(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function buildAppointmentMessageUrl(details: AppointmentMessageNotificationDetails) {
+  const origin = getNotificationOrigin();
+
+  if (details.senderRole === "shelter") {
+    return `${origin}/appointments/${details.appointment.appointmentId}?tab=messages`;
+  }
+
+  const shelterSlug = details.shelter.name ? slugifyNotificationShelterName(details.shelter.name) : "";
+  return shelterSlug
+    ? `${origin}/shelter/${shelterSlug}?view=messages`
+    : `${origin}/admindraft?view=messages`;
 }
 
 function buildNotificationLines(details: BookingEmailDetails, audience: BookingNotificationAudience) {
@@ -341,6 +396,45 @@ export function buildReturnInquiryNotificationEmail(details: ReturnInquiryNotifi
   };
 }
 
+export function buildAppointmentMessageNotificationEmail(details: AppointmentMessageNotificationDetails) {
+  const to = details.senderRole === "shelter"
+    ? getBookingNotificationRecipient({ recipientEmail: details.adopter.email })
+    : normalizeDeliverableEmail(details.shelter.email);
+
+  if (!to) return null;
+
+  const sender = String(details.senderLabel ?? "").trim()
+    || (details.senderRole === "shelter" ? details.shelter.name : details.adopter.name)
+    || (details.senderRole === "shelter" ? "Shelter team" : "Visitor");
+  const messageBody = String(details.body ?? "").trim() || (details.attachmentName ? "Attachment only" : "No message text");
+  const lines = [
+    `Booking number: ${details.appointment.bookingCode}`,
+    `From: ${sender}`,
+    `Dog: ${details.dogName || "Not provided"}`,
+    `Visit: ${formatVisit({
+      appointmentDate: details.appointment.appointmentDate ?? null,
+      appointmentTime: details.appointment.appointmentTime ?? null,
+      bookingCode: details.appointment.bookingCode,
+      status: "requested",
+    })}`,
+    `Message: ${messageBody}`,
+  ];
+
+  if (details.attachmentName) {
+    lines.push(`Attachment: ${details.attachmentName}`);
+  }
+
+  lines.push(`Open conversation: ${buildAppointmentMessageUrl(details)}`);
+
+  return {
+    from: process.env.PAWJAI_EMAIL_FROM ?? DEFAULT_FROM,
+    html: buildHtml(lines),
+    subject: `New PawJai message for booking ${details.appointment.bookingCode}`,
+    text: lines.join("\n"),
+    to,
+  };
+}
+
 export async function sendReturnInquiryNotificationForAppointment({
   admin,
   appointmentId,
@@ -407,5 +501,81 @@ export async function sendReturnInquiryNotificationForAppointment({
     }
   } catch (error) {
     console.error("Return inquiry notification email could not be sent", error);
+  }
+}
+
+export async function sendAppointmentMessageNotificationForAppointment({
+  admin,
+  appointmentId,
+  attachmentName,
+  body,
+  senderLabel,
+  senderRole,
+}: SendAppointmentMessageNotificationInput) {
+  const { data: appointment, error } = await admin
+    .from("appointments")
+    .select("id, adopter_id, appointment_date, appointment_time, dog_id, shelter_id")
+    .eq("id", appointmentId)
+    .maybeSingle();
+
+  if (error || !appointment) {
+    if (error) console.error("Appointment message notification lookup failed", error);
+    return;
+  }
+
+  const [adopterResult, dogResult, shelterResult] = await Promise.all([
+    admin.from("adopters").select("email, first_name, last_name").eq("id", appointment.adopter_id).maybeSingle(),
+    appointment.dog_id
+      ? admin.from("dogs").select("name").eq("id", appointment.dog_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    admin.from("shelters").select("name, email").eq("id", appointment.shelter_id).maybeSingle(),
+  ]);
+
+  if (adopterResult.error) console.error("Appointment message adopter lookup failed", adopterResult.error);
+  if (dogResult.error) console.error("Appointment message dog lookup failed", dogResult.error);
+  if (shelterResult.error || !shelterResult.data) {
+    console.error("Appointment message shelter lookup failed", shelterResult.error);
+    return;
+  }
+
+  const message = buildAppointmentMessageNotificationEmail({
+    appointment: {
+      appointmentDate: appointment.appointment_date ?? null,
+      appointmentId: appointment.id,
+      appointmentTime: appointment.appointment_time ?? null,
+      bookingCode: formatAppointmentBookingCode(appointment.id),
+    },
+    adopter: {
+      email: adopterResult.data?.email ?? null,
+      name: formatName([adopterResult.data?.first_name, adopterResult.data?.last_name]) || null,
+    },
+    attachmentName,
+    body,
+    dogName: dogResult.data?.name ?? null,
+    senderLabel,
+    senderRole,
+    shelter: {
+      email: shelterResult.data.email,
+      name: shelterResult.data.name,
+    },
+  });
+
+  if (!message) return;
+
+  console.info("Sending appointment message notification email", {
+    appointmentId,
+    senderRole,
+    to: message.to,
+  });
+
+  try {
+    const resend = getResendClient();
+    const { error: sendError } = await resend.emails.send(message);
+
+    if (sendError) {
+      console.error("Appointment message notification email failed", sendError);
+    }
+  } catch (error) {
+    console.error("Appointment message notification email could not be sent", error);
   }
 }
