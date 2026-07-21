@@ -284,10 +284,10 @@ test("builds appointment message email for the opposite party", () => {
   assert.equal(shelterEmail.subject, "New PawJai message for booking APT-5F1A2");
   assert.match(shelterEmail.text, /From: Mali Visitor/);
   assert.match(shelterEmail.text, /Attachment: home-video.mov/);
-  assert.match(shelterEmail.text, /Open conversation: https:\/\/pawjai.co.th\/shelter\/bangkokdogshelter\?view=messages/);
+  assert.match(shelterEmail.text, /Open conversation: https:\/\/www.pawjaipet.com\/shelter\/bangkokdogshelter\?view=messages/);
   assert.equal(adopterEmail.to, "adopter@pawjai.pet");
   assert.match(adopterEmail.text, /From: Shelter team/);
-  assert.match(adopterEmail.text, /Open conversation: https:\/\/pawjai.co.th\/appointments\/appointment-1\?tab=messages/);
+  assert.match(adopterEmail.text, /Open conversation: https:\/\/www.pawjaipet.com\/appointments\/appointment-1\?tab=messages/);
 });
 
 test("skips the shelter email when the shelter profile has no email", () => {
@@ -408,5 +408,5 @@ test("sends appointment message notification to the opposite party", async () =>
   assert.equal(sentMessages[0].subject, "New PawJai message for booking APT-6BFC0");
   assert.match(sentMessages[0].text, /From: Polchaya Sudlabha/);
   assert.match(sentMessages[0].text, /Attachment: home-video.mov/);
-  assert.match(sentMessages[0].text, /Open conversation: https:\/\/pawjai.co.th\/shelter\/thevoicefoundation\?view=messages/);
+  assert.match(sentMessages[0].text, /Open conversation: https:\/\/www.pawjaipet.com\/shelter\/thevoicefoundation\?view=messages/);
 });

@@ -116,13 +116,13 @@ test("maps auth provider errors to customer-friendly messages", () => {
 
 test("builds email verification redirects for token hash templates", () => {
   const { buildEmailVerificationRedirect, getCanonicalAuthOrigin } = loadAccountModel();
-  assert.equal(getCanonicalAuthOrigin("https://pawjai.co.th"), "https://www.pawjai.co.th");
+  assert.equal(getCanonicalAuthOrigin("https://pawjaipet.com"), "https://www.pawjaipet.com");
   assert.equal(
-    buildEmailVerificationRedirect("https://www.pawjai.co.th", "/filter?breed=small"),
-    "https://www.pawjai.co.th/auth/confirm?next=%2Ffilter%3Fbreed%3Dsmall",
+    buildEmailVerificationRedirect("https://www.pawjaipet.com", "/filter?breed=small"),
+    "https://www.pawjaipet.com/auth/confirm?next=%2Ffilter%3Fbreed%3Dsmall",
   );
   assert.equal(
-    buildEmailVerificationRedirect("https://www.pawjai.co.th", "https://evil.test"),
-    "https://www.pawjai.co.th/auth/confirm?next=%2Fswipe",
+    buildEmailVerificationRedirect("https://www.pawjaipet.com", "https://evil.test"),
+    "https://www.pawjaipet.com/auth/confirm?next=%2Fswipe",
   );
 });

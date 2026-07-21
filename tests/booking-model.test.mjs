@@ -100,10 +100,10 @@ test("builds shared check-in URLs with the opaque scan token", () => {
 
   assert.equal(
     buildCheckInUrl({
-      origin: "https://pawjai.co.th",
+      origin: "https://pawjaipet.com",
       token: "scan-token",
     }),
-    "https://pawjai.co.th/booking/check-in?token=scan-token",
+    "https://pawjaipet.com/booking/check-in?token=scan-token",
   );
   assert.equal(
     buildAdminBookingDetailPath({

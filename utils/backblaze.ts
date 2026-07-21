@@ -1,6 +1,6 @@
 import "server-only";
 
-const DEFAULT_B2_PUBLIC_BASE_URL = "https://f006.backblazeb2.com/file/pawjai";
+const DEFAULT_B2_PUBLIC_BASE_URL = "https://media.pawjaipet.com/file/pawjai";
 
 type B2AuthorizeResponse = {
   absoluteMinimumPartSize: number;

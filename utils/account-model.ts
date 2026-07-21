@@ -117,8 +117,8 @@ export function buildAuthPath({
 export function getCanonicalAuthOrigin(origin: string): string {
   const url = new URL(origin);
 
-  if (url.hostname === "pawjai.co.th") {
-    url.hostname = "www.pawjai.co.th";
+  if (url.hostname === "pawjaipet.com") {
+    url.hostname = "www.pawjaipet.com";
     url.protocol = "https:";
   }
 

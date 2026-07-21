@@ -24,10 +24,10 @@ function loadSeoModel() {
 test("canonical URLs always use the PawJai www production domain", () => {
   const { SITE_URL, canonicalUrl } = loadSeoModel();
 
-  assert.equal(SITE_URL, "https://www.pawjai.co.th");
-  assert.equal(canonicalUrl("/dogs"), "https://www.pawjai.co.th/dogs");
-  assert.equal(canonicalUrl("dogs/dog-1"), "https://www.pawjai.co.th/dogs/dog-1");
-  assert.equal(canonicalUrl("/dogs/dog-1?from=swipe"), "https://www.pawjai.co.th/dogs/dog-1");
+  assert.equal(SITE_URL, "https://www.pawjaipet.com");
+  assert.equal(canonicalUrl("/dogs"), "https://www.pawjaipet.com/dogs");
+  assert.equal(canonicalUrl("dogs/dog-1"), "https://www.pawjaipet.com/dogs/dog-1");
+  assert.equal(canonicalUrl("/dogs/dog-1?from=swipe"), "https://www.pawjaipet.com/dogs/dog-1");
 });
 
 test("sitemap entries include stable public pages and available dog profiles only", () => {
@@ -41,10 +41,10 @@ test("sitemap entries include stable public pages and available dog profiles onl
   assert.equal(
     JSON.stringify(entries.map((entry) => entry.url)),
     JSON.stringify([
-      "https://www.pawjai.co.th/",
-      "https://www.pawjai.co.th/about",
-      "https://www.pawjai.co.th/dogs",
-      "https://www.pawjai.co.th/dogs/available-dog",
+      "https://www.pawjaipet.com/",
+      "https://www.pawjaipet.com/about",
+      "https://www.pawjaipet.com/dogs",
+      "https://www.pawjaipet.com/dogs/available-dog",
     ]),
   );
   assert.equal(entries.at(-1).lastModified.toISOString(), "2026-06-01T10:00:00.000Z");

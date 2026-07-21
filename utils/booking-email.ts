@@ -86,7 +86,7 @@ type SendAppointmentMessageNotificationInput = {
 };
 
 const FALLBACK_NOTIFICATION_TO = "pawjaipet@gmail.com";
-const DEFAULT_SITE_ORIGIN = "https://pawjai.co.th";
+const DEFAULT_SITE_ORIGIN = "https://www.pawjaipet.com";
 const DEFAULT_FROM = "PawJai <onboarding@resend.dev>";
 const BLOCKED_NOTIFICATION_DOMAINS = new Set([
   "example.com",

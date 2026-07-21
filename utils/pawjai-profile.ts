@@ -36,9 +36,9 @@ export const DEFAULT_PAWJAI_PROFILE_CONTENT: PawjaiProfileContent = {
     { name: "Chiang Mai Dog Rescue", detail: "Chiang Mai · 80+ dogs" },
   ],
   contactItems: [
-    { type: "email", label: "hello@pawjai.co.th", href: "mailto:hello@pawjai.co.th" },
+    { type: "email", label: "hello@pawjaipet.com", href: "mailto:hello@pawjaipet.com" },
     { type: "social", label: "@pawjai.official", href: null },
-    { type: "website", label: "pawjai.co.th", href: "https://pawjai.co.th" },
+    { type: "website", label: "pawjaipet.com", href: "https://pawjaipet.com" },
   ],
 };
 

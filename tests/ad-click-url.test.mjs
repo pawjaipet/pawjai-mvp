@@ -27,9 +27,9 @@ function loadAdClickUrlModule() {
 test("normalizes ad click URLs without requiring a protocol", () => {
   const { normalizeAdClickUrl } = loadAdClickUrlModule();
 
-  assert.equal(normalizeAdClickUrl("pawjai.co.th/ads"), "https://pawjai.co.th/ads");
+  assert.equal(normalizeAdClickUrl("pawjaipet.com/ads"), "https://pawjaipet.com/ads");
   assert.equal(normalizeAdClickUrl("www.instagram.com/pawjai"), "https://www.instagram.com/pawjai");
-  assert.equal(normalizeAdClickUrl("https://pawjai.co.th/ads"), "https://pawjai.co.th/ads");
+  assert.equal(normalizeAdClickUrl("https://pawjaipet.com/ads"), "https://pawjaipet.com/ads");
   assert.equal(normalizeAdClickUrl("http://example.com/path"), "http://example.com/path");
 });
 

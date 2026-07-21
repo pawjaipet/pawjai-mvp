@@ -29,8 +29,8 @@ export async function resolveShelterPilotLoginIdentifier(identifier: string) {
     return user.user?.email ?? "";
   }
 
-  if (normalized === "thevoice") return "thevoice@pawjai.co.th";
-  if (normalized === "rescuedog") return "rescuedog@pawjai.co.th";
+  if (normalized === "thevoice") return "thevoice@pawjaipet.com";
+  if (normalized === "rescuedog") return "rescuedog@pawjaipet.com";
 
   return "";
 }

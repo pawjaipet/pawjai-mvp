@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const SITE_URL = "https://www.pawjai.co.th";
+export const SITE_URL = "https://www.pawjaipet.com";
 
 export const PUBLIC_SITEMAP_PATHS = ["/", "/about", "/dogs"] as const;
 
