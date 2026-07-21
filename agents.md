@@ -1,6 +1,6 @@
 # PAWJAI — Agent Guide
 
-PAWJAI is a Thai dog **adoption & matching** platform — live in production at **pawjai.co.th**. This file is the context an AI coding agent (Codex) should load first. The day-to-day work here is **front-end / UX-UI**; the backend is built and stable.
+PAWJAI is a Thai dog **adoption & matching** platform — live in production at **pawjaipet.com** with canonical public URL **https://www.pawjaipet.com**. This file is the context an AI coding agent (Codex) should load first. The day-to-day work here is **front-end / UX-UI**; the backend is built and stable.
 
 > **Deeper context:** see [`handoff/HANDOFF.md`](handoff/HANDOFF.md) for the full project history, the session-by-session log in [`handoff/sessions/`](handoff/sessions/), and current open threads. New here? Start with [`handoff/START-HERE.md`](handoff/START-HERE.md).
 
@@ -14,7 +14,7 @@ PAWJAI is a Thai dog **adoption & matching** platform — live in production at 
 | Language | TypeScript, React 19 |
 | Styling | Tailwind CSS 3.4 + shadcn/ui (Radix primitives), `lucide-react` icons |
 | Backend | **Supabase** — Postgres, Auth (`@supabase/ssr`), Storage |
-| Media | **Backblaze B2** behind a **Cloudflare** CDN (`media.pawjai.co.th`) |
+| Media | **Backblaze B2** behind a **Cloudflare** CDN (`media.pawjaipet.com`) |
 | Email | **Resend** (`lib/resend.ts`) |
 | Donations | PromptPay QR via `promptpay-qr` + `qrcode` |
 | Hosting | **Vercel** — auto-deploys on push to `main` |
@@ -53,7 +53,7 @@ Admin: `admin/dogs`, `admin/bookings`, `admin/ads`, `admin/listings`, `admin/acc
 
 1. Make the change (front-end work is the norm — components in `components/`, routes in `app/`).
 2. Verify locally: `npm run dev` (Turbopack). Before committing, run **`npm run verify`** (typecheck + tests + lint + audit) — or at minimum `npm run typecheck`.
-3. Commit, then **push to `main`** → Vercel auto-deploys to pawjai.co.th in ~1 min.
+3. Commit, then **push to `main`** → Vercel auto-deploys to `https://www.pawjaipet.com` in ~1 min.
 4. Reuse existing components and `utils/` models before writing new ones.
 
 **Useful scripts:** `npm run dev`, `npm run build`, `npm run typecheck`, `npm test`, `npm run verify`, `npm run lint`, `npm run supabase:link` (links the CLI to project `bdnyvcvkyepipdcygkvn`), `npm run email:test`.
