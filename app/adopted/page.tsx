@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { ensureAdopterForUser } from "@/utils/adopter";
+import { normalizeDogMediaUrl } from "@/utils/dog-media";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -20,10 +21,10 @@ async function getAdoptedDogs(adopterId: string) {
 
   const [{ data: dogs }, { data: photos }] = await Promise.all([
     admin.from("dogs").select("id, name, breed, gender").in("id", dogIds).eq("adoption_status", "adopted"),
-    admin.from("dog_photos").select("dog_id, public_url").in("dog_id", dogIds).eq("is_cover", true),
+    admin.from("dog_photos").select("dog_id, public_url, storage_path").in("dog_id", dogIds).eq("is_cover", true),
   ]);
 
-  const coverMap = new Map((photos ?? []).map((p) => [p.dog_id, p.public_url]));
+  const coverMap = new Map((photos ?? []).map((p) => [p.dog_id, normalizeDogMediaUrl(p.public_url, p.storage_path)]));
   return (dogs ?? []).map((d) => ({
     id: d.id,
     name: d.name,

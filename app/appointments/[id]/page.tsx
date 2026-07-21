@@ -14,6 +14,7 @@ import {
   getCheckInTokenSecret,
   hashCheckInToken,
 } from "@/utils/booking";
+import { normalizeDogMediaUrl } from "@/utils/dog-media";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -91,11 +92,11 @@ export default async function AppointmentDetailPage({
   if (appt.dog_id) {
     const { data: photo } = await admin
       .from("dog_photos")
-      .select("public_url")
+      .select("public_url, storage_path")
       .eq("dog_id", appt.dog_id)
       .eq("is_cover", true)
       .maybeSingle();
-    coverUrl = photo?.public_url ?? null;
+    coverUrl = normalizeDogMediaUrl(photo?.public_url, photo?.storage_path);
   }
 
   // Build display strings server-side (TZ-safe)

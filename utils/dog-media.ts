@@ -14,9 +14,9 @@ type MediaManifest = {
   items?: DogMediaItem[];
 };
 
-const DOG_MEDIA_PUBLIC_BASE_URL = "https://media.pawjaipet.com/file/pawjai";
+export const DOG_MEDIA_PUBLIC_BASE_URL = "https://media.pawjaipet.com/file/pawjai";
 
-function normalizeDogMediaUrl(url: string | null | undefined, storagePath?: string | null) {
+export function normalizeDogMediaUrl(url: string | null | undefined, storagePath?: string | null) {
   const path = storagePath?.replace(/^\/+/, "");
   if (path) return `${DOG_MEDIA_PUBLIC_BASE_URL}/${path}`;
   if (!url) return null;

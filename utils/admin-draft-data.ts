@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/utils/supabase/admin";
+import { normalizeDogMediaUrl } from "@/utils/dog-media";
 import {
   loadAppointmentMessageThreads,
   type AppointmentMessageThread,
@@ -185,7 +186,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
       .limit(200),
     supabase
       .from("dog_photos")
-      .select("dog_id,public_url,is_cover,sort_order")
+      .select("dog_id,public_url,is_cover,sort_order,storage_path")
       .order("sort_order", { ascending: true })
       .limit(1000),
     supabase
@@ -273,9 +274,10 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
 
   for (const photo of rawDogPhotos) {
     const current = photoSummaryByDog.get(photo.dog_id) ?? { coverUrl: null, photosCount: 0 };
+    const publicUrl = normalizeDogMediaUrl(photo.public_url, photo.storage_path);
 
     photoSummaryByDog.set(photo.dog_id, {
-      coverUrl: photo.is_cover ? photo.public_url : current.coverUrl ?? photo.public_url,
+      coverUrl: photo.is_cover ? publicUrl : current.coverUrl ?? publicUrl,
       photosCount: current.photosCount + 1,
     });
   }

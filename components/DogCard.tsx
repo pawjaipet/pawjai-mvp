@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ImageWithFallback from "./ImageWithFallback";
 import type { DogWithCover } from "@/types/database";
+import { normalizeDogMediaUrl } from "@/utils/dog-media";
 
 function ageLabel(months: number | null): string {
   if (months === null) return "";
@@ -11,6 +12,8 @@ function ageLabel(months: number | null): string {
 }
 
 export default function DogCard({ dog }: { dog: DogWithCover }) {
+  const coverPhoto = normalizeDogMediaUrl(dog.cover_photo);
+
   return (
     <Link
       href={`/dogs/${dog.id}`}
@@ -20,7 +23,7 @@ export default function DogCard({ dog }: { dog: DogWithCover }) {
       {/* Photo */}
       <div className="relative h-[160px]" style={{ background: "#d6c8ad" }}>
         <ImageWithFallback
-          src={dog.cover_photo}
+          src={coverPhoto}
           alt={dog.name}
           fill
           className="object-cover"

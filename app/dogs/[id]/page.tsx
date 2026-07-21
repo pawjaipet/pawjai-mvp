@@ -9,7 +9,7 @@ import AuthPromptButton from "@/components/auth/AuthPromptButton";
 import DogPhotoGallery from "@/components/dogs/DogPhotoGallery";
 import TreatButton from "@/components/donations/TreatButton";
 import type { DogPhoto, DogTrait } from "@/types/database";
-import { buildDogMediaItems } from "@/utils/dog-media";
+import { buildDogMediaItems, normalizeDogMediaUrl } from "@/utils/dog-media";
 import { NOINDEX_ROBOTS, canonicalUrl } from "@/utils/seo";
 import { toggleWishlist } from "./actions";
 
@@ -140,6 +140,7 @@ export default async function DogProfilePage({
     if (aCover !== bCover) return aCover - bCover;
     return a.sort_order - b.sort_order;
   });
+  const primaryDogPhotoUrl = normalizeDogMediaUrl(orderedPhotos[0]?.public_url, orderedPhotos[0]?.storage_path);
 
   const personalityTraits = traits
     .filter((t) => t.trait_type === "personality")
@@ -231,7 +232,7 @@ export default async function DogProfilePage({
             dogName={dog.name}
             shelterId={dog.shelter_id}
             shelterName={shelter?.name ?? "their shelter"}
-            dogPhotoUrl={orderedPhotos[0]?.public_url ?? null}
+            dogPhotoUrl={primaryDogPhotoUrl}
             isLoggedIn={Boolean(user)}
           />
         </div>
@@ -437,7 +438,7 @@ export default async function DogProfilePage({
             dogName={dog.name}
             shelterId={dog.shelter_id}
             shelterName={shelter?.name ?? "their shelter"}
-            dogPhotoUrl={orderedPhotos[0]?.public_url ?? null}
+            dogPhotoUrl={primaryDogPhotoUrl}
             isLoggedIn={Boolean(user)}
             autoOpenCount={autoOpenTreatCount}
           />

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { getShelterDonationDetails } from "@/app/donations/actions";
 import DonateScreen from "@/components/donations/DonateScreen";
+import { normalizeDogMediaUrl } from "@/utils/dog-media";
 
 export default async function DonatePage({
   params,
@@ -26,7 +27,7 @@ export default async function DonatePage({
   // Cover photo (matches dog detail ordering: cover first, then sort_order)
   const { data: photos } = await supabase
     .from("dog_photos")
-    .select("id, public_url, sort_order")
+    .select("id, public_url, sort_order, storage_path")
     .eq("dog_id", id)
     .order("sort_order");
   const orderedPhotos = [...(photos ?? [])].sort((a, b) => {
@@ -35,7 +36,7 @@ export default async function DonatePage({
     if (aCover !== bCover) return aCover - bCover;
     return a.sort_order - b.sort_order;
   });
-  const dogPhotoUrl = orderedPhotos[0]?.public_url ?? null;
+  const dogPhotoUrl = normalizeDogMediaUrl(orderedPhotos[0]?.public_url, orderedPhotos[0]?.storage_path);
 
   // Read the donation intent (RLS-scoped to the signed-in owner) for the
   // authoritative treat count + amount. Falls back to the dog's shelter.

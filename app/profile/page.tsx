@@ -4,6 +4,7 @@ import { signOut } from "@/app/auth/actions";
 import EditableProfileHeader from "@/components/profile/EditableProfileHeader";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { canBookAppointment, ensureAdopterForUser, getAdopterVerificationSnapshot } from "@/utils/adopter";
+import { normalizeDogMediaUrl } from "@/utils/dog-media";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import type { DogWithCover } from "@/types/database";
@@ -70,10 +71,10 @@ export default async function ProfilePage() {
     : { data: [] };
   const coverPhotoIds = (dogs ?? []).map((dog) => dog.cover_photo_id).filter(Boolean) as string[];
   const { data: photos } = coverPhotoIds.length
-    ? await admin.from("dog_photos").select("id, public_url").in("id", coverPhotoIds)
+    ? await admin.from("dog_photos").select("id, public_url, storage_path").in("id", coverPhotoIds)
     : { data: [] };
 
-  const coverMap = new Map((photos ?? []).map((p) => [p.id, p.public_url]));
+  const coverMap = new Map((photos ?? []).map((p) => [p.id, normalizeDogMediaUrl(p.public_url, p.storage_path)]));
   const savedDogs: DogWithCover[] = (dogs ?? []).map((dog) => ({
     ...dog,
     cover_photo: dog.cover_photo_id ? (coverMap.get(dog.cover_photo_id) ?? null) : null,

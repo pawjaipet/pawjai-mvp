@@ -7,7 +7,7 @@ import { toggleWishlistAction } from "@/app/actions/wishlist";
 import { useAuthModal } from "@/components/auth/AuthProvider";
 import TreatButton from "@/components/donations/TreatButton";
 import type { Dog, DogPhoto, DogTrait } from "@/types/database";
-import type { DogMediaItem } from "@/utils/dog-media";
+import { normalizeDogMediaUrl, type DogMediaItem } from "@/utils/dog-media";
 
 export type SwipeDog = Dog & {
   photos: Pick<DogPhoto, "public_url" | "is_cover" | "sort_order">[];
@@ -69,7 +69,7 @@ export default function SwipeDogCard({
     id: `photo-${index}`,
     isCover: photo.is_cover,
     posterUrl: null,
-    publicUrl: photo.public_url,
+    publicUrl: normalizeDogMediaUrl(photo.public_url),
     sortOrder: photo.sort_order,
     type: "photo" as const,
   }));
@@ -80,8 +80,8 @@ export default function SwipeDogCard({
           {
             id: "legacy-cover-video",
             isCover: true,
-            posterUrl: dog.video.poster_url ?? photoMedia[0]?.publicUrl ?? null,
-            publicUrl: dog.video.public_url,
+            posterUrl: normalizeDogMediaUrl(dog.video.poster_url) ?? photoMedia[0]?.publicUrl ?? null,
+            publicUrl: normalizeDogMediaUrl(dog.video.public_url),
             sortOrder: -1,
             type: "video" as const,
           },

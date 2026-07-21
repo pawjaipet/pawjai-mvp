@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { DogMediaItem } from "@/utils/dog-media";
+import { normalizeDogMediaUrl, type DogMediaItem } from "@/utils/dog-media";
 
 interface Photo {
   id: string;
@@ -23,8 +23,8 @@ export default function DogPhotoGallery({ photos, dogName, media, videoUrl, vide
         {
           id: "legacy-cover-video",
           isCover: true,
-          posterUrl: videoPosterUrl ?? photos[0]?.public_url ?? null,
-          publicUrl: videoUrl,
+          posterUrl: normalizeDogMediaUrl(videoPosterUrl) ?? normalizeDogMediaUrl(photos[0]?.public_url),
+          publicUrl: normalizeDogMediaUrl(videoUrl),
           sortOrder: -1,
           type: "video",
         },
@@ -32,7 +32,7 @@ export default function DogPhotoGallery({ photos, dogName, media, videoUrl, vide
           id: photo.id,
           isCover: false,
           posterUrl: null,
-          publicUrl: photo.public_url,
+          publicUrl: normalizeDogMediaUrl(photo.public_url),
           sortOrder: index,
           type: "photo" as const,
         })),
@@ -41,7 +41,7 @@ export default function DogPhotoGallery({ photos, dogName, media, videoUrl, vide
         id: photo.id,
         isCover: index === 0,
         posterUrl: null,
-        publicUrl: photo.public_url,
+        publicUrl: normalizeDogMediaUrl(photo.public_url),
         sortOrder: index,
         type: "photo" as const,
       }));
