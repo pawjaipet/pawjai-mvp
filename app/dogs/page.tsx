@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import SwipePage from "../swipe/page";
+import DogFeedPage from "@/components/dogs/DogFeedPage";
 import { canonicalUrl } from "@/utils/seo";
 
 export const dynamic = "force-dynamic";
@@ -18,4 +18,4 @@ export const metadata: Metadata = {
   },
 };
 
-export default SwipePage;
+export default DogFeedPage;

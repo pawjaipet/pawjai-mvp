@@ -3,7 +3,7 @@
 This folder preserves the context of all the AI-assisted work on PAWJAI so a **Codex** session can pick up the **front-end / UX-UI** work smoothly. Going forward PAWJAI lives under **Codex, not Claude** — which is a natural fit, since the **backend was already built in Codex**. The old Claude account is being retired (PROUD stays separate — don't mix them).
 
 ## First: the important reassurance
-**Switching AI agents (Claude → Codex) does not touch your live app or any service.** GitHub, Vercel, Supabase, Backblaze, Cloudflare, and Resend are wired to *your own logins in those dashboards* — not to any agent or AI account. You can retire the old Claude account and `pawjai.co.th` keeps running, untouched. An AI agent is just a tool reading this repo.
+**Switching AI agents (Claude → Codex) does not touch your live app or any service.** GitHub, Vercel, Supabase, Backblaze, Cloudflare, and Resend are wired to *your own logins in those dashboards* — not to any agent or AI account. You can retire the old Claude account and `pawjaipet.com` keeps running, untouched. An AI agent is just a tool reading this repo.
 
 ## What to do to get Codex going (≈5 minutes)
 
@@ -21,7 +21,7 @@ The work you'll continue is **front-end and UX-UI** — the swipe feed, dog deta
 **Figma is no longer central.** It was the original design source but is barely used now — treat the live app + these docs as the source of truth. (If you ever need the design file, the key is `cfYww0U2M4xAkvHv3Gbvss`, but you don't need a Figma connector to do the UX work.)
 
 ### Ready-to-paste Codex kickoff prompt
-> You're picking up the PAWJAI project (Thai dog-adoption app, Next.js + TypeScript + Tailwind + shadcn/ui on Supabase, live at pawjai.co.th). I want you as my front-end / UX-UI partner. Before we start: read `AGENTS.md`, `handoff/HANDOFF.md`, and skim `handoff/sessions/`. Note the open threads in HANDOFF.md (the swipe-card Treat modal portal bug and the unapplied donation migrations). Then summarize back to me where the front-end stands and what you'd tackle first. We'll work screen-by-screen on UX/UI; the backend is already in good shape.
+> You're picking up the PAWJAI project (Thai dog-adoption app, Next.js + TypeScript + Tailwind + shadcn/ui on Supabase, live at pawjaipet.com). I want you as my front-end / UX-UI partner. Before we start: read `AGENTS.md`, `handoff/HANDOFF.md`, and skim `handoff/sessions/`. Note the open threads in HANDOFF.md (the swipe-card Treat modal portal bug and the unapplied donation migrations). Then summarize back to me where the front-end stands and what you'd tackle first. We'll work screen-by-screen on UX/UI; the backend is already in good shape.
 
 ## Where the work stands (open threads to continue)
 From [HANDOFF.md](HANDOFF.md):

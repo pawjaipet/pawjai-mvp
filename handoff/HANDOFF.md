@@ -6,7 +6,7 @@
 
 ## Project overview
 
-**PAWJAI** is a Thai dog-adoption platform — a **Next.js 16** (App Router, server actions, Turbopack) + **TypeScript** + **Tailwind** app, backed by **Supabase** (Postgres, Auth via `@supabase/ssr`, storage). Media is served from **Backblaze B2** behind a **Cloudflare** CDN (`media.pawjai.co.th`); transactional email goes through **Resend**. It's deployed in **production** on **Vercel** at **pawjai.co.th**. The GitHub repo is `pawjaipet/pawjai-mvp`.
+**PAWJAI** is a Thai dog-adoption platform — a **Next.js 16** (App Router, server actions, Turbopack) + **TypeScript** + **Tailwind** app, backed by **Supabase** (Postgres, Auth via `@supabase/ssr`, storage). Media is served from **Backblaze B2** behind a **Cloudflare** CDN (`media.pawjaipet.com`); transactional email goes through **Resend**. It's deployed in **production** on **Vercel** at **pawjaipet.com**. The GitHub repo is `pawjaipet/pawjai-mvp`.
 
 **Actively being extended right now:**
 - **Donations** — "Send Treats" QR + bank-transfer screen, donation intents, shelter payment details. **Shipped to `main`** (commits `92f6d1c` Treat button + modal, `4b1ce77` QR screen).
@@ -75,14 +75,14 @@ There was **no** `sessions-index.json` in either directory when rechecked; metad
 | Service | Wired to | Config / env-var names |
 |---------|----------|------------------------|
 | **GitHub** | `pawjaipet/pawjai-mvp` (org `pawjaipet`), branch `main` | git remote `origin` = `https://github.com/pawjaipet/pawjai-mvp.git`. Recheck 2026-06-18: `main...origin/main`, no unpushed commits, but many uncommitted app/admin-auth files in the working tree. |
-| **Vercel** | Production deploy → `pawjai.co.th` | Linked via `.vercel/repo.json` (git-ignored): project `pawjai-mvp` id `prj_hqDpCgHngxahehXoognmVuXw1OBk`, team/org id `team_97uk7kuLt4prWHNQbfZV8y73`. `VERCEL_OIDC_TOKEN` present in `.env.local` |
+| **Vercel** | Production deploy → `pawjaipet.com` | Linked via `.vercel/repo.json` (git-ignored): project `pawjai-mvp` id `prj_hqDpCgHngxahehXoognmVuXw1OBk`, team/org id `team_97uk7kuLt4prWHNQbfZV8y73`. `VERCEL_OIDC_TOKEN` present in `.env.local` |
 | **Supabase** | Project ref `bdnyvcvkyepipdcygkvn` (URL public in `.env.example`); local `supabase/config.toml` project_id `paw` | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD`, plus referenced-but-not-currently-local vars `PAWJAI_BOOKING_TOKEN_SECRET`, `PAWJAI_IMPORT_SHELTER_NAME`. `supabase/config.toml` also references `OPENAI_API_KEY` for local Supabase Studio AI only. |
 | **Backblaze B2** | Media/object storage (origin behind CDN) | `B2_KEY_ID`, `B2_APPLICATION_KEY`, `B2_BUCKET_ID`, `PAWJAI_B2_PUBLIC_BASE_URL` |
-| **Cloudflare** | CDN/DNS for `media.pawjai.co.th` (proxies Backblaze), domain `pawjai.co.th` | No env vars in repo; managed in Cloudflare dashboard. ⚠️ A Cloudflare API token was pasted into session `6c0d8df0` — treat as exposed, rotate it. |
+| **Cloudflare** | CDN/DNS for `media.pawjaipet.com` (proxies Backblaze), domain `pawjaipet.com` | No env vars in repo; managed in Cloudflare dashboard. ⚠️ A Cloudflare API token was pasted into session `6c0d8df0` — treat as exposed, rotate it. |
 | **Resend** | Transactional/booking email | `RESEND_API_KEY`, `PAWJAI_EMAIL_FROM` |
 | **Figma MCP** | Design source (`PAWJAI-Currently` Figma Make file, key `cfYww0U2M4xAkvHv3Gbvss`) | Claude-account-level MCP connector (no project `.mcp.json`); OAuth tied to the Figma account. `.claude/settings.local.json` only records allowed tool names such as `mcp__plugin_design_figma__*` / `mcp__Figma__*`; it does not contain auth. |
 | **Supabase MCP** | Same Supabase project, via Claude | Claude-account-level MCP connector `96b59bab-9681-4ba9-97d1-24bbaec99e22`; uses a Supabase access token. `.claude/settings.local.json` permits tools such as `mcp__96b59bab-...__execute_sql`, but auth lives outside the repo. |
-| **Domain registrar** | `pawjai.co.th` registration | Registrar not recorded in repo; verify dashboard ownership separately from Cloudflare DNS before retiring any old account. |
+| **Domain registrar** | `pawjaipet.com` registration | Managed through the new domain account. The expired `pawjai.co.th` can be recovered later only for redirects/brand protection. |
 | **Google / Gmail** | Berkeley account (used incidentally in session `5251deb7`) | Browser session on this machine only — no repo config |
 
 **MCP note:** there is **no `.mcp.json`** in the repo. Project `.claude/settings.local.json` contains Claude Code permission allow-list entries for Figma and Supabase MCP tools, but no credentials. The Figma and Supabase MCP servers are configured as **connectors on the Claude account itself** — so they travel with the *account*, not the repo. Switching Claude accounts automatically drops their auth; re-authorize them in the new account before using Figma/Supabase MCP.
@@ -103,7 +103,7 @@ Do these **after** the new machine is confirmed working (see Restore). Goal: rem
 - vercel.com → **Account/Team Settings → Members** → ensure the **new** account is a member/owner of the team that owns the `pawjai` project, then **remove the old account**.
 - Settings → **Tokens** → revoke any personal access tokens; the old machine's CLI login (`vercel logout` on the old machine).
 - Re-check the Git integration is connected via the **new** GitHub account so deploys keep flowing.
-- **DO NOT:** delete the `pawjai` project, the `pawjai.co.th` domain, or production env vars. (Also leave the **separate PROUD** Vercel project alone.)
+- **DO NOT:** delete the `pawjai` project, the `pawjaipet.com` domain, or production env vars. (Also leave the **separate PROUD** Vercel project alone.)
 
 ### 3. Supabase
 - supabase.com → Organization → **Team / Members** → add the new account, then **remove the old account** from the org.
@@ -118,7 +118,7 @@ Do these **after** the new machine is confirmed working (see Restore). Goal: rem
 ### 5. Cloudflare
 - dash.cloudflare.com → **Manage Account → Members** → add new account, remove old.
 - **My Profile → API Tokens** → **rotate/revoke** tokens — *especially* the one pasted into session `6c0d8df0`, which must be treated as exposed.
-- **DO NOT:** delete the `pawjai.co.th` zone, DNS records, SSL settings, or the `media.pawjai.co.th` cache rule.
+- **DO NOT:** delete the `pawjaipet.com` zone, DNS records, SSL settings, or the `media.pawjaipet.com` cache rule.
 
 ### 6. Resend
 - resend.com → **Team / Members** → swap old account for new.

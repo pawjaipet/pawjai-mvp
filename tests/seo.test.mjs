@@ -21,6 +21,22 @@ function loadSeoModel() {
   return module.exports;
 }
 
+function loadAuthCookiesModel() {
+  const source = readFileSync(new URL("../utils/supabase/auth-cookies.ts", import.meta.url), "utf8");
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  });
+  const module = { exports: {} };
+  new Script(outputText).runInNewContext({
+    exports: module.exports,
+    module,
+  });
+  return module.exports;
+}
+
 test("canonical URLs always use the PawJai www production domain", () => {
   const { SITE_URL, canonicalUrl } = loadSeoModel();
 
@@ -28,6 +44,22 @@ test("canonical URLs always use the PawJai www production domain", () => {
   assert.equal(canonicalUrl("/dogs"), "https://www.pawjaipet.com/dogs");
   assert.equal(canonicalUrl("dogs/dog-1"), "https://www.pawjaipet.com/dogs/dog-1");
   assert.equal(canonicalUrl("/dogs/dog-1?from=swipe"), "https://www.pawjaipet.com/dogs/dog-1");
+});
+
+test("/dogs renders the public dog feed directly instead of importing the swipe redirect", () => {
+  const source = readFileSync(new URL("../app/dogs/page.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /DogFeedPage/);
+  assert.doesNotMatch(source, /swipe\/page/);
+});
+
+test("anonymous requests can skip Supabase auth refresh when no auth cookies exist", () => {
+  const { hasSupabaseAuthCookies } = loadAuthCookiesModel();
+
+  assert.equal(hasSupabaseAuthCookies([]), false);
+  assert.equal(hasSupabaseAuthCookies([{ name: "NEXT_LOCALE" }]), false);
+  assert.equal(hasSupabaseAuthCookies([{ name: "sb-bdnyvcvkyepipdcygkvn-auth-token" }]), true);
+  assert.equal(hasSupabaseAuthCookies([{ name: "sb-bdnyvcvkyepipdcygkvn-auth-token.0" }]), true);
 });
 
 test("sitemap entries include stable public pages and available dog profiles only", () => {

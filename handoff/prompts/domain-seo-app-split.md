@@ -49,8 +49,8 @@ Implement a PawJai version of the reel’s advice:
 - Make the public site cleanly indexable.
 - Make clear which routes are public SEO routes vs. logged-in app routes.
 - Prepare the app for a possible future split such as:
-  - Public site: `https://www.pawjai.co.th`
-  - App/dashboard: `https://app.pawjai.co.th`
+  - Public site: `https://www.pawjaipet.com`
+  - App/dashboard: `https://app.pawjaipet.com`
 - Add or verify sitemap/robots/canonical metadata for public pages.
 - Do not break the current production domain or auth redirects.
 
@@ -59,17 +59,17 @@ Implement a PawJai version of the reel’s advice:
 Current live domain:
 
 ```txt
-https://www.pawjai.co.th
+https://www.pawjaipet.com
 ```
 
 Current auth callback routes:
 
 ```txt
-https://www.pawjai.co.th/auth/callback
-https://www.pawjai.co.th/auth/confirm
+https://www.pawjaipet.com/auth/callback
+https://www.pawjaipet.com/auth/confirm
 ```
 
-Do not move auth to `app.pawjai.co.th` yet unless the user explicitly asks. This prompt is for preparing the structure and SEO surface first.
+Do not move auth to `app.pawjaipet.com` yet unless the user explicitly asks. This prompt is for preparing the structure and SEO surface first.
 
 ## Desired Implementation
 
@@ -130,18 +130,18 @@ Robots should:
 Ensure metadata consistently uses:
 
 ```txt
-https://www.pawjai.co.th
+https://www.pawjaipet.com
 ```
 
-Avoid accidentally canonicalizing to localhost, `pawjai.co.th` without `www`, or Supabase/Vercel preview URLs.
+Avoid accidentally canonicalizing to localhost, `pawjaipet.com` without `www`, or Supabase/Vercel preview URLs.
 
 ### 4. Future App Domain Prep
 
 Do not fully migrate yet, but add a short note/config plan for a future app split:
 
 ```txt
-www.pawjai.co.th  -> public/SEO site
-app.pawjai.co.th  -> logged-in app, auth, account flows
+www.pawjaipet.com  -> public/SEO site
+app.pawjaipet.com  -> logged-in app, auth, account flows
 ```
 
 Include implications:
@@ -156,18 +156,18 @@ Include implications:
 
 Add a checklist to the doc:
 
-- Add Domain property for `pawjai.co.th`.
+- Add Domain property for `pawjaipet.com`.
 - Verify ownership via DNS TXT in Cloudflare.
 - Submit sitemap:
 
 ```txt
-https://www.pawjai.co.th/sitemap.xml
+https://www.pawjaipet.com/sitemap.xml
 ```
 
 - Inspect important URLs:
-  - `https://www.pawjai.co.th/`
-  - `https://www.pawjai.co.th/about`
-  - `https://www.pawjai.co.th/dogs`
+  - `https://www.pawjaipet.com/`
+  - `https://www.pawjaipet.com/about`
+  - `https://www.pawjaipet.com/dogs`
 - Request indexing for public pages.
 
 ## Constraints

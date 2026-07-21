@@ -1,10 +1,10 @@
 ---
 name: PAWJAI Project
-description: Core facts about the pawjai.co.th dog adoption platform — stack, repo, deploy, Figma, key files
+description: Core facts about the pawjaipet.com dog adoption platform — stack, repo, deploy, Figma, key files
 type: project
 originSessionId: 26138611-8087-4cbb-9e19-91a09b1ea996
 ---
-Thai dog adoption & matching platform. Live at pawjai.co.th.
+Thai dog adoption & matching platform. Live at pawjaipet.com.
 
 **Repo:** github.com/pawjaipet/pawjai-mvp  
 **Deploy:** Vercel auto-deploys from `main` branch. Push to main → live in ~1 min.  

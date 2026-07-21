@@ -9,21 +9,21 @@ Yes, PawJai should do this now, but as a structure and SEO cleanup rather than a
 The current production domain remains:
 
 ```txt
-https://www.pawjai.co.th
+https://www.pawjaipet.com
 ```
 
 Auth also stays on the current domain:
 
 ```txt
-https://www.pawjai.co.th/auth/callback
-https://www.pawjai.co.th/auth/confirm
+https://www.pawjaipet.com/auth/callback
+https://www.pawjaipet.com/auth/confirm
 ```
 
 This keeps the production app stable while making the public surface easier for Google to understand. A future split can then be planned cleanly:
 
 ```txt
-www.pawjai.co.th -> public website and SEO pages
-app.pawjai.co.th -> logged-in app, auth, account, bookings, documents
+www.pawjaipet.com -> public website and SEO pages
+app.pawjaipet.com -> logged-in app, auth, account, bookings, documents
 ```
 
 ## Route Visibility Map
@@ -34,7 +34,7 @@ These routes are intended to be crawlable and appear in the sitemap.
 
 | Route | Purpose | Current handling |
 | --- | --- | --- |
-| `/` | Main public PawJai entry point | Canonical to `https://www.pawjai.co.th/` |
+| `/` | Main public PawJai entry point | Canonical to `https://www.pawjaipet.com/` |
 | `/about` | Mission, shelters, contact, how adoption works | Canonical to `/about` |
 | `/dogs` | Public available dog browsing entry | Canonical to `/dogs` |
 | `/dogs/[id]` | Public dog profile | Included in sitemap only when `adoption_status = available` |
@@ -83,7 +83,7 @@ These are adopter app surfaces, not SEO pages.
 
 ## Implemented SEO Rules
 
-- Canonical production domain is centralized in `utils/seo.ts` as `https://www.pawjai.co.th`.
+- Canonical production domain is centralized in `utils/seo.ts` as `https://www.pawjaipet.com`.
 - Global metadata in `app/layout.tsx` uses that domain as `metadataBase`.
 - Public pages have route-level canonical metadata:
   - `/`
@@ -106,16 +106,16 @@ Do not switch this yet unless the production app is ready for a dedicated app do
 
 When PawJai is ready, plan the change in this order:
 
-1. Add `app.pawjai.co.th` in Vercel and point Cloudflare DNS to Vercel.
-2. Keep `www.pawjai.co.th` as the public SEO property.
-3. Move logged-in app entry points to `app.pawjai.co.th`.
+1. Add `app.pawjaipet.com` in Vercel and point Cloudflare DNS to Vercel.
+2. Keep `www.pawjaipet.com` as the public SEO property.
+3. Move logged-in app entry points to `app.pawjaipet.com`.
 4. Update Supabase Auth:
    - Site URL
    - Additional redirect URLs
    - Email templates if they hard-code auth links
 5. Update Google OAuth authorized redirect URIs:
-   - `https://app.pawjai.co.th/auth/callback`
-   - Keep `https://www.pawjai.co.th/auth/callback` during transition if users may still have old links.
+   - `https://app.pawjaipet.com/auth/callback`
+   - Keep `https://www.pawjaipet.com/auth/callback` during transition if users may still have old links.
 6. Confirm Supabase cookie/session behavior across subdomains.
 7. Add redirects from old app routes on `www` to the matching `app` route only after auth and cookies are tested.
 8. Keep public canonical URLs on `www`, not `app`.
@@ -125,22 +125,22 @@ When PawJai is ready, plan the change in this order:
 1. Add a Domain property for:
 
 ```txt
-pawjai.co.th
+pawjaipet.com
 ```
 
 2. Verify ownership using the DNS TXT record in Cloudflare.
 3. Submit the sitemap:
 
 ```txt
-https://www.pawjai.co.th/sitemap.xml
+https://www.pawjaipet.com/sitemap.xml
 ```
 
 4. Inspect and request indexing for:
 
 ```txt
-https://www.pawjai.co.th/
-https://www.pawjai.co.th/about
-https://www.pawjai.co.th/dogs
+https://www.pawjaipet.com/
+https://www.pawjaipet.com/about
+https://www.pawjaipet.com/dogs
 ```
 
 5. Inspect a few real available dog profile URLs from the sitemap.
@@ -150,4 +150,4 @@ https://www.pawjai.co.th/dogs
 
 - Do not add private, admin, auth, document, message, appointment, schedule, settings, or donation pages to the sitemap.
 - Do not canonicalize to Vercel preview URLs, localhost, Supabase URLs, or the non-www domain.
-- Do not move auth callbacks to `app.pawjai.co.th` until Supabase, Google OAuth, cookies, Vercel, and Cloudflare are changed together.
+- Do not move auth callbacks to `app.pawjaipet.com` until Supabase, Google OAuth, cookies, Vercel, and Cloudflare are changed together.
