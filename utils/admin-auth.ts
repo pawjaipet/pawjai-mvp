@@ -39,6 +39,10 @@ function buildAdminLoginPath(nextPath = "/admin") {
     return "/admindraft/aboutcontent";
   }
 
+  if (nextPath.startsWith("/admindraft/")) {
+    return nextPath;
+  }
+
   const matchedView = viewByLegacyPath.find(([path]) => nextPath.startsWith(path))?.[1];
 
   if (matchedView) params.set("view", matchedView);

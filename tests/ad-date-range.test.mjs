@@ -32,6 +32,25 @@ test("accepts valid ad date ranges", () => {
   );
 });
 
+test("supports open-ended partner ads and minimum start dates", () => {
+  const { parseAdDateRange } = loadAdDateRange();
+
+  assert.equal(
+    JSON.stringify(parseAdDateRange("2026-07-21", "", {
+      defaultEndDate: "2099-12-31",
+      minStartDate: "2026-07-21",
+    })),
+    JSON.stringify({
+      endDate: "2099-12-31",
+      startDate: "2026-07-21",
+    }),
+  );
+  assert.throws(() => parseAdDateRange("2026-07-20", "", {
+    defaultEndDate: "2099-12-31",
+    minStartDate: "2026-07-21",
+  }), /start date/i);
+});
+
 test("rejects missing, malformed, and reversed ad date ranges", () => {
   const { parseAdDateRange } = loadAdDateRange();
 

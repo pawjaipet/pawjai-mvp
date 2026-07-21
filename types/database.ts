@@ -14,11 +14,14 @@ export type Database = {
           id: string
           company_name: string
           contact_info: string | null
+          contact_email: string | null
+          contact_phone: string | null
           image_url: string
           click_url: string
           start_date: string
           end_date: string
           is_active: boolean
+          ad_status: "pending" | "approved" | "denied"
           created_at: string
           updated_at: string
         }
@@ -26,11 +29,14 @@ export type Database = {
           id?: string
           company_name: string
           contact_info?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           image_url: string
           click_url: string
           start_date: string
           end_date: string
           is_active?: boolean
+          ad_status?: "pending" | "approved" | "denied"
           created_at?: string
           updated_at?: string
         }

@@ -33,7 +33,7 @@ function navHref(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) 
       case "bookings":
         return "/admindraft?view=bookings";
       case "ads":
-        return "/admindraft?view=ads";
+        return "/admindraft/ads";
       case "about":
         return "/admindraft/aboutcontent";
       case "accounts":

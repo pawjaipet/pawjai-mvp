@@ -24,13 +24,29 @@ test("/ads uses partner login and does not expose the internal ad list", () => {
   assert.equal(createSource.includes("deleteAdAction"), false);
   assert.equal(createSource.includes("toggleAdAction"), false);
   assert.equal(createSource.includes("createPartnerAdAction"), true);
+  assert.equal(createSource.includes("Continue to preview"), true);
+  assert.equal(createSource.includes("Submit for review"), true);
+  assert.equal(createSource.includes('name="contact_email"'), true);
+  assert.equal(createSource.includes('name="contact_phone"'), true);
+  assert.equal(createSource.includes("OPEN_ENDED_AD_END_DATE"), true);
   assert.equal(actionsSource.includes("createAdFromFormData"), true);
+  assert.equal(actionsSource.includes('reviewStatus: "pending"'), true);
+  assert.equal(actionsSource.includes("isActive: false"), true);
 });
 
 test("admin draft remains the internal ad review surface", () => {
   const draftSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+  const adminAdsSource = readFileSync(new URL("../app/admin/ads/AdminAdsPage.tsx", import.meta.url), "utf8");
+  const adminActionsSource = readFileSync(new URL("../app/admin/ads/actions.ts", import.meta.url), "utf8");
+  const activeAdsSource = readFileSync(new URL("../utils/ads.ts", import.meta.url), "utf8");
 
   assert.equal(draftSource.includes("function AdsTab"), true);
   assert.equal(draftSource.includes("Partner submissions from /ads land in the same ads table."), true);
   assert.equal(draftSource.includes("Brands do not need their own login yet."), false);
+  assert.equal(adminAdsSource.includes("AdReviewCard"), true);
+  assert.equal(adminAdsSource.includes("Accept"), true);
+  assert.equal(adminAdsSource.includes("Deny"), true);
+  assert.equal(adminAdsSource.includes("Full preview"), true);
+  assert.equal(adminActionsSource.includes("updateAdReviewStatusAction"), true);
+  assert.equal(activeAdsSource.includes('.eq("ad_status", "approved")'), true);
 });

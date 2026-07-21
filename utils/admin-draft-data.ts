@@ -96,12 +96,16 @@ export type AdminDraftBooking = {
 };
 
 export type AdminDraftAd = {
+  contactEmail: string | null;
+  contactInfo: string | null;
+  contactPhone: string | null;
   clickUrl: string;
   companyName: string;
   endDate: string;
   id: string;
   imageUrl: string;
   isActive: boolean;
+  reviewStatus: "pending" | "approved" | "denied";
   startDate: string;
 };
 
@@ -197,7 +201,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     loadAppointmentMessageThreads({ shelterIds: options.shelterIds }),
     supabase
       .from("ads")
-      .select("id,company_name,image_url,click_url,is_active,start_date,end_date")
+      .select("id,company_name,contact_info,contact_email,contact_phone,image_url,click_url,is_active,ad_status,start_date,end_date")
       .order("created_at", { ascending: false })
       .limit(50),
     supabase
@@ -337,10 +341,14 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     ads: rawAds.map((ad) => ({
       clickUrl: ad.click_url,
       companyName: ad.company_name,
+      contactEmail: ad.contact_email,
+      contactInfo: ad.contact_info,
+      contactPhone: ad.contact_phone,
       endDate: ad.end_date,
       id: ad.id,
       imageUrl: normalizeDogMediaUrl(ad.image_url) ?? ad.image_url,
       isActive: ad.is_active,
+      reviewStatus: ad.ad_status,
       startDate: ad.start_date,
     })),
     bookings: rawBookings.map((booking) => ({

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import AdCard from "@/components/AdCard";
 import {
   Building2,
   CalendarDays,
@@ -40,6 +41,12 @@ import {
 } from "@/app/admin/bookings/actions";
 import { sendShelterAppointmentMessageAction, signOutShelterPortalAction } from "@/app/shelter/actions";
 import DonationDetailsFields from "@/app/admin/bookings/DonationDetailsFields";
+import {
+  adDisplayStatusLabel,
+  getAdDisplayStatus,
+  OPEN_ENDED_AD_END_DATE,
+  type AdDisplayStatus,
+} from "@/utils/ad-workflow";
 import type {
   AdminDraftAboutContent,
   AdminDraftAd,
@@ -54,7 +61,7 @@ type MainTab = "shelters" | "dogs" | "bookings" | "ads" | "about";
 type ShelterTab = "profile" | "dogs" | "bookings" | "messages";
 type VisitBucket = "upcoming" | "needs_follow_up" | "past" | "all";
 type MessageFilter = "all" | "unread" | "upcoming" | "needs_reply";
-type AdStatusFilter = "all" | "live" | "paused" | "expired";
+type AdStatusFilter = "all" | AdDisplayStatus;
 type AdminDraftMessageThread = AdminDraftData["messageThreads"][number];
 
 const DRAFT_RETURN_TO = "/admindraft";
@@ -409,22 +416,18 @@ function matchesDogFilters(dog: AdminDraftDog, search: string, status: string) {
   return (!query || searchable.includes(query)) && (status === "all" || dog.status === status);
 }
 
-function getAdStatus(ad: AdminDraftAd, today: string): Exclude<AdStatusFilter, "all"> {
-  if (ad.endDate < today) return "expired";
-  return ad.isActive ? "live" : "paused";
-}
-
-function adStatusLabel(status: Exclude<AdStatusFilter, "all">) {
-  return status.charAt(0).toUpperCase() + status.slice(1);
-}
-
 function matchesAdFilters(ad: AdminDraftAd, search: string, status: AdStatusFilter, today: string) {
   const query = search.trim().toLowerCase();
-  const searchable = [ad.companyName, ad.clickUrl, ad.startDate, ad.endDate]
+  const searchable = [ad.companyName, ad.clickUrl, ad.contactEmail, ad.contactPhone, ad.contactInfo, ad.startDate, ad.endDate]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
-  const adStatus = getAdStatus(ad, today);
+  const adStatus = getAdDisplayStatus({
+    endDate: ad.endDate,
+    isActive: ad.isActive,
+    reviewStatus: ad.reviewStatus,
+    today,
+  });
 
   return (!query || searchable.includes(query)) && (status === "all" || adStatus === status);
 }
@@ -1961,8 +1964,10 @@ function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
           value={status}
         >
           <option value="all">All statuses</option>
-          <option value="live">Live</option>
+          <option value="pending">Pending review</option>
+          <option value="approved">Live</option>
           <option value="paused">Paused</option>
+          <option value="denied">Denied</option>
           <option value="expired">Expired</option>
         </select>
         <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d88c24] px-5 py-3 text-sm font-semibold text-white" type="button">
@@ -1982,40 +1987,58 @@ function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
       </div>
       <div className="mt-6 grid gap-3">
         {filteredAds.map((ad) => {
-          const adStatus = getAdStatus(ad, today);
-          const label = adStatusLabel(adStatus);
+          const adStatus = getAdDisplayStatus({
+            endDate: ad.endDate,
+            isActive: ad.isActive,
+            reviewStatus: ad.reviewStatus,
+            today,
+          });
+          const label = adDisplayStatusLabel(adStatus);
 
           return (
-            <article className="grid gap-4 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 md:grid-cols-[96px_minmax(0,1fr)_auto]" key={ad.id}>
-              <div className="h-24 w-24 overflow-hidden rounded-2xl bg-[#f3e7d5]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img alt={ad.companyName} className="h-full w-full object-cover" src={ad.imageUrl} />
+            <article className="grid gap-5 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 lg:grid-cols-[220px_minmax(0,1fr)]" key={ad.id}>
+              <div className="flex justify-center lg:justify-start">
+                <AdCard
+                  ad={{
+                    clickUrl: ad.clickUrl,
+                    companyName: ad.companyName,
+                    id: ad.id,
+                    imageUrl: ad.imageUrl,
+                  }}
+                  cardHeight={330}
+                  cardWidth={220}
+                />
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-semibold text-[#4f4338]">{ad.companyName}</h3>
+                  <h3 className="text-xl font-semibold text-[#4f4338]">{ad.companyName}</h3>
                   <span className="rounded-full bg-[#f8ecd8] px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#9a6b2a]">
                     {label}
                   </span>
                 </div>
-                <p className="mt-2 text-sm text-[#74685d]">{ad.startDate} to {ad.endDate}</p>
+                <p className="mt-2 text-sm text-[#74685d]">
+                  {ad.startDate} to {ad.endDate === OPEN_ENDED_AD_END_DATE ? "ongoing" : ad.endDate}
+                </p>
+                <p className="mt-2 text-sm text-[#74685d]">
+                  {[ad.contactEmail, ad.contactPhone, !ad.contactEmail && !ad.contactPhone ? ad.contactInfo : null].filter(Boolean).join(" · ") || "No contact provided"}
+                </p>
                 <a className="mt-1 block truncate text-sm font-semibold text-[#b77624]" href={ad.clickUrl} rel="noopener noreferrer" target="_blank">
                   {ad.clickUrl}
                 </a>
-              </div>
-              <div className="flex flex-wrap items-start gap-2 md:flex-col">
-                <Link
-                  className="inline-flex rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]"
-                  href="/admin/ads"
-                >
-                  Edit dates
-                </Link>
-                <Link
-                  className="inline-flex rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]"
-                  href="/admin/ads"
-                >
-                  {ad.isActive ? "Pause" : "Resume"}
-                </Link>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Link
+                    className="inline-flex rounded-full bg-[#d88c24] px-4 py-2 text-sm font-semibold text-white"
+                    href="/admindraft/ads"
+                  >
+                    Review ad
+                  </Link>
+                  <Link
+                    className="inline-flex rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]"
+                    href="/admindraft/ads"
+                  >
+                    Full preview
+                  </Link>
+                </div>
               </div>
             </article>
           );

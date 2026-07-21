@@ -16,6 +16,7 @@ export async function fetchActiveAds(): Promise<Ad[]> {
   const { data } = await supabase
     .from("ads")
     .select("id, image_url, company_name, click_url")
+    .eq("ad_status", "approved")
     .eq("is_active", true)
     .lte("start_date", today)
     .gte("end_date", today)

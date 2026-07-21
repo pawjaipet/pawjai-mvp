@@ -132,10 +132,14 @@ test("admin draft ad tab uses real search and status filters", () => {
   assert.equal(source.includes('id="admin-ad-search"'), true);
   assert.equal(source.includes('id="admin-ad-status"'), true);
   assert.equal(source.includes('placeholder="Search advertiser or URL"'), true);
-  assert.equal(source.includes('<option value="live">Live</option>'), true);
+  assert.equal(source.includes('<option value="pending">Pending review</option>'), true);
+  assert.equal(source.includes('<option value="approved">Live</option>'), true);
   assert.equal(source.includes('<option value="paused">Paused</option>'), true);
+  assert.equal(source.includes('<option value="denied">Denied</option>'), true);
   assert.equal(source.includes('<option value="expired">Expired</option>'), true);
   assert.equal(source.includes("No ads match these filters."), true);
+  assert.equal(source.includes("Review ad"), true);
+  assert.equal(source.includes("Full preview"), true);
   assert.equal(source.includes('FieldGrid fields={["Advertiser", "Placement", "Image/video asset", "Destination URL", "Live status", "Start date", "End date"]}'), false);
 });
 
