@@ -1,6 +1,7 @@
 "use client";
 
 import type { Ad } from "@/utils/ads";
+import { normalizeDogMediaUrl } from "@/utils/dog-media";
 
 interface Props {
   ad: Ad;
@@ -11,6 +12,8 @@ interface Props {
 const M = "Montserrat, sans-serif";
 
 export default function AdCard({ ad, cardWidth, cardHeight }: Props) {
+  const imageUrl = normalizeDogMediaUrl(ad.imageUrl) ?? ad.imageUrl;
+
   return (
     <a
       href={ad.clickUrl || "#"}
@@ -22,7 +25,7 @@ export default function AdCard({ ad, cardWidth, cardHeight }: Props) {
       data-ad-id={ad.id}
     >
       <img
-        src={ad.imageUrl}
+        src={imageUrl}
         alt={ad.companyName}
         className="w-full h-full object-cover"
         draggable={false}

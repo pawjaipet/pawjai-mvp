@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { shuffleAdsForDate } from "@/utils/ad-rotation";
+import { normalizeDogMediaUrl } from "@/utils/dog-media";
 
 export interface Ad {
   id: string;
@@ -22,7 +23,7 @@ export async function fetchActiveAds(): Promise<Ad[]> {
 
   const ads = (data ?? []).map((row) => ({
     id: row.id,
-    imageUrl: row.image_url,
+    imageUrl: normalizeDogMediaUrl(row.image_url) ?? row.image_url,
     companyName: row.company_name,
     clickUrl: row.click_url,
   }));

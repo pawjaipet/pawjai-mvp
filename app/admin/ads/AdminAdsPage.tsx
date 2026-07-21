@@ -5,6 +5,7 @@ import { useActionState, useRef, useTransition } from "react";
 import { createAdAction, deleteAdAction, toggleAdAction, updateAdDatesAction } from "./actions";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { normalizeDogMediaUrl } from "@/utils/dog-media";
 
 type Ad = {
   id: string;
@@ -164,7 +165,10 @@ export default function AdminAdsPage() {
       .from("ads")
       .select("*")
       .order("created_at", { ascending: false });
-    setAds(data ?? []);
+    setAds((data ?? []).map((ad) => ({
+      ...ad,
+      image_url: normalizeDogMediaUrl(ad.image_url) ?? ad.image_url,
+    })));
   }
 
   useEffect(() => { loadAds(); }, []);

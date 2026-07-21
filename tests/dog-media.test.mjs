@@ -77,3 +77,12 @@ test("rewrites legacy media manifest URLs to the new media CDN", () => {
   assert.equal(media[0].posterUrl, "https://media.pawjaipet.com/file/pawjai/pawjaidogs/dog-poster.jpg");
   assert.equal(media[0].publicUrl, "https://media.pawjaipet.com/file/pawjai/pawjaidogs/dog-video.mp4");
 });
+
+test("rewrites legacy ad media URLs to the new media CDN", () => {
+  const { normalizeDogMediaUrl } = loadDogMediaModel();
+
+  assert.equal(
+    normalizeDogMediaUrl("https://media.pawjai.co.th/file/pawjai/ads/1778459342103-db9fdedb.jpg"),
+    "https://media.pawjaipet.com/file/pawjai/ads/1778459342103-db9fdedb.jpg",
+  );
+});

@@ -339,7 +339,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
       companyName: ad.company_name,
       endDate: ad.end_date,
       id: ad.id,
-      imageUrl: ad.image_url,
+      imageUrl: normalizeDogMediaUrl(ad.image_url) ?? ad.image_url,
       isActive: ad.is_active,
       startDate: ad.start_date,
     })),
