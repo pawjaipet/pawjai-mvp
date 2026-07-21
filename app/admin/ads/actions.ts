@@ -10,10 +10,12 @@ import type { AdReviewStatus } from "@/utils/ad-workflow";
 
 const ADMIN_ADS_PATH = "/admin/ads";
 const ADMIN_DRAFT_ADS_PATH = "/admindraft/ads";
+const ADMIN_DRAFT_PATH = "/admindraft";
 
 function getAdsReturnPath(value: FormDataEntryValue | string | null | undefined) {
   const requested = String(value ?? "").trim();
 
+  if (requested === ADMIN_DRAFT_PATH) return ADMIN_DRAFT_PATH;
   if (requested === ADMIN_DRAFT_ADS_PATH) return ADMIN_DRAFT_ADS_PATH;
   return ADMIN_ADS_PATH;
 }
@@ -156,4 +158,21 @@ export async function updateAdDatesAction(id: string, startDateValue: string, en
 
   revalidateAdSurfaces(returnPath);
   return { success: "Ad dates updated." };
+}
+
+export async function updateAdDatesFromFormAction(id: string, returnPathValue: string, formData: FormData) {
+  await updateAdDatesAction(
+    id,
+    String(formData.get("start_date") ?? ""),
+    String(formData.get("end_date") ?? ""),
+    returnPathValue,
+  );
+}
+
+export async function updateAdReviewStatusFromFormAction(id: string, status: AdReviewStatus, returnPathValue: string) {
+  await updateAdReviewStatusAction(id, status, returnPathValue);
+}
+
+export async function toggleAdFromFormAction(id: string, isActive: boolean, returnPathValue: string) {
+  await toggleAdAction(id, isActive, returnPathValue);
 }

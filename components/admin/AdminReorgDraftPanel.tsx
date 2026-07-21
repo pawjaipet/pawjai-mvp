@@ -32,6 +32,11 @@ import {
   normalizeAppointmentTime,
 } from "@/utils/appointments-model";
 import {
+  updateAdDatesFromFormAction,
+  toggleAdFromFormAction,
+  updateAdReviewStatusFromFormAction,
+} from "@/app/admin/ads/actions";
+import {
   createShelterBlockoutAction,
   deleteShelterAvailabilityAction,
   decideBookingAction,
@@ -345,6 +350,21 @@ function bookingStatusClass(status: string) {
       return "bg-[#f7e3e1] text-[#9a3129]";
     case "no_show":
       return "bg-[#f1e7db] text-[#8a5825]";
+    default:
+      return "bg-[#fff1dc] text-[#a86a1f]";
+  }
+}
+
+function adStatusClass(status: AdDisplayStatus) {
+  switch (status) {
+    case "approved":
+      return "bg-[#eaf6df] text-[#3f6f24]";
+    case "denied":
+      return "bg-[#f7e3e1] text-[#9a3129]";
+    case "paused":
+      return "bg-[#f1e7db] text-[#8a5825]";
+    case "expired":
+      return "bg-[#fbe8e8] text-[#9b3a32]";
     default:
       return "bg-[#fff1dc] text-[#a86a1f]";
   }
@@ -1938,123 +1958,240 @@ function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking
 function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<AdStatusFilter>("all");
+  const [previewAd, setPreviewAd] = useState<AdminDraftAd | null>(null);
   const today = new Date().toISOString().slice(0, 10);
   const filteredAds = ads.filter((ad) => matchesAdFilters(ad, search, status, today));
 
   return (
-    <Section eyebrow="Ads" title="PawJai-managed ads">
-      <p className="mt-2 text-sm leading-6 text-[#74685d]">
-        Partner submissions from /ads land in the same ads table. PawJai reviews, pauses, and date-edits records internally. Connected ads: {ads.length}.
-      </p>
-      <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
-        <label className="sr-only" htmlFor="admin-ad-search">Search ads</label>
-        <input
-          className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
-          id="admin-ad-search"
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search advertiser or URL"
-          type="search"
-          value={search}
-        />
-        <label className="sr-only" htmlFor="admin-ad-status">Filter ads by status</label>
-        <select
-          className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
-          id="admin-ad-status"
-          onChange={(event) => setStatus(event.target.value as AdStatusFilter)}
-          value={status}
-        >
-          <option value="all">All statuses</option>
-          <option value="pending">Pending review</option>
-          <option value="approved">Live</option>
-          <option value="paused">Paused</option>
-          <option value="denied">Denied</option>
-          <option value="expired">Expired</option>
-        </select>
-        <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d88c24] px-5 py-3 text-sm font-semibold text-white" type="button">
-          <Search className="h-4 w-4" />
-          {filteredAds.length} ads
-        </button>
-        <button
-          className="rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40]"
-          onClick={() => {
-            setSearch("");
-            setStatus("all");
-          }}
-          type="button"
-        >
-          Reset
-        </button>
-      </div>
-      <div className="mt-6 grid gap-3">
-        {filteredAds.map((ad) => {
-          const adStatus = getAdDisplayStatus({
-            endDate: ad.endDate,
-            isActive: ad.isActive,
-            reviewStatus: ad.reviewStatus,
-            today,
-          });
-          const label = adDisplayStatusLabel(adStatus);
+    <>
+      <Section eyebrow="Ads" title="PawJai-managed ads">
+        <p className="mt-2 text-sm leading-6 text-[#74685d]">
+          Partner submissions from /ads land in the same ads table. PawJai reviews, pauses, and date-edits records internally. Connected ads: {ads.length}.
+        </p>
+        <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
+          <label className="sr-only" htmlFor="admin-ad-search">Search ads</label>
+          <input
+            className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+            id="admin-ad-search"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search advertiser or URL"
+            type="search"
+            value={search}
+          />
+          <label className="sr-only" htmlFor="admin-ad-status">Filter ads by status</label>
+          <select
+            className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+            id="admin-ad-status"
+            onChange={(event) => setStatus(event.target.value as AdStatusFilter)}
+            value={status}
+          >
+            <option value="all">All statuses</option>
+            <option value="pending">Pending review</option>
+            <option value="approved">Live</option>
+            <option value="paused">Paused</option>
+            <option value="denied">Denied</option>
+            <option value="expired">Expired</option>
+          </select>
+          <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d88c24] px-5 py-3 text-sm font-semibold text-white" type="button">
+            <Search className="h-4 w-4" />
+            {filteredAds.length} ads
+          </button>
+          <button
+            className="rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40]"
+            onClick={() => {
+              setSearch("");
+              setStatus("all");
+            }}
+            type="button"
+          >
+            Reset
+          </button>
+        </div>
+        <div className="mt-6 grid gap-4">
+          {filteredAds.map((ad) => {
+            const adStatus = getAdDisplayStatus({
+              endDate: ad.endDate,
+              isActive: ad.isActive,
+              reviewStatus: ad.reviewStatus,
+              today,
+            });
+            const label = adDisplayStatusLabel(adStatus);
+            const contact = [ad.contactEmail, ad.contactPhone, !ad.contactEmail && !ad.contactPhone ? ad.contactInfo : null]
+              .filter(Boolean)
+              .join(" ");
 
-          return (
-            <article className="grid gap-5 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 lg:grid-cols-[220px_minmax(0,1fr)]" key={ad.id}>
-              <div className="flex justify-center lg:justify-start">
-                <AdCard
-                  ad={{
-                    clickUrl: ad.clickUrl,
-                    companyName: ad.companyName,
-                    id: ad.id,
-                    imageUrl: ad.imageUrl,
-                  }}
-                  cardHeight={330}
-                  cardWidth={220}
-                />
-              </div>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-xl font-semibold text-[#4f4338]">{ad.companyName}</h3>
-                  <span className="rounded-full bg-[#f8ecd8] px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#9a6b2a]">
-                    {label}
-                  </span>
+            return (
+              <article className="rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]" key={ad.id}>
+                <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)_340px]">
+                  <div className="flex justify-center lg:justify-start">
+                    <AdCard
+                      ad={{
+                        clickUrl: ad.clickUrl,
+                        companyName: ad.companyName,
+                        id: ad.id,
+                        imageUrl: ad.imageUrl,
+                      }}
+                      cardHeight={360}
+                      cardWidth={240}
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] ${adStatusClass(adStatus)}`}>
+                        {label}
+                      </span>
+                      <span className="rounded-full bg-[#f7ecda] px-3 py-1 text-xs font-bold text-[#8a5825]">
+                        {ad.reviewStatus === "pending" ? "Awaiting decision" : formatStatus(ad.reviewStatus)}
+                      </span>
+                    </div>
+                    <h3 className="mt-4 text-2xl font-semibold text-[#4f4338]">{ad.companyName}</h3>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Campaign dates</p>
+                        <p className="mt-1 text-sm text-[#74685d]">
+                          {ad.startDate} to {ad.endDate === OPEN_ENDED_AD_END_DATE ? "ongoing" : ad.endDate}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Contact</p>
+                        <p className="mt-1 break-words text-sm text-[#74685d]">{contact || "No contact provided"}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 rounded-2xl bg-[#f8f0e5] p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Destination URL</p>
+                      <a className="mt-1 block break-all text-sm font-semibold text-[#b77624] hover:underline" href={ad.clickUrl} rel="noopener noreferrer" target="_blank">
+                        {ad.clickUrl}
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+                    <div className="rounded-2xl bg-white px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Status</p>
+                      <p className="mt-1 text-lg font-semibold text-[#4f4338]">
+                        {ad.reviewStatus === "pending" ? "Awaiting decision" : label}
+                      </p>
+                    </div>
+
+                    <details className="mt-3 rounded-2xl border border-[#eadfce] bg-white p-3" open={ad.reviewStatus === "pending"}>
+                      <summary className="cursor-pointer text-sm font-semibold text-[#5b4d40]">
+                        Edit ad dates
+                      </summary>
+                      <form action={updateAdDatesFromFormAction.bind(null, ad.id, DRAFT_RETURN_TO)} className="mt-3 grid gap-2">
+                        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#fffaf3] p-3">
+                          <label className="block">
+                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">Start date</span>
+                            <input
+                              className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                              defaultValue={ad.startDate}
+                              name="start_date"
+                              required
+                              type="date"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">End date</span>
+                            <input
+                              className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                              defaultValue={ad.endDate}
+                              name="end_date"
+                              required
+                              type="date"
+                            />
+                          </label>
+                        </div>
+                        <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" type="submit">
+                          Save ad dates
+                        </button>
+                      </form>
+                    </details>
+
+                    <div className="mt-3 grid gap-2">
+                      {ad.reviewStatus !== "approved" ? (
+                        <form action={updateAdReviewStatusFromFormAction.bind(null, ad.id, "approved", DRAFT_RETURN_TO)}>
+                          <button className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" type="submit">
+                            Accept ad
+                          </button>
+                        </form>
+                      ) : null}
+                      {ad.reviewStatus !== "denied" ? (
+                        <form action={updateAdReviewStatusFromFormAction.bind(null, ad.id, "denied", DRAFT_RETURN_TO)}>
+                          <button className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64]" type="submit">
+                            Deny ad
+                          </button>
+                        </form>
+                      ) : null}
+                      {ad.reviewStatus === "approved" ? (
+                        <form action={toggleAdFromFormAction.bind(null, ad.id, !ad.isActive, DRAFT_RETURN_TO)}>
+                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" type="submit">
+                            {ad.isActive ? "Pause ad" : "Resume ad"}
+                          </button>
+                        </form>
+                      ) : null}
+                    </div>
+
+                    <button
+                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                      onClick={() => setPreviewAd(ad)}
+                      type="button"
+                    >
+                      <ImageIcon className="h-4 w-4" />
+                      Preview full ad
+                    </button>
+                    <a
+                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                      href={ad.clickUrl}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open destination
+                    </a>
+                  </div>
                 </div>
-                <p className="mt-2 text-sm text-[#74685d]">
-                  {ad.startDate} to {ad.endDate === OPEN_ENDED_AD_END_DATE ? "ongoing" : ad.endDate}
-                </p>
-                <p className="mt-2 text-sm text-[#74685d]">
-                  {[ad.contactEmail, ad.contactPhone, !ad.contactEmail && !ad.contactPhone ? ad.contactInfo : null].filter(Boolean).join(" · ") || "No contact provided"}
-                </p>
-                <a className="mt-1 block truncate text-sm font-semibold text-[#b77624]" href={ad.clickUrl} rel="noopener noreferrer" target="_blank">
-                  {ad.clickUrl}
-                </a>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <Link
-                    className="inline-flex rounded-full bg-[#d88c24] px-4 py-2 text-sm font-semibold text-white"
-                    href="/admindraft/ads"
-                  >
-                    Review ad
-                  </Link>
-                  <Link
-                    className="inline-flex rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]"
-                    href="/admindraft/ads"
-                  >
-                    Full preview
-                  </Link>
-                </div>
+              </article>
+            );
+          })}
+          {ads.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
+              No ad records are connected yet.
+            </div>
+          ) : null}
+          {ads.length > 0 && filteredAds.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
+              No ads match these filters.
+            </div>
+          ) : null}
+        </div>
+      </Section>
+
+      {previewAd ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-8" role="dialog" aria-modal="true">
+          <div className="max-h-full overflow-y-auto rounded-[28px] bg-[#f5efe6] p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#b77624]">Full feed preview</p>
+                <h2 className="text-xl font-semibold text-[#4f4338]">{previewAd.companyName}</h2>
               </div>
-            </article>
-          );
-        })}
-        {ads.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
-            No ad records are connected yet.
+              <button className="rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]" onClick={() => setPreviewAd(null)} type="button">
+                Close
+              </button>
+            </div>
+            <AdCard
+              ad={{
+                clickUrl: previewAd.clickUrl,
+                companyName: previewAd.companyName,
+                id: previewAd.id,
+                imageUrl: previewAd.imageUrl,
+              }}
+              cardHeight="min(620px, calc(100dvh - 180px))"
+              cardWidth="min(370px, calc(100vw - 48px))"
+            />
           </div>
-        ) : null}
-        {ads.length > 0 && filteredAds.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
-            No ads match these filters.
-          </div>
-        ) : null}
-      </div>
-    </Section>
+        </div>
+      ) : null}
+    </>
   );
 }
 
