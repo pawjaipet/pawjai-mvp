@@ -248,7 +248,7 @@ export default function AdminAdsPage() {
 
             <div className="space-y-1">
               <label className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">Click URL *</label>
-              <input type="text" name="click_url" required placeholder="pawjai.co.th/ads"
+              <input type="text" name="click_url" required placeholder="pawjaipet.com/ads"
                 className="w-full rounded-xl border border-[#eadfce] px-3 py-2 text-sm text-[#4f4338] focus:outline-none focus:border-[#b77624]" />
             </div>
 
