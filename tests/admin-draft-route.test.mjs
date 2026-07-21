@@ -85,11 +85,16 @@ test("legacy admin reorg draft route aliases /admindraft", () => {
 test("admin draft direct pages unlock back to their own route", () => {
   const aboutSource = readFileSync(new URL("../app/admindraft/aboutcontent/page.tsx", import.meta.url), "utf8");
   const accountsSource = readFileSync(new URL("../app/admindraft/accounts/page.tsx", import.meta.url), "utf8");
+  const adsSource = readFileSync(new URL("../app/admindraft/ads/page.tsx", import.meta.url), "utf8");
   const auditSource = readFileSync(new URL("../app/admindraft/audit/page.tsx", import.meta.url), "utf8");
   const mainSource = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
 
   assert.equal(aboutSource.includes('returnTo="/admindraft/aboutcontent"'), true);
   assert.equal(accountsSource.includes('returnTo="/admindraft/accounts"'), true);
+  assert.equal(adsSource.includes("isAdminDraftUnlocked"), true);
+  assert.equal(adsSource.includes('returnTo="/admindraft/ads"'), true);
+  assert.equal(adsSource.includes('basePath="/admindraft"'), true);
+  assert.equal(adsSource.includes("getAdminAuthContext"), false);
   assert.equal(auditSource.includes('returnTo="/admindraft/audit"'), true);
   assert.equal(mainSource.includes("buildAdminDraftReturnTo"), true);
 });
