@@ -20,7 +20,8 @@
     "supabase:link": "supabase link --project-ref bdnyvcvkyepipdcygkvn",
     "email:test": "node --env-file=.env.local scripts/send-resend-test.mjs",
     "import:dogs": "node scripts/import-sheet-dogs.mjs",
-    "link:dog-photos": "node scripts/link-b2-dog-photos.mjs"
+    "link:dog-photos": "node scripts/link-b2-dog-photos.mjs",
+    "import:rescue-dog-thailand": "node scripts/import-rescue-dog-thailand-dogs.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
