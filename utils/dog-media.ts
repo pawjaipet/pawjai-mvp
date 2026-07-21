@@ -14,6 +14,18 @@ type MediaManifest = {
   items?: DogMediaItem[];
 };
 
+const DOG_MEDIA_PUBLIC_BASE_URL = "https://media.pawjaipet.com/file/pawjai";
+
+function normalizeDogMediaUrl(url: string | null | undefined, storagePath?: string | null) {
+  const path = storagePath?.replace(/^\/+/, "");
+  if (path) return `${DOG_MEDIA_PUBLIC_BASE_URL}/${path}`;
+  if (!url) return null;
+
+  return url
+    .replace(/^https?:\/\/media\.pawjai\.co\.th\/file\/pawjai/i, DOG_MEDIA_PUBLIC_BASE_URL)
+    .replace(/^https?:\/\/f006\.backblazeb2\.com\/file\/pawjai/i, DOG_MEDIA_PUBLIC_BASE_URL);
+}
+
 export function parseDogMediaManifest(traits: Pick<DogTrait, "trait_type" | "trait_value">[]) {
   const manifestValue = traits.find((trait) => trait.trait_type === "media_manifest")?.trait_value;
   if (!manifestValue) return [];
@@ -31,6 +43,11 @@ export function parseDogMediaManifest(traits: Pick<DogTrait, "trait_type" | "tra
           typeof item.sortOrder === "number"
         );
       })
+      .map((item) => ({
+        ...item,
+        posterUrl: normalizeDogMediaUrl(item.posterUrl),
+        publicUrl: normalizeDogMediaUrl(item.publicUrl, item.storagePath),
+      }))
       .sort((a, b) => {
         if (a.isCover) return -1;
         if (b.isCover) return 1;
@@ -54,13 +71,15 @@ export function buildDogMediaItems({
   const coverVideoUrl = traits.find((trait) => trait.trait_type === "cover_video_url")?.trait_value ?? null;
   const coverVideoPosterUrl =
     traits.find((trait) => trait.trait_type === "cover_video_poster_url")?.trait_value ?? null;
+  const normalizedCoverVideoUrl = normalizeDogMediaUrl(coverVideoUrl);
+  const normalizedCoverVideoPosterUrl = normalizeDogMediaUrl(coverVideoPosterUrl);
 
   const orderedPhotos = [...photos]
     .map((photo) => ({
       id: photo.id,
       isCover: photo.is_cover,
       posterUrl: null,
-      publicUrl: photo.public_url,
+      publicUrl: normalizeDogMediaUrl(photo.public_url, photo.storage_path),
       sortOrder: photo.sort_order,
       storagePath: photo.storage_path,
       type: "photo" as const,
@@ -71,14 +90,14 @@ export function buildDogMediaItems({
       return a.sortOrder - b.sortOrder;
     });
 
-  if (!coverVideoUrl) return orderedPhotos;
+  if (!normalizedCoverVideoUrl) return orderedPhotos;
 
   return [
     {
       id: "legacy-cover-video",
       isCover: true,
-      posterUrl: coverVideoPosterUrl ?? orderedPhotos[0]?.publicUrl ?? null,
-      publicUrl: coverVideoUrl,
+      posterUrl: normalizedCoverVideoPosterUrl ?? orderedPhotos[0]?.publicUrl ?? null,
+      publicUrl: normalizedCoverVideoUrl,
       sortOrder: -1,
       type: "video" as const,
     },

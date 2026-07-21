@@ -36,7 +36,7 @@ function hasUploadedPhoto(dog: SwipeDog) {
     if (!url) return false;
     try {
       const hostname = new URL(url).hostname;
-      return hostname.includes("backblazeb2.com") || hostname.includes("supabase.co");
+      return hostname.includes("backblazeb2.com") || hostname.includes("media.pawjaipet.com") || hostname.includes("supabase.co");
     } catch {
       return false;
     }
