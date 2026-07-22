@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
+import DogBreedPicker from "@/components/dogs/DogBreedPicker";
 import { createDogListingAction } from "./actions";
 import { initialCreateDogListingState } from "./form-state";
 
@@ -471,7 +472,7 @@ export default function DogListingForm({
           </Field>
 
           <Field label="Breed">
-            <input name="breed" className={inputClass()} placeholder="Mixed breed" />
+            <DogBreedPicker buttonClassName={inputClass()} placeholder="Choose breed" />
           </Field>
 
           <Field label="Adoption status">

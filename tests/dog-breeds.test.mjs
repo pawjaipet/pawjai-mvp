@@ -1,0 +1,58 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { Script } from "node:vm";
+import test from "node:test";
+import ts from "typescript";
+
+function loadDogBreeds() {
+  const source = readFileSync(new URL("../utils/dog-breeds.ts", import.meta.url), "utf8");
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  });
+  const module = { exports: {} };
+  new Script(outputText).runInNewContext({
+    exports: module.exports,
+    module,
+  });
+  return module.exports;
+}
+
+function plain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+test("recent dog breed selections are unique and limited to three", () => {
+  const { recordRecentBreedSelection } = loadDogBreeds();
+
+  assert.deepEqual(
+    plain(recordRecentBreedSelection("Thai Dog", ["Mixed Breed", "Thai Ridgeback", "Beagle"])),
+    ["Thai Dog", "Mixed Breed", "Thai Ridgeback"],
+  );
+  assert.deepEqual(
+    plain(recordRecentBreedSelection(" mixed   breed ", ["Thai Dog", "Mixed Breed", "Beagle"])),
+    ["mixed breed", "Thai Dog", "Beagle"],
+  );
+});
+
+test("breed picker options keep recent breeds first and preserve a saved custom breed", () => {
+  const { buildBreedPickerOptions } = loadDogBreeds();
+
+  assert.deepEqual(
+    plain(buildBreedPickerOptions({
+      currentBreed: "Poodle Terrier Mix",
+      options: ["Mixed Breed", "Thai Dog"],
+      recentBreeds: ["Thai Ridgeback", "Mixed Breed"],
+    })),
+    ["Thai Ridgeback", "Mixed Breed", "Poodle Terrier Mix", "Thai Dog"],
+  );
+});
+
+test("adopter filter breed list includes all-breeds plus the admin picker vocabulary", () => {
+  const { DOG_BREED_OPTIONS, DOG_FILTER_BREED_OPTIONS } = loadDogBreeds();
+
+  assert.equal(DOG_FILTER_BREED_OPTIONS[0], "All Breeds");
+  assert.deepEqual(plain(DOG_FILTER_BREED_OPTIONS.slice(1)), plain(DOG_BREED_OPTIONS));
+});

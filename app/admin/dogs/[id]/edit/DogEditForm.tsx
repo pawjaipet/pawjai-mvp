@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
+import DogBreedPicker from "@/components/dogs/DogBreedPicker";
 import type { Database, DogPhoto, DogTrait } from "@/types/database";
 import { buildDogMediaItems, type DogMediaItem } from "@/utils/dog-media";
 import { deleteDogProfileAction, updateDogProfileAction } from "./actions";
@@ -558,7 +559,7 @@ export default function DogEditForm({
             </Field>
 
             <Field label="Breed">
-              <input name="breed" className={inputClass()} defaultValue={dog.breed ?? ""} placeholder="Mixed breed" />
+              <DogBreedPicker buttonClassName={inputClass()} defaultValue={dog.breed} placeholder="Choose breed" />
             </Field>
 
             <Field
