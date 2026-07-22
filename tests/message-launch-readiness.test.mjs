@@ -5,13 +5,20 @@ import test from "node:test";
 test("appointment and shelter message views refresh while visible", () => {
   const adopterSource = readFileSync(new URL("../components/appointments/AppointmentDetailClient.tsx", import.meta.url), "utf8");
   const adminSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+  const migrationSource = readFileSync(new URL("../supabase/migrations/20260722173500_appointment_messages_realtime.sql", import.meta.url), "utf8");
 
   assert.equal(adopterSource.includes("MESSAGE_THREAD_REFRESH_INTERVAL_MS"), true);
   assert.equal(adopterSource.includes("router.refresh()"), true);
   assert.equal(adopterSource.includes('document.visibilityState === "visible"'), true);
+  assert.equal(adopterSource.includes('"postgres_changes"'), true);
+  assert.equal(adopterSource.includes('filter: `appointment_id=eq.${appointmentId}`'), true);
   assert.equal(adminSource.includes("MESSAGE_THREAD_REFRESH_INTERVAL_MS"), true);
   assert.equal(adminSource.includes("router.refresh()"), true);
   assert.equal(adminSource.includes('document.visibilityState === "visible"'), true);
+  assert.equal(adminSource.includes('"postgres_changes"'), true);
+  assert.equal(adminSource.includes('filter: `shelter_id=eq.${shelter.id}`'), true);
+  assert.equal(migrationSource.includes("alter publication supabase_realtime add table public.appointment_messages"), true);
+  assert.equal(migrationSource.includes("Shelter staff can read appointment messages"), true);
 });
 
 test("message views expose backend timestamps and attachment-friendly previews", () => {

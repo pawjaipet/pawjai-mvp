@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { acceptRescheduleRequestAction, cancelAppointmentFromListAction } from "@/app/appointments/actions";
 import { cancelAppointmentAction, sendAppointmentMessageAction, submitReturnInquiryAction } from "@/app/appointments/[id]/actions";
+import { createClient as createBrowserSupabaseClient } from "@/utils/supabase/client";
 
 const M = "Montserrat, sans-serif";
 const MESSAGE_THREAD_REFRESH_INTERVAL_MS = 12_000;
@@ -670,6 +671,33 @@ function MessagesTab({
       document.removeEventListener("visibilitychange", refreshIfVisible);
     };
   }, [messagesUnavailable, router]);
+
+  useEffect(() => {
+    if (messagesUnavailable) return;
+
+    const supabase = createBrowserSupabaseClient();
+    const channel = supabase
+      .channel(`appointment-messages:${appointmentId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          filter: `appointment_id=eq.${appointmentId}`,
+          schema: "public",
+          table: "appointment_messages",
+        },
+        () => {
+          if (document.visibilityState === "visible") {
+            router.refresh();
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [appointmentId, messagesUnavailable, router]);
 
   const chatMessages = [
     ...(initialMessages.length > 0

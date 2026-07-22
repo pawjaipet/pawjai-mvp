@@ -53,6 +53,7 @@ import {
   OPEN_ENDED_AD_END_DATE,
   type AdDisplayStatus,
 } from "@/utils/ad-workflow";
+import { createClient as createBrowserSupabaseClient } from "@/utils/supabase/client";
 import type {
   AdminDraftAboutContent,
   AdminDraftAd,
@@ -1492,6 +1493,33 @@ function ShelterMessagesTab({
       document.removeEventListener("visibilitychange", refreshIfVisible);
     };
   }, [messagesUnavailable, router]);
+
+  useEffect(() => {
+    if (messagesUnavailable) return;
+
+    const supabase = createBrowserSupabaseClient();
+    const channel = supabase
+      .channel(`shelter-messages:${shelter.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          filter: `shelter_id=eq.${shelter.id}`,
+          schema: "public",
+          table: "appointment_messages",
+        },
+        () => {
+          if (document.visibilityState === "visible") {
+            router.refresh();
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [messagesUnavailable, router, shelter.id]);
 
   return (
     <Section eyebrow="Messaging" title="Visitor conversations">
