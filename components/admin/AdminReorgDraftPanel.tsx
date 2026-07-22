@@ -74,6 +74,7 @@ type AdWorkspaceView = "review" | "analytics";
 type AdminDraftMessageThread = AdminDraftData["messageThreads"][number];
 
 const DRAFT_RETURN_TO = "/admindraft";
+const ADS_DRAFT_RETURN_TO = "/admindraft?view=ads";
 const MESSAGE_THREAD_REFRESH_INTERVAL_MS = 12_000;
 const MAIN_TABS: MainTab[] = ["shelters", "dogs", "bookings", "ads", "about"];
 const BOOKING_STATUS_OPTIONS = ["requested", "confirmed", "completed", "cancelled", "no_show"];
@@ -2361,7 +2362,7 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                       <summary className="cursor-pointer text-sm font-semibold text-[#5b4d40]">
                         Edit ad dates
                       </summary>
-                      <form action={updateAdDatesFromFormAction.bind(null, ad.id, DRAFT_RETURN_TO)} className="mt-3 grid gap-2">
+                      <form action={updateAdDatesFromFormAction.bind(null, ad.id, ADS_DRAFT_RETURN_TO)} className="mt-3 grid gap-2">
                         <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#fffaf3] p-3">
                           <label className="block">
                             <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">Start date</span>
@@ -2392,21 +2393,21 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
 
                     <div className="mt-3 grid gap-2">
                       {ad.reviewStatus !== "approved" ? (
-                        <form action={updateAdReviewStatusFromFormAction.bind(null, ad.id, "approved", DRAFT_RETURN_TO)}>
+                        <form action={updateAdReviewStatusFromFormAction.bind(null, ad.id, "approved", ADS_DRAFT_RETURN_TO)}>
                           <button className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" type="submit">
                             Accept ad
                           </button>
                         </form>
                       ) : null}
                       {ad.reviewStatus !== "denied" ? (
-                        <form action={updateAdReviewStatusFromFormAction.bind(null, ad.id, "denied", DRAFT_RETURN_TO)}>
+                        <form action={updateAdReviewStatusFromFormAction.bind(null, ad.id, "denied", ADS_DRAFT_RETURN_TO)}>
                           <button className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64]" type="submit">
                             Deny ad
                           </button>
                         </form>
                       ) : null}
                       {ad.reviewStatus === "approved" ? (
-                        <form action={toggleAdFromFormAction.bind(null, ad.id, !ad.isActive, DRAFT_RETURN_TO)}>
+                        <form action={toggleAdFromFormAction.bind(null, ad.id, !ad.isActive, ADS_DRAFT_RETURN_TO)}>
                           <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" type="submit">
                             {ad.isActive ? "Pause ad" : "Resume ad"}
                           </button>

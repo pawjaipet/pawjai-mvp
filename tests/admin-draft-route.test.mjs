@@ -151,6 +151,8 @@ test("admin draft ad tab uses real search and status filters", () => {
   assert.equal(source.includes("Clicks over last 14 days"), true);
   assert.equal(source.includes("Recent clickers"), true);
   assert.equal(source.includes("Review ads"), true);
+  assert.equal(source.includes('const ADS_DRAFT_RETURN_TO = "/admindraft?view=ads"'), true);
+  assert.equal(source.includes("ADS_DRAFT_RETURN_TO"), true);
   assert.equal(source.includes('FieldGrid fields={["Advertiser", "Placement", "Image/video asset", "Destination URL", "Live status", "Start date", "End date"]}'), false);
 });
 

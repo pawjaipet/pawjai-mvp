@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { parseAdDateRange } from "@/utils/ad-date-range";
 import { requireGlobalAdmin } from "@/utils/admin-auth";
@@ -15,9 +16,17 @@ const ADMIN_DRAFT_PATH = "/admindraft";
 function getAdsReturnPath(value: FormDataEntryValue | string | null | undefined) {
   const requested = String(value ?? "").trim();
 
-  if (requested === ADMIN_DRAFT_PATH) return ADMIN_DRAFT_PATH;
-  if (requested === ADMIN_DRAFT_ADS_PATH) return ADMIN_DRAFT_ADS_PATH;
+  if (requested === ADMIN_DRAFT_PATH || requested.startsWith(`${ADMIN_DRAFT_PATH}?`)) return requested;
+  if (requested === ADMIN_DRAFT_ADS_PATH || requested.startsWith(`${ADMIN_DRAFT_ADS_PATH}?`)) return requested;
+  if (requested === ADMIN_ADS_PATH || requested.startsWith(`${ADMIN_ADS_PATH}?`)) return requested;
   return ADMIN_ADS_PATH;
+}
+
+function redirectAfterAdMutation(returnPath: string, message: string) {
+  const params = new URLSearchParams();
+  if (message) params.set("message", message);
+  const separator = returnPath.includes("?") ? "&" : "?";
+  redirect(`${returnPath}${params.toString() ? `${separator}${params.toString()}` : ""}`);
 }
 
 function revalidateAdSurfaces(returnPath: string) {
@@ -161,18 +170,24 @@ export async function updateAdDatesAction(id: string, startDateValue: string, en
 }
 
 export async function updateAdDatesFromFormAction(id: string, returnPathValue: string, formData: FormData) {
-  await updateAdDatesAction(
+  const returnPath = getAdsReturnPath(returnPathValue);
+  const result = await updateAdDatesAction(
     id,
     String(formData.get("start_date") ?? ""),
     String(formData.get("end_date") ?? ""),
-    returnPathValue,
+    returnPath,
   );
+  redirectAfterAdMutation(returnPath, result?.error ?? result?.success ?? "Ad dates saved.");
 }
 
 export async function updateAdReviewStatusFromFormAction(id: string, status: AdReviewStatus, returnPathValue: string) {
-  await updateAdReviewStatusAction(id, status, returnPathValue);
+  const returnPath = getAdsReturnPath(returnPathValue);
+  const result = await updateAdReviewStatusAction(id, status, returnPath);
+  redirectAfterAdMutation(returnPath, result?.error ?? result?.success ?? "Ad review updated.");
 }
 
 export async function toggleAdFromFormAction(id: string, isActive: boolean, returnPathValue: string) {
-  await toggleAdAction(id, isActive, returnPathValue);
+  const returnPath = getAdsReturnPath(returnPathValue);
+  await toggleAdAction(id, isActive, returnPath);
+  redirectAfterAdMutation(returnPath, isActive ? "Ad resumed." : "Ad paused.");
 }

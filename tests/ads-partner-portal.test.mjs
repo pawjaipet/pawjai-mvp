@@ -74,5 +74,7 @@ test("admin draft remains the internal ad review surface", () => {
   assert.equal(adminAdsSource.includes("Full preview"), true);
   assert.equal(adminActionsSource.includes("updateAdReviewStatusAction"), true);
   assert.equal(adminActionsSource.includes("updateAdReviewStatusFromFormAction"), true);
+  assert.equal(adminActionsSource.includes("redirectAfterAdMutation"), true);
+  assert.equal(adminActionsSource.includes('requested.startsWith(`${ADMIN_DRAFT_PATH}?`)'), true);
   assert.equal(activeAdsSource.includes('.eq("ad_status", "approved")'), true);
 });
