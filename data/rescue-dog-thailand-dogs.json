@@ -2,6 +2,7 @@
   {
     "name": "Bow",
     "folder": "Bow",
+    "coverMediaStoragePath": "rescue-dog-thailand/bow/02-may-19-2026-3.jpg",
     "gender": "female",
     "birthDate": "2025-01-01",
     "ageMonths": 18,
@@ -23,6 +24,7 @@
   {
     "name": "Gorya",
     "folder": "Gorya",
+    "coverMediaStoragePath": "rescue-dog-thailand/gorya/01-may-19-2026-1.jpg",
     "gender": "female",
     "birthDate": "2025-05-01",
     "ageMonths": 14,
@@ -44,6 +46,7 @@
   {
     "name": "CJ",
     "folder": "Jaydee(CJ)",
+    "coverMediaStoragePath": "rescue-dog-thailand/cj/03-may-19-2026-3.jpg",
     "gender": "male",
     "birthDate": "2025-05-01",
     "ageMonths": 14,
@@ -65,6 +68,7 @@
   {
     "name": "Nadine",
     "folder": "Nadine",
+    "coverMediaStoragePath": "rescue-dog-thailand/nadine/01-june-09-2026-1.jpg",
     "gender": "female",
     "birthDate": "2026-04-14",
     "ageMonths": 3,
@@ -86,6 +90,7 @@
   {
     "name": "Nana",
     "folder": "Nana",
+    "coverMediaStoragePath": "rescue-dog-thailand/nana/03-photo-9-5-2569-be-16-28-40.jpg",
     "gender": "female",
     "birthDate": "2025-11-10",
     "ageMonths": 8,
@@ -107,6 +112,7 @@
   {
     "name": "Nash",
     "folder": "Nash",
+    "coverMediaStoragePath": "rescue-dog-thailand/nash/04-video-10-5-2569-be-11-05-38.mp4",
     "gender": "male",
     "birthDate": "2025-10-10",
     "ageMonths": 9,
@@ -128,6 +134,7 @@
   {
     "name": "Naya",
     "folder": "Naya",
+    "coverMediaStoragePath": "rescue-dog-thailand/naya/03-june-09-2026-3.jpg",
     "gender": "female",
     "birthDate": "2026-04-14",
     "ageMonths": 3,
@@ -149,6 +156,7 @@
   {
     "name": "Nicola",
     "folder": "Nicola",
+    "coverMediaStoragePath": "rescue-dog-thailand/nicola/02-june-08-2026-2.jpg",
     "gender": "female",
     "birthDate": "2025-11-15",
     "ageMonths": 8,
@@ -170,6 +178,7 @@
   {
     "name": "Nid",
     "folder": "Nid",
+    "coverMediaStoragePath": "rescue-dog-thailand/nid/07-june-09-2026-4.mp4",
     "gender": "female",
     "birthDate": "2026-04-14",
     "ageMonths": 3,
@@ -191,6 +200,7 @@
   {
     "name": "Rambo",
     "folder": "Rambo",
+    "coverMediaStoragePath": "rescue-dog-thailand/rambo/07-june-09-2026-3.mp4",
     "gender": "male",
     "birthDate": "2026-02-13",
     "ageMonths": 5,
@@ -212,6 +222,7 @@
   {
     "name": "Roselyn",
     "folder": "Roselyn",
+    "coverMediaStoragePath": "rescue-dog-thailand/roselyn/05-may-19-2026-2.jpg",
     "gender": "female",
     "birthDate": "2026-02-13",
     "ageMonths": 5,
@@ -233,6 +244,7 @@
   {
     "name": "Thalia",
     "folder": "Thalia",
+    "coverMediaStoragePath": "rescue-dog-thailand/thalia/02-may-19-2026-2.jpg",
     "gender": "female",
     "birthDate": "2025-03-08",
     "ageMonths": 16,

@@ -454,11 +454,22 @@ async function replaceDogMetadata({ auth, bucketId, dog, dogId, mediaFiles, supa
     );
   }
 
+  const preferredCoverMedia =
+    uploadedMedia.find((item) => item.storagePath === dog.coverMediaStoragePath) ?? uploadedMedia[0];
+  const orderedMedia = [
+    preferredCoverMedia,
+    ...uploadedMedia.filter((item) => item.storagePath !== preferredCoverMedia.storagePath),
+  ];
+  const preferredPhotoCover =
+    preferredCoverMedia.type === "photo"
+      ? preferredCoverMedia
+      : uploadedMedia.find((item) => item.type === "photo");
+
   const photoRows = uploadedMedia
     .filter((item) => item.type === "photo")
     .map((item, index) => ({
       dog_id: dogId,
-      is_cover: index === 0,
+      is_cover: item.storagePath === preferredPhotoCover?.storagePath,
       public_url: item.publicUrl,
       sort_order: index,
       storage_path: item.storagePath,
@@ -485,12 +496,12 @@ async function replaceDogMetadata({ auth, bucketId, dog, dogId, mediaFiles, supa
 
   const savedPhotoByPath = new Map((savedPhotos ?? []).map((photo) => [photo.storage_path, photo]));
   const coverPhotoUrl = coverPhoto?.public_url ?? null;
-  const mediaManifestItems = uploadedMedia.map((item, index) => {
+  const mediaManifestItems = orderedMedia.map((item, index) => {
     const savedPhoto = item.type === "photo" ? savedPhotoByPath.get(item.storagePath) : null;
 
     return {
       id: savedPhoto?.id ?? `${item.type}-${index}`,
-      isCover: index === 0,
+      isCover: item.storagePath === preferredCoverMedia.storagePath,
       posterUrl: item.type === "video" ? coverPhotoUrl : null,
       publicUrl: item.publicUrl,
       sortOrder: index,
