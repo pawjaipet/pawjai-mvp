@@ -30,9 +30,11 @@ test("shelter message action supports appointment attachments", () => {
   const adopterSource = readFileSync(new URL("../app/appointments/[id]/actions.ts", import.meta.url), "utf8");
   const policySource = readFileSync(new URL("../utils/appointment-message-attachments.ts", import.meta.url), "utf8");
   const configSource = readFileSync(new URL("../next.config.ts", import.meta.url), "utf8");
+  const bucketMigrationSource = readFileSync(new URL("../supabase/migrations/20260722113257_appointment_message_attachments_bucket.sql", import.meta.url), "utf8");
 
   assert.equal(source.includes("uploadAppointmentMessageAttachment"), true);
   assert.equal(adopterSource.includes("uploadAppointmentMessageAttachment"), true);
+  assert.equal(policySource.includes('APPOINTMENT_MESSAGE_ATTACHMENTS_BUCKET = "appointment-message-attachments"'), true);
   assert.equal(policySource.includes("APPOINTMENT_MESSAGE_ATTACHMENT_MAX_BYTES = 200 * 1024 * 1024"), true);
   assert.equal(policySource.includes('"application/pdf"'), true);
   assert.equal(policySource.includes('"image/heic"'), true);
@@ -52,6 +54,10 @@ test("shelter message action supports appointment attachments", () => {
   assert.equal(adopterSource.includes("sendAppointmentMessageNotificationForAppointment"), true);
   assert.equal(configSource.includes('bodySizeLimit: "210mb"'), true);
   assert.equal(configSource.includes('proxyClientMaxBodySize: "210mb"'), true);
+  assert.equal(bucketMigrationSource.includes("'appointment-message-attachments'"), true);
+  assert.equal(bucketMigrationSource.includes("209715200"), true);
+  assert.equal(bucketMigrationSource.includes("'application/pdf'"), true);
+  assert.equal(bucketMigrationSource.includes("'video/quicktime'"), true);
 });
 
 test("adopter return inquiry action writes a message with a reason", () => {

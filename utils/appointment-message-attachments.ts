@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 
-export const APPOINTMENT_MESSAGE_ATTACHMENTS_BUCKET = "dog-photos";
+export const APPOINTMENT_MESSAGE_ATTACHMENTS_BUCKET = "appointment-message-attachments";
 export const APPOINTMENT_MESSAGE_ATTACHMENT_MAX_BYTES = 200 * 1024 * 1024;
 export const APPOINTMENT_MESSAGE_ATTACHMENT_ACCEPT = [
   ".pdf",

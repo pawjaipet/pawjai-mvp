@@ -25,13 +25,16 @@ test("message views expose backend timestamps and attachment-friendly previews",
   const adopterSource = readFileSync(new URL("../components/appointments/AppointmentDetailClient.tsx", import.meta.url), "utf8");
   const adminSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
 
-  assert.equal(adopterSource.includes("Backend timestamp"), true);
-  assert.equal(adopterSource.includes("dateTime={msg.createdAt}"), true);
+  assert.equal(adopterSource.includes("Backend timestamp"), false);
+  assert.equal(adopterSource.includes("dateTime={msg.createdAt}"), false);
   assert.equal(adopterSource.includes("isPreviewableImageAttachment"), true);
   assert.equal(adopterSource.includes("isVideoAttachment"), true);
   assert.equal(adopterSource.includes("<video"), true);
   assert.equal(adminSource.includes("Backend timestamp"), true);
   assert.equal(adminSource.includes("dateTime={message.created_at}"), true);
+  assert.equal(adminSource.includes("adminMode ? ("), true);
+  assert.equal(adminSource.includes("isPreviewableMessageImage"), true);
+  assert.equal(adminSource.includes("isPreviewableMessageVideo"), true);
 });
 
 test("message notification links use the canonical pawjaipet domain", () => {

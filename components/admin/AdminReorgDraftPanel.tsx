@@ -362,6 +362,14 @@ function formatBackendMessageTimestampTitle(value: string | null | undefined) {
   return new Date(value).toISOString();
 }
 
+function isPreviewableMessageImage(type: string | null | undefined) {
+  return type === "image/jpeg" || type === "image/png" || type === "image/webp";
+}
+
+function isPreviewableMessageVideo(type: string | null | undefined) {
+  return type === "video/mp4" || type === "video/quicktime";
+}
+
 function bookingStatusClass(status: string) {
   switch (status) {
     case "confirmed":
@@ -1685,6 +1693,8 @@ function ShelterMessagesTab({
               <div className="mt-4 max-h-[460px] space-y-3 overflow-y-auto pr-1">
                 {selectedThread.messages.length > 0 ? selectedThread.messages.map((message) => {
                   const isShelter = message.sender_role === "shelter";
+                  const previewImage = !adminMode && isPreviewableMessageImage(message.attachment_type);
+                  const previewVideo = !adminMode && isPreviewableMessageVideo(message.attachment_type);
 
                   return (
                     <div className={`flex ${isShelter ? "justify-end" : "justify-start"}`} key={message.id}>
@@ -1694,8 +1704,25 @@ function ShelterMessagesTab({
                         <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${isShelter ? "text-white/70" : "text-[#8d7f72]"}`}>
                           {message.sender_role === "system" ? "PawJai/system" : message.sender_label ?? (isShelter ? shelter.name : selectedThread.adopterName)}
                         </p>
+                        {message.attachment_url && previewImage ? (
+                          <img
+                            alt={message.attachment_name ?? "Appointment attachment"}
+                            className="mt-2 max-h-[260px] w-full rounded-xl object-cover"
+                            src={message.attachment_url}
+                          />
+                        ) : null}
+                        {message.attachment_url && previewVideo ? (
+                          <video
+                            className="mt-2 max-h-[280px] w-full rounded-xl bg-black"
+                            controls
+                            preload="metadata"
+                          >
+                            <source src={message.attachment_url} type={message.attachment_type ?? undefined} />
+                            <a href={message.attachment_url} rel="noreferrer" target="_blank">View attachment</a>
+                          </video>
+                        ) : null}
                         <p className="mt-1 whitespace-pre-wrap">{message.body}</p>
-                        {message.attachment_url ? (
+                        {message.attachment_url && (adminMode || (!previewImage && !previewVideo)) ? (
                           <a
                             className={`mt-2 inline-flex text-xs font-semibold underline ${isShelter ? "text-white" : "text-[#9a6b2a]"}`}
                             href={message.attachment_url}
@@ -1707,10 +1734,14 @@ function ShelterMessagesTab({
                         ) : null}
                         <p className={`mt-2 text-[11px] ${isShelter ? "text-white/60" : "text-[#74685d]/70"}`}>
                           {formatMessageTime(message.created_at)}
-                          <br />
-                          <time dateTime={message.created_at} title={`Backend timestamp: ${formatBackendMessageTimestampTitle(message.created_at)}`}>
-                            Backend timestamp: {formatBackendMessageTimestamp(message.created_at)}
-                          </time>
+                          {adminMode ? (
+                            <>
+                              <br />
+                              <time dateTime={message.created_at} title={`Backend timestamp: ${formatBackendMessageTimestampTitle(message.created_at)}`}>
+                                Backend timestamp: {formatBackendMessageTimestamp(message.created_at)}
+                              </time>
+                            </>
+                          ) : null}
                         </p>
                       </div>
                     </div>

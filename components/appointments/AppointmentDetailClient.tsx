@@ -725,20 +725,6 @@ function MessagesTab({
     return new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   }
 
-  function formatMessageTimestamp(value: string) {
-    return new Date(value).toLocaleString("en-US", {
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  }
-
-  function formatMessageTimestampTitle(value: string) {
-    return new Date(value).toISOString();
-  }
-
   function isPreviewableImageAttachment(type: string | null | undefined) {
     return type === "image/jpeg" || type === "image/png" || type === "image/webp";
   }
@@ -816,10 +802,6 @@ function MessagesTab({
                 style={{ color: "rgba(101,88,79,0.5)", fontFamily: M }}
               >
                 {formatMessageTime(msg.createdAt)}
-                <br />
-                <time dateTime={msg.createdAt} title={`Backend timestamp: ${formatMessageTimestampTitle(msg.createdAt)}`}>
-                  Backend timestamp: {formatMessageTimestamp(msg.createdAt)}
-                </time>
               </p>
             </div>
           </div>
