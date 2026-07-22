@@ -46,22 +46,19 @@ function redirectAfterShelterMutation(formData: FormData, shelterId: string, vie
   const returnTo = String(formData.get("returnTo") ?? "");
 
   if (returnTo.startsWith("/admindraft")) {
-    const params = new URLSearchParams();
-    if (shelterId) params.set("shelter", shelterId);
-    if (view) params.set("view", view);
-    if (message) params.set("message", message);
-    if (returnTo === "/admindraft") {
-      redirect(`/admindraft?${params.toString()}`);
+    const url = new URL(returnTo, "https://pawjai.local");
+    if (url.pathname === "/admindraft") {
+      if (shelterId && !url.searchParams.has("shelter")) url.searchParams.set("shelter", shelterId);
+      if (view && !url.searchParams.has("view")) url.searchParams.set("view", view);
     }
-    const separator = returnTo.includes("?") ? "&" : "?";
-    redirect(`${returnTo}${params.toString() ? `${separator}${params.toString()}` : ""}`);
+    if (message) url.searchParams.set("message", message);
+    redirect(`${url.pathname}${url.search}`);
   }
 
   if (returnTo.startsWith("/shelter/")) {
-    const params = new URLSearchParams();
-    if (message) params.set("message", message);
-    const separator = returnTo.includes("?") ? "&" : "?";
-    redirect(`${returnTo}${params.toString() ? `${separator}${params.toString()}` : ""}`);
+    const url = new URL(returnTo, "https://pawjai.local");
+    if (message) url.searchParams.set("message", message);
+    redirect(`${url.pathname}${url.search}`);
   }
 
   shelterViewRedirect(shelterId, view, message);

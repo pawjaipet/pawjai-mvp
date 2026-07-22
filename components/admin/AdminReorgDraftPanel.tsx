@@ -854,7 +854,7 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
                 <input className={inputClass} defaultValue={shelter.phoneNumber ?? ""} name="phoneNumber" />
               </label>
               <label>
-                <span className={labelClass}>Booking notification email</span>
+                <span className={labelClass}>Email for booking notifications</span>
                 <input className={inputClass} defaultValue={shelter.email ?? ""} name="email" type="email" />
               </label>
               <label>

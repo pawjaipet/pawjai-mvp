@@ -732,7 +732,7 @@ export default async function AdminBookingsPage({
                     <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.phone_number ?? ""} name="phoneNumber" />
                   </label>
                   <label>
-                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Booking notification email</span>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Email for booking notifications</span>
                     <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue={activeShelter.email ?? ""} name="email" type="email" />
                   </label>
                   <label>
