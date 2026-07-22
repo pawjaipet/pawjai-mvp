@@ -96,6 +96,7 @@ export type AdminDraftBooking = {
 };
 
 export type AdminDraftAd = {
+  submissionCode: string;
   contactEmail: string | null;
   contactInfo: string | null;
   contactPhone: string | null;
@@ -109,6 +110,18 @@ export type AdminDraftAd = {
   startDate: string;
 };
 
+export type AdminDraftAdClick = {
+  adId: string;
+  clickedAt: string;
+  destinationUrl: string;
+  id: string;
+  userDateOfBirth: string | null;
+  userEmail: string | null;
+  userId: string | null;
+  userName: string | null;
+  userPhone: string | null;
+};
+
 export type AdminDraftAboutContent = {
   heroSlogan: string | null;
   missionBody: string | null;
@@ -119,6 +132,7 @@ export type AdminDraftAboutContent = {
 
 export type AdminDraftData = {
   about: AdminDraftAboutContent | null;
+  adClicks: AdminDraftAdClick[];
   ads: AdminDraftAd[];
   bookings: AdminDraftBooking[];
   dogs: AdminDraftDog[];
@@ -137,6 +151,7 @@ export type LoadAdminDraftDataOptions = {
 function fallbackData(error: string): AdminDraftData {
   return {
     about: null,
+    adClicks: [],
     ads: [],
     bookings: [],
     dogs: [],
@@ -178,7 +193,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     return fallbackData(error instanceof Error ? error.message : "Supabase admin client is unavailable.");
   }
 
-  const [sheltersResult, dogsResult, dogPhotosResult, bookingsResult, messageThreadsResult, adsResult, aboutResult, availabilityResult, regularHoursResult] = await Promise.all([
+  const [sheltersResult, dogsResult, dogPhotosResult, bookingsResult, messageThreadsResult, adsResult, adClicksResult, aboutResult, availabilityResult, regularHoursResult] = await Promise.all([
     supabase
       .from("shelters")
       .select("id,name,phone_number,email,address_line,subdistrict,district,province,postal_code,description,website_url,facebook_url,instagram_url,logo_url,google_maps_url,meeting_instructions,promptpay_id,bank_name,bank_account_number,bank_account_name")
@@ -201,9 +216,14 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     loadAppointmentMessageThreads({ shelterIds: options.shelterIds }),
     supabase
       .from("ads")
-      .select("id,company_name,contact_info,contact_email,contact_phone,image_url,click_url,is_active,ad_status,start_date,end_date")
+      .select("id,submission_code,company_name,contact_info,contact_email,contact_phone,image_url,click_url,is_active,ad_status,start_date,end_date")
       .order("created_at", { ascending: false })
       .limit(50),
+    supabase
+      .from("ad_clicks")
+      .select("id,ad_id,user_id,destination_url,clicked_at")
+      .order("clicked_at", { ascending: false })
+      .limit(1000),
     supabase
       .from("pawjai_profile")
       .select("hero_slogan,mission_title,mission_body,partner_shelters,updated_at")
@@ -245,6 +265,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     shouldScopeShelters ? returnedShelterIds.has(thread.shelterId) : true
   ));
   const rawAds = adsResult.data ?? [];
+  const rawAdClicks = adClicksResult.error ? [] : adClicksResult.data ?? [];
   const rawAbout = aboutResult.data ?? null;
   const rawAvailability = (availabilityResult.error ? [] : availabilityResult.data ?? []).filter((range: { shelter_id: string }) => (
     shouldScopeShelters ? returnedShelterIds.has(range.shelter_id) : true
@@ -253,16 +274,31 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     shouldScopeShelters ? returnedShelterIds.has(hours.shelter_id) : true
   ));
   const bookingAdopterIds = [...new Set(rawBookings.map((booking) => booking.adopter_id).filter(Boolean))];
+  const adClickProfileIds = [...new Set(rawAdClicks.map((click) => click.user_id).filter(Boolean))] as string[];
   const adoptersResult = bookingAdopterIds.length
     ? await supabase
         .from("adopters")
         .select("id,first_name,last_name,email,phone_number")
         .in("id", bookingAdopterIds)
     : { data: [], error: null };
+  const [clickProfilesResult, clickAdoptersResult] = adClickProfileIds.length
+    ? await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id,full_name,phone_number")
+          .in("id", adClickProfileIds),
+        supabase
+          .from("adopters")
+          .select("profile_id,first_name,last_name,email,phone_number,date_of_birth")
+          .in("profile_id", adClickProfileIds),
+      ])
+    : [{ data: [], error: null }, { data: [], error: null }];
 
   const shelterSummary = new Map(rawShelters.map((shelter) => [shelter.id, shelter]));
   const dogSummary = new Map(rawDogs.map((dog) => [dog.id, dog]));
   const adopterSummary = new Map((adoptersResult.data ?? []).map((adopter) => [adopter.id, adopter]));
+  const clickProfileSummary = new Map((clickProfilesResult.data ?? []).map((profile) => [profile.id, profile]));
+  const clickAdopterSummary = new Map((clickAdoptersResult.data ?? []).map((adopter) => [adopter.profile_id, adopter]));
   const shelterNames = new Map(rawShelters.map((shelter) => [shelter.id, shelter.name]));
   const dogNames = new Map(rawDogs.map((dog) => [dog.id, dog.name]));
   const dogsByShelter = new Map<string, number>();
@@ -338,6 +374,25 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
           updatedAt: rawAbout.updated_at,
         }
       : null,
+    adClicks: rawAdClicks.map((click) => {
+      const adopter = click.user_id ? clickAdopterSummary.get(click.user_id) : null;
+      const profile = click.user_id ? clickProfileSummary.get(click.user_id) : null;
+
+      return {
+        adId: click.ad_id,
+        clickedAt: click.clicked_at,
+        destinationUrl: click.destination_url,
+        id: click.id,
+        userDateOfBirth: adopter?.date_of_birth ?? null,
+        userEmail: adopter?.email ?? null,
+        userId: click.user_id,
+        userName: ([
+          adopter?.first_name,
+          adopter?.last_name,
+        ].filter(Boolean).join(" ") || profile?.full_name) ?? null,
+        userPhone: adopter?.phone_number ?? profile?.phone_number ?? null,
+      };
+    }),
     ads: rawAds.map((ad) => ({
       clickUrl: ad.click_url,
       companyName: ad.company_name,
@@ -350,6 +405,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
       isActive: ad.is_active,
       reviewStatus: ad.ad_status,
       startDate: ad.start_date,
+      submissionCode: ad.submission_code,
     })),
     bookings: rawBookings.map((booking) => ({
       adopterEmail: adopterSummary.get(booking.adopter_id)?.email ?? null,

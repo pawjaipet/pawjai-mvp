@@ -7,16 +7,18 @@ interface Props {
   ad: Ad;
   cardWidth: number | string;
   cardHeight: number | string;
+  trackClicks?: boolean;
 }
 
 const M = "Montserrat, sans-serif";
 
-export default function AdCard({ ad, cardWidth, cardHeight }: Props) {
+export default function AdCard({ ad, cardWidth, cardHeight, trackClicks = true }: Props) {
   const imageUrl = normalizeDogMediaUrl(ad.imageUrl) ?? ad.imageUrl;
+  const href = trackClicks && ad.id !== "preview" ? `/ads/click/${ad.id}` : ad.clickUrl || "#";
 
   return (
     <a
-      href={ad.clickUrl || "#"}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="block relative overflow-hidden rounded-[24px] shadow-lg select-none"

@@ -4,7 +4,6 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { CheckCircle2, ImagePlus, Upload } from "lucide-react";
 import AdCard from "@/components/AdCard";
 import { normalizeAdClickUrl } from "@/utils/ad-click-url";
-import { OPEN_ENDED_AD_END_DATE } from "@/utils/ad-workflow";
 import { createPartnerAdAction, type PartnerAdCreateState } from "./actions";
 
 const initialCreateState: PartnerAdCreateState = {};
@@ -14,6 +13,7 @@ type PreviewState = {
   companyName: string;
   contactEmail: string;
   contactPhone: string;
+  endDate: string;
   imageUrl: string;
   startDate: string;
 };
@@ -43,9 +43,15 @@ export default function PartnerAdCreatePage() {
     const formData = new FormData(form);
     const file = formData.get("image_file");
     const startDate = String(formData.get("start_date") ?? "");
+    const endDate = String(formData.get("end_date") ?? "");
 
     if (startDate < today) {
-      setClientError(`Start date must be today or later.`);
+      setClientError("Start date must be today or later.");
+      return;
+    }
+
+    if (endDate < startDate) {
+      setClientError("End date must be on or after the start date.");
       return;
     }
 
@@ -71,6 +77,7 @@ export default function PartnerAdCreatePage() {
       companyName: String(formData.get("company_name") ?? "").trim(),
       contactEmail: String(formData.get("contact_email") ?? "").trim(),
       contactPhone: String(formData.get("contact_phone") ?? "").trim(),
+      endDate,
       imageUrl: URL.createObjectURL(file),
       startDate,
     });
@@ -98,6 +105,7 @@ export default function PartnerAdCreatePage() {
               }}
               cardHeight={560}
               cardWidth={334}
+              trackClicks={false}
             />
           </div>
           <div className="flex flex-col justify-center">
@@ -109,18 +117,30 @@ export default function PartnerAdCreatePage() {
             <p className="mt-3 text-sm leading-6 text-[#74685d]">
               PawJai will review the image, link, and dates before it goes live.
             </p>
+            <div className="mt-5 rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9a8c80]">Ad submission code</p>
+              <p className="mt-1 text-2xl font-semibold text-[#b77624]">{state.ad.submissionCode}</p>
+            </div>
             <dl className="mt-6 grid gap-3 text-sm">
               <div>
                 <dt className="font-semibold text-[#9a8c80]">Destination URL</dt>
                 <dd className="mt-1 break-all text-[#b77624]">{state.ad.clickUrl}</dd>
               </div>
               <div>
-                <dt className="font-semibold text-[#9a8c80]">Requested start</dt>
-                <dd className="mt-1">{state.ad.startDate}</dd>
+                <dt className="font-semibold text-[#9a8c80]">Requested dates</dt>
+                <dd className="mt-1">{state.ad.startDate} to {state.ad.endDate}</dd>
               </div>
               <div>
-                <dt className="font-semibold text-[#9a8c80]">End date</dt>
-                <dd className="mt-1">{state.ad.endDate === OPEN_ENDED_AD_END_DATE ? "Ongoing until PawJai updates it" : state.ad.endDate}</dd>
+                <dt className="font-semibold text-[#9a8c80]">Contact email</dt>
+                <dd className="mt-1">{state.ad.contactEmail || "Not provided"}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-[#9a8c80]">Contact phone</dt>
+                <dd className="mt-1">{state.ad.contactPhone || "Not provided"}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-[#9a8c80]">Keep this code</dt>
+                <dd className="mt-1">Use this code when following up with PawJai.</dd>
               </div>
             </dl>
           </div>
@@ -217,10 +237,16 @@ export default function PartnerAdCreatePage() {
                 type="date"
               />
             </div>
-            <div className="rounded-xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">End date</p>
-              <p className="mt-2 text-sm font-semibold text-[#4f4338]">Ongoing until PawJai confirms dates</p>
-              <input name="end_date" type="hidden" value={OPEN_ENDED_AD_END_DATE} />
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">Requested end date *</label>
+              <input
+                className="w-full rounded-xl border border-[#eadfce] px-3 py-3 text-sm text-[#4f4338] focus:border-[#b77624] focus:outline-none"
+                defaultValue={today}
+                min={today}
+                name="end_date"
+                required
+                type="date"
+              />
             </div>
           </div>
 
@@ -246,6 +272,7 @@ export default function PartnerAdCreatePage() {
                 }}
                 cardHeight={560}
                 cardWidth={334}
+                trackClicks={false}
               />
             </div>
             <div className="flex flex-col justify-center">
@@ -268,8 +295,8 @@ export default function PartnerAdCreatePage() {
                   <dd>{preview.contactPhone || "Not provided"}</dd>
                 </div>
                 <div>
-                  <dt className="font-semibold text-[#9a8c80]">Requested start</dt>
-                  <dd>{preview.startDate}</dd>
+                  <dt className="font-semibold text-[#9a8c80]">Requested dates</dt>
+                  <dd>{preview.startDate} to {preview.endDate}</dd>
                 </div>
               </dl>
               <div className="mt-8 flex flex-wrap gap-3">

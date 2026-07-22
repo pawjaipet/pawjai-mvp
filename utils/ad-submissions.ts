@@ -5,6 +5,7 @@ import { parseAdDateRange } from "@/utils/ad-date-range";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { normalizeAdClickUrl } from "@/utils/ad-click-url";
 import { OPEN_ENDED_AD_END_DATE, type AdReviewStatus } from "@/utils/ad-workflow";
+import { generateAdSubmissionCode } from "@/utils/ad-codes";
 
 export type AdSubmissionResult = {
   adId?: string;
@@ -18,6 +19,7 @@ export type AdSubmissionResult = {
   isActive?: boolean;
   reviewStatus?: AdReviewStatus;
   startDate?: string;
+  submissionCode?: string;
   success?: string;
 };
 
@@ -64,6 +66,7 @@ export async function createAdFromFormData(
   const isActive = options.isActive ?? (formData.has("is_active") ? formData.get("is_active") === "on" : true);
   const reviewStatus = options.reviewStatus ?? "approved";
   const imageFile = formData.get("image_file") as File | null;
+  const submissionCode = generateAdSubmissionCode();
 
   if (!companyName) return { error: "Company name is required." };
   if (!clickUrl) return { error: "Click URL is required." };
@@ -104,6 +107,7 @@ export async function createAdFromFormData(
     image_url: imageUrl,
     is_active: isActive,
     start_date: dateRange.startDate,
+    submission_code: submissionCode,
   }).select("id").single();
 
   if (dbError) return { error: `DB insert failed: ${dbError.message}` };
@@ -119,6 +123,7 @@ export async function createAdFromFormData(
     isActive,
     reviewStatus,
     startDate: dateRange.startDate,
+    submissionCode,
     success: reviewStatus === "pending"
       ? `Ad for ${companyName} submitted for review.`
       : `Ad for ${companyName} created.`,

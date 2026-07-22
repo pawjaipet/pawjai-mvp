@@ -126,7 +126,7 @@ test("admin draft panel renders real media, ad, and about data", () => {
 
   assert.equal(source.includes("coverUrl"), true);
   assert.equal(source.includes("photosCount"), true);
-  assert.equal(source.includes("AdsTab ads={ads}"), true);
+  assert.equal(source.includes("AdsTab adClicks={adClicks} ads={ads}"), true);
   assert.equal(source.includes("AboutTab about={about}"), true);
 });
 
@@ -136,7 +136,7 @@ test("admin draft ad tab uses real search and status filters", () => {
   assert.equal(source.includes("matchesAdFilters"), true);
   assert.equal(source.includes('id="admin-ad-search"'), true);
   assert.equal(source.includes('id="admin-ad-status"'), true);
-  assert.equal(source.includes('placeholder="Search advertiser or URL"'), true);
+  assert.equal(source.includes('placeholder="Search ad code, advertiser, or URL"'), true);
   assert.equal(source.includes('<option value="pending">Pending review</option>'), true);
   assert.equal(source.includes('<option value="approved">Live</option>'), true);
   assert.equal(source.includes('<option value="paused">Paused</option>'), true);
@@ -147,7 +147,10 @@ test("admin draft ad tab uses real search and status filters", () => {
   assert.equal(source.includes("Deny ad"), true);
   assert.equal(source.includes("Edit ad dates"), true);
   assert.equal(source.includes("Preview full ad"), true);
-  assert.equal(source.includes("Review ad"), false);
+  assert.equal(source.includes("Analytics"), true);
+  assert.equal(source.includes("Clicks over last 14 days"), true);
+  assert.equal(source.includes("Recent clickers"), true);
+  assert.equal(source.includes("Review ads"), true);
   assert.equal(source.includes('FieldGrid fields={["Advertiser", "Placement", "Image/video asset", "Destination URL", "Live status", "Start date", "End date"]}'), false);
 });
 

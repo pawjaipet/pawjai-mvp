@@ -142,7 +142,7 @@ function AdReviewCard({
   return (
     <article className="grid gap-6 rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_14px_42px_rgba(128,92,46,0.06)] lg:grid-cols-[250px_minmax(0,1fr)]">
       <div className="flex justify-center lg:justify-start">
-        <AdCard ad={cardAd} cardHeight={374} cardWidth={250} />
+        <AdCard ad={cardAd} cardHeight={374} cardWidth={250} trackClicks={false} />
       </div>
 
       <div className="min-w-0">
@@ -453,6 +453,7 @@ export default function AdminAdsPage({ basePath = "/admin" }: { basePath?: "/adm
               }}
               cardHeight="min(620px, calc(100dvh - 180px))"
               cardWidth="min(370px, calc(100vw - 48px))"
+              trackClicks={false}
             />
           </div>
         </div>

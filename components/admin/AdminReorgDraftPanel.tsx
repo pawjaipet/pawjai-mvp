@@ -57,6 +57,7 @@ import { createClient as createBrowserSupabaseClient } from "@/utils/supabase/cl
 import type {
   AdminDraftAboutContent,
   AdminDraftAd,
+  AdminDraftAdClick,
   AdminDraftData,
   AdminDraftBooking,
   AdminDraftDog,
@@ -69,6 +70,7 @@ type ShelterTab = "profile" | "dogs" | "bookings" | "messages";
 type VisitBucket = "upcoming" | "needs_follow_up" | "past" | "all";
 type MessageFilter = "all" | "unread" | "upcoming" | "needs_reply";
 type AdStatusFilter = "all" | AdDisplayStatus;
+type AdWorkspaceView = "review" | "analytics";
 type AdminDraftMessageThread = AdminDraftData["messageThreads"][number];
 
 const DRAFT_RETURN_TO = "/admindraft";
@@ -457,7 +459,7 @@ function matchesDogFilters(dog: AdminDraftDog, search: string, status: string) {
 
 function matchesAdFilters(ad: AdminDraftAd, search: string, status: AdStatusFilter, today: string) {
   const query = search.trim().toLowerCase();
-  const searchable = [ad.companyName, ad.clickUrl, ad.contactEmail, ad.contactPhone, ad.contactInfo, ad.startDate, ad.endDate]
+  const searchable = [ad.submissionCode, ad.companyName, ad.clickUrl, ad.contactEmail, ad.contactPhone, ad.contactInfo, ad.startDate, ad.endDate]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
@@ -469,6 +471,51 @@ function matchesAdFilters(ad: AdminDraftAd, search: string, status: AdStatusFilt
   });
 
   return (!query || searchable.includes(query)) && (status === "all" || adStatus === status);
+}
+
+function getAdLiveDays(ad: AdminDraftAd, today: string) {
+  if (ad.reviewStatus !== "approved") return 0;
+  const start = new Date(`${ad.startDate}T00:00:00`);
+  const endKey = ad.endDate < today ? ad.endDate : today;
+  const end = new Date(`${endKey}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 0;
+  return Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+}
+
+function formatClickDate(value: string) {
+  return new Date(value).toLocaleString("en-US", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+  });
+}
+
+function getAgeFromDateOfBirth(value: string | null) {
+  if (!value) return null;
+  const birth = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDelta = today.getMonth() - birth.getMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < birth.getDate())) {
+    age -= 1;
+  }
+  return age >= 0 ? age : null;
+}
+
+function buildAdClickBuckets(clicks: AdminDraftAdClick[], today: string, days = 14) {
+  const end = new Date(`${today}T00:00:00`);
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date(end);
+    date.setDate(end.getDate() - (days - 1 - index));
+    const key = date.toISOString().slice(0, 10);
+    return {
+      count: clicks.filter((click) => click.clickedAt.slice(0, 10) === key).length,
+      key,
+      label: date.toLocaleDateString("en-US", { day: "numeric", month: "short" }),
+    };
+  });
 }
 
 function matchesMessageThread(thread: AdminDraftMessageThread, messageSearch: string, messageFilter: MessageFilter) {
@@ -2023,12 +2070,20 @@ function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking
   );
 }
 
-function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
+function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAdClick[] }) {
+  const [view, setView] = useState<AdWorkspaceView>("review");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<AdStatusFilter>("all");
   const [previewAd, setPreviewAd] = useState<AdminDraftAd | null>(null);
+  const [selectedAnalyticsAdId, setSelectedAnalyticsAdId] = useState("");
   const today = new Date().toISOString().slice(0, 10);
   const filteredAds = ads.filter((ad) => matchesAdFilters(ad, search, status, today));
+  const selectedAnalyticsAd = filteredAds.find((ad) => ad.id === selectedAnalyticsAdId) ?? filteredAds[0] ?? ads[0] ?? null;
+  const selectedAdClicks = selectedAnalyticsAd ? adClicks.filter((click) => click.adId === selectedAnalyticsAd.id) : [];
+  const totalClicks = selectedAdClicks.length;
+  const knownClickerIds = new Set(selectedAdClicks.map((click) => click.userId).filter(Boolean));
+  const clickBuckets = buildAdClickBuckets(selectedAdClicks, today);
+  const maxBucketCount = Math.max(1, ...clickBuckets.map((bucket) => bucket.count));
 
   return (
     <>
@@ -2036,13 +2091,37 @@ function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
         <p className="mt-2 text-sm leading-6 text-[#74685d]">
           Partner submissions from /ads land in the same ads table. PawJai reviews, pauses, and date-edits records internally. Connected ads: {ads.length}.
         </p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button
+            className={`rounded-full px-5 py-3 text-sm font-semibold ${
+              view === "review"
+                ? "bg-[#d88c24] text-white"
+                : "border border-[#eadfce] bg-white text-[#5b4d40]"
+            }`}
+            onClick={() => setView("review")}
+            type="button"
+          >
+            Review ads
+          </button>
+          <button
+            className={`rounded-full px-5 py-3 text-sm font-semibold ${
+              view === "analytics"
+                ? "bg-[#d88c24] text-white"
+                : "border border-[#eadfce] bg-white text-[#5b4d40]"
+            }`}
+            onClick={() => setView("analytics")}
+            type="button"
+          >
+            Analytics
+          </button>
+        </div>
         <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
           <label className="sr-only" htmlFor="admin-ad-search">Search ads</label>
           <input
             className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
             id="admin-ad-search"
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search advertiser or URL"
+            placeholder="Search ad code, advertiser, or URL"
             type="search"
             value={search}
           />
@@ -2075,6 +2154,138 @@ function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
             Reset
           </button>
         </div>
+        {view === "analytics" ? (
+          <div className="mt-6 grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+            <div className="rounded-[28px] border border-[#eadfce] bg-[#fffdfa] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Ads</p>
+              <div className="mt-4 grid gap-2">
+                {filteredAds.map((ad) => {
+                  const adClickCount = adClicks.filter((click) => click.adId === ad.id).length;
+                  const active = selectedAnalyticsAd?.id === ad.id;
+
+                  return (
+                    <button
+                      className={`rounded-2xl border p-3 text-left transition ${
+                        active
+                          ? "border-[#d88c24] bg-white"
+                          : "border-[#eadfce] bg-white/70 hover:bg-white"
+                      }`}
+                      key={ad.id}
+                      onClick={() => setSelectedAnalyticsAdId(ad.id)}
+                      type="button"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-[#4f4338]">{ad.companyName}</p>
+                          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#b77624]">{ad.submissionCode}</p>
+                        </div>
+                        <span className="rounded-full bg-[#f7ecda] px-2.5 py-1 text-xs font-bold text-[#8a5825]">{adClickCount}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+                {filteredAds.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-[#eadfce] bg-white p-4 text-sm text-[#74685d]">
+                    No ads match these filters.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+              {selectedAnalyticsAd ? (
+                <div>
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">{selectedAnalyticsAd.submissionCode}</p>
+                      <h3 className="mt-1 text-2xl font-semibold text-[#4f4338]">{selectedAnalyticsAd.companyName}</h3>
+                      <p className="mt-2 break-all text-sm font-semibold text-[#b77624]">{selectedAnalyticsAd.clickUrl}</p>
+                    </div>
+                    <button
+                      className="inline-flex w-fit items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                      onClick={() => setPreviewAd(selectedAnalyticsAd)}
+                      type="button"
+                    >
+                      <ImageIcon className="h-4 w-4" />
+                      Preview full ad
+                    </button>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 md:grid-cols-4">
+                    <div className="rounded-2xl bg-[#fffdfa] p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8d7f72]">Clicks</p>
+                      <p className="mt-2 text-3xl font-semibold text-[#4f4338]">{totalClicks}</p>
+                    </div>
+                    <div className="rounded-2xl bg-[#fffdfa] p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8d7f72]">Logged-in users</p>
+                      <p className="mt-2 text-3xl font-semibold text-[#4f4338]">{knownClickerIds.size}</p>
+                    </div>
+                    <div className="rounded-2xl bg-[#fffdfa] p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8d7f72]">Anonymous clicks</p>
+                      <p className="mt-2 text-3xl font-semibold text-[#4f4338]">{selectedAdClicks.filter((click) => !click.userId).length}</p>
+                    </div>
+                    <div className="rounded-2xl bg-[#fffdfa] p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8d7f72]">Live days</p>
+                      <p className="mt-2 text-3xl font-semibold text-[#4f4338]">{getAdLiveDays(selectedAnalyticsAd, today)}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-[#4f4338]">Clicks over last 14 days</p>
+                      <p className="text-xs text-[#74685d]">{totalClicks} total</p>
+                    </div>
+                    <div className="mt-4 flex h-44 items-end gap-2">
+                      {clickBuckets.map((bucket) => (
+                        <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={bucket.key}>
+                          <div className="flex h-32 w-full items-end rounded-full bg-[#f4eadb]">
+                            <div
+                              className="w-full rounded-full bg-[#d88c24]"
+                              style={{ height: `${Math.max(bucket.count ? 10 : 0, (bucket.count / maxBucketCount) * 100)}%` }}
+                              title={`${bucket.label}: ${bucket.count} clicks`}
+                            />
+                          </div>
+                          <span className="max-w-full truncate text-[10px] text-[#8d7f72]">{bucket.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+                    <p className="text-sm font-semibold text-[#4f4338]">Recent clickers</p>
+                    <div className="mt-3 grid gap-2">
+                      {selectedAdClicks.slice(0, 8).map((click) => {
+                        const age = getAgeFromDateOfBirth(click.userDateOfBirth);
+                        return (
+                          <div className="grid gap-2 rounded-2xl bg-white p-3 text-sm md:grid-cols-[minmax(0,1fr)_150px]" key={click.id}>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-[#4f4338]">{click.userName ?? (click.userId ? "Logged-in user" : "Anonymous visitor")}</p>
+                              <p className="mt-1 truncate text-[#74685d]">
+                                {[click.userEmail, click.userPhone, age !== null ? `${age} years old` : null].filter(Boolean).join(" · ") || "No profile details"}
+                              </p>
+                            </div>
+                            <p className="text-[#74685d] md:text-right">{formatClickDate(click.clickedAt)}</p>
+                          </div>
+                        );
+                      })}
+                      {selectedAdClicks.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-[#eadfce] bg-white p-4 text-sm text-[#74685d]">
+                          No clicks tracked for this ad yet.
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
+                  No ad selected.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        {view === "review" ? (
         <div className="mt-6 grid gap-4">
           {filteredAds.map((ad) => {
             const adStatus = getAdDisplayStatus({
@@ -2101,6 +2312,7 @@ function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
                       }}
                       cardHeight={360}
                       cardWidth={240}
+                      trackClicks={false}
                     />
                   </div>
 
@@ -2111,6 +2323,9 @@ function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
                       </span>
                       <span className="rounded-full bg-[#f7ecda] px-3 py-1 text-xs font-bold text-[#8a5825]">
                         {ad.reviewStatus === "pending" ? "Awaiting decision" : formatStatus(ad.reviewStatus)}
+                      </span>
+                      <span className="rounded-full border border-[#eadfce] bg-white px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#b77624]">
+                        {ad.submissionCode}
                       </span>
                     </div>
                     <h3 className="mt-4 text-2xl font-semibold text-[#4f4338]">{ad.companyName}</h3>
@@ -2232,6 +2447,7 @@ function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
             </div>
           ) : null}
         </div>
+        ) : null}
       </Section>
 
       {previewAd ? (
@@ -2255,6 +2471,7 @@ function AdsTab({ ads }: { ads: AdminDraftAd[] }) {
               }}
               cardHeight="min(620px, calc(100dvh - 180px))"
               cardWidth="min(370px, calc(100vw - 48px))"
+              trackClicks={false}
             />
           </div>
         </div>
@@ -2321,6 +2538,7 @@ export default function AdminReorgDraftPanel({
   const bookings = data?.bookings.length ? data.bookings : fallbackBookings;
   const messageThreads = data?.messageThreads ?? [];
   const messagesUnavailable = data?.messagesUnavailable ?? false;
+  const adClicks = data?.adClicks ?? [];
   const ads = data?.ads ?? [];
   const about = data?.about ?? null;
   const [role, setRole] = useState<RoleView>(initialRoleView);
@@ -2457,7 +2675,7 @@ export default function AdminReorgDraftPanel({
         ) : null}
         {isPawjai && mainTab === "dogs" ? <AllDogsTab dogs={dogs} shelters={shelters} /> : null}
         {isPawjai && mainTab === "bookings" ? <GlobalBookingsTab bookings={bookings} shelters={shelters} /> : null}
-        {isPawjai && mainTab === "ads" ? <AdsTab ads={ads} /> : null}
+        {isPawjai && mainTab === "ads" ? <AdsTab adClicks={adClicks} ads={ads} /> : null}
         {isPawjai && mainTab === "about" ? <AboutTab about={about} /> : null}
 
         {!isPawjai ? (

@@ -7,7 +7,7 @@ import {
   validateAdsPartnerCredentials,
 } from "@/utils/ads-partner-auth";
 import { createAdFromFormData } from "@/utils/ad-submissions";
-import { OPEN_ENDED_AD_END_DATE } from "@/utils/ad-workflow";
+import { sendAdSubmissionConfirmation } from "@/utils/ad-email";
 
 export type AdsGateState = {
   message: string;
@@ -24,6 +24,7 @@ export type PartnerAdCreateState = {
     id: string;
     imageUrl: string;
     startDate: string;
+    submissionCode: string;
   };
   error?: string;
   success?: string;
@@ -68,7 +69,6 @@ export async function createPartnerAdAction(
 
   const today = new Date().toISOString().slice(0, 10);
   const result = await createAdFromFormData(formData, {
-    defaultEndDate: OPEN_ENDED_AD_END_DATE,
     isActive: false,
     minStartDate: today,
     reviewStatus: "pending",
@@ -78,13 +78,28 @@ export async function createPartnerAdAction(
     return { error: result.error };
   }
 
+  if (result.contactEmail && result.submissionCode && result.companyName && result.clickUrl && result.startDate && result.endDate) {
+    try {
+      await sendAdSubmissionConfirmation({
+        clickUrl: result.clickUrl,
+        companyName: result.companyName,
+        endDate: result.endDate,
+        recipientEmail: result.contactEmail,
+        startDate: result.startDate,
+        submissionCode: result.submissionCode,
+      });
+    } catch (error) {
+      console.error("ad submission confirmation email failed", error);
+    }
+  }
+
   revalidatePath("/ads");
   revalidatePath("/admin/ads");
   revalidatePath("/admindraft");
   revalidatePath("/");
 
   return {
-    ad: result.adId && result.imageUrl && result.companyName && result.clickUrl && result.startDate && result.endDate
+    ad: result.adId && result.imageUrl && result.companyName && result.clickUrl && result.startDate && result.endDate && result.submissionCode
       ? {
           clickUrl: result.clickUrl,
           companyName: result.companyName,
@@ -94,6 +109,7 @@ export async function createPartnerAdAction(
           id: result.adId,
           imageUrl: result.imageUrl,
           startDate: result.startDate,
+          submissionCode: result.submissionCode,
         }
       : undefined,
     success: result.success,

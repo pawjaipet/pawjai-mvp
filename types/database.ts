@@ -18,6 +18,7 @@ export type Database = {
           contact_phone: string | null
           image_url: string
           click_url: string
+          submission_code: string
           start_date: string
           end_date: string
           is_active: boolean
@@ -33,6 +34,7 @@ export type Database = {
           contact_phone?: string | null
           image_url: string
           click_url: string
+          submission_code?: string
           start_date: string
           end_date: string
           is_active?: boolean
@@ -41,6 +43,28 @@ export type Database = {
           updated_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["ads"]["Insert"]>
+        Relationships: []
+      }
+      ad_clicks: {
+        Row: {
+          ad_id: string
+          clicked_at: string
+          destination_url: string
+          id: string
+          referrer: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ad_id: string
+          clicked_at?: string
+          destination_url: string
+          id?: string
+          referrer?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: Partial<Database["public"]["Tables"]["ad_clicks"]["Insert"]>
         Relationships: []
       }
       admin_audit_events: {
