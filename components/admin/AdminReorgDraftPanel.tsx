@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import AdCard from "@/components/AdCard";
 import {
   Building2,
@@ -70,6 +71,7 @@ type AdStatusFilter = "all" | AdDisplayStatus;
 type AdminDraftMessageThread = AdminDraftData["messageThreads"][number];
 
 const DRAFT_RETURN_TO = "/admindraft";
+const MESSAGE_THREAD_REFRESH_INTERVAL_MS = 12_000;
 const MAIN_TABS: MainTab[] = ["shelters", "dogs", "bookings", "ads", "about"];
 const BOOKING_STATUS_OPTIONS = ["requested", "confirmed", "completed", "cancelled", "no_show"];
 const VISIT_BUCKETS: { label: string; value: VisitBucket }[] = [
@@ -338,6 +340,22 @@ function formatMessageTime(value: string | null | undefined) {
     minute: "2-digit",
     month: "short",
   });
+}
+
+function formatBackendMessageTimestamp(value: string | null | undefined) {
+  if (!value) return "No backend timestamp";
+  return new Date(value).toLocaleString("en-US", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatBackendMessageTimestampTitle(value: string | null | undefined) {
+  if (!value) return "";
+  return new Date(value).toISOString();
 }
 
 function bookingStatusClass(status: string) {
@@ -1444,6 +1462,7 @@ function ShelterMessagesTab({
   returnTo: string;
   shelter: AdminDraftShelter;
 }) {
+  const router = useRouter();
   const [messageFilter, setMessageFilter] = useState<MessageFilter>("all");
   const [messageSearch, setMessageSearch] = useState("");
   const [selectedThreadId, setSelectedThreadId] = useState("");
@@ -1456,6 +1475,23 @@ function ShelterMessagesTab({
     { label: "Upcoming visits", value: "upcoming" },
     { label: "Needs reply", value: "needs_reply" },
   ];
+
+  useEffect(() => {
+    if (messagesUnavailable) return;
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        router.refresh();
+      }
+    };
+    const interval = window.setInterval(refreshIfVisible, MESSAGE_THREAD_REFRESH_INTERVAL_MS);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
+  }, [messagesUnavailable, router]);
 
   return (
     <Section eyebrow="Messaging" title="Visitor conversations">
@@ -1595,6 +1631,10 @@ function ShelterMessagesTab({
                         ) : null}
                         <p className={`mt-2 text-[11px] ${isShelter ? "text-white/60" : "text-[#74685d]/70"}`}>
                           {formatMessageTime(message.created_at)}
+                          <br />
+                          <time dateTime={message.created_at} title={`Backend timestamp: ${formatBackendMessageTimestampTitle(message.created_at)}`}>
+                            Backend timestamp: {formatBackendMessageTimestamp(message.created_at)}
+                          </time>
                         </p>
                       </div>
                     </div>

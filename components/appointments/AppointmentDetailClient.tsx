@@ -2,10 +2,12 @@
 
 import { useState, useRef, useEffect, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { acceptRescheduleRequestAction, cancelAppointmentFromListAction } from "@/app/appointments/actions";
 import { cancelAppointmentAction, sendAppointmentMessageAction, submitReturnInquiryAction } from "@/app/appointments/[id]/actions";
 
 const M = "Montserrat, sans-serif";
+const MESSAGE_THREAD_REFRESH_INTERVAL_MS = 12_000;
 
 type Tab = "details" | "messages" | "help";
 
@@ -624,6 +626,7 @@ function MessagesTab({
   messagesUnavailable: boolean;
   shelter: Props["shelter"];
 }) {
+  const router = useRouter();
   const attachRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState("");
@@ -650,6 +653,24 @@ function MessagesTab({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [helpOpen, returnOpen]);
+
+  useEffect(() => {
+    if (messagesUnavailable) return;
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        router.refresh();
+      }
+    };
+    const interval = window.setInterval(refreshIfVisible, MESSAGE_THREAD_REFRESH_INTERVAL_MS);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
+  }, [messagesUnavailable, router]);
+
   const chatMessages = [
     ...(initialMessages.length > 0
       ? initialMessages
@@ -674,6 +695,28 @@ function MessagesTab({
 
   function formatMessageTime(value: string) {
     return new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  }
+
+  function formatMessageTimestamp(value: string) {
+    return new Date(value).toLocaleString("en-US", {
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
+  function formatMessageTimestampTitle(value: string) {
+    return new Date(value).toISOString();
+  }
+
+  function isPreviewableImageAttachment(type: string | null | undefined) {
+    return type === "image/jpeg" || type === "image/png" || type === "image/webp";
+  }
+
+  function isVideoAttachment(type: string | null | undefined) {
+    return type === "video/mp4" || type === "video/quicktime";
   }
 
   return (
@@ -711,15 +754,25 @@ function MessagesTab({
                   color: fromMe ? "white" : "#65584f",
                 }}
               >
-                {msg.attachmentUrl && msg.attachmentType?.startsWith("image/") && (
+                {msg.attachmentUrl && isPreviewableImageAttachment(msg.attachmentType) && (
                   <img
                     src={msg.attachmentUrl}
                     alt={msg.attachmentName ?? "Appointment attachment"}
                     className="mb-[10px] max-h-[260px] w-full rounded-[12px] object-cover"
                   />
                 )}
+                {msg.attachmentUrl && isVideoAttachment(msg.attachmentType) && (
+                  <video
+                    className="mb-[10px] max-h-[260px] w-full rounded-[12px] bg-black"
+                    controls
+                    preload="metadata"
+                  >
+                    <source src={msg.attachmentUrl} type={msg.attachmentType ?? undefined} />
+                    <a href={msg.attachmentUrl} rel="noreferrer" target="_blank">View attachment</a>
+                  </video>
+                )}
                 <p className="text-[14px] leading-[1.45]" style={{ fontFamily: M }}>{msg.body}</p>
-                {msg.attachmentUrl && !msg.attachmentType?.startsWith("image/") && (
+                {msg.attachmentUrl && !isPreviewableImageAttachment(msg.attachmentType) && !isVideoAttachment(msg.attachmentType) && (
                   <a
                     className={`mt-[10px] inline-flex text-[13px] font-semibold underline ${fromMe ? "text-white" : "text-[#9a6b2a]"}`}
                     href={msg.attachmentUrl}
@@ -735,6 +788,10 @@ function MessagesTab({
                 style={{ color: "rgba(101,88,79,0.5)", fontFamily: M }}
               >
                 {formatMessageTime(msg.createdAt)}
+                <br />
+                <time dateTime={msg.createdAt} title={`Backend timestamp: ${formatMessageTimestampTitle(msg.createdAt)}`}>
+                  Backend timestamp: {formatMessageTimestamp(msg.createdAt)}
+                </time>
               </p>
             </div>
           </div>
