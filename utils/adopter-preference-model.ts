@@ -1,4 +1,5 @@
 import type { Json } from "@/types/database";
+import { canonicalizeBreedSelections } from "@/utils/dog-breeds";
 
 export type SavedFilterAnswers = Record<number, string[]>;
 
@@ -119,16 +120,20 @@ export function buildPreferenceUpdate(answers: FilterAnswers): StructuredPrefere
   const questionLabels = answers.questionLabels ?? {};
   const ageRange = answers.ageRange ?? null;
   const breeds = selected(fullAnswers, QUESTION.breed);
-  const preferredBreeds = breeds.includes("All Breeds") ? [] : breeds;
+  const preferredBreeds = canonicalizeBreedSelections(breeds);
+  const normalizedFullAnswers: SavedFilterAnswers = {
+    ...fullAnswers,
+    [QUESTION.breed]: preferredBreeds.length > 0 ? preferredBreeds : breeds,
+  };
   const preferredSize = answers.sizes.length === 1 ? mapSize(answers.sizes[0]) : null;
   const preferredEnergy = answers.energyLevels.length === 1 ? mapEnergy(answers.energyLevels[0]) : null;
   const filterSnapshot = {
     ageRange,
-    answers: fullAnswers,
+    answers: normalizedFullAnswers,
     questions: questionLabels,
     savedAt: new Date().toISOString(),
   } satisfies Json;
-  const filterSummary = Object.entries(fullAnswers)
+  const filterSummary = Object.entries(normalizedFullAnswers)
     .map(([index, values]) => {
       const question = questionLabels[Number(index)] ?? `Question ${Number(index) + 1}`;
       return `${question}: ${values.join(", ")}`;
@@ -162,7 +167,10 @@ export function restoreAnswersFromPreference(preferences: PreferenceRowLike): Sa
 
   if (size) answers[QUESTION.size] = [size];
   if (age) answers[QUESTION.age] = [age];
-  if (preferences.preferred_breeds?.length) answers[QUESTION.breed] = preferences.preferred_breeds;
+  if (preferences.preferred_breeds?.length) {
+    const breeds = canonicalizeBreedSelections(preferences.preferred_breeds);
+    if (breeds.length) answers[QUESTION.breed] = breeds;
+  }
   if (energy) answers[QUESTION.energy] = [energy];
   if (preferences.preferred_protectiveness?.length) answers[QUESTION.protectiveness] = preferences.preferred_protectiveness;
   if (preferences.preferred_affection_styles?.length) answers[QUESTION.affection] = preferences.preferred_affection_styles;

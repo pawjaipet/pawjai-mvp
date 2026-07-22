@@ -4,6 +4,22 @@ import { Script } from "node:vm";
 import test from "node:test";
 import ts from "typescript";
 
+function loadDogBreeds() {
+  const source = readFileSync(new URL("../utils/dog-breeds.ts", import.meta.url), "utf8");
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  });
+  const module = { exports: {} };
+  new Script(outputText).runInNewContext({
+    exports: module.exports,
+    module,
+  });
+  return module.exports;
+}
+
 function loadPreferenceModel() {
   const source = readFileSync(new URL("../utils/adopter-preference-model.ts", import.meta.url), "utf8");
   const { outputText } = ts.transpileModule(source, {
@@ -16,6 +32,10 @@ function loadPreferenceModel() {
   new Script(outputText).runInNewContext({
     exports: module.exports,
     module,
+    require: (specifier) => {
+      if (specifier === "@/utils/dog-breeds") return loadDogBreeds();
+      throw new Error(`Unexpected test import: ${specifier}`);
+    },
   });
   return module.exports;
 }
@@ -32,7 +52,7 @@ test("maps full filter answers into structured adopter preference columns", () =
     energyLevels: ["High"],
     fullAnswers: {
       0: ["Small"],
-      2: ["Thai Bangkaew", "Mixed Breed"],
+      2: ["Thai Bangkaew", "Thai Mix", "Poodle Terrier Mix"],
       4: ["Very chill - not reactive"],
       5: ["Very cuddly and affectionate", "Independent"],
       6: ["Dogs still in training"],

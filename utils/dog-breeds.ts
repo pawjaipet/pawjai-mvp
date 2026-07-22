@@ -1,68 +1,111 @@
+export const ALL_BREEDS_FILTER_LABEL = "All Breeds";
+
 export const DOG_BREED_OPTIONS = [
   "Mixed Breed",
   "Thai Dog",
-  "Thai Mix",
   "Thai Bangkaew",
   "Thai Ridgeback",
   "Golden Retriever",
   "Labrador Retriever",
   "German Shepherd",
-  "French Bulldog",
-  "Poodle",
-  "Chihuahua",
   "Siberian Husky",
+  "Poodle",
   "Shih Tzu",
-  "Pug",
-  "Rottweiler",
+  "Pomeranian",
+  "Chihuahua",
   "Beagle",
   "Dachshund",
-  "Yorkshire Terrier",
-  "Boxer",
-  "Pomeranian",
-  "Australian Shepherd",
-  "Great Dane",
-  "Doberman Pinscher",
-  "Pembroke Welsh Corgi",
-  "Miniature Schnauzer",
-  "Shiba Inu",
-  "Boston Terrier",
-  "Border Collie",
+  "French Bulldog",
   "Bulldog",
-  "Akita",
-  "Cavalier King Charles Spaniel",
-  "Havanese",
-  "Shetland Sheepdog",
-  "Bernese Mountain Dog",
-  "English Springer Spaniel",
-  "Brittany",
+  "Pug",
+  "Yorkshire Terrier",
   "Cocker Spaniel",
-  "Mastiff",
-  "Cane Corso",
-  "West Highland White Terrier",
-  "Basset Hound",
-  "Vizsla",
-  "Newfoundland",
-  "Rhodesian Ridgeback",
+  "Border Collie",
+  "Australian Shepherd",
+  "Rottweiler",
+  "Doberman Pinscher",
   "Belgian Malinois",
-  "Bloodhound",
+  "Boxer",
   "Bull Terrier",
-  "Chesapeake Bay Retriever",
-  "Weimaraner",
-  "Collie",
-  "Saint Bernard",
-  "Whippet",
+  "Shiba Inu",
+  "Akita",
+  "Corgi",
+  "Schnauzer",
 ] as const;
 
-export const DOG_FILTER_BREED_OPTIONS = ["All Breeds", ...DOG_BREED_OPTIONS] as const;
+export type DogBreedOption = (typeof DOG_BREED_OPTIONS)[number];
+
+export const DOG_FILTER_BREED_OPTIONS = [ALL_BREEDS_FILTER_LABEL, ...DOG_BREED_OPTIONS] as const;
 
 export const RECENT_DOG_BREED_LIMIT = 3;
 
-export function normalizeBreedLabel(value: string) {
+const DOG_BREED_KEYS = new Map(
+  DOG_BREED_OPTIONS.map((breed) => [toBreedKey(breed), breed] as const),
+);
+
+const DOG_BREED_ALIASES = new Map<string, DogBreedOption>([
+  ["mixed", "Mixed Breed"],
+  ["mutt", "Mixed Breed"],
+  ["mongrel", "Mixed Breed"],
+  ["crossbreed", "Mixed Breed"],
+  ["cross breed", "Mixed Breed"],
+  ["thai mix", "Mixed Breed"],
+  ["thai mixed", "Mixed Breed"],
+  ["thai mixed breed", "Mixed Breed"],
+  ["thai mixed-breed", "Mixed Breed"],
+  ["poodle terrier mix", "Mixed Breed"],
+  ["thai local dog", "Thai Dog"],
+  ["local thai dog", "Thai Dog"],
+  ["thai street dog", "Thai Dog"],
+  ["street dog", "Thai Dog"],
+  ["ridgeback", "Thai Ridgeback"],
+  ["thai ridgeback dog", "Thai Ridgeback"],
+  ["husky", "Siberian Husky"],
+  ["welsh corgi", "Corgi"],
+  ["pembroke welsh corgi", "Corgi"],
+  ["cardigan welsh corgi", "Corgi"],
+  ["miniature schnauzer", "Schnauzer"],
+  ["standard schnauzer", "Schnauzer"],
+]);
+
+function cleanBreedLabel(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
-function breedKey(value: string) {
-  return normalizeBreedLabel(value).toLocaleLowerCase();
+function toBreedKey(value: string) {
+  return cleanBreedLabel(value).toLocaleLowerCase();
+}
+
+export function normalizeBreedLabel(value: string) {
+  return canonicalizeBreedLabel(value);
+}
+
+export function canonicalizeBreedLabel(value: string | null | undefined) {
+  const label = cleanBreedLabel(value ?? "");
+  if (!label) return "";
+
+  const key = toBreedKey(label);
+  const exact = DOG_BREED_KEYS.get(key);
+  if (exact) return exact;
+
+  if (/\bmix(ed)?\b/.test(key) || key.includes("mixed-breed")) {
+    return "Mixed Breed";
+  }
+
+  return DOG_BREED_ALIASES.get(key) ?? label;
+}
+
+export function isCanonicalDogBreed(value: string | null | undefined): value is DogBreedOption {
+  return DOG_BREED_KEYS.has(toBreedKey(canonicalizeBreedLabel(value)));
+}
+
+export function isAllBreedsLabel(value: string | null | undefined) {
+  return toBreedKey(value ?? "") === toBreedKey(ALL_BREEDS_FILTER_LABEL);
+}
+
+export function canonicalizeBreedSelections(values: readonly string[] | null | undefined) {
+  if ((values ?? []).some(isAllBreedsLabel)) return [];
+  return uniqueBreedLabels(values ?? []).filter(isCanonicalDogBreed);
 }
 
 function uniqueBreedLabels(values: readonly string[]) {
@@ -70,9 +113,9 @@ function uniqueBreedLabels(values: readonly string[]) {
   const labels: string[] = [];
 
   for (const value of values) {
-    const label = normalizeBreedLabel(value);
+    const label = canonicalizeBreedLabel(value);
     if (!label) continue;
-    const key = breedKey(label);
+    const key = toBreedKey(label);
     if (seen.has(key)) continue;
     seen.add(key);
     labels.push(label);
@@ -86,9 +129,9 @@ export function recordRecentBreedSelection(
   currentRecentBreeds: readonly string[],
   limit = RECENT_DOG_BREED_LIMIT,
 ) {
-  const label = normalizeBreedLabel(breed);
-  if (!label) return uniqueBreedLabels(currentRecentBreeds).slice(0, limit);
-  return uniqueBreedLabels([label, ...currentRecentBreeds]).slice(0, limit);
+  const label = canonicalizeBreedLabel(breed);
+  if (!label) return uniqueBreedLabels(currentRecentBreeds).filter(isCanonicalDogBreed).slice(0, limit);
+  return uniqueBreedLabels([label, ...currentRecentBreeds]).filter(isCanonicalDogBreed).slice(0, limit);
 }
 
 export function buildBreedPickerOptions({

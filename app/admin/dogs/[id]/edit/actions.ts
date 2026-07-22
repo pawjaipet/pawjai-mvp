@@ -11,6 +11,7 @@ import type { Database } from "@/types/database";
 import { logAdminAuditEvent } from "@/utils/admin-audit";
 import { requireAdminWorkspace, requireShelterAccess } from "@/utils/admin-auth";
 import { uploadBufferToBackblaze } from "@/utils/backblaze";
+import { canonicalizeBreedLabel, isCanonicalDogBreed } from "@/utils/dog-breeds";
 import { buildDogMediaItems, parseDogMediaManifest } from "@/utils/dog-media";
 import { slugify } from "@/utils/slug";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -627,6 +628,7 @@ export async function updateDogProfileAction(
   const returnTo = getString(formData, "returnTo");
   const name = getString(formData, "name");
   const shelterId = getString(formData, "shelter_id");
+  const breed = canonicalizeBreedLabel(getOptionalString(formData, "breed"));
   const ageMonths = getOptionalNumber(formData, "age_months");
   const weightKg = getOptionalNumber(formData, "weight_kg");
   const coverMediaId = getString(formData, "cover_media_id");
@@ -636,6 +638,9 @@ export async function updateDogProfileAction(
   if (!dogId) fieldErrors.dog_id = "Missing dog profile id.";
   if (!name) fieldErrors.name = "Dog name is required.";
   if (!shelterId) fieldErrors.shelter_id = "Choose a shelter for this dog.";
+  if (!breed || !isCanonicalDogBreed(breed)) {
+    fieldErrors.breed = "Choose a breed from the shared PawJai breed list.";
+  }
   if (Number.isNaN(ageMonths) || (typeof ageMonths === "number" && ageMonths < 0)) {
     fieldErrors.age_months = "Age must be a non-negative number of months.";
   }
@@ -688,7 +693,7 @@ export async function updateDogProfileAction(
     age_months: ageMonths,
     animal_friendly: getBoolean(formData, "animal_friendly"),
     background: getOptionalString(formData, "background"),
-    breed: getOptionalString(formData, "breed"),
+    breed,
     dog_friendly: goodWithDogs,
     energy_level: getEnumValue(formData, "energy_level", DOG_ENERGY_LEVELS) ?? null,
     gender: getEnumValue(formData, "gender", DOG_GENDERS, "unknown") ?? "unknown",

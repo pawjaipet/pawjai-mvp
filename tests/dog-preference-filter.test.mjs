@@ -4,6 +4,22 @@ import { Script } from "node:vm";
 import test from "node:test";
 import ts from "typescript";
 
+function loadDogBreeds() {
+  const source = readFileSync(new URL("../utils/dog-breeds.ts", import.meta.url), "utf8");
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  });
+  const module = { exports: {} };
+  new Script(outputText).runInNewContext({
+    exports: module.exports,
+    module,
+  });
+  return module.exports;
+}
+
 function loadDogPreferenceFilter() {
   const source = readFileSync(new URL("../utils/dog-preference-filter.ts", import.meta.url), "utf8");
   const { outputText } = ts.transpileModule(source, {
@@ -16,6 +32,10 @@ function loadDogPreferenceFilter() {
   new Script(outputText).runInNewContext({
     exports: module.exports,
     module,
+    require: (specifier) => {
+      if (specifier === "@/utils/dog-breeds") return loadDogBreeds();
+      throw new Error(`Unexpected test import: ${specifier}`);
+    },
   });
   return module.exports;
 }

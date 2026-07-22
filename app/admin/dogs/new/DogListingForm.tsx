@@ -471,8 +471,8 @@ export default function DogListingForm({
             </select>
           </Field>
 
-          <Field label="Breed">
-            <DogBreedPicker buttonClassName={inputClass()} placeholder="Choose breed" />
+          <Field label="Breed" error={state.fieldErrors?.breed}>
+            <DogBreedPicker buttonClassName={inputClass(state.fieldErrors?.breed)} placeholder="Choose breed" />
           </Field>
 
           <Field label="Adoption status">

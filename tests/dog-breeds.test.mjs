@@ -33,11 +33,11 @@ test("recent dog breed selections are unique and limited to three", () => {
   );
   assert.deepEqual(
     plain(recordRecentBreedSelection(" mixed   breed ", ["Thai Dog", "Mixed Breed", "Beagle"])),
-    ["mixed breed", "Thai Dog", "Beagle"],
+    ["Mixed Breed", "Thai Dog", "Beagle"],
   );
 });
 
-test("breed picker options keep recent breeds first and preserve a saved custom breed", () => {
+test("breed picker options keep recent breeds first and fold legacy aliases into the canonical list", () => {
   const { buildBreedPickerOptions } = loadDogBreeds();
 
   assert.deepEqual(
@@ -46,7 +46,7 @@ test("breed picker options keep recent breeds first and preserve a saved custom 
       options: ["Mixed Breed", "Thai Dog"],
       recentBreeds: ["Thai Ridgeback", "Mixed Breed"],
     })),
-    ["Thai Ridgeback", "Mixed Breed", "Poodle Terrier Mix", "Thai Dog"],
+    ["Thai Ridgeback", "Mixed Breed", "Thai Dog"],
   );
 });
 
@@ -54,5 +54,20 @@ test("adopter filter breed list includes all-breeds plus the admin picker vocabu
   const { DOG_BREED_OPTIONS, DOG_FILTER_BREED_OPTIONS } = loadDogBreeds();
 
   assert.equal(DOG_FILTER_BREED_OPTIONS[0], "All Breeds");
+  assert.equal(DOG_BREED_OPTIONS.includes("Thai Mix"), false);
+  assert.equal(DOG_BREED_OPTIONS.includes("Corgi"), true);
   assert.deepEqual(plain(DOG_FILTER_BREED_OPTIONS.slice(1)), plain(DOG_BREED_OPTIONS));
+});
+
+test("breed selections canonicalize aliases before saving filters", () => {
+  const { canonicalizeBreedSelections } = loadDogBreeds();
+
+  assert.deepEqual(
+    plain(canonicalizeBreedSelections(["Thai Mix", "Pembroke Welsh Corgi", "Mixed breed", "All Breeds"])),
+    [],
+  );
+  assert.deepEqual(
+    plain(canonicalizeBreedSelections(["Thai Mix", "Pembroke Welsh Corgi", "Miniature Schnauzer"])),
+    ["Mixed Breed", "Corgi", "Schnauzer"],
+  );
 });

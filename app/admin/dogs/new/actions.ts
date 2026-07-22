@@ -15,6 +15,7 @@ import {
   validateAdminPassphrase,
 } from "@/utils/admin-auth";
 import { uploadBufferToBackblaze } from "@/utils/backblaze";
+import { canonicalizeBreedLabel, isCanonicalDogBreed } from "@/utils/dog-breeds";
 import { fetchRemoteAsset } from "@/utils/onedrive";
 import { slugify } from "@/utils/slug";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -742,6 +743,7 @@ export async function createDogListingAction(
   const fieldErrors: Record<string, string> = {};
   const name = getString(formData, "name");
   const shelterId = getString(formData, "shelter_id");
+  const breed = canonicalizeBreedLabel(getOptionalString(formData, "breed"));
   const returnTo = getString(formData, "returnTo");
   const accessRedirectPath = returnTo.startsWith("/admindraft") || returnTo.startsWith("/shelter/")
     ? returnTo
@@ -767,6 +769,10 @@ export async function createDogListingAction(
 
   if (!shelterId) {
     fieldErrors.shelter_id = "Choose a shelter for this listing.";
+  }
+
+  if (!breed || !isCanonicalDogBreed(breed)) {
+    fieldErrors.breed = "Choose a breed from the shared PawJai breed list.";
   }
 
   if (Number.isNaN(ageMonths) || (typeof ageMonths === "number" && ageMonths < 0)) {
@@ -872,7 +878,7 @@ export async function createDogListingAction(
     age_months: ageMonths,
     animal_friendly: getBoolean(formData, "animal_friendly"),
     background: getOptionalString(formData, "background"),
-    breed: getOptionalString(formData, "breed"),
+    breed,
     dog_friendly: goodWithDogs,
     energy_level: getEnumValue(formData, "energy_level", DOG_ENERGY_LEVELS) ?? null,
     gender: getEnumValue(formData, "gender", DOG_GENDERS, "unknown") ?? "unknown",

@@ -1,3 +1,5 @@
+import { canonicalizeBreedLabel, canonicalizeBreedSelections } from "@/utils/dog-breeds";
+
 type Nullable<T> = T | null | undefined;
 
 export interface DogForPreferenceFilter {
@@ -84,27 +86,13 @@ function matchesOneOf(value: Nullable<string>, allowed: Nullable<string[]>) {
   return labels.some((label) => normalize(label) === normalizedValue);
 }
 
-function isMixedBreedLabel(value: string) {
-  const normalizedValue = normalize(value);
-  return (
-    normalizedValue === "mixed breed" ||
-    normalizedValue === "mixed" ||
-    normalizedValue === "mutt" ||
-    /\bmix(ed)?\b/.test(normalizedValue)
-  );
-}
-
 function matchesBreed(value: Nullable<string>, allowed: Nullable<string[]>) {
-  const labels = clean(allowed);
+  const labels = canonicalizeBreedSelections(allowed);
   if (!labels.length) return true;
   if (!value) return false;
-  const normalizedValue = normalize(value);
+  const normalizedValue = normalize(canonicalizeBreedLabel(value));
 
-  return labels.some((label) => {
-    const normalizedLabel = normalize(label);
-    if (normalizedLabel === "mixed breed") return isMixedBreedLabel(value);
-    return normalizedLabel === normalizedValue;
-  });
+  return labels.some((label) => normalize(label) === normalizedValue);
 }
 
 function matchesBoolean(value: Nullable<boolean>, required: Nullable<boolean>) {

@@ -558,8 +558,12 @@ export default function DogEditForm({
               </select>
             </Field>
 
-            <Field label="Breed">
-              <DogBreedPicker buttonClassName={inputClass()} defaultValue={dog.breed} placeholder="Choose breed" />
+            <Field label="Breed" error={state.fieldErrors?.breed}>
+              <DogBreedPicker
+                buttonClassName={inputClass(state.fieldErrors?.breed)}
+                defaultValue={dog.breed}
+                placeholder="Choose breed"
+              />
             </Field>
 
             <Field
