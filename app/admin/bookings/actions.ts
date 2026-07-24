@@ -96,6 +96,20 @@ function isMissingSchemaError(error: { message?: string } | null | undefined) {
     || message.includes("does not exist");
 }
 
+function describeShelterProfileSaveError(error: { code?: string; message?: string } | null | undefined) {
+  const message = error?.message ?? "";
+
+  if (error?.code === "23505" || message.toLowerCase().includes("duplicate key")) {
+    return "That email is already used by another shelter. Use a different booking notification email.";
+  }
+
+  if (message.toLowerCase().includes("email")) {
+    return "Email for booking notifications could not be saved. Check the email and try again.";
+  }
+
+  return "Shelter profile could not be saved. Please try again.";
+}
+
 function extensionForMimeType(type: string) {
   switch (type) {
     case "image/png":
@@ -494,15 +508,6 @@ export async function updateShelterProfileAction(formData: FormData) {
   const adminContext = await requireShelterAccess(shelterId, "/admin/bookings");
 
   const admin = createAdminClient();
-  let logoUrl = cleanText(formData.get("logoUrl"));
-  let uploadWarning: string | null = null;
-  const logoFile = formData.get("logoFile");
-  if (logoFile instanceof File && logoFile.size > 0) {
-    const upload = await uploadShelterLogo({ admin, file: logoFile, shelterId });
-    logoUrl = upload.url ?? logoUrl;
-    uploadWarning = upload.error;
-  }
-
   const basePayload = {
     address_line: cleanText(formData.get("addressLine")),
     description: cleanText(formData.get("description")),
@@ -518,8 +523,25 @@ export async function updateShelterProfileAction(formData: FormData) {
     updated_at: new Date().toISOString(),
     website_url: cleanText(formData.get("websiteUrl")),
   };
-  let donationDetails: ReturnType<typeof parseShelterDonationDetails>;
 
+  const { error: baseError } = await admin
+    .from("shelters")
+    .update(basePayload)
+    .eq("id", shelterId);
+
+  if (baseError) {
+    console.error("Shelter profile core update failed", {
+      code: baseError.code,
+      details: baseError.details,
+      hint: baseError.hint,
+      message: baseError.message,
+      shelterId,
+    });
+    redirectAfterShelterMutation(formData, shelterId, "profile", describeShelterProfileSaveError(baseError));
+  }
+
+  let donationDetails: ReturnType<typeof parseShelterDonationDetails> | null = null;
+  let donationWarning: string | null = null;
   try {
     donationDetails = parseShelterDonationDetails({
       bankAccountName: formData.get("bankAccountName"),
@@ -529,56 +551,64 @@ export async function updateShelterProfileAction(formData: FormData) {
       promptpayId: formData.get("promptpayId"),
     });
   } catch (error) {
-    redirectAfterShelterMutation(formData, shelterId, "profile", error instanceof Error ? error.message : "Donation details could not be saved.");
-    return;
+    donationWarning = error instanceof Error ? error.message : "Donation details could not be saved.";
+  }
+
+  let logoUrl = cleanText(formData.get("logoUrl"));
+  let uploadWarning: string | null = null;
+  const logoFile = formData.get("logoFile");
+  if (logoFile instanceof File && logoFile.size > 0) {
+    const upload = await uploadShelterLogo({ admin, file: logoFile, shelterId });
+    logoUrl = upload.url ?? logoUrl;
+    uploadWarning = upload.error;
   }
 
   const extendedPayload = {
-    ...donationDetails,
     google_maps_url: cleanText(formData.get("googleMapsUrl")),
     logo_url: logoUrl,
     meeting_instructions: cleanText(formData.get("meetingInstructions")),
+    ...(donationDetails ?? {}),
   };
 
-  const { error } = await admin
+  const { error: extendedError } = await admin
     .from("shelters")
-    .update({
-      ...basePayload,
-      ...extendedPayload,
-    })
+    .update(extendedPayload)
     .eq("id", shelterId);
-  const finalError = isMissingSchemaError(error)
-    ? (
-        await admin
-          .from("shelters")
-          .update(basePayload)
-          .eq("id", shelterId)
-      ).error
-    : error;
+  if (extendedError && !isMissingSchemaError(extendedError)) {
+    console.error("Shelter profile optional update failed", {
+      code: extendedError.code,
+      details: extendedError.details,
+      hint: extendedError.hint,
+      message: extendedError.message,
+      shelterId,
+    });
+  }
 
   revalidatePath("/admin/bookings");
   revalidatePath("/admindraft");
+  revalidatePath("/shelter");
   revalidatePath("/appointments");
-  const message = finalError
-    ? "Shelter profile could not be saved."
-    : isMissingSchemaError(error)
-      ? "Basic shelter profile saved. Logo, Maps URL, and meeting instructions need the Supabase migration before they can persist."
-      : uploadWarning
-        ? `Shelter profile saved, but ${uploadWarning}`
-        : "Shelter profile saved.";
-  if (!finalError) {
-    await logAdminAuditEvent({
-      action: "shelter.update",
-      context: adminContext,
-      metadata: {
-        changedDonationDetails: Boolean(donationDetails.bank_account_number || donationDetails.promptpay_id),
-        uploadedLogo: Boolean(logoFile instanceof File && logoFile.size > 0 && !uploadWarning),
-      },
-      shelterId,
-      targetId: shelterId,
-      targetTable: "shelters",
-    });
-  }
+  const message = donationWarning
+    ? `Basic shelter profile saved, but ${donationWarning}`
+    : isMissingSchemaError(extendedError)
+      ? "Basic shelter profile saved. Logo, Maps URL, meeting instructions, and donation details need the Supabase migration before they can persist."
+      : extendedError
+        ? `Basic shelter profile saved, but ${describeShelterProfileSaveError(extendedError)}`
+        : uploadWarning
+          ? `Shelter profile saved, but ${uploadWarning}`
+          : "Shelter profile saved.";
+  await logAdminAuditEvent({
+    action: "shelter.update",
+    context: adminContext,
+    metadata: {
+      changedDonationDetails: Boolean(donationDetails?.bank_account_number || donationDetails?.promptpay_id),
+      optionalProfileError: extendedError?.message ?? null,
+      uploadedLogo: Boolean(logoFile instanceof File && logoFile.size > 0 && !uploadWarning),
+    },
+    shelterId,
+    targetId: shelterId,
+    targetTable: "shelters",
+  });
   redirectAfterShelterMutation(formData, shelterId, "profile", message);
 }
 

@@ -842,7 +842,7 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
             </div>
           </div>
 
-          <form action={updateShelterProfileAction} className="grid gap-3">
+          <form action={updateShelterProfileAction} className="grid gap-3" encType="multipart/form-data">
             <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
             <div className="grid gap-3 md:grid-cols-2">
               <label>
