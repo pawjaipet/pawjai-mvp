@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ShieldAlert } from "lucide-react";
@@ -13,16 +14,19 @@ import { isAdminDraftUnlocked } from "@/app/admindraft/actions";
 
 function InvalidQrCard({ retry }: { retry?: boolean }) {
   return (
-    <div className="min-h-screen bg-[#fffaf3] px-4 py-12">
-      <div className="mx-auto max-w-2xl rounded-[32px] border border-[#f1c4c0] bg-white p-8 text-center shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-        <ShieldAlert className="mx-auto text-[#9a3129]" size={42} />
-        <h1 className="mt-4 text-3xl font-semibold text-[#4f4338]">Booking QR not recognized</h1>
-        <p className="mt-3 text-sm leading-6 text-[#74685d]">
+    <div className="min-h-screen bg-[#f5f1e8] px-4 py-12">
+      <div className="mx-auto max-w-2xl rounded-[32px] border border-[#f1c4c0] bg-white p-8 text-center shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
+        <div className="relative mx-auto h-16 w-16 overflow-hidden rounded-[20px] bg-[#f5f1e8]">
+          <Image alt="PawJai" className="object-contain p-1.5" fill sizes="64px" src="/pawjai-logo-square.png" />
+        </div>
+        <ShieldAlert className="mx-auto mt-4 text-[#9a3129]" size={42} />
+        <h1 className="mt-4 text-3xl font-semibold text-[#65584f]">Booking QR not recognized</h1>
+        <p className="mt-3 text-sm leading-6 text-[#65584f]">
           {retry
             ? "Ask the visitor to open their latest appointment details in PawJai and scan the QR again."
             : "This code is missing, expired, or does not match a PawJai booking record."}
         </p>
-        <Link className="mt-6 inline-flex rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white" href="/admindraft?view=bookings">
+        <Link className="mt-6 inline-flex rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white" href="/admindraft?view=bookings">
           Back to booking list
         </Link>
       </div>

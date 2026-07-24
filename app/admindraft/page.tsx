@@ -6,11 +6,12 @@ import { isAdminDraftUnlocked } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-function buildAdminDraftReturnTo(searchParams?: { shelter?: string; view?: string }) {
+function buildAdminDraftReturnTo(searchParams?: { role?: string; shelter?: string; view?: string }) {
   const params = new URLSearchParams();
 
   if (searchParams?.shelter) params.set("shelter", searchParams.shelter);
   if (searchParams?.view && searchParams.view !== "about") params.set("view", searchParams.view);
+  if (searchParams?.role === "shelter") params.set("role", "shelter");
 
   const query = params.toString();
   return query ? `/admindraft?${query}` : "/admindraft";
@@ -19,7 +20,7 @@ function buildAdminDraftReturnTo(searchParams?: { shelter?: string; view?: strin
 export default async function AdminDraftPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ shelter?: string; unlock?: string; view?: string }>;
+  searchParams?: Promise<{ role?: string; shelter?: string; unlock?: string; view?: string }>;
 }) {
   const unlocked = await isAdminDraftUnlocked();
   const resolvedSearchParams = await searchParams;
@@ -43,6 +44,7 @@ export default async function AdminDraftPage({
     <AdminReorgDraftPanel
       data={data}
       initialMainTab={resolvedSearchParams?.view}
+      initialRoleView={resolvedSearchParams?.role === "shelter" ? "shelter" : "pawjai"}
       initialShelterId={resolvedSearchParams?.shelter}
       initialShelterTab={resolvedSearchParams?.view}
     />

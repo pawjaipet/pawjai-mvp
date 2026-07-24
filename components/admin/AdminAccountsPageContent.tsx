@@ -62,11 +62,11 @@ export async function AdminAccountsPageContent({
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#b77624]">
+            <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#cd8188]">
               PawJai Admin
             </p>
-            <h1 className="mt-2 text-4xl font-semibold text-[#4f4338]">Admin Accounts</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#74685d]">
+            <h1 className="mt-2 text-4xl font-semibold text-[#65584f]">Admin Accounts</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65584f]">
               Create PawJai admin accounts or one shared shelter account per partner shelter.
             </p>
           </div>
@@ -80,22 +80,22 @@ export async function AdminAccountsPageContent({
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-          <section className="overflow-hidden rounded-[28px] border border-[#eadfce] bg-white shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-            <div className="border-b border-[#eadfce] bg-[#fffdfa] px-5 py-4">
-              <h2 className="text-lg font-semibold text-[#4f4338]">Current admin access</h2>
+          <section className="overflow-hidden rounded-[28px] border border-[#d6c8ad] bg-white shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
+            <div className="border-b border-[#d6c8ad] bg-[#fffaf5] px-5 py-4">
+              <h2 className="text-lg font-semibold text-[#65584f]">Current admin access</h2>
             </div>
             <div className="divide-y divide-[#f0e2cf]">
               {adminProfiles.length === 0 ? (
-                <p className="p-5 text-sm text-[#74685d]">No admin profiles found.</p>
+                <p className="p-5 text-sm text-[#65584f]">No admin profiles found.</p>
               ) : adminProfiles.map((profile) => (
                 <article className="grid gap-4 px-5 py-4 text-sm md:grid-cols-[1fr_1fr_auto]" key={profile.id}>
                   <div>
-                    <p className="font-semibold text-[#4f4338]">{profile.full_name || emailMap.get(profile.id) || "Admin user"}</p>
-                    <p className="mt-1 text-xs text-[#8d7f72]">{emailMap.get(profile.id) ?? profile.id}</p>
+                    <p className="font-semibold text-[#65584f]">{profile.full_name || emailMap.get(profile.id) || "Admin user"}</p>
+                    <p className="mt-1 text-xs text-[#65584f]">{emailMap.get(profile.id) ?? profile.id}</p>
                   </div>
                   <div>
-                    <p className="font-semibold capitalize text-[#4f4338]">{profile.role.replace("_", " ")}</p>
-                    <p className="mt-1 text-xs text-[#8d7f72]">
+                    <p className="font-semibold capitalize text-[#65584f]">{profile.role.replace("_", " ")}</p>
+                    <p className="mt-1 text-xs text-[#65584f]">
                       {profile.role === "admin" ? "All shelters" : membershipsByProfile.get(profile.id)?.join(", ") || "No shelter linked"}
                     </p>
                   </div>
@@ -112,38 +112,38 @@ export async function AdminAccountsPageContent({
           </section>
 
           <aside>
-            <form action={createAdminAccountAction} className="space-y-4 rounded-[28px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-              <h2 className="text-lg font-semibold text-[#4f4338]">Create admin login</h2>
+            <form action={createAdminAccountAction} className="space-y-4 rounded-[28px] border border-[#d6c8ad] bg-white p-6 shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
+              <h2 className="text-lg font-semibold text-[#65584f]">Create admin login</h2>
               <input name="returnTo" type="hidden" value={`${basePath}/accounts`} />
               <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Email</span>
-                <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" name="email" required type="email" />
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Email</span>
+                <input className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]" name="email" required type="email" />
               </label>
               <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Display name</span>
-                <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" name="fullName" />
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Display name</span>
+                <input className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]" name="fullName" />
               </label>
               <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Temporary password</span>
-                <input className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" minLength={12} name="password" required type="password" />
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Temporary password</span>
+                <input className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]" minLength={12} name="password" required type="password" />
               </label>
               <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Role</span>
-                <select className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" defaultValue="shelter_admin" name="role">
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Role</span>
+                <select className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]" defaultValue="shelter_admin" name="role">
                   <option value="shelter_admin">Shelter admin</option>
                   <option value="admin">PawJai admin</option>
                 </select>
               </label>
               <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Shelter</span>
-                <select className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]" name="shelterId">
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Shelter</span>
+                <select className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]" name="shelterId">
                   <option value="">Only required for shelter admins</option>
                   {(shelters ?? []).map((shelter) => (
                     <option key={shelter.id} value={shelter.id}>{shelter.name}</option>
                   ))}
                 </select>
               </label>
-              <button className="w-full rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]" type="submit">
+              <button className="w-full rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white hover:bg-[#b87179]" type="submit">
                 Create account
               </button>
             </form>

@@ -115,11 +115,11 @@ export async function AdminAuditPageContent({
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#b77624]">
+            <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#cd8188]">
               PawJai Admin
             </p>
-            <h1 className="mt-2 text-4xl font-semibold text-[#4f4338]">Audit Log</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#74685d]">
+            <h1 className="mt-2 text-4xl font-semibold text-[#65584f]">Audit Log</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65584f]">
               Review privileged admin changes across bookings, listings, shelter settings, ads, and PawJai content.
             </p>
           </div>
@@ -136,12 +136,12 @@ export async function AdminAuditPageContent({
             Apply the admin audit migration before this page can show activity.
           </div>
         ) : events.length === 0 ? (
-          <div className="rounded-[28px] border border-[#eadfce] bg-white p-6 text-sm leading-6 text-[#74685d] shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+          <div className="rounded-[28px] border border-[#d6c8ad] bg-white p-6 text-sm leading-6 text-[#65584f] shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
             No audit events yet.
           </div>
         ) : (
-          <section className="overflow-hidden rounded-[28px] border border-[#eadfce] bg-white shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-            <div className="grid grid-cols-[1.1fr_1fr_1fr] gap-4 border-b border-[#eadfce] bg-[#fffdfa] px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72] md:grid-cols-[1.1fr_1fr_1fr_1.4fr]">
+          <section className="overflow-hidden rounded-[28px] border border-[#d6c8ad] bg-white shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
+            <div className="grid grid-cols-[1.1fr_1fr_1fr] gap-4 border-b border-[#d6c8ad] bg-[#fffaf5] px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f] md:grid-cols-[1.1fr_1fr_1fr_1.4fr]">
               <span>Action</span>
               <span>Actor</span>
               <span>Shelter</span>
@@ -154,20 +154,20 @@ export async function AdminAuditPageContent({
                 const details = metadataSummary(event.metadata);
 
                 return (
-                  <article className="grid gap-4 px-5 py-4 text-sm text-[#5b4d40] md:grid-cols-[1.1fr_1fr_1fr_1.4fr]" key={event.id}>
+                  <article className="grid gap-4 px-5 py-4 text-sm text-[#65584f] md:grid-cols-[1.1fr_1fr_1fr_1.4fr]" key={event.id}>
                     <div>
-                      <p className="font-semibold capitalize text-[#4f4338]">{actionLabel(event.action)}</p>
-                      <p className="mt-1 text-xs text-[#8d7f72]">{formatDateTime(event.created_at)}</p>
+                      <p className="font-semibold capitalize text-[#65584f]">{actionLabel(event.action)}</p>
+                      <p className="mt-1 text-xs text-[#65584f]">{formatDateTime(event.created_at)}</p>
                     </div>
                     <div>
-                      <p className="font-semibold text-[#4f4338]">{profile?.full_name ?? event.actor_role}</p>
-                      <p className="mt-1 text-xs text-[#8d7f72]">{event.actor_role.replace("_", " ")}</p>
+                      <p className="font-semibold text-[#65584f]">{profile?.full_name ?? event.actor_role}</p>
+                      <p className="mt-1 text-xs text-[#65584f]">{event.actor_role.replace("_", " ")}</p>
                     </div>
                     <div>
-                      <p className="font-semibold text-[#4f4338]">{shelter?.name ?? "Platform"}</p>
-                      <p className="mt-1 text-xs text-[#8d7f72]">{event.target_table ?? "record"}</p>
+                      <p className="font-semibold text-[#65584f]">{shelter?.name ?? "Platform"}</p>
+                      <p className="mt-1 text-xs text-[#65584f]">{event.target_table ?? "record"}</p>
                     </div>
-                    <p className="text-xs leading-5 text-[#74685d]">{details || event.target_id || "No extra metadata"}</p>
+                    <p className="text-xs leading-5 text-[#65584f]">{details || event.target_id || "No extra metadata"}</p>
                   </article>
                 );
               })}

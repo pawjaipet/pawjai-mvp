@@ -18,7 +18,7 @@ import {
 import { initialPawjaiAdminGateState } from "@/app/admin/pawjaiprofile/form-state";
 
 function inputClass() {
-  return "w-full rounded-2xl border border-[#e7dbc8] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none transition focus:border-[#d69546] focus:ring-4 focus:ring-[#f6d7ad]/50";
+  return "w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none transition focus:border-[#cd8188] focus:ring-4 focus:ring-[#f3cbd0]/50";
 }
 
 function textareaClass() {
@@ -27,10 +27,10 @@ function textareaClass() {
 
 function sectionCard(title: string, description: string, children: ReactNode) {
   return (
-    <section className="rounded-[28px] border border-[#eadfce] bg-white/90 p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+    <section className="rounded-[28px] border border-[#d6c8ad] bg-white/90 p-6 shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
       <div className="mb-5">
-        <h2 className="text-xl font-semibold text-[#4f4338]">{title}</h2>
-        <p className="mt-1 text-sm leading-6 text-[#7a6d61]">{description}</p>
+        <h2 className="text-xl font-semibold text-[#65584f]">{title}</h2>
+        <p className="mt-1 text-sm leading-6 text-[#65584f]">{description}</p>
       </div>
       {children}
     </section>
@@ -98,10 +98,10 @@ export async function PawjaiProfileAdminPageContent({
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#b77624]">
+          <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#cd8188]">
             PawJai Admin
           </p>
-          <p className="mt-2 text-sm text-[#7a6d61]">
+          <p className="mt-2 text-sm text-[#65584f]">
             Edit the public PawJai story shown on the About page.
           </p>
         </div>
@@ -110,7 +110,7 @@ export async function PawjaiProfileAdminPageContent({
             <form action={lockAdminGateAction}>
               <button
                 type="submit"
-                className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-medium text-[#5b4d40] transition hover:bg-[#faf4ec]"
+                className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2 text-sm font-medium text-[#65584f] transition hover:bg-[#f5f1e8]"
               >
                 Lock admin page
               </button>
@@ -138,7 +138,7 @@ export async function PawjaiProfileAdminPageContent({
           "This controls the short line under the PawJai logo at the top of the About page.",
           <div className="grid gap-4">
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Slogan</span>
+              <span className="mb-2 block text-sm font-medium text-[#65584f]">Slogan</span>
               <input
                 name="hero_slogan"
                 defaultValue={content.heroSlogan}
@@ -154,11 +154,11 @@ export async function PawjaiProfileAdminPageContent({
           "Use this for the main PawJai story and purpose statement.",
           <div className="grid gap-4">
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Mission heading</span>
+              <span className="mb-2 block text-sm font-medium text-[#65584f]">Mission heading</span>
               <input name="mission_title" defaultValue={content.missionTitle} className={inputClass()} />
             </label>
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Mission copy</span>
+              <span className="mb-2 block text-sm font-medium text-[#65584f]">Mission copy</span>
               <textarea
                 name="mission_body"
                 defaultValue={content.missionBody}
@@ -173,13 +173,13 @@ export async function PawjaiProfileAdminPageContent({
           "Partner Shelters",
           "Each row appears in the public shelter list. Add a logo URL if you want the real shelter badge instead of the default icon.",
           <div className="space-y-4">
-            <div className="rounded-2xl border border-[#efe2d4] bg-[#fffdfa] px-4 py-3 text-sm text-[#6f6256]">
+            <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f]">
               You have extra blank rows ready for new shelters, and empty rows are ignored on save.
             </div>
             {shelterRows.map((item, index) => (
-              <div key={`shelter-row-${index}`} className="grid gap-3 rounded-2xl border border-[#efe2d4] bg-[#fffdfa] p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+              <div key={`shelter-row-${index}`} className="grid gap-3 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Shelter name</span>
+                  <span className="mb-2 block text-sm font-medium text-[#65584f]">Shelter name</span>
                   <input
                     name={`shelter_name_${index}`}
                     defaultValue={item.name}
@@ -188,7 +188,7 @@ export async function PawjaiProfileAdminPageContent({
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Detail line</span>
+                  <span className="mb-2 block text-sm font-medium text-[#65584f]">Detail line</span>
                   <input
                     name={`shelter_detail_${index}`}
                     defaultValue={item.detail}
@@ -197,7 +197,7 @@ export async function PawjaiProfileAdminPageContent({
                   />
                 </label>
                 <label className="block md:col-span-2">
-                  <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Logo URL</span>
+                  <span className="mb-2 block text-sm font-medium text-[#65584f]">Logo URL</span>
                   <input
                     name={`shelter_logo_url_${index}`}
                     defaultValue={item.logo_url ?? ""}
@@ -215,9 +215,9 @@ export async function PawjaiProfileAdminPageContent({
           "Use the type to drive the icon. `Href` is optional if the label itself is enough for email, phone, or website.",
           <div className="space-y-4">
             {contactRows.map((item, index) => (
-              <div key={`contact-row-${index}`} className="grid gap-3 rounded-2xl border border-[#efe2d4] bg-[#fffdfa] p-4 md:grid-cols-[150px_minmax(0,1fr)_minmax(0,1fr)]">
+              <div key={`contact-row-${index}`} className="grid gap-3 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4 md:grid-cols-[150px_minmax(0,1fr)_minmax(0,1fr)]">
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Type</span>
+                  <span className="mb-2 block text-sm font-medium text-[#65584f]">Type</span>
                   <select name={`contact_type_${index}`} defaultValue={item.type} className={inputClass()}>
                     <option value="email">Email</option>
                     <option value="phone">Phone</option>
@@ -227,7 +227,7 @@ export async function PawjaiProfileAdminPageContent({
                   </select>
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Label</span>
+                  <span className="mb-2 block text-sm font-medium text-[#65584f]">Label</span>
                   <input
                     name={`contact_label_${index}`}
                     defaultValue={item.label}
@@ -236,7 +236,7 @@ export async function PawjaiProfileAdminPageContent({
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-[#5b4d40]">Href</span>
+                  <span className="mb-2 block text-sm font-medium text-[#65584f]">Href</span>
                   <input
                     name={`contact_href_${index}`}
                     defaultValue={item.href ?? ""}
@@ -252,13 +252,13 @@ export async function PawjaiProfileAdminPageContent({
         <div className="flex flex-wrap gap-3">
           <button
             type="submit"
-            className="inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f]"
+            className="inline-flex items-center justify-center rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#b87179]"
           >
             Save PawJai profile
           </button>
           <Link
             href="/about"
-            className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-6 py-3 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+            className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-6 py-3 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
           >
             Preview public page
           </Link>

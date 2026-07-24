@@ -1,10 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdCard from "@/components/AdCard";
 import {
+  Bone,
   Building2,
   CalendarDays,
   CheckCircle2,
@@ -97,6 +99,25 @@ const WEEKDAYS = [
 function withReturnTo(path: string, returnTo: string) {
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}returnTo=${encodeURIComponent(returnTo)}`;
+}
+
+function adminDraftShelterWorkspaceHref(shelterId: string, view: ShelterTab, roleView?: RoleView) {
+  const params = new URLSearchParams({ shelter: shelterId, view });
+  if (roleView === "shelter") params.set("role", "shelter");
+  return `/admindraft?${params.toString()}`;
+}
+
+function adminDraftShelterCreateDogHref(shelterId: string, roleView?: RoleView) {
+  const params = new URLSearchParams({ shelter: shelterId });
+  if (roleView === "shelter") params.set("role", "shelter");
+  return `/admindraft/dog-creation?${params.toString()}`;
+}
+
+function adminDraftDogEditHref(dogId: string, roleView?: RoleView) {
+  const params = new URLSearchParams();
+  if (roleView === "shelter") params.set("role", "shelter");
+  const query = params.toString();
+  return query ? `/admindraft/dogs/${dogId}/edit?${query}` : `/admindraft/dogs/${dogId}/edit`;
 }
 
 function isMainTab(value: string | undefined): value is MainTab {
@@ -259,10 +280,10 @@ function PillButton({
 }) {
   return (
     <button
-      className={`rounded-full border px-5 py-2.5 text-sm font-semibold transition ${
+      className={`inline-flex items-center justify-center rounded-full border px-5 py-2.5 text-sm font-semibold transition active:scale-[0.98] ${
         active
-          ? "border-[#d88c24] bg-[#d88c24] text-white shadow-[0_10px_22px_rgba(172,105,27,0.18)]"
-          : "border-[#eadfce] bg-white text-[#5b4d40] hover:bg-[#faf4ec]"
+          ? "border-[#cd8188] bg-[#cd8188] text-white shadow-[0_10px_22px_rgba(205,129,136,0.22)]"
+          : "border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]"
       }`}
       onClick={onClick}
       type="button"
@@ -282,12 +303,18 @@ function Section({
   title: string;
 }) {
   return (
-    <section className="rounded-[28px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-      {eyebrow ? <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9a6b2a]">{eyebrow}</p> : null}
-      <h2 className={eyebrow ? "mt-2 text-2xl font-semibold text-[#4f4338]" : "text-2xl font-semibold text-[#4f4338]"}>
-        {title}
-      </h2>
-      {children}
+    <section className="relative overflow-hidden rounded-[28px] border border-[#d6c8ad] bg-white/95 p-6 shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
+      <div className="pointer-events-none absolute right-5 top-5 hidden items-center gap-2 text-[#d6c8ad]/55 sm:flex" aria-hidden="true">
+        <Bone className="h-5 w-5 rotate-[-18deg]" />
+        <PawPrint className="h-5 w-5 rotate-12" />
+      </div>
+      <div className="relative">
+        {eyebrow ? <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#cd8188]">{eyebrow}</p> : null}
+        <h2 className={eyebrow ? "mt-2 text-2xl font-semibold text-[#65584f]" : "text-2xl font-semibold text-[#65584f]"}>
+          {title}
+        </h2>
+        {children}
+      </div>
     </section>
   );
 }
@@ -296,7 +323,7 @@ function FieldGrid({ fields }: { fields: string[] }) {
   return (
     <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {fields.map((field) => (
-        <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm font-semibold text-[#5b4d40]" key={field}>
+        <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm font-semibold text-[#65584f]" key={field}>
           {field}
         </div>
       ))}
@@ -379,9 +406,9 @@ function bookingStatusClass(status: string) {
     case "cancelled":
       return "bg-[#f7e3e1] text-[#9a3129]";
     case "no_show":
-      return "bg-[#f1e7db] text-[#8a5825]";
+      return "bg-[#f1e7db] text-[#65584f]";
     default:
-      return "bg-[#fff1dc] text-[#a86a1f]";
+      return "bg-[#f8e8ea] text-[#cd8188]";
   }
 }
 
@@ -392,11 +419,11 @@ function adStatusClass(status: AdDisplayStatus) {
     case "denied":
       return "bg-[#f7e3e1] text-[#9a3129]";
     case "paused":
-      return "bg-[#f1e7db] text-[#8a5825]";
+      return "bg-[#f1e7db] text-[#65584f]";
     case "expired":
       return "bg-[#fbe8e8] text-[#9b3a32]";
     default:
-      return "bg-[#fff1dc] text-[#a86a1f]";
+      return "bg-[#f8e8ea] text-[#cd8188]";
   }
 }
 
@@ -597,8 +624,8 @@ function DraftReturnFields({ returnTo = DRAFT_RETURN_TO, shelterId }: { returnTo
 
 function DogCard({ dog, editHref }: { dog: AdminDraftDog; editHref: string }) {
   return (
-    <article className="overflow-hidden rounded-2xl border border-[#eadfce] bg-[#fffdfa]">
-      <div className="flex aspect-[16/9] items-center justify-center bg-[#f3e7d5] text-[#9a6b2a]">
+    <article className="overflow-hidden rounded-[20px] border border-[#d6c8ad] bg-white shadow-[0_10px_28px_rgba(101,88,79,0.08)]">
+      <div className="flex aspect-[16/9] items-center justify-center bg-[#d6c8ad] text-[#65584f]">
         {dog.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img alt={`${dog.name} cover`} className="h-full w-full object-cover" src={dog.coverUrl} />
@@ -609,15 +636,15 @@ function DogCard({ dog, editHref }: { dog: AdminDraftDog; editHref: string }) {
       <div className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-[#4f4338]">{dog.name}</h3>
-          <p className="mt-1 text-sm text-[#74685d]">{dog.breed}</p>
+          <h3 className="text-lg font-semibold text-[#65584f]">{dog.name}</h3>
+          <p className="mt-1 text-sm text-[#65584f]">{dog.breed}</p>
         </div>
-        <span className="rounded-full bg-[#f8ecd8] px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#9a6b2a]">
+        <span className="rounded-full bg-[#d6c8ad] px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#65584f]">
           {formatStatus(dog.status)}
         </span>
       </div>
-      <p className="mt-3 text-sm text-[#74685d]">{dog.shelterName}</p>
-      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#8d7f72]">
+      <p className="mt-3 text-sm text-[#65584f]">{dog.shelterName}</p>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#65584f]">
         <span>{dog.photosCount} photos</span>
         {dog.gender ? <span>{formatStatus(dog.gender)}</span> : null}
         {dog.size ? <span>{formatStatus(dog.size)}</span> : null}
@@ -625,13 +652,13 @@ function DogCard({ dog, editHref }: { dog: AdminDraftDog; editHref: string }) {
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Link
-          className="inline-flex items-center justify-center rounded-full bg-[#d88c24] px-4 py-2 text-sm font-semibold text-white"
+          className="inline-flex items-center justify-center rounded-full bg-[#cd8188] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#b87179]"
           href={editHref}
         >
           Edit
         </Link>
         <Link
-          className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]"
+          className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-4 py-2 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
           href={`/dogs/${dog.id}`}
         >
           Open
@@ -669,18 +696,20 @@ function ShelterWorkspaceTabButton({
     <button
       className={`flex aspect-square min-h-32 flex-col justify-between rounded-2xl border p-4 text-left transition ${
         active
-          ? "border-[#d88c24] bg-[#fff3df] text-[#4f4338] shadow-[0_12px_28px_rgba(172,105,27,0.14)]"
-          : "border-[#eadfce] bg-[#fffdfa] text-[#5b4d40] hover:bg-[#faf4ec]"
+          ? "border-[#cd8188] bg-[#f8e8ea] text-[#65584f] shadow-[0_12px_28px_rgba(205,129,136,0.18)]"
+          : "border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]"
       }`}
       onClick={onClick}
       type="button"
     >
-      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[#b77624]">
+      <span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+        active ? "bg-white text-[#cd8188]" : "bg-[#f5f1e8] text-[#cd8188]"
+      }`}>
         {icon}
       </span>
       <span>
         <span className="block text-base font-semibold">{children}</span>
-        <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">{meta}</span>
+        <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#65584f]">{meta}</span>
       </span>
     </button>
   );
@@ -702,7 +731,7 @@ function ShelterWorkspaceLinkTab({
   if (adminMode) {
     return (
       <Link
-        className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2 text-center text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+        className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2 text-center text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
         href={href}
       >
         {children}
@@ -712,15 +741,15 @@ function ShelterWorkspaceLinkTab({
 
   return (
     <Link
-      className="flex aspect-square min-h-32 flex-col justify-between rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 text-left text-[#5b4d40] transition hover:bg-[#faf4ec]"
+      className="flex aspect-square min-h-32 flex-col justify-between rounded-2xl border border-[#d6c8ad] bg-white p-4 text-left text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]"
       href={href}
     >
-      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[#b77624]">
+      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#f5f1e8] text-[#cd8188]">
         {icon}
       </span>
       <span>
         <span className="block text-base font-semibold">{children}</span>
-        <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">{meta}</span>
+        <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#65584f]">{meta}</span>
       </span>
     </Link>
   );
@@ -757,19 +786,19 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
   previousCalendarMonth.setMonth(calendarMonth.getMonth() - 1);
   const nextCalendarMonth = new Date(calendarMonth);
   nextCalendarMonth.setMonth(calendarMonth.getMonth() + 1);
-  const inputClass = "w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]";
-  const labelClass = "mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]";
+  const inputClass = "w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]";
+  const labelClass = "mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]";
 
   return (
     <div className="space-y-6">
       <Section eyebrow="Shelter profile" title={shelter.name}>
         <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <div>
-            <p className="text-sm leading-6 text-[#74685d]">
+            <p className="text-sm leading-6 text-[#65584f]">
               This profile feeds meeting location, shelter contact, donation details, and shelter calendar data.
             </p>
-            <div className="mt-5 flex items-center gap-4 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-[#eadfce] text-[#8d7f72]">
+            <div className="mt-5 flex items-center gap-4 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-[#d6c8ad] text-[#65584f]">
                 {shelter.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img alt={`${shelter.name} logo`} className="h-full w-full object-cover" src={shelter.logoUrl} />
@@ -778,8 +807,8 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
                 )}
               </div>
               <div>
-                <p className="text-sm font-semibold text-[#4f4338]">Shelter logo</p>
-                <p className="mt-1 text-xs leading-5 text-[#74685d]">
+                <p className="text-sm font-semibold text-[#65584f]">Shelter logo</p>
+                <p className="mt-1 text-xs leading-5 text-[#65584f]">
                   Paste a hosted logo URL or upload a new PNG, JPG, or WEBP file.
                 </p>
               </div>
@@ -788,11 +817,11 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
             <div className="mt-5 space-y-3">
               <div className="rounded-2xl bg-[#f8f0e5] p-4">
                 <div className="flex items-start gap-3">
-                  <MapPin className="mt-0.5 text-[#9a6b2a]" size={18} />
+                  <MapPin className="mt-0.5 text-[#65584f]" size={18} />
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Meeting at</p>
-                    <p className="mt-1 text-base font-semibold text-[#4f4338]">{shelter.name}</p>
-                    <p className="mt-1 text-sm leading-6 text-[#74685d]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Meeting at</p>
+                    <p className="mt-1 text-base font-semibold text-[#65584f]">{shelter.name}</p>
+                    <p className="mt-1 text-sm leading-6 text-[#65584f]">
                       {addressParts.length > 0 ? addressParts.join(", ") : "No address set yet."}
                     </p>
                     {mapsUrl ? (
@@ -807,15 +836,15 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
                       </a>
                     ) : null}
                     {shelter.meetingInstructions ? (
-                      <p className="mt-2 text-xs leading-5 text-[#74685d]">{shelter.meetingInstructions}</p>
+                      <p className="mt-2 text-xs leading-5 text-[#65584f]">{shelter.meetingInstructions}</p>
                     ) : null}
                   </div>
                 </div>
               </div>
 
               <div className="rounded-2xl bg-[#f8f0e5] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Shelter contact</p>
-                <div className="mt-3 grid gap-2 text-sm text-[#74685d]">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Shelter contact</p>
+                <div className="mt-3 grid gap-2 text-sm text-[#65584f]">
                   <p>{shelter.phoneNumber || "No phone number set"}</p>
                   <p className="inline-flex items-center gap-2">
                     <Mail size={15} />
@@ -842,7 +871,7 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
             </div>
           </div>
 
-          <form action={updateShelterProfileAction} className="grid gap-3" encType="multipart/form-data">
+          <form action={updateShelterProfileAction} className="grid gap-3">
             <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
             <div className="grid gap-3 md:grid-cols-2">
               <label>
@@ -869,7 +898,7 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
                 <span className={labelClass}>Upload logo</span>
                 <input
                   accept="image/png,image/jpeg,image/webp"
-                  className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-2.5 text-sm text-[#4f4338] file:mr-3 file:rounded-full file:border-0 file:bg-[#d38a2c] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-[#d38a2c]"
+                  className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-2.5 text-sm text-[#65584f] file:mr-3 file:rounded-full file:border-0 file:bg-[#cd8188] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-[#cd8188]"
                   name="logoFile"
                   type="file"
                 />
@@ -922,7 +951,7 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
               bankName={shelter.bankName ?? null}
               promptpayId={shelter.promptpayId ?? null}
             />
-            <button className="mt-1 inline-flex items-center justify-center rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]" type="submit">
+            <button className="mt-1 inline-flex items-center justify-center rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white hover:bg-[#b87179]" type="submit">
               Save shelter profile
             </button>
           </form>
@@ -932,16 +961,16 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
       <Section eyebrow="Shelter calendar" title="Blockout dates">
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
           <div>
-            <p className="text-sm leading-6 text-[#74685d]">
+            <p className="text-sm leading-6 text-[#65584f]">
               Click dates to close or reopen one-off holidays. Set recurring closed weekdays for regular non-operating days.
             </p>
-            <form action={updateShelterOperatingDaysAction} className="mt-5 rounded-2xl bg-[#fffdfa] p-4">
+            <form action={updateShelterOperatingDaysAction} className="mt-5 rounded-2xl bg-[#fffaf5] p-4">
               <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Weekly closed days</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Weekly closed days</p>
               <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7">
                 {WEEKDAYS.map((day) => (
                   <label
-                    className="cursor-pointer rounded-2xl border border-[#eadfce] bg-white px-3 py-3 text-center text-xs font-semibold text-[#5b4d40] has-[:checked]:border-[#c46f75] has-[:checked]:bg-[#c46f75] has-[:checked]:text-white"
+                    className="cursor-pointer rounded-2xl border border-[#d6c8ad] bg-white px-3 py-3 text-center text-xs font-semibold text-[#65584f] has-[:checked]:border-[#c46f75] has-[:checked]:bg-[#c46f75] has-[:checked]:text-white"
                     key={day.value}
                   >
                     <input
@@ -969,32 +998,32 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
                   <input className={inputClass} defaultValue={defaultSlotDuration} min="15" name="slotDuration" step="15" type="number" />
                 </label>
               </div>
-              <button className="mt-4 w-full rounded-full bg-[#d88c24] px-5 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]" type="submit">
+              <button className="mt-4 w-full rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white hover:bg-[#b87179]" type="submit">
                 Save weekly schedule
               </button>
             </form>
           </div>
 
           <div>
-            <div className="rounded-2xl bg-[#fffdfa] p-4">
+            <div className="rounded-2xl bg-[#fffaf5] p-4">
               <div className="flex items-center justify-between gap-3">
                 <button
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#eadfce] bg-white text-[#5b4d40] hover:bg-[#faf4ec]"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]"
                   onClick={() => setCalendarMonth(previousCalendarMonth)}
                   type="button"
                 >
                   <ChevronLeft size={18} />
                 </button>
-                <p className="text-lg font-semibold text-[#4f4338]">{formatMonthLabel(calendarMonth)}</p>
+                <p className="text-lg font-semibold text-[#65584f]">{formatMonthLabel(calendarMonth)}</p>
                 <button
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#eadfce] bg-white text-[#5b4d40] hover:bg-[#faf4ec]"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]"
                   onClick={() => setCalendarMonth(nextCalendarMonth)}
                   type="button"
                 >
                   <ChevronRight size={18} />
                 </button>
               </div>
-              <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">
+              <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.12em] text-[#65584f]">
                 {WEEKDAYS.map((day) => (
                   <span key={day.value}>{day.label}</span>
                 ))}
@@ -1015,7 +1044,7 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
                         className={`flex aspect-square w-full items-center justify-center rounded-xl border text-sm font-semibold transition ${
                           isClosed
                             ? "border-[#65584f] bg-[#65584f] text-white"
-                            : "border-[#eadfce] bg-white text-[#5b4d40] hover:bg-[#faf4ec]"
+                            : "border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]"
                         } ${inMonth ? "" : "opacity-35"} ${recurringClosed ? "cursor-not-allowed" : ""}`}
                         disabled={recurringClosed}
                         title={recurringClosed ? "Recurring closed day" : blockout ? "Click to reopen this date" : "Click to block this date"}
@@ -1027,13 +1056,13 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
                   );
                 })}
               </div>
-              <div className="mt-4 flex flex-wrap gap-3 text-xs text-[#74685d]">
+              <div className="mt-4 flex flex-wrap gap-3 text-xs text-[#65584f]">
                 <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded bg-[#65584f]" /> Closed</span>
-                <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded border border-[#eadfce] bg-white" /> Open</span>
+                <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded border border-[#d6c8ad] bg-white" /> Open</span>
               </div>
             </div>
 
-            <form action={createShelterBlockoutAction} className="mt-4 grid gap-3 rounded-2xl bg-[#fffdfa] p-4 md:grid-cols-[1fr_1fr_minmax(0,1.3fr)_auto] md:items-end">
+            <form action={createShelterBlockoutAction} className="mt-4 grid gap-3 rounded-2xl bg-[#fffaf5] p-4 md:grid-cols-[1fr_1fr_minmax(0,1.3fr)_auto] md:items-end">
               <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
               <label>
                 <span className={labelClass}>From</span>
@@ -1047,7 +1076,7 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
                 <span className={labelClass}>Reason</span>
                 <input className={inputClass} name="note" placeholder="Holiday, staff training, fully booked" />
               </label>
-              <button className="rounded-full bg-[#d88c24] px-5 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]" type="submit">
+              <button className="rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white hover:bg-[#b87179]" type="submit">
                 Add
               </button>
             </form>
@@ -1055,13 +1084,13 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
             <div className="mt-4 grid gap-2">
               {unavailableRanges.length > 0 ? (
                 unavailableRanges.map((range) => (
-                  <div className="flex flex-col gap-3 rounded-2xl border border-[#eadfce] bg-white px-4 py-3 md:flex-row md:items-center md:justify-between" key={range.id}>
+                  <div className="flex flex-col gap-3 rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 md:flex-row md:items-center md:justify-between" key={range.id}>
                     <div>
-                      <p className="text-sm font-semibold text-[#4f4338]">
+                      <p className="text-sm font-semibold text-[#65584f]">
                         {formatShortDate(range.startDate)}
                         {range.endDate !== range.startDate ? ` - ${formatShortDate(range.endDate)}` : ""}
                       </p>
-                      <p className="mt-1 text-xs leading-5 text-[#74685d]">
+                      <p className="mt-1 text-xs leading-5 text-[#65584f]">
                         {range.note?.startsWith("Recurring weekly closure:")
                           ? "Weekly closure"
                           : range.note || "Unavailable"}
@@ -1070,7 +1099,7 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
                     <form action={deleteShelterAvailabilityAction}>
                       <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
                       <input name="availabilityId" type="hidden" value={range.id} />
-                      <button className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-4 py-2 text-xs font-semibold text-[#9a3129] hover:bg-[#fff6f4]" type="submit">
+                      <button className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-4 py-2 text-xs font-semibold text-[#9a3129] hover:bg-[#fff6f4]" type="submit">
                         <Trash2 size={14} />
                         Remove
                       </button>
@@ -1078,7 +1107,7 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
                   </div>
                 ))
               ) : (
-                <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] px-4 py-5 text-sm text-[#74685d]">
+                <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] px-4 py-5 text-sm text-[#65584f]">
                   No blockout dates set for {shelter.name}.
                 </div>
               )}
@@ -1107,14 +1136,14 @@ function ShelterDogsTab({
     <div className="space-y-6">
       <Section eyebrow="Dog listings" title={`${shelter.name} dogs`}>
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm leading-6 text-[#74685d]">
+          <p className="text-sm leading-6 text-[#65584f]">
             Shelter staff can manage their own dogs here. PawJai HQ can see the same list from the shelter umbrella.
           </p>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]">
           <label className="sr-only" htmlFor="shelter-dog-search">Search shelter dogs</label>
           <input
-            className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+            className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
             id="shelter-dog-search"
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search dog name, breed, size"
@@ -1123,7 +1152,7 @@ function ShelterDogsTab({
           />
           <label className="sr-only" htmlFor="shelter-dog-status">Filter by status</label>
           <select
-            className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+            className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
             id="shelter-dog-status"
             onChange={(event) => setStatus(event.target.value)}
             value={status}
@@ -1135,7 +1164,7 @@ function ShelterDogsTab({
             <option value="adopted">Adopted</option>
           </select>
           <button
-            className="rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40]"
+            className="rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f]"
             onClick={() => {
               setSearch("");
               setStatus("all");
@@ -1150,7 +1179,7 @@ function ShelterDogsTab({
             <DogCard dog={dog} editHref={dogEditHref(dog)} key={dog.id} />
           ))}
           {filteredDogs.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
+            <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] p-6 text-sm text-[#65584f]">
               No dog listings match this view for {shelter.name}.
             </div>
           ) : null}
@@ -1215,15 +1244,15 @@ function ShelterBookingsTab({
           ["Today", String(todayCount)],
           ["Checked in", String(checkedInCount)],
         ].map(([label, value]) => (
-          <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-5" key={label}>
-            <p className="text-sm font-semibold text-[#9a6b2a]">{label}</p>
-            <p className="mt-3 text-3xl font-semibold text-[#4f4338]">{value}</p>
+          <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-5" key={label}>
+            <p className="text-sm font-semibold text-[#65584f]">{label}</p>
+            <p className="mt-3 text-3xl font-semibold text-[#65584f]">{value}</p>
           </div>
         ))}
       </div>
 
-      <div className="mt-6 rounded-[24px] border border-[#eadfce] bg-white p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
+      <div className="mt-6 rounded-[24px] border border-[#d6c8ad] bg-white p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">
           Visit timing
         </p>
         <div className="mt-3 grid gap-2 md:grid-cols-4">
@@ -1231,8 +1260,8 @@ function ShelterBookingsTab({
             <button
               className={`rounded-2xl px-4 py-3 text-center text-sm font-semibold transition ${
                 visitBucket === bucket.value
-                  ? "bg-[#d88c24] text-white shadow-[0_10px_24px_rgba(179,111,31,0.18)]"
-                  : "border border-[#eadfce] bg-[#fffdfa] text-[#5b4d40] hover:bg-[#faf4ec]"
+                  ? "bg-[#cd8188] text-white shadow-[0_10px_24px_rgba(205,129,136,0.18)]"
+                  : "border border-[#d6c8ad] bg-[#fffaf5] text-[#65584f] hover:bg-[#f5f1e8]"
               }`}
               key={bucket.value}
               onClick={() => setVisitBucket(bucket.value)}
@@ -1242,25 +1271,25 @@ function ShelterBookingsTab({
             </button>
           ))}
         </div>
-        <p className="mt-3 text-xs leading-5 text-[#74685d]">
+        <p className="mt-3 text-xs leading-5 text-[#65584f]">
           Visits move to past 24 hours after their scheduled time. Needs follow-up highlights visits where staff should record the outcome.
         </p>
       </div>
 
-      <div className="mt-5 grid gap-4 rounded-[24px] border border-[#eadfce] bg-white p-4 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
+      <div className="mt-5 grid gap-4 rounded-[24px] border border-[#d6c8ad] bg-white p-4 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
         <label>
-          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Date</span>
+          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Date</span>
           <input
-            className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+            className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
             onChange={(event) => setBookingDateFilter(event.target.value)}
             type="date"
             value={bookingDateFilter}
           />
         </label>
         <label>
-          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Status</span>
+          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Status</span>
           <select
-            className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+            className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
             onChange={(event) => setBookingStatusFilter(event.target.value)}
             value={bookingStatusFilter}
           >
@@ -1272,12 +1301,12 @@ function ShelterBookingsTab({
             ))}
           </select>
         </label>
-        <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white" type="button">
+        <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white" type="button">
           <Search className="h-4 w-4" />
           Filter
         </button>
         <button
-          className="rounded-full border border-[#eadfce] bg-white px-6 py-3 text-sm font-semibold text-[#5b4d40]"
+          className="rounded-full border border-[#d6c8ad] bg-white px-6 py-3 text-sm font-semibold text-[#65584f]"
           onClick={() => {
             setBookingDateFilter("");
             setBookingSearch("");
@@ -1291,38 +1320,38 @@ function ShelterBookingsTab({
       </div>
 
       <form
-        className="mt-5 rounded-[24px] border border-[#eadfce] bg-white p-4"
+        className="mt-5 rounded-[24px] border border-[#d6c8ad] bg-white p-4"
         onSubmit={(event) => event.preventDefault()}
       >
         <label>
-          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
+          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">
             Search booking code
           </span>
           <div className="flex flex-col gap-3 md:flex-row">
             <input
-              className="min-w-0 flex-1 rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-[#4f4338] outline-none focus:border-[#d88c24]"
+              className="min-w-0 flex-1 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-[#65584f] outline-none focus:border-[#cd8188]"
               onChange={(event) => setBookingSearch(event.target.value)}
               placeholder="APT-FA5C9"
               value={bookingSearch}
             />
-            <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white" type="submit">
+            <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white" type="submit">
               <Search className="h-4 w-4" />
               Search code
             </button>
           </div>
         </label>
-        <p className="mt-3 text-xs leading-5 text-[#74685d]">
+        <p className="mt-3 text-xs leading-5 text-[#65584f]">
           Type the visitor booking ID from their appointment card or QR screen.
         </p>
       </form>
 
-      <div className="mt-5 flex flex-col gap-3 rounded-[24px] border border-[#eadfce] bg-white p-4 md:flex-row md:items-center md:justify-between">
+      <div className="mt-5 flex flex-col gap-3 rounded-[24px] border border-[#d6c8ad] bg-white p-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-semibold text-[#4f4338]">QR check-in scanner</p>
-          <p className="mt-1 text-sm text-[#74685d]">Scan a visitor appointment QR to open their booking profile.</p>
+          <p className="text-sm font-semibold text-[#65584f]">QR check-in scanner</p>
+          <p className="mt-1 text-sm text-[#65584f]">Scan a visitor appointment QR to open their booking profile.</p>
         </div>
         <Link
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white"
           href={checkInHref}
         >
           <QrCode className="h-4 w-4" />
@@ -1332,9 +1361,9 @@ function ShelterBookingsTab({
 
       <div className="mt-6 space-y-4">
         {visibleBookings.length === 0 ? (
-          <div className="rounded-[28px] border border-dashed border-[#eadfce] bg-white p-8 text-center">
-            <p className="text-xl font-semibold text-[#4f4338]">No bookings match this view.</p>
-            <p className="mt-2 text-sm text-[#74685d]">Try clearing filters or choosing a different date.</p>
+          <div className="rounded-[28px] border border-dashed border-[#d6c8ad] bg-white p-8 text-center">
+            <p className="text-xl font-semibold text-[#65584f]">No bookings match this view.</p>
+            <p className="mt-2 text-sm text-[#65584f]">Try clearing filters or choosing a different date.</p>
           </div>
         ) : (
           visibleBookings.map((booking) => {
@@ -1346,7 +1375,7 @@ function ShelterBookingsTab({
 
             return (
               <section
-                className="rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]"
+                className="rounded-[28px] border border-[#d6c8ad] bg-white p-5 shadow-[0_16px_50px_rgba(101,88,79,0.08)]"
                 key={booking.id}
               >
                 <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -1361,7 +1390,7 @@ function ShelterBookingsTab({
                           Checked in
                         </span>
                       ) : null}
-                      <span className="inline-flex items-center gap-1 rounded-full bg-[#f7ecda] px-3 py-1 text-xs font-bold text-[#8a5825]">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[#f7ecda] px-3 py-1 text-xs font-bold text-[#65584f]">
                         <QrCode className="h-3.5 w-3.5" />
                         {formatBookingDisplayCode(booking)}
                       </span>
@@ -1369,68 +1398,68 @@ function ShelterBookingsTab({
 
                     <div className="mt-4 grid gap-4 md:grid-cols-3">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Visit</p>
-                        <p className="mt-1 text-lg font-semibold text-[#4f4338]">{formatBookingDate(booking.appointmentDate)}</p>
-                        <p className="text-sm text-[#74685d]">{formatBookingTime(booking.appointmentTime)}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Visit</p>
+                        <p className="mt-1 text-lg font-semibold text-[#65584f]">{formatBookingDate(booking.appointmentDate)}</p>
+                        <p className="text-sm text-[#65584f]">{formatBookingTime(booking.appointmentTime)}</p>
                       </div>
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Adopter</p>
-                        <p className="mt-1 text-lg font-semibold text-[#4f4338]">{booking.adopterName}</p>
-                        <p className="break-words text-sm text-[#74685d]">{booking.adopterEmail ?? "No email"}</p>
-                        <p className="text-sm text-[#74685d]">{booking.adopterPhoneNumber ?? "No phone"}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Adopter</p>
+                        <p className="mt-1 text-lg font-semibold text-[#65584f]">{booking.adopterName}</p>
+                        <p className="break-words text-sm text-[#65584f]">{booking.adopterEmail ?? "No email"}</p>
+                        <p className="text-sm text-[#65584f]">{booking.adopterPhoneNumber ?? "No phone"}</p>
                       </div>
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Dog and Shelter</p>
-                        <p className="mt-1 text-lg font-semibold text-[#4f4338]">{bookingDogLabel(booking)}</p>
-                        <p className="text-sm text-[#74685d]">{booking.shelterName}</p>
-                        <p className="text-sm text-[#74685d]">{[booking.shelterDistrict, booking.shelterProvince].filter(Boolean).join(", ")}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Dog and Shelter</p>
+                        <p className="mt-1 text-lg font-semibold text-[#65584f]">{bookingDogLabel(booking)}</p>
+                        <p className="text-sm text-[#65584f]">{booking.shelterName}</p>
+                        <p className="text-sm text-[#65584f]">{[booking.shelterDistrict, booking.shelterProvince].filter(Boolean).join(", ")}</p>
                       </div>
                     </div>
 
                     {booking.visitorNote ? (
                       <div className="mt-4 rounded-2xl bg-[#f8f0e5] p-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Visitor note</p>
-                        <p className="mt-1 text-sm leading-6 text-[#5b4d40]">{booking.visitorNote}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Visitor note</p>
+                        <p className="mt-1 text-sm leading-6 text-[#65584f]">{booking.visitorNote}</p>
                       </div>
                     ) : null}
                   </div>
 
-                  <form action={decideBookingAction} className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+                  <form action={decideBookingAction} className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
                     <input name="appointmentId" type="hidden" value={booking.id} />
                     <input name="returnTo" type="hidden" value={bookingListHref} />
                     <div className="rounded-2xl bg-white px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Status</p>
-                      <p className="mt-1 text-lg font-semibold text-[#4f4338]">{bookingDecisionLabel(booking.status)}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Status</p>
+                      <p className="mt-1 text-lg font-semibold text-[#65584f]">{bookingDecisionLabel(booking.status)}</p>
                       {booking.shelterNote ? (
-                        <p className="mt-2 text-sm leading-6 text-[#74685d]">{booking.shelterNote}</p>
+                        <p className="mt-2 text-sm leading-6 text-[#65584f]">{booking.shelterNote}</p>
                       ) : null}
                       {booking.proposedAppointmentDate && booking.proposedAppointmentTime ? (
-                        <p className="mt-2 rounded-xl bg-[#fff1dc] px-3 py-2 text-xs font-semibold text-[#8a5825]">
+                        <p className="mt-2 rounded-xl bg-[#f8e8ea] px-3 py-2 text-xs font-semibold text-[#65584f]">
                           Proposed: {formatBookingDate(booking.proposedAppointmentDate)} at {formatBookingTime(booking.proposedAppointmentTime)}
                         </p>
                       ) : null}
                     </div>
 
                     <label className="mt-3 block">
-                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Shelter note</span>
+                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Shelter note</span>
                       <textarea
-                        className="min-h-[92px] w-full resize-none rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                        className="min-h-[92px] w-full resize-none rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
                         defaultValue={booking.shelterNote ?? ""}
                         name="shelterNote"
                         placeholder="Optional note for denial, date change, or staff context"
                       />
                     </label>
 
-                    <details className="mt-3 rounded-2xl border border-[#eadfce] bg-white p-3" open={booking.status === "requested"}>
-                      <summary className="cursor-pointer text-sm font-semibold text-[#5b4d40]">
+                    <details className="mt-3 rounded-2xl border border-[#d6c8ad] bg-white p-3" open={booking.status === "requested"}>
+                      <summary className="cursor-pointer text-sm font-semibold text-[#65584f]">
                         Edit decision
                       </summary>
                       <div className="mt-3 grid gap-2">
                         <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#fffaf3] p-3">
                           <label className="block">
-                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New date</span>
+                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#65584f]">New date</span>
                             <input
-                              className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                              className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
                               defaultValue={booking.proposedAppointmentDate ?? booking.appointmentDate}
                               min={new Date().toISOString().slice(0, 10)}
                               name="proposedAppointmentDate"
@@ -1438,9 +1467,9 @@ function ShelterBookingsTab({
                             />
                           </label>
                           <label className="block">
-                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New time</span>
+                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#65584f]">New time</span>
                             <select
-                              className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                              className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
                               defaultValue={normalizeAppointmentTime(booking.proposedAppointmentTime ?? booking.appointmentTime)}
                               name="proposedAppointmentTime"
                             >
@@ -1456,20 +1485,20 @@ function ShelterBookingsTab({
                         <button className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64]" name="decision" type="submit" value="deny">
                           {booking.status === "requested" ? "Deny booking" : "Mark denied"}
                         </button>
-                        <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" name="decision" type="submit" value="request_change">
+                        <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" name="decision" type="submit" value="request_change">
                           Ask to change date/time
                         </button>
                       </div>
                     </details>
 
                     {followUpDue ? (
-                      <div className="mt-3 rounded-2xl border border-[#eadfce] bg-white p-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Post-visit outcome</p>
+                      <div className="mt-3 rounded-2xl border border-[#d6c8ad] bg-white p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Post-visit outcome</p>
                         <div className="mt-3 grid gap-2">
                           <button className="w-full rounded-full bg-[#65584f] px-5 py-3 text-sm font-semibold text-white hover:bg-[#50443b]" name="decision" type="submit" value="complete">
                             Mark visit completed
                           </button>
-                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" name="decision" type="submit" value="no_show">
+                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" name="decision" type="submit" value="no_show">
                             Visitor did not show
                           </button>
                           {booking.dogId ? (
@@ -1482,14 +1511,14 @@ function ShelterBookingsTab({
                     ) : null}
 
                     <Link
-                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
                       href={withReturnTo(`/booking/${booking.id}/visitor-profile`, bookingListHref)}
                     >
                       <ExternalLink className="h-4 w-4" />
                       Open visitor profile
                     </Link>
             <Link
-                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
               href={withReturnTo(`/booking/${booking.id}`, bookingListHref)}
             >
                       <ExternalLink className="h-4 w-4" />
@@ -1580,28 +1609,28 @@ function ShelterMessagesTab({
   return (
     <Section eyebrow="Messaging" title="Visitor conversations">
       {adminMode ? (
-        <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#f8ecd8] px-4 py-2 text-xs font-semibold text-[#9a6b2a]">
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#d6c8ad] px-4 py-2 text-xs font-semibold text-[#65584f]">
           <ShieldCheck className="h-4 w-4" />
           Read-only PawJai admin view
         </div>
       ) : null}
       {messagesUnavailable ? (
-        <div className="mt-4 rounded-2xl border border-[#eadfce] bg-[#fff8ed] p-4 text-sm leading-6 text-[#7a5a2e]">
+        <div className="mt-4 rounded-2xl border border-[#d6c8ad] bg-[#fff8ed] p-4 text-sm leading-6 text-[#7a5a2e]">
           Messages are temporarily unavailable. Booking and dog management remain available.
         </div>
       ) : null}
       <div className="mt-5 grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
-        <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+        <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-semibold text-[#4f4338]">{shelterThreads.length} appointment threads</p>
-              <p className="mt-1 text-sm text-[#74685d]">{shelter.unreadMessageCount} unread adopter messages</p>
+              <p className="font-semibold text-[#65584f]">{shelterThreads.length} appointment threads</p>
+              <p className="mt-1 text-sm text-[#65584f]">{shelter.unreadMessageCount} unread adopter messages</p>
             </div>
-            <MessageCircle className="h-5 w-5 text-[#d88c24]" />
+            <MessageCircle className="h-5 w-5 text-[#cd8188]" />
           </div>
           <label className="sr-only" htmlFor={`message-search-${shelter.id}`}>Search message threads</label>
           <input
-            className="mt-4 w-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+            className="mt-4 w-full rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
             id={`message-search-${shelter.id}`}
             onChange={(event) => setMessageSearch(event.target.value)}
             placeholder="Search adopter, dog, booking code"
@@ -1613,8 +1642,8 @@ function ShelterMessagesTab({
               <button
                 className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
                   messageFilter === option.value
-                    ? "border-[#d88c24] bg-[#d88c24] text-white"
-                    : "border-[#eadfce] bg-white text-[#5b4d40]"
+                    ? "border-[#cd8188] bg-[#cd8188] text-white"
+                    : "border-[#d6c8ad] bg-white text-[#65584f]"
                 }`}
                 key={option.value}
                 onClick={() => setMessageFilter(option.value)}
@@ -1629,8 +1658,8 @@ function ShelterMessagesTab({
               <button
                 className={`rounded-2xl border p-3 text-left transition ${
                   selectedThread?.appointmentId === thread.appointmentId
-                    ? "border-[#d88c24] bg-[#fff7eb]"
-                    : "border-[#eadfce] bg-white hover:bg-[#faf4ec]"
+                    ? "border-[#cd8188] bg-[#fff7eb]"
+                    : "border-[#d6c8ad] bg-white hover:bg-[#f5f1e8]"
                 }`}
                 key={thread.appointmentId}
                 onClick={() => setSelectedThreadId(thread.appointmentId)}
@@ -1638,16 +1667,16 @@ function ShelterMessagesTab({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[#4f4338]">{thread.adopterName}</p>
-                    <p className="mt-1 truncate text-xs text-[#74685d]">{thread.dogName} · {thread.bookingCode}</p>
+                    <p className="truncate text-sm font-semibold text-[#65584f]">{thread.adopterName}</p>
+                    <p className="mt-1 truncate text-xs text-[#65584f]">{thread.dogName} · {thread.bookingCode}</p>
                   </div>
                   {thread.unreadForShelterCount > 0 ? (
-                    <span className="rounded-full bg-[#d88c24] px-2 py-0.5 text-xs font-semibold text-white">
+                    <span className="rounded-full bg-[#cd8188] px-2 py-0.5 text-xs font-semibold text-white">
                       {thread.unreadForShelterCount}
                     </span>
                   ) : null}
                 </div>
-                <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#74685d]">
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#65584f]">
                   {thread.latestMessage?.body ?? "No messages yet. Conversation opens after a booked visit."}
                 </p>
                 <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9a8b7b]">
@@ -1656,33 +1685,33 @@ function ShelterMessagesTab({
               </button>
             ))}
             {filteredThreads.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[#eadfce] bg-white p-4 text-sm text-[#74685d]">
+              <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-white p-4 text-sm text-[#65584f]">
                 No message threads match these filters.
               </div>
             ) : null}
           </div>
         </div>
-        <div className="rounded-2xl border border-[#eadfce] bg-white p-4">
+        <div className="rounded-2xl border border-[#d6c8ad] bg-white p-4">
           {selectedThread ? (
             <div>
-              <div className="flex flex-col gap-3 border-b border-[#eadfce] pb-4 md:flex-row md:items-start md:justify-between">
+              <div className="flex flex-col gap-3 border-b border-[#d6c8ad] pb-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">{selectedThread.bookingCode}</p>
-                  <h3 className="mt-1 text-xl font-semibold text-[#4f4338]">{selectedThread.dogName} with {selectedThread.adopterName}</h3>
-                  <p className="mt-1 text-sm text-[#74685d]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">{selectedThread.bookingCode}</p>
+                  <h3 className="mt-1 text-xl font-semibold text-[#65584f]">{selectedThread.dogName} with {selectedThread.adopterName}</h3>
+                  <p className="mt-1 text-sm text-[#65584f]">
                     {formatBookingDate(selectedThread.appointmentDate)} at {formatBookingTime(selectedThread.appointmentTime)} · {formatStatus(selectedThread.status)}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Link
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-[#fffdfa] px-4 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-[#fffaf5] px-4 py-2 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
                     href={withReturnTo(`/booking/${selectedThread.appointmentId}`, returnTo)}
                   >
                     <ExternalLink className="h-4 w-4" />
                     Booking
                   </Link>
                   <Link
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-[#fffdfa] px-4 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-[#fffaf5] px-4 py-2 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
                     href={withReturnTo(`/booking/${selectedThread.appointmentId}/visitor-profile`, returnTo)}
                   >
                     <Users className="h-4 w-4" />
@@ -1699,9 +1728,9 @@ function ShelterMessagesTab({
                   return (
                     <div className={`flex ${isShelter ? "justify-end" : "justify-start"}`} key={message.id}>
                       <div className={`max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-6 ${
-                        isShelter ? "bg-[#65584f] text-white" : "bg-[#f8f0e5] text-[#4f4338]"
+                        isShelter ? "bg-[#65584f] text-white" : "bg-[#f8f0e5] text-[#65584f]"
                       }`}>
-                        <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${isShelter ? "text-white/70" : "text-[#8d7f72]"}`}>
+                        <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${isShelter ? "text-white/70" : "text-[#65584f]"}`}>
                           {message.sender_role === "system" ? "PawJai/system" : message.sender_label ?? (isShelter ? shelter.name : selectedThread.adopterName)}
                         </p>
                         {message.attachment_url && previewImage ? (
@@ -1724,7 +1753,7 @@ function ShelterMessagesTab({
                         <p className="mt-1 whitespace-pre-wrap">{message.body}</p>
                         {message.attachment_url && (adminMode || (!previewImage && !previewVideo)) ? (
                           <a
-                            className={`mt-2 inline-flex text-xs font-semibold underline ${isShelter ? "text-white" : "text-[#9a6b2a]"}`}
+                            className={`mt-2 inline-flex text-xs font-semibold underline ${isShelter ? "text-white" : "text-[#65584f]"}`}
                             href={message.attachment_url}
                             rel="noreferrer"
                             target="_blank"
@@ -1732,7 +1761,7 @@ function ShelterMessagesTab({
                             {message.attachment_name ?? "View attachment"}
                           </a>
                         ) : null}
-                        <p className={`mt-2 text-[11px] ${isShelter ? "text-white/60" : "text-[#74685d]/70"}`}>
+                        <p className={`mt-2 text-[11px] ${isShelter ? "text-white/60" : "text-[#65584f]/70"}`}>
                           {formatMessageTime(message.created_at)}
                           {adminMode ? (
                             <>
@@ -1747,13 +1776,13 @@ function ShelterMessagesTab({
                     </div>
                   );
                 }) : (
-                  <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-5 text-sm text-[#74685d]">
+                  <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] p-5 text-sm text-[#65584f]">
                     No conversation selected yet. The first adopter or shelter message will appear here.
                   </div>
                 )}
               </div>
               {adminMode ? (
-                <div className="mt-4 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 text-sm text-[#74685d]">
+                <div className="mt-4 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4 text-sm text-[#65584f]">
                   Read-only PawJai admin view. Admin can review this conversation but cannot reply, edit, or mark shelter messages read.
                 </div>
               ) : (
@@ -1763,14 +1792,14 @@ function ShelterMessagesTab({
                   <label className="sr-only" htmlFor={`message-body-${selectedThread.appointmentId}`}>Write a shelter reply</label>
                   <div className="flex gap-2">
                     <textarea
-                      className="min-h-12 flex-1 rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                      className="min-h-12 flex-1 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
                       disabled={messagesUnavailable}
                       id={`message-body-${selectedThread.appointmentId}`}
                       name="body"
                       placeholder={messagesUnavailable ? "Messaging temporarily unavailable" : "Write a shelter reply..."}
                     />
                     <button
-                      className="h-12 rounded-full bg-[#d88c24] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#d6c8ad]"
+                      className="h-12 rounded-full bg-[#cd8188] px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#d6c8ad]"
                       disabled={messagesUnavailable}
                       type="submit"
                     >
@@ -1778,7 +1807,7 @@ function ShelterMessagesTab({
                     </button>
                   </div>
                   <label
-                    className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-[#eadfce] bg-[#fffdfa] px-4 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                    className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-[#d6c8ad] bg-[#fffaf5] px-4 py-2 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
                     htmlFor={`shelter-attachment-${selectedThread.appointmentId}`}
                   >
                     <FileText className="h-4 w-4" />
@@ -1796,7 +1825,7 @@ function ShelterMessagesTab({
               )}
             </div>
           ) : (
-            <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-center text-sm text-[#74685d]">
+            <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] p-6 text-center text-sm text-[#65584f]">
               No conversation selected. Appointment conversations will appear here after visitors book shelter visits.
             </div>
           )}
@@ -1927,22 +1956,22 @@ function PartnerSheltersTab({
   return (
     <div className="space-y-6">
       <Section eyebrow="Partner shelters" title="Shelter umbrella">
-        <p className="mt-2 text-sm leading-6 text-[#74685d]">
+        <p className="mt-2 text-sm leading-6 text-[#65584f]">
           PawJai HQ lands here first. Open a shelter to see its profile, create dog profiles, dog listings, booking visits, and messaging.
         </p>
-        <div className="mt-5 flex gap-2 overflow-x-auto rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-2">
+        <div className="mt-5 flex gap-2 overflow-x-auto rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-2">
           {shelters.map((shelter) => (
             <button
               className={`min-w-[220px] rounded-2xl border px-4 py-3 text-left transition ${
-                shelter.id === selectedShelterId ? "border-[#d88c24] bg-[#d88c24] text-white" : "border-[#eadfce] bg-white text-[#5b4d40] hover:bg-[#faf4ec]"
+                shelter.id === selectedShelterId ? "border-[#cd8188] bg-[#cd8188] text-white" : "border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]"
               }`}
               key={shelter.id}
               onClick={() => setSelectedShelterId(shelter.id)}
               type="button"
             >
               <p className="font-semibold">{shelter.name}</p>
-              <p className={`mt-1 text-sm ${shelter.id === selectedShelterId ? "text-white/75" : "text-[#74685d]"}`}>{shelter.location}</p>
-              <div className={`mt-3 flex gap-2 text-xs font-semibold ${shelter.id === selectedShelterId ? "text-white/80" : "text-[#8d7f72]"}`}>
+              <p className={`mt-1 text-sm ${shelter.id === selectedShelterId ? "text-white/75" : "text-[#65584f]"}`}>{shelter.location}</p>
+              <div className={`mt-3 flex gap-2 text-xs font-semibold ${shelter.id === selectedShelterId ? "text-white/80" : "text-[#65584f]"}`}>
                 <span>{shelter.dogsCount} dogs</span>
                 <span>{shelter.pendingBookingsCount} pending visits</span>
               </div>
@@ -1950,20 +1979,20 @@ function PartnerSheltersTab({
           ))}
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Selected shelter</p>
-            <p className="mt-2 font-semibold text-[#4f4338]">{selectedShelter.name}</p>
-            <p className="mt-1 text-sm text-[#74685d]">{selectedShelter.location}</p>
+          <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Selected shelter</p>
+            <p className="mt-2 font-semibold text-[#65584f]">{selectedShelter.name}</p>
+            <p className="mt-1 text-sm text-[#65584f]">{selectedShelter.location}</p>
           </div>
-          <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Listings</p>
-            <p className="mt-2 text-2xl font-semibold text-[#4f4338]">{selectedShelter.dogsCount}</p>
-            <p className="mt-1 text-sm text-[#74685d]">dogs under this shelter</p>
+          <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Listings</p>
+            <p className="mt-2 text-2xl font-semibold text-[#65584f]">{selectedShelter.dogsCount}</p>
+            <p className="mt-1 text-sm text-[#65584f]">dogs under this shelter</p>
           </div>
-          <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Bookings</p>
-            <p className="mt-2 text-2xl font-semibold text-[#4f4338]">{selectedShelter.pendingBookingsCount}</p>
-            <p className="mt-1 text-sm text-[#74685d]">pending visits</p>
+          <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Bookings</p>
+            <p className="mt-2 text-2xl font-semibold text-[#65584f]">{selectedShelter.pendingBookingsCount}</p>
+            <p className="mt-1 text-sm text-[#65584f]">pending visits</p>
           </div>
         </div>
       </Section>
@@ -1996,13 +2025,13 @@ function AllDogsTab({ dogs, shelters }: { dogs: AdminDraftDog[]; shelters: Admin
 
   return (
     <Section eyebrow="All dog listings" title="Platform dog database">
-      <p className="mt-2 text-sm leading-6 text-[#74685d]">
+      <p className="mt-2 text-sm leading-6 text-[#65584f]">
         This is the global dog listing view that does not require entering a shelter first.
       </p>
       <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_220px_auto_auto]">
         <label className="sr-only" htmlFor="all-dog-search">Search dogs</label>
         <input
-          className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+          className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
           id="all-dog-search"
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search dog, breed, shelter, size"
@@ -2011,7 +2040,7 @@ function AllDogsTab({ dogs, shelters }: { dogs: AdminDraftDog[]; shelters: Admin
         />
         <label className="sr-only" htmlFor="all-dog-shelter">Filter dogs by shelter</label>
         <select
-          className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+          className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
           id="all-dog-shelter"
           onChange={(event) => setShelterId(event.target.value)}
           value={shelterId}
@@ -2022,7 +2051,7 @@ function AllDogsTab({ dogs, shelters }: { dogs: AdminDraftDog[]; shelters: Admin
         </select>
         <label className="sr-only" htmlFor="all-dog-status">Filter dogs by status</label>
         <select
-          className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+          className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
           id="all-dog-status"
           onChange={(event) => setStatus(event.target.value)}
           value={status}
@@ -2033,12 +2062,12 @@ function AllDogsTab({ dogs, shelters }: { dogs: AdminDraftDog[]; shelters: Admin
           <option value="reserved">Reserved</option>
           <option value="adopted">Adopted</option>
         </select>
-        <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d88c24] px-5 py-3 text-sm font-semibold text-white" type="button">
+        <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white" type="button">
           <Search className="h-4 w-4" />
           {filteredDogs.length} dogs
         </button>
         <button
-          className="rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40]"
+          className="rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f]"
           onClick={() => {
             setSearch("");
             setStatus("all");
@@ -2054,7 +2083,7 @@ function AllDogsTab({ dogs, shelters }: { dogs: AdminDraftDog[]; shelters: Admin
           <DogCard dog={dog} editHref={`/admindraft/dogs/${dog.id}/edit`} key={dog.id} />
         ))}
         {filteredDogs.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
+          <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] p-6 text-sm text-[#65584f]">
             No dog listings match these filters.
           </div>
         ) : null}
@@ -2070,13 +2099,13 @@ function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking
 
   return (
     <Section eyebrow="Bookings" title="All shelter visits">
-      <p className="mt-2 text-sm leading-6 text-[#74685d]">
+      <p className="mt-2 text-sm leading-6 text-[#65584f]">
         PawJai HQ can still see bookings across shelters here. Shelter users only see the booking tab inside their own workspace.
       </p>
       <div className="mt-5 grid gap-3 md:grid-cols-[260px_auto]">
         <label className="sr-only" htmlFor="booking-shelter-filter">Filter bookings by shelter</label>
         <select
-          className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+          className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
           id="booking-shelter-filter"
           onChange={(event) => setShelterId(event.target.value)}
           value={shelterId}
@@ -2086,7 +2115,7 @@ function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking
           ))}
         </select>
         <button
-          className="rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40]"
+          className="rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f]"
           onClick={() => setShelterId("all")}
           type="button"
         >
@@ -2120,15 +2149,15 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
   return (
     <>
       <Section eyebrow="Ads" title="PawJai-managed ads">
-        <p className="mt-2 text-sm leading-6 text-[#74685d]">
+        <p className="mt-2 text-sm leading-6 text-[#65584f]">
           Partner submissions from /ads land in the same ads table. PawJai reviews, pauses, and date-edits records internally. Connected ads: {ads.length}.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <button
             className={`rounded-full px-5 py-3 text-sm font-semibold ${
               view === "review"
-                ? "bg-[#d88c24] text-white"
-                : "border border-[#eadfce] bg-white text-[#5b4d40]"
+                ? "bg-[#cd8188] text-white"
+                : "border border-[#d6c8ad] bg-white text-[#65584f]"
             }`}
             onClick={() => setView("review")}
             type="button"
@@ -2138,8 +2167,8 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
           <button
             className={`rounded-full px-5 py-3 text-sm font-semibold ${
               view === "analytics"
-                ? "bg-[#d88c24] text-white"
-                : "border border-[#eadfce] bg-white text-[#5b4d40]"
+                ? "bg-[#cd8188] text-white"
+                : "border border-[#d6c8ad] bg-white text-[#65584f]"
             }`}
             onClick={() => setView("analytics")}
             type="button"
@@ -2150,7 +2179,7 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
         <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
           <label className="sr-only" htmlFor="admin-ad-search">Search ads</label>
           <input
-            className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+            className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
             id="admin-ad-search"
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search ad code, advertiser, or URL"
@@ -2159,7 +2188,7 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
           />
           <label className="sr-only" htmlFor="admin-ad-status">Filter ads by status</label>
           <select
-            className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+            className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
             id="admin-ad-status"
             onChange={(event) => setStatus(event.target.value as AdStatusFilter)}
             value={status}
@@ -2171,12 +2200,12 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
             <option value="denied">Denied</option>
             <option value="expired">Expired</option>
           </select>
-          <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d88c24] px-5 py-3 text-sm font-semibold text-white" type="button">
+          <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white" type="button">
             <Search className="h-4 w-4" />
             {filteredAds.length} ads
           </button>
           <button
-            className="rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40]"
+            className="rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f]"
             onClick={() => {
               setSearch("");
               setStatus("all");
@@ -2188,8 +2217,8 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
         </div>
         {view === "analytics" ? (
           <div className="mt-6 grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-            <div className="rounded-[28px] border border-[#eadfce] bg-[#fffdfa] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Ads</p>
+            <div className="rounded-[28px] border border-[#d6c8ad] bg-[#fffaf5] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Ads</p>
               <div className="mt-4 grid gap-2">
                 {filteredAds.map((ad) => {
                   const adClickCount = adClicks.filter((click) => click.adId === ad.id).length;
@@ -2199,8 +2228,8 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                     <button
                       className={`rounded-2xl border p-3 text-left transition ${
                         active
-                          ? "border-[#d88c24] bg-white"
-                          : "border-[#eadfce] bg-white/70 hover:bg-white"
+                          ? "border-[#cd8188] bg-white"
+                          : "border-[#d6c8ad] bg-white/70 hover:bg-white"
                       }`}
                       key={ad.id}
                       onClick={() => setSelectedAnalyticsAdId(ad.id)}
@@ -2208,33 +2237,33 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-[#4f4338]">{ad.companyName}</p>
-                          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#b77624]">{ad.submissionCode}</p>
+                          <p className="truncate text-sm font-semibold text-[#65584f]">{ad.companyName}</p>
+                          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#cd8188]">{ad.submissionCode}</p>
                         </div>
-                        <span className="rounded-full bg-[#f7ecda] px-2.5 py-1 text-xs font-bold text-[#8a5825]">{adClickCount}</span>
+                        <span className="rounded-full bg-[#f7ecda] px-2.5 py-1 text-xs font-bold text-[#65584f]">{adClickCount}</span>
                       </div>
                     </button>
                   );
                 })}
                 {filteredAds.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-[#eadfce] bg-white p-4 text-sm text-[#74685d]">
+                  <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-white p-4 text-sm text-[#65584f]">
                     No ads match these filters.
                   </div>
                 ) : null}
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+            <div className="rounded-[28px] border border-[#d6c8ad] bg-white p-5 shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
               {selectedAnalyticsAd ? (
                 <div>
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">{selectedAnalyticsAd.submissionCode}</p>
-                      <h3 className="mt-1 text-2xl font-semibold text-[#4f4338]">{selectedAnalyticsAd.companyName}</h3>
-                      <p className="mt-2 break-all text-sm font-semibold text-[#b77624]">{selectedAnalyticsAd.clickUrl}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">{selectedAnalyticsAd.submissionCode}</p>
+                      <h3 className="mt-1 text-2xl font-semibold text-[#65584f]">{selectedAnalyticsAd.companyName}</h3>
+                      <p className="mt-2 break-all text-sm font-semibold text-[#cd8188]">{selectedAnalyticsAd.clickUrl}</p>
                     </div>
                     <button
-                      className="inline-flex w-fit items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                      className="inline-flex w-fit items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
                       onClick={() => setPreviewAd(selectedAnalyticsAd)}
                       type="button"
                     >
@@ -2244,64 +2273,64 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                   </div>
 
                   <div className="mt-5 grid gap-3 md:grid-cols-4">
-                    <div className="rounded-2xl bg-[#fffdfa] p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8d7f72]">Clicks</p>
-                      <p className="mt-2 text-3xl font-semibold text-[#4f4338]">{totalClicks}</p>
+                    <div className="rounded-2xl bg-[#fffaf5] p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#65584f]">Clicks</p>
+                      <p className="mt-2 text-3xl font-semibold text-[#65584f]">{totalClicks}</p>
                     </div>
-                    <div className="rounded-2xl bg-[#fffdfa] p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8d7f72]">Logged-in users</p>
-                      <p className="mt-2 text-3xl font-semibold text-[#4f4338]">{knownClickerIds.size}</p>
+                    <div className="rounded-2xl bg-[#fffaf5] p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#65584f]">Logged-in users</p>
+                      <p className="mt-2 text-3xl font-semibold text-[#65584f]">{knownClickerIds.size}</p>
                     </div>
-                    <div className="rounded-2xl bg-[#fffdfa] p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8d7f72]">Anonymous clicks</p>
-                      <p className="mt-2 text-3xl font-semibold text-[#4f4338]">{selectedAdClicks.filter((click) => !click.userId).length}</p>
+                    <div className="rounded-2xl bg-[#fffaf5] p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#65584f]">Anonymous clicks</p>
+                      <p className="mt-2 text-3xl font-semibold text-[#65584f]">{selectedAdClicks.filter((click) => !click.userId).length}</p>
                     </div>
-                    <div className="rounded-2xl bg-[#fffdfa] p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8d7f72]">Live days</p>
-                      <p className="mt-2 text-3xl font-semibold text-[#4f4338]">{getAdLiveDays(selectedAnalyticsAd, today)}</p>
+                    <div className="rounded-2xl bg-[#fffaf5] p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#65584f]">Live days</p>
+                      <p className="mt-2 text-3xl font-semibold text-[#65584f]">{getAdLiveDays(selectedAnalyticsAd, today)}</p>
                     </div>
                   </div>
 
-                  <div className="mt-5 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+                  <div className="mt-5 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-[#4f4338]">Clicks over last 14 days</p>
-                      <p className="text-xs text-[#74685d]">{totalClicks} total</p>
+                      <p className="text-sm font-semibold text-[#65584f]">Clicks over last 14 days</p>
+                      <p className="text-xs text-[#65584f]">{totalClicks} total</p>
                     </div>
                     <div className="mt-4 flex h-44 items-end gap-2">
                       {clickBuckets.map((bucket) => (
                         <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={bucket.key}>
                           <div className="flex h-32 w-full items-end rounded-full bg-[#f4eadb]">
                             <div
-                              className="w-full rounded-full bg-[#d88c24]"
+                              className="w-full rounded-full bg-[#cd8188]"
                               style={{ height: `${Math.max(bucket.count ? 10 : 0, (bucket.count / maxBucketCount) * 100)}%` }}
                               title={`${bucket.label}: ${bucket.count} clicks`}
                             />
                           </div>
-                          <span className="max-w-full truncate text-[10px] text-[#8d7f72]">{bucket.label}</span>
+                          <span className="max-w-full truncate text-[10px] text-[#65584f]">{bucket.label}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="mt-5 rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
-                    <p className="text-sm font-semibold text-[#4f4338]">Recent clickers</p>
+                  <div className="mt-5 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
+                    <p className="text-sm font-semibold text-[#65584f]">Recent clickers</p>
                     <div className="mt-3 grid gap-2">
                       {selectedAdClicks.slice(0, 8).map((click) => {
                         const age = getAgeFromDateOfBirth(click.userDateOfBirth);
                         return (
                           <div className="grid gap-2 rounded-2xl bg-white p-3 text-sm md:grid-cols-[minmax(0,1fr)_150px]" key={click.id}>
                             <div className="min-w-0">
-                              <p className="font-semibold text-[#4f4338]">{click.userName ?? (click.userId ? "Logged-in user" : "Anonymous visitor")}</p>
-                              <p className="mt-1 truncate text-[#74685d]">
+                              <p className="font-semibold text-[#65584f]">{click.userName ?? (click.userId ? "Logged-in user" : "Anonymous visitor")}</p>
+                              <p className="mt-1 truncate text-[#65584f]">
                                 {[click.userEmail, click.userPhone, age !== null ? `${age} years old` : null].filter(Boolean).join(" · ") || "No profile details"}
                               </p>
                             </div>
-                            <p className="text-[#74685d] md:text-right">{formatClickDate(click.clickedAt)}</p>
+                            <p className="text-[#65584f] md:text-right">{formatClickDate(click.clickedAt)}</p>
                           </div>
                         );
                       })}
                       {selectedAdClicks.length === 0 ? (
-                        <div className="rounded-2xl border border-dashed border-[#eadfce] bg-white p-4 text-sm text-[#74685d]">
+                        <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-white p-4 text-sm text-[#65584f]">
                           No clicks tracked for this ad yet.
                         </div>
                       ) : null}
@@ -2309,7 +2338,7 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                   </div>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
+                <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] p-6 text-sm text-[#65584f]">
                   No ad selected.
                 </div>
               )}
@@ -2332,7 +2361,7 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
               .join(" ");
 
             return (
-              <article className="rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_16px_50px_rgba(128,92,46,0.08)]" key={ad.id}>
+              <article className="rounded-[28px] border border-[#d6c8ad] bg-white p-5 shadow-[0_16px_50px_rgba(101,88,79,0.08)]" key={ad.id}>
                 <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)_340px]">
                   <div className="flex justify-center lg:justify-start">
                     <AdCard
@@ -2353,52 +2382,52 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                       <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] ${adStatusClass(adStatus)}`}>
                         {label}
                       </span>
-                      <span className="rounded-full bg-[#f7ecda] px-3 py-1 text-xs font-bold text-[#8a5825]">
+                      <span className="rounded-full bg-[#f7ecda] px-3 py-1 text-xs font-bold text-[#65584f]">
                         {ad.reviewStatus === "pending" ? "Awaiting decision" : formatStatus(ad.reviewStatus)}
                       </span>
-                      <span className="rounded-full border border-[#eadfce] bg-white px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#b77624]">
+                      <span className="rounded-full border border-[#d6c8ad] bg-white px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#cd8188]">
                         {ad.submissionCode}
                       </span>
                     </div>
-                    <h3 className="mt-4 text-2xl font-semibold text-[#4f4338]">{ad.companyName}</h3>
+                    <h3 className="mt-4 text-2xl font-semibold text-[#65584f]">{ad.companyName}</h3>
                     <div className="mt-4 grid gap-4 md:grid-cols-2">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Campaign dates</p>
-                        <p className="mt-1 text-sm text-[#74685d]">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Campaign dates</p>
+                        <p className="mt-1 text-sm text-[#65584f]">
                           {ad.startDate} to {ad.endDate === OPEN_ENDED_AD_END_DATE ? "ongoing" : ad.endDate}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Contact</p>
-                        <p className="mt-1 break-words text-sm text-[#74685d]">{contact || "No contact provided"}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Contact</p>
+                        <p className="mt-1 break-words text-sm text-[#65584f]">{contact || "No contact provided"}</p>
                       </div>
                     </div>
                     <div className="mt-4 rounded-2xl bg-[#f8f0e5] p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Destination URL</p>
-                      <a className="mt-1 block break-all text-sm font-semibold text-[#b77624] hover:underline" href={ad.clickUrl} rel="noopener noreferrer" target="_blank">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Destination URL</p>
+                      <a className="mt-1 block break-all text-sm font-semibold text-[#cd8188] hover:underline" href={ad.clickUrl} rel="noopener noreferrer" target="_blank">
                         {ad.clickUrl}
                       </a>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
+                  <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
                     <div className="rounded-2xl bg-white px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Status</p>
-                      <p className="mt-1 text-lg font-semibold text-[#4f4338]">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Status</p>
+                      <p className="mt-1 text-lg font-semibold text-[#65584f]">
                         {ad.reviewStatus === "pending" ? "Awaiting decision" : label}
                       </p>
                     </div>
 
-                    <details className="mt-3 rounded-2xl border border-[#eadfce] bg-white p-3" open={ad.reviewStatus === "pending"}>
-                      <summary className="cursor-pointer text-sm font-semibold text-[#5b4d40]">
+                    <details className="mt-3 rounded-2xl border border-[#d6c8ad] bg-white p-3" open={ad.reviewStatus === "pending"}>
+                      <summary className="cursor-pointer text-sm font-semibold text-[#65584f]">
                         Edit ad dates
                       </summary>
                       <form action={updateAdDatesFromFormAction.bind(null, ad.id, ADS_DRAFT_RETURN_TO)} className="mt-3 grid gap-2">
                         <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#fffaf3] p-3">
                           <label className="block">
-                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">Start date</span>
+                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#65584f]">Start date</span>
                             <input
-                              className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                              className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
                               defaultValue={ad.startDate}
                               name="start_date"
                               required
@@ -2406,9 +2435,9 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                             />
                           </label>
                           <label className="block">
-                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">End date</span>
+                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#65584f]">End date</span>
                             <input
-                              className="h-11 w-full rounded-xl border border-[#eadfce] bg-white px-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                              className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
                               defaultValue={ad.endDate}
                               name="end_date"
                               required
@@ -2416,7 +2445,7 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                             />
                           </label>
                         </div>
-                        <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" type="submit">
+                        <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" type="submit">
                           Save ad dates
                         </button>
                       </form>
@@ -2439,7 +2468,7 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                       ) : null}
                       {ad.reviewStatus === "approved" ? (
                         <form action={toggleAdFromFormAction.bind(null, ad.id, !ad.isActive, ADS_DRAFT_RETURN_TO)}>
-                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" type="submit">
+                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" type="submit">
                             {ad.isActive ? "Pause ad" : "Resume ad"}
                           </button>
                         </form>
@@ -2447,7 +2476,7 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                     </div>
 
                     <button
-                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
                       onClick={() => setPreviewAd(ad)}
                       type="button"
                     >
@@ -2455,7 +2484,7 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                       Preview full ad
                     </button>
                     <a
-                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
                       href={ad.clickUrl}
                       rel="noopener noreferrer"
                       target="_blank"
@@ -2469,12 +2498,12 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
             );
           })}
           {ads.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
+            <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] p-6 text-sm text-[#65584f]">
               No ad records are connected yet.
             </div>
           ) : null}
           {ads.length > 0 && filteredAds.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#eadfce] bg-[#fffdfa] p-6 text-sm text-[#74685d]">
+            <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] p-6 text-sm text-[#65584f]">
               No ads match these filters.
             </div>
           ) : null}
@@ -2484,13 +2513,13 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
 
       {previewAd ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-8" role="dialog" aria-modal="true">
-          <div className="max-h-full overflow-y-auto rounded-[28px] bg-[#f5efe6] p-5 shadow-2xl">
+          <div className="max-h-full overflow-y-auto rounded-[28px] bg-[#f5f1e8] p-5 shadow-2xl">
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#b77624]">Full feed preview</p>
-                <h2 className="text-xl font-semibold text-[#4f4338]">{previewAd.companyName}</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#cd8188]">Full feed preview</p>
+                <h2 className="text-xl font-semibold text-[#65584f]">{previewAd.companyName}</h2>
               </div>
-              <button className="rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#5b4d40]" onClick={() => setPreviewAd(null)} type="button">
+              <button className="rounded-full border border-[#d6c8ad] bg-white px-4 py-2 text-sm font-semibold text-[#65584f]" onClick={() => setPreviewAd(null)} type="button">
                 Close
               </button>
             </div>
@@ -2515,25 +2544,25 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
 function AboutTab({ about }: { about: AdminDraftAboutContent | null }) {
   return (
     <Section eyebrow="About content" title="PawJai profile content">
-      <p className="mt-2 text-sm leading-6 text-[#74685d]">
+      <p className="mt-2 text-sm leading-6 text-[#65584f]">
         This stays PawJai-only and manages the public About page content.
       </p>
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4 lg:col-span-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Mission title</p>
-          <h3 className="mt-2 text-xl font-semibold text-[#4f4338]">{about?.missionTitle ?? "No mission title saved yet"}</h3>
-          <p className="mt-3 text-sm leading-6 text-[#74685d]">{about?.missionBody ?? "No mission body saved yet."}</p>
+        <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4 lg:col-span-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Mission title</p>
+          <h3 className="mt-2 text-xl font-semibold text-[#65584f]">{about?.missionTitle ?? "No mission title saved yet"}</h3>
+          <p className="mt-3 text-sm leading-6 text-[#65584f]">{about?.missionBody ?? "No mission body saved yet."}</p>
         </div>
-        <div className="rounded-2xl border border-[#eadfce] bg-[#fffdfa] p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Hero slogan</p>
-          <p className="mt-2 text-lg font-semibold text-[#4f4338]">{about?.heroSlogan ?? "No hero slogan saved yet"}</p>
-          <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Partner shelters in About content</p>
-          <p className="mt-2 text-3xl font-semibold text-[#4f4338]">{about?.partnerSheltersCount ?? 0}</p>
+        <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Hero slogan</p>
+          <p className="mt-2 text-lg font-semibold text-[#65584f]">{about?.heroSlogan ?? "No hero slogan saved yet"}</p>
+          <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Partner shelters in About content</p>
+          <p className="mt-2 text-3xl font-semibold text-[#65584f]">{about?.partnerSheltersCount ?? 0}</p>
         </div>
       </div>
       <FieldGrid fields={["Mission title", "Mission body", "Partner shelters", "Hero copy", "Impact numbers", "Save About content"]} />
       <Link
-        className="mt-5 inline-flex rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white"
+        className="mt-5 inline-flex rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white"
         href="/admindraft/aboutcontent"
       >
         Edit live About content
@@ -2588,47 +2617,71 @@ export default function AdminReorgDraftPanel({
   const selectedShelterBookings = bookings.filter((booking) => booking.shelterId === selectedShelter.id);
   const connected = data?.source === "supabase";
   const isShelterPortal = workspaceBaseHref.startsWith("/shelter/");
+  const draftShelterRole = !isShelterPortal && role === "shelter" ? "shelter" : undefined;
   const shelterWorkspaceBookingsHref = isShelterPortal
     ? `${workspaceBaseHref}?view=bookings`
-    : `/admindraft?shelter=${selectedShelter.id}&view=bookings`;
+    : adminDraftShelterWorkspaceHref(selectedShelter.id, "bookings", draftShelterRole);
   const shelterWorkspaceCreateDogHref = isShelterPortal
     ? `${workspaceBaseHref}/dogs/new`
-    : `/admindraft/dog-creation?shelter=${selectedShelter.id}`;
+    : adminDraftShelterCreateDogHref(selectedShelter.id, draftShelterRole);
   const shelterWorkspaceDogEditHref = (dog: AdminDraftDog) => isShelterPortal
     ? `${workspaceBaseHref}/dogs/${dog.id}/edit`
-    : `/admindraft/dogs/${dog.id}/edit`;
+    : adminDraftDogEditHref(dog.id, draftShelterRole);
 
   return (
-    <main className="min-h-screen bg-[#f5efe6] px-4 py-8 text-[#4f4338]">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">
-              PawJai Admin Draft
-            </p>
-            <h1 className="mt-2 text-4xl font-semibold">Reorganized admin hierarchy</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-[#74685d]">
-              This local draft rearranges the working admin pages you already have. PawJai sees the shelter umbrella first. Shelter users see only their shelter workspace.
-            </p>
-            <div className={`mt-4 inline-flex rounded-full px-4 py-2 text-xs font-semibold ${
-              connected ? "bg-[#eaf6df] text-[#3f6f24]" : "bg-[#fff1dc] text-[#8a5825]"
-            }`}>
-              {connected
-                ? `Connected to Supabase: ${shelters.length} shelters, ${dogs.length} dogs, ${bookings.length} bookings`
-                : `Using fallback draft data${data?.error ? `: ${data.error}` : ""}`}
+    <main className="relative min-h-screen overflow-hidden bg-[#f5f1e8] px-4 py-8 text-[#65584f]">
+      <div className="pointer-events-none absolute -right-10 top-16 hidden rotate-12 text-[#d6c8ad]/35 lg:block" aria-hidden="true">
+        <Bone className="h-36 w-36" strokeWidth={1.3} />
+      </div>
+      <div className="pointer-events-none absolute left-8 top-40 hidden -rotate-12 text-[#cd8188]/15 lg:block" aria-hidden="true">
+        <PawPrint className="h-24 w-24" strokeWidth={1.4} />
+      </div>
+      <div className="relative mx-auto max-w-7xl">
+        <header className="mb-6 overflow-hidden rounded-[32px] border border-[#d6c8ad] bg-white/90 p-5 shadow-[0_18px_54px_rgba(101,88,79,0.10)] backdrop-blur md:p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <Link
+              className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[24px] bg-[#f5f1e8] shadow-[inset_0_0_0_1px_rgba(214,200,173,0.8)]"
+              href="/admindraft"
+            >
+              <Image
+                alt="PawJai"
+                className="object-contain p-2"
+                fill
+                priority
+                sizes="80px"
+                src="/pawjai-logo-square.png"
+              />
+            </Link>
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">
+                PawJai Admin Draft
+              </p>
+              <h1 className="mt-2 text-4xl font-semibold text-[#65584f]">Reorganized admin hierarchy</h1>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#65584f]/75">
+                This draft keeps PawJai HQ, partner shelters, dogs, bookings, ads, and content in one branded workspace without changing the adopter app.
+              </p>
+              <div className={`mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold ${
+                connected ? "bg-[#eaf6df] text-[#3f6f24]" : "bg-[#f8e8ea] text-[#65584f]"
+              }`}>
+                <PawPrint className="h-4 w-4" />
+                {connected
+                  ? `Connected to Supabase: ${shelters.length} shelters, ${dogs.length} dogs, ${bookings.length} bookings`
+                  : `Using fallback draft data${data?.error ? `: ${data.error}` : ""}`}
+              </div>
             </div>
           </div>
           {accountSettingsHref ? (
             <div className="flex flex-wrap gap-2">
               <Link
-                className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2.5 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+                className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2.5 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
                 href={accountSettingsHref}
               >
                 Account settings
               </Link>
               <form action={signOutShelterPortalAction}>
                 <button
-                  className="inline-flex items-center justify-center rounded-full bg-[#65584f] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#4f4338]"
+                  className="inline-flex items-center justify-center rounded-full bg-[#65584f] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#65584f]"
                   type="submit"
                 >
                   Sign out
@@ -2643,10 +2696,11 @@ export default function AdminReorgDraftPanel({
               <PillButton active={role === "shelter"} onClick={() => setRole("shelter")}>View as shelter</PillButton>
             </div>
           )}
+          </div>
         </header>
 
         {isPawjai ? (
-          <nav className="mb-6 flex flex-wrap gap-3 rounded-[28px] border border-[#eadfce] bg-white p-4 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+          <nav className="mb-6 flex flex-wrap gap-3 rounded-[28px] border border-[#d6c8ad] bg-white/90 p-4 shadow-[0_14px_42px_rgba(101,88,79,0.08)] backdrop-blur">
             <PillButton active={mainTab === "shelters"} onClick={() => setMainTab("shelters")}>
               <Building2 className="mr-2 inline h-4 w-4" />
               Partner shelters
@@ -2664,27 +2718,27 @@ export default function AdminReorgDraftPanel({
               Ads
             </PillButton>
             <Link
-              className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+              className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
               href="/admindraft/aboutcontent"
             >
               <FileText className="mr-2 inline h-4 w-4" />
               About content
             </Link>
             <Link
-              className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+              className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
               href="/admindraft/accounts"
             >
               <Users className="mr-2 inline h-4 w-4" />
               Accounts
             </Link>
             <Link
-              className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+              className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
               href="/admindraft/audit"
             >
               <ShieldCheck className="mr-2 inline h-4 w-4" />
               Audit
             </Link>
-            <div className="ml-auto flex items-center gap-2 rounded-full bg-[#f8ecd8] px-4 py-2 text-xs font-semibold text-[#9a6b2a]">
+            <div className="ml-auto flex items-center gap-2 rounded-full bg-[#d6c8ad] px-4 py-2 text-xs font-semibold text-[#65584f]">
               <ShieldCheck className="h-4 w-4" />
               PawJai HQ only
             </div>
@@ -2721,14 +2775,14 @@ export default function AdminReorgDraftPanel({
             dogs={selectedShelterDogs}
             messageThreads={messageThreads}
             messagesUnavailable={messagesUnavailable}
-            profileReturnTo={isShelterPortal ? `${workspaceBaseHref}?view=profile` : `/admindraft?shelter=${selectedShelter.id}&view=profile`}
+            profileReturnTo={isShelterPortal ? `${workspaceBaseHref}?view=profile` : adminDraftShelterWorkspaceHref(selectedShelter.id, "profile", draftShelterRole)}
             shelter={selectedShelter}
             tab={shelterTab}
             setTab={setShelterTab}
           />
         ) : null}
 
-        <footer className="mt-6 rounded-[24px] border border-[#eadfce] bg-white p-4 text-sm leading-6 text-[#74685d]">
+        <footer className="mt-6 rounded-[24px] border border-[#d6c8ad] bg-white p-4 text-sm leading-6 text-[#65584f]">
           This draft is phrase-gated while we reorganize the admin hierarchy. Deep workflow links now keep PawJai admin and shelter portal users in their own lanes.
         </footer>
       </div>
