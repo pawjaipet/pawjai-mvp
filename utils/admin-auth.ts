@@ -3,6 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { canAccessShelter, isAdminWorkspaceRole } from "@/utils/admin-authorization";
+import { getAdminCookieDomains } from "@/utils/admin-cookie-scope";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import type { Database } from "@/types/database";
@@ -10,7 +11,8 @@ import type { Database } from "@/types/database";
 const ADMIN_GATE_COOKIE = "pawjai_admin_gate_unlocked";
 const ADMIN_DRAFT_COOKIE = "pawjai_admin_draft_unlocked";
 const ADMIN_GATE_PASSPHRASES = new Set(["pawjaiadmin", "pawjaiadmin!"]);
-const ADMIN_GATE_COOKIE_PATHS = ["/admin", "/booking"];
+const ADMIN_GATE_COOKIE_PATHS = ["/", "/admin", "/booking"];
+const ADMIN_DRAFT_COOKIE_PATHS = ["/", "/admindraft", "/booking"];
 
 export type AdminAuthContext = {
   fullName: string | null;
@@ -54,10 +56,12 @@ function buildAdminLoginPath(nextPath = "/admin") {
 export async function getAdminAuthContext(options: AdminAuthContextOptions = {}): Promise<AdminAuthContext | null> {
   const includePhraseGate = options.includePhraseGate ?? true;
   const cookieStore = await cookies();
+  const adminGateOpen = cookieStore.getAll(ADMIN_GATE_COOKIE).some((cookie) => cookie.value === "1");
+  const adminDraftOpen = cookieStore.getAll(ADMIN_DRAFT_COOKIE).some((cookie) => cookie.value === "1");
 
   if (
     includePhraseGate &&
-    (cookieStore.get(ADMIN_GATE_COOKIE)?.value === "1" || cookieStore.get(ADMIN_DRAFT_COOKIE)?.value === "1")
+    (adminGateOpen || adminDraftOpen)
   ) {
     return {
       fullName: "PawJai Admin",
@@ -137,31 +141,44 @@ export async function closeAdminGate() {
   await supabase.auth.signOut();
 
   const cookieStore = await cookies();
-  for (const path of ADMIN_GATE_COOKIE_PATHS) {
-    cookieStore.set({
-      httpOnly: true,
-      maxAge: 0,
-      name: ADMIN_GATE_COOKIE,
-      path,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      value: "",
-    });
+  const cookieDomains = await getAdminCookieDomains();
+  for (const { name, paths } of [
+    { name: ADMIN_GATE_COOKIE, paths: ADMIN_GATE_COOKIE_PATHS },
+    { name: ADMIN_DRAFT_COOKIE, paths: ADMIN_DRAFT_COOKIE_PATHS },
+  ]) {
+    for (const path of paths) {
+      for (const domain of cookieDomains) {
+        cookieStore.set({
+          ...(domain ? { domain } : {}),
+          httpOnly: true,
+          maxAge: 0,
+          name,
+          path,
+          sameSite: "lax",
+          secure: process.env.NODE_ENV === "production",
+          value: "",
+        });
+      }
+    }
   }
 }
 
 export async function openAdminGate() {
   const cookieStore = await cookies();
+  const cookieDomains = await getAdminCookieDomains();
   for (const path of ADMIN_GATE_COOKIE_PATHS) {
-    cookieStore.set({
-      httpOnly: true,
-      maxAge: 60 * 60 * 8,
-      name: ADMIN_GATE_COOKIE,
-      path,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      value: "1",
-    });
+    for (const domain of cookieDomains) {
+      cookieStore.set({
+        ...(domain ? { domain } : {}),
+        httpOnly: true,
+        maxAge: 60 * 60 * 8,
+        name: ADMIN_GATE_COOKIE,
+        path,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        value: "1",
+      });
+    }
   }
 }
 

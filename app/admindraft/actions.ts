@@ -2,10 +2,11 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getAdminCookieDomains } from "@/utils/admin-cookie-scope";
 
 const ADMIN_DRAFT_COOKIE = "pawjai_admin_draft_unlocked";
 const ADMIN_DRAFT_PASSPHRASE = "pawjaiadmin!";
-const ADMIN_DRAFT_COOKIE_PATHS = ["/admindraft", "/booking"];
+const ADMIN_DRAFT_COOKIE_PATHS = ["/", "/admindraft", "/booking"];
 
 function getAdminDraftReturnPath(formData: FormData) {
   const requested = String(formData.get("returnTo") ?? "").trim();
@@ -30,7 +31,7 @@ function withUnlockFailed(path: string) {
 
 export async function isAdminDraftUnlocked() {
   const cookieStore = await cookies();
-  return cookieStore.get(ADMIN_DRAFT_COOKIE)?.value === "1";
+  return cookieStore.getAll(ADMIN_DRAFT_COOKIE).some((cookie) => cookie.value === "1");
 }
 
 export async function unlockAdminDraftAction(formData: FormData) {
@@ -42,16 +43,20 @@ export async function unlockAdminDraftAction(formData: FormData) {
   }
 
   const cookieStore = await cookies();
+  const cookieDomains = await getAdminCookieDomains();
   for (const path of ADMIN_DRAFT_COOKIE_PATHS) {
-    cookieStore.set({
-      httpOnly: true,
-      maxAge: 60 * 60 * 8,
-      name: ADMIN_DRAFT_COOKIE,
-      path,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      value: "1",
-    });
+    for (const domain of cookieDomains) {
+      cookieStore.set({
+        ...(domain ? { domain } : {}),
+        httpOnly: true,
+        maxAge: 60 * 60 * 8,
+        name: ADMIN_DRAFT_COOKIE,
+        path,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        value: "1",
+      });
+    }
   }
 
   redirect(returnTo);
