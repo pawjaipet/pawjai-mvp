@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import Script from "next/script";
 import type { FormEvent } from "react";
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { ensureCurrentUserProfile } from "@/app/auth/actions";
 import {
   buildEmailVerificationRedirect,
@@ -19,6 +20,55 @@ type AuthFormProps = {
   onClose?: () => void;
 };
 
+type GoogleCredentialResponse = {
+  credential?: string;
+};
+
+type GoogleAccounts = {
+  id: {
+    cancel: () => void;
+    initialize: (config: {
+      callback: (response: GoogleCredentialResponse) => void;
+      client_id: string;
+      nonce?: string;
+      use_fedcm_for_prompt?: boolean;
+    }) => void;
+    renderButton: (
+      parent: HTMLElement,
+      options: {
+        logo_alignment?: "left" | "center";
+        shape?: "pill" | "rectangular" | "circle" | "square";
+        size?: "large" | "medium" | "small";
+        text?: "signin_with" | "signup_with" | "continue_with" | "signin";
+        theme?: "outline" | "filled_blue" | "filled_black";
+        type?: "standard" | "icon";
+        width?: string | number;
+      },
+    ) => void;
+  };
+};
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: GoogleAccounts;
+    };
+  }
+}
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+async function generateGoogleNonce() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const nonce = btoa(String.fromCharCode(...bytes));
+  const encodedNonce = new TextEncoder().encode(nonce);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encodedNonce);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashedNonce = hashArray.map((byte) => byte.toString(16).padStart(2, "0")).join("");
+
+  return { hashedNonce, nonce };
+}
+
 export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) {
   const safeNextPath = sanitizeNextPath(nextPath);
   const [localMessage, setLocalMessage] = useState<string | null>(message ?? null);
@@ -26,9 +76,88 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
     message?.toLowerCase().includes("verification") ? "verify" : "login",
   );
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
+  const [googleScriptReady, setGoogleScriptReady] = useState(false);
+  const [isGooglePending, setIsGooglePending] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const googleButtonRef = useRef<HTMLDivElement | null>(null);
+  const googleNonceRef = useRef<string | null>(null);
   const isSignup = mode === "signup";
   const isVerification = mode === "verify";
+
+  const finishAuthenticatedSession = useCallback(async () => {
+    const ensured = await ensureCurrentUserProfile();
+    if (!ensured.ok) {
+      setLocalMessage(ensured.error);
+      return;
+    }
+
+    window.location.assign(safeNextPath);
+  }, [safeNextPath]);
+
+  const handleGoogleCredential = useCallback(async (response: GoogleCredentialResponse) => {
+    setLocalMessage(null);
+
+    if (!response.credential || !googleNonceRef.current) {
+      setLocalMessage("Google sign in could not finish. Please try again.");
+      return;
+    }
+
+    setIsGooglePending(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithIdToken({
+      provider: "google",
+      token: response.credential,
+      nonce: googleNonceRef.current,
+    });
+
+    if (error) {
+      setLocalMessage(friendlyAuthMessage(error.message));
+      setIsGooglePending(false);
+      return;
+    }
+
+    await finishAuthenticatedSession();
+  }, [finishAuthenticatedSession]);
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || !googleScriptReady || !googleButtonRef.current || isVerification) return;
+
+    let cancelled = false;
+    const googleClientId = GOOGLE_CLIENT_ID;
+
+    async function initializeGoogleButton() {
+      const google = window.google;
+      if (!googleButtonRef.current || !google) return;
+
+      const { hashedNonce, nonce } = await generateGoogleNonce();
+      if (cancelled) return;
+
+      googleNonceRef.current = nonce;
+      googleButtonRef.current.innerHTML = "";
+      google.accounts.id.initialize({
+        callback: handleGoogleCredential,
+        client_id: googleClientId,
+        nonce: hashedNonce,
+        use_fedcm_for_prompt: true,
+      });
+      google.accounts.id.renderButton(googleButtonRef.current, {
+        logo_alignment: "left",
+        shape: "pill",
+        size: "large",
+        text: "continue_with",
+        theme: "outline",
+        type: "standard",
+        width: googleButtonRef.current.clientWidth || 310,
+      });
+    }
+
+    void initializeGoogleButton();
+
+    return () => {
+      cancelled = true;
+      window.google?.accounts.id.cancel();
+    };
+  }, [googleScriptReady, handleGoogleCredential, isVerification]);
 
   function handleEmailSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -362,27 +491,46 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
 
       {!isVerification && (
         <>
+          {GOOGLE_CLIENT_ID && (
+            <Script
+              onReady={() => setGoogleScriptReady(true)}
+              src="https://accounts.google.com/gsi/client"
+              strategy="afterInteractive"
+            />
+          )}
+
           <div className="my-[18px] flex items-center gap-[12px]">
             <div className="h-px flex-1 bg-[#d6c8ad]" />
             <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#65584f]/38">or</span>
             <div className="h-px flex-1 bg-[#d6c8ad]" />
           </div>
 
-          <form onSubmit={handleGoogleSubmit}>
-            <input type="hidden" name="next" value={safeNextPath} />
-            <button
-              type="submit"
-              className="flex h-[52px] w-full items-center justify-center gap-[12px] rounded-[18px] border border-[rgba(101,88,79,0.16)] bg-white text-[15px] font-bold text-[#65584f] shadow-sm transition-all active:bg-[#f5f0eb]"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-              Continue with Google
-            </button>
-          </form>
+          {GOOGLE_CLIENT_ID ? (
+            <div className="min-h-[52px]">
+              <div className="w-full [&>div]:mx-auto" ref={googleButtonRef} />
+              {isGooglePending && (
+                <div className="pt-2 text-center text-[13px] font-semibold text-[#65584f]/70">
+                  Signing in with Google...
+                </div>
+              )}
+            </div>
+          ) : (
+            <form onSubmit={handleGoogleSubmit}>
+              <input type="hidden" name="next" value={safeNextPath} />
+              <button
+                type="submit"
+                className="flex h-[52px] w-full items-center justify-center gap-[12px] rounded-[18px] border border-[rgba(101,88,79,0.16)] bg-white text-[15px] font-bold text-[#65584f] shadow-sm transition-all active:bg-[#f5f0eb]"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+                Continue with Google
+              </button>
+            </form>
+          )}
         </>
       )}
 
