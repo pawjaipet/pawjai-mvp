@@ -15,6 +15,7 @@ test("/admindraft requires the lightweight draft phrase gate before loading data
   const pageSource = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
   const gateSource = readFileSync(new URL("../components/admin/AdminDraftGate.tsx", import.meta.url), "utf8");
   const actionSource = readFileSync(new URL("../app/admindraft/actions.ts", import.meta.url), "utf8");
+  const unlockRouteSource = readFileSync(new URL("../app/admindraft/unlock/route.ts", import.meta.url), "utf8");
   const cookieScopeSource = readFileSync(new URL("../utils/admin-cookie-scope.ts", import.meta.url), "utf8");
 
   assert.equal(pageSource.includes("isAdminDraftUnlocked"), true);
@@ -26,6 +27,11 @@ test("/admindraft requires the lightweight draft phrase gate before loading data
   assert.equal(actionSource.includes("getAdminDraftReturnPath"), true);
   assert.equal(actionSource.includes("getAdminCookieDomains"), true);
   assert.equal(actionSource.includes("domain ? { domain } : {}"), true);
+  assert.equal(gateSource.includes('action="/admindraft/unlock"'), true);
+  assert.equal(gateSource.includes('method="post"'), true);
+  assert.equal(unlockRouteSource.includes("NextResponse.redirect"), true);
+  assert.equal(unlockRouteSource.includes("getAdminCookieDomainsForHost"), true);
+  assert.equal(unlockRouteSource.includes("response.cookies.set"), true);
   assert.equal(cookieScopeSource.includes("SHARED_COOKIE_DOMAINS"), true);
   assert.equal(actionSource.includes("withUnlockFailed(returnTo)"), true);
   assert.equal(actionSource.includes("redirect(returnTo)"), true);

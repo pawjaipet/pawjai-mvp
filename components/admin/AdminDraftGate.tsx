@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unlockAdminDraftAction } from "@/app/admindraft/actions";
 
 type AdminDraftGateProps = {
   returnTo?: string;
@@ -21,7 +20,7 @@ export default function AdminDraftGate({ returnTo = "/admindraft", showError = f
             This is a lightweight internal gate for the team while we shape the long-term shelter onboarding UX. It is intentionally simple and not meant to be production-grade security.
           </p>
 
-          <form action={unlockAdminDraftAction} className="mt-10 max-w-2xl space-y-5">
+          <form action="/admindraft/unlock" className="mt-10 max-w-2xl space-y-5" method="post">
             <input name="returnTo" type="hidden" value={returnTo} />
             <label className="block" htmlFor="admin-draft-phrase">
               <span className="mb-3 block text-sm font-semibold text-[#6b5b4d]">Admin phrase</span>
