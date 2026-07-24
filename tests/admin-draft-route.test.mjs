@@ -31,7 +31,8 @@ test("/admindraft requires the lightweight draft phrase gate before loading data
   assert.equal(gateSource.includes('method="post"'), true);
   assert.equal(unlockRouteSource.includes("NextResponse.redirect"), true);
   assert.equal(unlockRouteSource.includes("getAdminCookieDomainsForHost"), true);
-  assert.equal(unlockRouteSource.includes("response.cookies.set"), true);
+  assert.equal(unlockRouteSource.includes('response.headers.append("Set-Cookie"'), true);
+  assert.equal(unlockRouteSource.includes("serializeUnlockCookie"), true);
   assert.equal(cookieScopeSource.includes("SHARED_COOKIE_DOMAINS"), true);
   assert.equal(actionSource.includes("withUnlockFailed(returnTo)"), true);
   assert.equal(actionSource.includes("redirect(returnTo)"), true);

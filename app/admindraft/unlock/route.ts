@@ -30,6 +30,23 @@ function redirectTo(request: NextRequest, path: string) {
   return NextResponse.redirect(new URL(path, request.url));
 }
 
+function serializeUnlockCookie({ domain, path }: { domain: string | undefined; path: string }) {
+  const maxAge = 60 * 60 * 8;
+  const expires = new Date(Date.now() + maxAge * 1000).toUTCString();
+  const parts = [
+    `${ADMIN_DRAFT_COOKIE}=1`,
+    `Path=${path}`,
+    `Expires=${expires}`,
+    `Max-Age=${maxAge}`,
+  ];
+
+  if (domain) parts.push(`Domain=${domain}`);
+  if (process.env.NODE_ENV === "production") parts.push("Secure");
+  parts.push("HttpOnly", "SameSite=Lax");
+
+  return parts.join("; ");
+}
+
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const phrase = String(formData.get("adminPhrase") ?? "").trim();
@@ -44,16 +61,7 @@ export async function POST(request: NextRequest) {
 
   for (const path of ADMIN_DRAFT_COOKIE_PATHS) {
     for (const domain of cookieDomains) {
-      response.cookies.set({
-        ...(domain ? { domain } : {}),
-        httpOnly: true,
-        maxAge: 60 * 60 * 8,
-        name: ADMIN_DRAFT_COOKIE,
-        path,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        value: "1",
-      });
+      response.headers.append("Set-Cookie", serializeUnlockCookie({ domain, path }));
     }
   }
 
