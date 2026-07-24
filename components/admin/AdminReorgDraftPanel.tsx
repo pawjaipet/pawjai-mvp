@@ -35,9 +35,9 @@ import {
   normalizeAppointmentTime,
 } from "@/utils/appointments-model";
 import {
+  toggleAdAction,
   updateAdDatesFromFormAction,
-  toggleAdFromFormAction,
-  updateAdReviewStatusFromFormAction,
+  updateAdReviewStatusAction,
 } from "@/app/admin/ads/actions";
 import {
   createShelterBlockoutAction,
@@ -2132,11 +2132,13 @@ function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking
 }
 
 function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAdClick[] }) {
+  const router = useRouter();
   const [view, setView] = useState<AdWorkspaceView>("review");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<AdStatusFilter>("all");
   const [previewAd, setPreviewAd] = useState<AdminDraftAd | null>(null);
   const [selectedAnalyticsAdId, setSelectedAnalyticsAdId] = useState("");
+  const [adMutationPendingId, setAdMutationPendingId] = useState<string | null>(null);
   const today = new Date().toISOString().slice(0, 10);
   const filteredAds = ads.filter((ad) => matchesAdFilters(ad, search, status, today));
   const selectedAnalyticsAd = filteredAds.find((ad) => ad.id === selectedAnalyticsAdId) ?? filteredAds[0] ?? ads[0] ?? null;
@@ -2145,6 +2147,16 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
   const knownClickerIds = new Set(selectedAdClicks.map((click) => click.userId).filter(Boolean));
   const clickBuckets = buildAdClickBuckets(selectedAdClicks, today);
   const maxBucketCount = Math.max(1, ...clickBuckets.map((bucket) => bucket.count));
+
+  async function runAdMutation(adId: string, mutation: () => Promise<unknown>) {
+    setAdMutationPendingId(adId);
+    try {
+      await mutation();
+      router.refresh();
+    } finally {
+      setAdMutationPendingId(null);
+    }
+  }
 
   return (
     <>
@@ -2453,25 +2465,34 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
 
                     <div className="mt-3 grid gap-2">
                       {ad.reviewStatus !== "approved" ? (
-                        <form action={updateAdReviewStatusFromFormAction.bind(null, ad.id, "approved", ADS_DRAFT_RETURN_TO)}>
-                          <button className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" type="submit">
-                            Accept ad
-                          </button>
-                        </form>
+                        <button
+                          className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d] disabled:opacity-60"
+                          disabled={adMutationPendingId === ad.id}
+                          onClick={() => runAdMutation(ad.id, () => updateAdReviewStatusAction(ad.id, "approved", ADS_DRAFT_RETURN_TO))}
+                          type="button"
+                        >
+                          {adMutationPendingId === ad.id ? "Accepting..." : "Accept ad"}
+                        </button>
                       ) : null}
                       {ad.reviewStatus !== "denied" ? (
-                        <form action={updateAdReviewStatusFromFormAction.bind(null, ad.id, "denied", ADS_DRAFT_RETURN_TO)}>
-                          <button className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64]" type="submit">
-                            Deny ad
-                          </button>
-                        </form>
+                        <button
+                          className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64] disabled:opacity-60"
+                          disabled={adMutationPendingId === ad.id}
+                          onClick={() => runAdMutation(ad.id, () => updateAdReviewStatusAction(ad.id, "denied", ADS_DRAFT_RETURN_TO))}
+                          type="button"
+                        >
+                          {adMutationPendingId === ad.id ? "Denying..." : "Deny ad"}
+                        </button>
                       ) : null}
                       {ad.reviewStatus === "approved" ? (
-                        <form action={toggleAdFromFormAction.bind(null, ad.id, !ad.isActive, ADS_DRAFT_RETURN_TO)}>
-                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" type="submit">
-                            {ad.isActive ? "Pause ad" : "Resume ad"}
-                          </button>
-                        </form>
+                        <button
+                          className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8] disabled:opacity-60"
+                          disabled={adMutationPendingId === ad.id}
+                          onClick={() => runAdMutation(ad.id, () => toggleAdAction(ad.id, !ad.isActive, ADS_DRAFT_RETURN_TO))}
+                          type="button"
+                        >
+                          {adMutationPendingId === ad.id ? "Saving..." : ad.isActive ? "Pause ad" : "Resume ad"}
+                        </button>
                       ) : null}
                     </div>
 

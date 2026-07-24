@@ -59,9 +59,10 @@ test("admin draft remains the internal ad review surface", () => {
   assert.equal(draftSource.includes("Clicks over last 14 days"), true);
   assert.equal(draftSource.includes("Recent clickers"), true);
   assert.equal(draftSource.includes("submissionCode"), true);
-  assert.equal(draftSource.includes("updateAdReviewStatusFromFormAction"), true);
-  assert.equal(draftSource.includes("toggleAdFromFormAction"), true);
+  assert.equal(draftSource.includes("updateAdReviewStatusAction"), true);
+  assert.equal(draftSource.includes("toggleAdAction"), true);
   assert.equal(draftSource.includes("updateAdDatesFromFormAction"), true);
+  assert.equal(draftSource.includes("router.refresh()"), true);
   assert.equal(draftSource.includes("Review ads"), true);
   assert.equal(dataSource.includes('.from("ad_clicks")'), true);
   assert.equal(dataSource.includes("submission_code"), true);
