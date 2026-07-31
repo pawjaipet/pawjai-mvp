@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import DogBreedPicker from "@/components/dogs/DogBreedPicker";
+import PersonalityTagPicker from "@/components/dogs/PersonalityTagPicker";
 import type { Database, DogPhoto, DogTrait } from "@/types/database";
 import { buildDogMediaItems, type DogMediaItem } from "@/utils/dog-media";
 import { deleteDogProfileAction, updateDogProfileAction } from "./actions";
@@ -486,10 +487,6 @@ export default function DogEditForm({
   const personalityTraitValues = traits
     .filter((trait) => trait.trait_type === "personality")
     .map((trait) => trait.trait_value);
-  const selectedPersonalityTags = new Set(personalityTraitValues.filter((tag) => personalityTags.includes(tag)));
-  const customPersonalityTags = personalityTraitValues
-    .filter((tag) => !personalityTags.includes(tag))
-    .join(", ");
   const selectedCareTags = new Set(
     traits.filter((trait) => trait.trait_type === "medical_needs").map((trait) => trait.trait_value),
   );
@@ -771,17 +768,7 @@ export default function DogEditForm({
               <p className="mb-4 text-sm leading-6 text-[#7a6d61]">
                 Pick the words users should see. Use Other when the dog needs a more specific word.
               </p>
-              <ChipCheckboxGroup name="personality_tag" options={personalityTags} selected={selectedPersonalityTags} />
-              <div className="mt-4">
-                <Field label="Other personality tags" hint="Separate extra public tags with commas.">
-                  <input
-                    name="custom_personality_tags"
-                    className={inputClass()}
-                    defaultValue={customPersonalityTags}
-                    placeholder="Shy at first, Loves belly rubs"
-                  />
-                </Field>
-              </div>
+              <PersonalityTagPicker options={personalityTags} selected={personalityTraitValues} />
             </div>
 
             <div>

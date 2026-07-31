@@ -24,20 +24,32 @@ export const DEFAULT_PERSONALITY_TAGS = [
   "Protective",
 ];
 
-export function mergePersonalityTags(extraTags: string[]) {
-  const seen = new Set<string>();
-  const merged: string[] = [];
+export function normalizePersonalityTag(value: string) {
+  return value.normalize("NFKC").trim().replace(/\s+/g, " ");
+}
 
-  for (const tag of [...DEFAULT_PERSONALITY_TAGS, ...extraTags]) {
-    const normalized = tag.trim();
+export function personalityTagKey(value: string) {
+  return normalizePersonalityTag(value).toLocaleLowerCase("en");
+}
+
+export function dedupePersonalityTags(tags: string[]) {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+
+  for (const tag of tags) {
+    const normalized = normalizePersonalityTag(tag);
     if (!normalized) continue;
 
-    const key = normalized.toLocaleLowerCase();
+    const key = personalityTagKey(normalized);
     if (seen.has(key)) continue;
 
     seen.add(key);
-    merged.push(normalized);
+    unique.push(normalized);
   }
 
-  return merged;
+  return unique;
+}
+
+export function mergePersonalityTags(extraTags: string[]) {
+  return dedupePersonalityTags([...DEFAULT_PERSONALITY_TAGS, ...extraTags]);
 }

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import AdCard from "@/components/AdCard";
 import {
   Bone,
+  Banknote,
   Building2,
   CalendarDays,
   CheckCircle2,
@@ -14,6 +15,7 @@ import {
   ChevronRight,
   ExternalLink,
   FileText,
+  FileCheck2,
   Globe,
   ImageIcon,
   Mail,
@@ -43,6 +45,7 @@ import {
   createShelterBlockoutAction,
   deleteShelterAvailabilityAction,
   decideBookingAction,
+  reviewDonationAction,
   toggleShelterBlockoutDateAction,
   updateShelterOperatingDaysAction,
   updateShelterProfileAction,
@@ -63,12 +66,14 @@ import type {
   AdminDraftData,
   AdminDraftBooking,
   AdminDraftDog,
+  AdminDraftDonation,
   AdminDraftShelter,
 } from "@/utils/admin-draft-data";
 
 type RoleView = "pawjai" | "shelter";
-type MainTab = "shelters" | "dogs" | "bookings" | "ads" | "about";
-type ShelterTab = "profile" | "dogs" | "bookings" | "messages";
+type MainTab = "shelters" | "dogs" | "bookings" | "donations" | "ads" | "about";
+type ShelterTab = "profile" | "dogs" | "bookings" | "donations" | "messages";
+type BookingWorkspaceView = "visits" | "calendar";
 type VisitBucket = "upcoming" | "needs_follow_up" | "past" | "all";
 type MessageFilter = "all" | "unread" | "upcoming" | "needs_reply";
 type AdStatusFilter = "all" | AdDisplayStatus;
@@ -78,7 +83,7 @@ type AdminDraftMessageThread = AdminDraftData["messageThreads"][number];
 const DRAFT_RETURN_TO = "/admindraft";
 const ADS_DRAFT_RETURN_TO = "/admindraft?view=ads";
 const MESSAGE_THREAD_REFRESH_INTERVAL_MS = 12_000;
-const MAIN_TABS: MainTab[] = ["shelters", "dogs", "bookings", "ads", "about"];
+const MAIN_TABS: MainTab[] = ["shelters", "dogs", "bookings", "donations", "ads", "about"];
 const BOOKING_STATUS_OPTIONS = ["requested", "confirmed", "completed", "cancelled", "no_show"];
 const VISIT_BUCKETS: { label: string; value: VisitBucket }[] = [
   { label: "Upcoming", value: "upcoming" },
@@ -756,36 +761,8 @@ function ShelterWorkspaceLinkTab({
 }
 
 function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: AdminDraftShelter }) {
-  const [calendarMonth, setCalendarMonth] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
   const addressParts = shelterAddressParts(shelter);
   const mapsUrl = shelterMapsUrl(shelter);
-  const unavailableRanges = (shelter.availability ?? []).filter((range) => range.availabilityType === "unavailable");
-  const singleDayBlockouts = new Map(
-    unavailableRanges
-      .filter((range) => range.startDate === range.endDate)
-      .map((range) => [range.startDate, range]),
-  );
-  const regularHours = shelter.regularHours ?? [];
-  const fallbackClosedDays = unavailableRanges
-    .map((range) => range.note?.match(/^Recurring weekly closure:(\d)$/)?.[1])
-    .filter(Boolean)
-    .map(Number);
-  const closedDays = new Set([
-    ...regularHours.filter((hours) => hours.isClosed).map((hours) => hours.dayOfWeek),
-    ...fallbackClosedDays,
-  ]);
-  const sampleOpenDay = regularHours.find((hours) => !hours.isClosed);
-  const defaultOpensAt = sampleOpenDay?.opensAt?.slice(0, 5) ?? "09:00";
-  const defaultClosesAt = sampleOpenDay?.closesAt?.slice(0, 5) ?? "17:00";
-  const defaultSlotDuration = sampleOpenDay?.slotDurationMinutes ?? regularHours[0]?.slotDurationMinutes ?? 60;
-  const calendarDays = buildCalendarDays(calendarMonth);
-  const previousCalendarMonth = new Date(calendarMonth);
-  previousCalendarMonth.setMonth(calendarMonth.getMonth() - 1);
-  const nextCalendarMonth = new Date(calendarMonth);
-  nextCalendarMonth.setMonth(calendarMonth.getMonth() + 1);
   const inputClass = "w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]";
   const labelClass = "mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]";
 
@@ -795,7 +772,7 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
         <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <div>
             <p className="text-sm leading-6 text-[#65584f]">
-              This profile feeds meeting location, shelter contact, donation details, and shelter calendar data.
+              This profile feeds meeting location, shelter contact, and donation payment details.
             </p>
             <div className="mt-5 flex items-center gap-4 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
               <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-[#d6c8ad] text-[#65584f]">
@@ -957,165 +934,131 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
           </form>
         </div>
       </Section>
+    </div>
+  );
+}
 
-      <Section eyebrow="Shelter calendar" title="Blockout dates">
-        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
-          <div>
-            <p className="text-sm leading-6 text-[#65584f]">
-              Click dates to close or reopen one-off holidays. Set recurring closed weekdays for regular non-operating days.
-            </p>
-            <form action={updateShelterOperatingDaysAction} className="mt-5 rounded-2xl bg-[#fffaf5] p-4">
-              <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Weekly closed days</p>
-              <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7">
-                {WEEKDAYS.map((day) => (
-                  <label
-                    className="cursor-pointer rounded-2xl border border-[#d6c8ad] bg-white px-3 py-3 text-center text-xs font-semibold text-[#65584f] has-[:checked]:border-[#c46f75] has-[:checked]:bg-[#c46f75] has-[:checked]:text-white"
-                    key={day.value}
-                  >
-                    <input
-                      className="sr-only"
-                      defaultChecked={closedDays.has(day.value)}
-                      name="closedDays"
-                      type="checkbox"
-                      value={day.value}
-                    />
-                    {day.label}
-                  </label>
-                ))}
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <label>
-                  <span className={labelClass}>Opens</span>
-                  <input className={inputClass} defaultValue={defaultOpensAt} name="opensAt" type="time" />
+function ShelterCalendar({ returnTo, shelter }: { returnTo: string; shelter: AdminDraftShelter }) {
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const unavailableRanges = (shelter.availability ?? []).filter((range) => range.availabilityType === "unavailable");
+  const regularHours = shelter.regularHours ?? [];
+  const fallbackClosedDays = unavailableRanges
+    .map((range) => range.note?.match(/^Recurring weekly closure:(\d)$/)?.[1])
+    .filter(Boolean)
+    .map(Number);
+  const closedDays = new Set([
+    ...regularHours.filter((hours) => hours.isClosed).map((hours) => hours.dayOfWeek),
+    ...fallbackClosedDays,
+  ]);
+  const sampleOpenDay = regularHours.find((hours) => !hours.isClosed);
+  const defaultOpensAt = sampleOpenDay?.opensAt?.slice(0, 5) ?? "09:00";
+  const defaultClosesAt = sampleOpenDay?.closesAt?.slice(0, 5) ?? "17:00";
+  const defaultSlotDuration = sampleOpenDay?.slotDurationMinutes ?? regularHours[0]?.slotDurationMinutes ?? 60;
+  const calendarDays = buildCalendarDays(calendarMonth);
+  const previousCalendarMonth = new Date(calendarMonth);
+  previousCalendarMonth.setMonth(calendarMonth.getMonth() - 1);
+  const nextCalendarMonth = new Date(calendarMonth);
+  nextCalendarMonth.setMonth(calendarMonth.getMonth() + 1);
+  const inputClass = "w-full rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]";
+  const labelClass = "mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]";
+
+  return (
+    <Section eyebrow="Shelter calendar" title="Blockout dates">
+      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
+        <div>
+          <p className="text-sm leading-6 text-[#65584f]">
+            Close one date, a date range, or the same weekday every week. These closures immediately remove booking slots from the adopter calendar.
+          </p>
+          <form action={updateShelterOperatingDaysAction} className="mt-5 rounded-2xl bg-[#fffaf5] p-4">
+            <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Weekly closed days</p>
+            <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7">
+              {WEEKDAYS.map((day) => (
+                <label className="cursor-pointer rounded-2xl border border-[#d6c8ad] bg-white px-3 py-3 text-center text-xs font-semibold text-[#65584f] has-[:checked]:border-[#c46f75] has-[:checked]:bg-[#c46f75] has-[:checked]:text-white" key={day.value}>
+                  <input className="sr-only" defaultChecked={closedDays.has(day.value)} name="closedDays" type="checkbox" value={day.value} />
+                  {day.label}
                 </label>
-                <label>
-                  <span className={labelClass}>Closes</span>
-                  <input className={inputClass} defaultValue={defaultClosesAt} name="closesAt" type="time" />
-                </label>
-                <label>
-                  <span className={labelClass}>Slot minutes</span>
-                  <input className={inputClass} defaultValue={defaultSlotDuration} min="15" name="slotDuration" step="15" type="number" />
-                </label>
-              </div>
-              <button className="mt-4 w-full rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white hover:bg-[#b87179]" type="submit">
-                Save weekly schedule
-              </button>
-            </form>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <label><span className={labelClass}>Opens</span><input className={inputClass} defaultValue={defaultOpensAt} name="opensAt" type="time" /></label>
+              <label><span className={labelClass}>Closes</span><input className={inputClass} defaultValue={defaultClosesAt} name="closesAt" type="time" /></label>
+              <label><span className={labelClass}>Slot minutes</span><input className={inputClass} defaultValue={defaultSlotDuration} min="15" name="slotDuration" step="15" type="number" /></label>
+            </div>
+            <button className="mt-4 w-full rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white hover:bg-[#b87179]" type="submit">Save weekly schedule</button>
+          </form>
+        </div>
+
+        <div>
+          <div className="rounded-2xl bg-[#fffaf5] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <button aria-label="Previous month" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]" onClick={() => setCalendarMonth(previousCalendarMonth)} type="button"><ChevronLeft size={18} /></button>
+              <p className="text-lg font-semibold text-[#65584f]">{formatMonthLabel(calendarMonth)}</p>
+              <button aria-label="Next month" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]" onClick={() => setCalendarMonth(nextCalendarMonth)} type="button"><ChevronRight size={18} /></button>
+            </div>
+            <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.12em] text-[#65584f]">
+              {WEEKDAYS.map((day) => <span key={day.value}>{day.label}</span>)}
+            </div>
+            <div className="mt-2 grid grid-cols-7 gap-2">
+              {calendarDays.map((date) => {
+                const dateKey = isoDate(date);
+                const inMonth = date.getMonth() === calendarMonth.getMonth();
+                const recurringClosed = closedDays.has(date.getDay());
+                const blockout = unavailableRanges.find((range) => (
+                  !range.note?.startsWith("Recurring weekly closure:")
+                  && dateKey >= range.startDate
+                  && dateKey <= range.endDate
+                ));
+                const isClosed = recurringClosed || Boolean(blockout);
+                return (
+                  <form action={toggleShelterBlockoutDateAction} key={dateKey}>
+                    <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
+                    <input name="date" type="hidden" value={dateKey} />
+                    <input name="availabilityId" type="hidden" value={blockout?.id ?? ""} />
+                    <button className={`flex aspect-square w-full items-center justify-center rounded-xl border text-sm font-semibold transition ${isClosed ? "border-[#65584f] bg-[#65584f] text-white" : "border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]"} ${inMonth ? "" : "opacity-35"} ${recurringClosed ? "cursor-not-allowed" : ""}`} disabled={recurringClosed} title={recurringClosed ? "Recurring closed day" : blockout ? "Click to reopen this date" : "Click to block this date"} type="submit">
+                      {date.getDate()}
+                    </button>
+                  </form>
+                );
+              })}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3 text-xs text-[#65584f]">
+              <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded bg-[#65584f]" /> Closed</span>
+              <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded border border-[#d6c8ad] bg-white" /> Open</span>
+            </div>
           </div>
 
-          <div>
-            <div className="rounded-2xl bg-[#fffaf5] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]"
-                  onClick={() => setCalendarMonth(previousCalendarMonth)}
-                  type="button"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <p className="text-lg font-semibold text-[#65584f]">{formatMonthLabel(calendarMonth)}</p>
-                <button
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]"
-                  onClick={() => setCalendarMonth(nextCalendarMonth)}
-                  type="button"
-                >
-                  <ChevronRight size={18} />
-                </button>
-              </div>
-              <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.12em] text-[#65584f]">
-                {WEEKDAYS.map((day) => (
-                  <span key={day.value}>{day.label}</span>
-                ))}
-              </div>
-              <div className="mt-2 grid grid-cols-7 gap-2">
-                {calendarDays.map((date) => {
-                  const dateKey = isoDate(date);
-                  const inMonth = date.getMonth() === calendarMonth.getMonth();
-                  const recurringClosed = closedDays.has(date.getDay());
-                  const blockout = singleDayBlockouts.get(dateKey);
-                  const isClosed = recurringClosed || Boolean(blockout);
-                  return (
-                    <form action={toggleShelterBlockoutDateAction} key={dateKey}>
-                      <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
-                      <input name="date" type="hidden" value={dateKey} />
-                      <input name="availabilityId" type="hidden" value={blockout?.id ?? ""} />
-                      <button
-                        className={`flex aspect-square w-full items-center justify-center rounded-xl border text-sm font-semibold transition ${
-                          isClosed
-                            ? "border-[#65584f] bg-[#65584f] text-white"
-                            : "border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]"
-                        } ${inMonth ? "" : "opacity-35"} ${recurringClosed ? "cursor-not-allowed" : ""}`}
-                        disabled={recurringClosed}
-                        title={recurringClosed ? "Recurring closed day" : blockout ? "Click to reopen this date" : "Click to block this date"}
-                        type="submit"
-                      >
-                        {date.getDate()}
-                      </button>
-                    </form>
-                  );
-                })}
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3 text-xs text-[#65584f]">
-                <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded bg-[#65584f]" /> Closed</span>
-                <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded border border-[#d6c8ad] bg-white" /> Open</span>
-              </div>
-            </div>
+          <form action={createShelterBlockoutAction} className="mt-4 grid gap-3 rounded-2xl bg-[#fffaf5] p-4 md:grid-cols-[1fr_1fr_minmax(0,1.3fr)_auto] md:items-end">
+            <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
+            <label><span className={labelClass}>From</span><input className={inputClass} name="startDate" required type="date" /></label>
+            <label><span className={labelClass}>To</span><input className={inputClass} name="endDate" type="date" /></label>
+            <label><span className={labelClass}>Reason</span><input className={inputClass} maxLength={180} name="note" placeholder="Holiday, staff training, fully booked" required /></label>
+            <button className="rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white hover:bg-[#b87179]" type="submit">Add</button>
+          </form>
 
-            <form action={createShelterBlockoutAction} className="mt-4 grid gap-3 rounded-2xl bg-[#fffaf5] p-4 md:grid-cols-[1fr_1fr_minmax(0,1.3fr)_auto] md:items-end">
-              <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
-              <label>
-                <span className={labelClass}>From</span>
-                <input className={inputClass} name="startDate" required type="date" />
-              </label>
-              <label>
-                <span className={labelClass}>To</span>
-                <input className={inputClass} name="endDate" type="date" />
-              </label>
-              <label>
-                <span className={labelClass}>Reason</span>
-                <input className={inputClass} name="note" placeholder="Holiday, staff training, fully booked" />
-              </label>
-              <button className="rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white hover:bg-[#b87179]" type="submit">
-                Add
-              </button>
-            </form>
-
-            <div className="mt-4 grid gap-2">
-              {unavailableRanges.length > 0 ? (
-                unavailableRanges.map((range) => (
-                  <div className="flex flex-col gap-3 rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 md:flex-row md:items-center md:justify-between" key={range.id}>
-                    <div>
-                      <p className="text-sm font-semibold text-[#65584f]">
-                        {formatShortDate(range.startDate)}
-                        {range.endDate !== range.startDate ? ` - ${formatShortDate(range.endDate)}` : ""}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-[#65584f]">
-                        {range.note?.startsWith("Recurring weekly closure:")
-                          ? "Weekly closure"
-                          : range.note || "Unavailable"}
-                      </p>
-                    </div>
-                    <form action={deleteShelterAvailabilityAction}>
-                      <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
-                      <input name="availabilityId" type="hidden" value={range.id} />
-                      <button className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-4 py-2 text-xs font-semibold text-[#9a3129] hover:bg-[#fff6f4]" type="submit">
-                        <Trash2 size={14} />
-                        Remove
-                      </button>
-                    </form>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] px-4 py-5 text-sm text-[#65584f]">
-                  No blockout dates set for {shelter.name}.
+          <div className="mt-4 grid gap-2">
+            {unavailableRanges.length > 0 ? unavailableRanges.map((range) => (
+              <div className="flex flex-col gap-3 rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 md:flex-row md:items-center md:justify-between" key={range.id}>
+                <div>
+                  <p className="text-sm font-semibold text-[#65584f]">{formatShortDate(range.startDate)}{range.endDate !== range.startDate ? ` - ${formatShortDate(range.endDate)}` : ""}</p>
+                  <p className="mt-1 text-xs leading-5 text-[#65584f]">{range.note?.startsWith("Recurring weekly closure:") ? "Weekly closure" : range.note || "Unavailable"}</p>
                 </div>
-              )}
-            </div>
+                <form action={deleteShelterAvailabilityAction}>
+                  <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
+                  <input name="availabilityId" type="hidden" value={range.id} />
+                  <button className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-4 py-2 text-xs font-semibold text-[#9a3129] hover:bg-[#fff6f4]" type="submit"><Trash2 size={14} />Remove</button>
+                </form>
+              </div>
+            )) : (
+              <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] px-4 py-5 text-sm text-[#65584f]">No blockout dates set for {shelter.name}.</div>
+            )}
           </div>
         </div>
-      </Section>
-    </div>
+      </div>
+    </Section>
   );
 }
 
@@ -1193,6 +1136,51 @@ function ShelterDogsTab({
 function ShelterBookingsTab({
   bookingListHref,
   bookings,
+  calendarReturnTo,
+  checkInHref,
+  initialView = "visits",
+  shelter,
+}: {
+  bookingListHref: string;
+  bookings: AdminDraftBooking[];
+  calendarReturnTo: string;
+  checkInHref: string;
+  initialView?: BookingWorkspaceView;
+  shelter: AdminDraftShelter;
+}) {
+  const workspaceView = initialView;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-2 rounded-[24px] border border-[#d6c8ad] bg-white p-3 sm:grid-cols-2">
+        <Link
+          className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition ${workspaceView === "visits" ? "bg-[#cd8188] text-white" : "bg-[#fffaf5] text-[#65584f] hover:bg-[#f5f1e8]"}`}
+          href={bookingListHref}
+        >
+          <CalendarDays size={17} />
+          Booking visits
+        </Link>
+        <Link
+          className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition ${workspaceView === "calendar" ? "bg-[#cd8188] text-white" : "bg-[#fffaf5] text-[#65584f] hover:bg-[#f5f1e8]"}`}
+          href={calendarReturnTo}
+        >
+          <CalendarDays size={17} />
+          Shelter calendar
+        </Link>
+      </div>
+
+      {workspaceView === "visits" ? (
+        <ShelterBookingVisitList bookingListHref={bookingListHref} bookings={bookings} checkInHref={checkInHref} />
+      ) : (
+        <ShelterCalendar returnTo={calendarReturnTo} shelter={shelter} />
+      )}
+    </div>
+  );
+}
+
+function ShelterBookingVisitList({
+  bookingListHref,
+  bookings,
   checkInHref,
 }: {
   bookingListHref: string;
@@ -1206,25 +1194,27 @@ function ShelterBookingsTab({
   const today = new Date().toISOString().slice(0, 10);
   const todayCount = bookings.filter((booking) => booking.appointmentDate === today).length;
   const checkedInCount = bookings.filter((booking) => booking.checkedIn).length;
-  const now = new Date();
-  const bucketCounts = useMemo(() => ({
-    all: bookings.length,
-    needs_follow_up: bookings.filter((booking) => appointmentFollowUpDue({
-      appointment_date: booking.appointmentDate,
-      appointment_time: booking.appointmentTime,
-      status: booking.status,
-    }, now)).length,
-    past: bookings.filter((booking) => isPastAppointmentByTime({
-      appointment_date: booking.appointmentDate,
-      appointment_time: booking.appointmentTime,
-      status: booking.status,
-    }, now)).length,
-    upcoming: bookings.filter((booking) => !isPastAppointmentByTime({
-      appointment_date: booking.appointmentDate,
-      appointment_time: booking.appointmentTime,
-      status: booking.status,
-    }, now)).length,
-  }), [bookings, now]);
+  const bucketCounts = useMemo(() => {
+    const now = new Date();
+    return {
+      all: bookings.length,
+      needs_follow_up: bookings.filter((booking) => appointmentFollowUpDue({
+        appointment_date: booking.appointmentDate,
+        appointment_time: booking.appointmentTime,
+        status: booking.status,
+      }, now)).length,
+      past: bookings.filter((booking) => isPastAppointmentByTime({
+        appointment_date: booking.appointmentDate,
+        appointment_time: booking.appointmentTime,
+        status: booking.status,
+      }, now)).length,
+      upcoming: bookings.filter((booking) => !isPastAppointmentByTime({
+        appointment_date: booking.appointmentDate,
+        appointment_time: booking.appointmentTime,
+        status: booking.status,
+      }, now)).length,
+    };
+  }, [bookings]);
   const visibleBookings = useMemo(
     () => bookings.filter((booking) => matchesBookingFilters({
       booking,
@@ -1535,6 +1525,185 @@ function ShelterBookingsTab({
   );
 }
 
+function donationStatusLabel(status: string) {
+  switch (status) {
+    case "viewed_qr":
+      return "Payment instructions viewed";
+    case "proof_submitted":
+      return "Slip submitted";
+    case "verified":
+      return "Verified";
+    case "rejected":
+      return "Needs follow-up";
+    default:
+      return "Started";
+  }
+}
+
+function donationStatusClass(status: string) {
+  switch (status) {
+    case "verified":
+      return "bg-[#eaf6df] text-[#3f6f24]";
+    case "proof_submitted":
+      return "bg-[#f8e8ea] text-[#9b4e59]";
+    case "rejected":
+      return "bg-[#fff0ef] text-[#9a3129]";
+    default:
+      return "bg-[#f7ecda] text-[#7d633e]";
+  }
+}
+
+function DonationLedger({
+  donations,
+  returnTo,
+  shelters = [],
+  showShelterFilter = false,
+}: {
+  donations: AdminDraftDonation[];
+  returnTo: string;
+  shelters?: AdminDraftShelter[];
+  showShelterFilter?: boolean;
+}) {
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [shelterId, setShelterId] = useState("all");
+  const normalizedSearch = search.trim().toLocaleLowerCase("en");
+  const visibleDonations = donations.filter((donation) => {
+    const matchesSearch = !normalizedSearch || [
+      donation.donorName,
+      donation.donorEmail,
+      donation.donorPhoneNumber,
+      donation.dogName,
+      donation.shelterName,
+    ].filter(Boolean).some((value) => value!.toLocaleLowerCase("en").includes(normalizedSearch));
+    const matchesStatus = status === "all" || donation.status === status;
+    const matchesShelter = shelterId === "all" || donation.shelterId === shelterId;
+    return matchesSearch && matchesStatus && matchesShelter;
+  });
+  const verifiedDonations = donations.filter((donation) => donation.status === "verified");
+  const submittedDonations = donations.filter((donation) => donation.status === "proof_submitted");
+  const recordedTotal = [...verifiedDonations, ...submittedDonations]
+    .reduce((sum, donation) => sum + donation.amountThb, 0);
+
+  return (
+    <Section eyebrow="Donations" title={showShelterFilter ? "Platform donation ledger" : "Shelter donation ledger"}>
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        {[
+          ["Recorded from slips", `฿${recordedTotal.toLocaleString()}`],
+          ["Awaiting review", String(submittedDonations.length)],
+          ["Verified donations", String(verifiedDonations.length)],
+        ].map(([label, value]) => (
+          <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-5" key={label}>
+            <p className="text-sm font-semibold text-[#65584f]">{label}</p>
+            <p className="mt-3 text-3xl font-semibold text-[#65584f]">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className={`mt-5 grid gap-3 rounded-[24px] border border-[#d6c8ad] bg-white p-4 ${showShelterFilter ? "md:grid-cols-[minmax(0,1fr)_220px_220px]" : "md:grid-cols-[minmax(0,1fr)_220px]"}`}>
+        <label>
+          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Search</span>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8d7f72]" />
+            <input className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] py-3 pl-11 pr-4 text-sm text-[#65584f] outline-none focus:border-[#cd8188]" onChange={(event) => setSearch(event.target.value)} placeholder="Donor, dog, email, phone" type="search" value={search} />
+          </div>
+        </label>
+        <label>
+          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Status</span>
+          <select className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]" onChange={(event) => setStatus(event.target.value)} value={status}>
+            <option value="all">All statuses</option>
+            <option value="initiated">Started</option>
+            <option value="viewed_qr">Payment instructions viewed</option>
+            <option value="proof_submitted">Slip submitted</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Needs follow-up</option>
+          </select>
+        </label>
+        {showShelterFilter ? (
+          <label>
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Shelter</span>
+            <select className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]" onChange={(event) => setShelterId(event.target.value)} value={shelterId}>
+              <option value="all">All shelters</option>
+              {shelters.map((shelter) => <option key={shelter.id} value={shelter.id}>{shelter.name}</option>)}
+            </select>
+          </label>
+        ) : null}
+      </div>
+
+      <div className="mt-6 space-y-4">
+        {visibleDonations.map((donation) => {
+          const canReview = Boolean(donation.proofUrl) && donation.status !== "verified";
+          return (
+            <article className="rounded-[28px] border border-[#d6c8ad] bg-white p-5 shadow-[0_16px_50px_rgba(101,88,79,0.08)]" key={donation.id}>
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.1em] ${donationStatusClass(donation.status)}`}>{donationStatusLabel(donation.status)}</span>
+                    <span className="rounded-full bg-[#f5f1e8] px-3 py-1 text-xs font-semibold text-[#65584f]">{new Date(donation.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Donor</p>
+                      <p className="mt-1 text-lg font-semibold text-[#65584f]">{donation.donorName}</p>
+                      <p className="break-words text-sm text-[#65584f]">{donation.donorEmail ?? "No email"}</p>
+                      <p className="text-sm text-[#65584f]">{donation.donorPhoneNumber ?? "No phone"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Donation</p>
+                      <p className="mt-1 text-2xl font-semibold text-[#65584f]">฿{donation.amountThb.toLocaleString()}</p>
+                      <p className="text-sm text-[#65584f]">{donation.treatCount} treat{donation.treatCount === 1 ? "" : "s"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">For</p>
+                      <p className="mt-1 text-lg font-semibold text-[#65584f]">{donation.dogName}</p>
+                      <p className="text-sm text-[#65584f]">{donation.shelterName}</p>
+                      <Link className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-[#c97580]" href={`/dogs/${donation.dogId}`} target="_blank">Open dog profile<ExternalLink size={14} /></Link>
+                    </div>
+                  </div>
+                </div>
+
+                <form action={reviewDonationAction} className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
+                  <input name="donationId" type="hidden" value={donation.id} />
+                  <input name="returnTo" type="hidden" value={returnTo} />
+                  <input name="shelterId" type="hidden" value={donation.shelterId} />
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Transfer evidence</p>
+                  {donation.proofUrl ? (
+                    <a className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" href={donation.proofUrl} rel="noreferrer" target="_blank">
+                      <FileCheck2 size={16} />
+                      Open transfer slip
+                    </a>
+                  ) : (
+                    <div className="mt-3 rounded-2xl border border-dashed border-[#d6c8ad] bg-white px-4 py-4 text-sm text-[#8d7f72]">No slip uploaded yet.</div>
+                  )}
+                  {donation.proofOriginalFileName ? <p className="mt-2 truncate text-xs text-[#8d7f72]">{donation.proofOriginalFileName}</p> : null}
+                  {donation.proofSubmittedAt ? <p className="mt-1 text-xs text-[#8d7f72]">Submitted {new Date(donation.proofSubmittedAt).toLocaleString()}</p> : null}
+                  <label className="mt-3 block">
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Shelter note</span>
+                    <textarea className="min-h-20 w-full resize-none rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]" defaultValue={donation.shelterNote ?? ""} name="shelterNote" placeholder="Optional reconciliation note" />
+                  </label>
+                  {canReview ? (
+                    <div className="mt-3 grid gap-2">
+                      <button className="rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" name="decision" type="submit" value="verify">Verify donation</button>
+                      <button className="rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#9a3129] hover:bg-[#fff1f0]" name="decision" type="submit" value="reject">Needs follow-up</button>
+                    </div>
+                  ) : null}
+                </form>
+              </div>
+            </article>
+          );
+        })}
+        {visibleDonations.length === 0 ? (
+          <div className="rounded-[28px] border border-dashed border-[#d6c8ad] bg-[#fffaf5] p-8 text-center">
+            <Banknote className="mx-auto h-8 w-8 text-[#cd8188]" />
+            <p className="mt-3 text-lg font-semibold text-[#65584f]">No donations match this view.</p>
+            <p className="mt-1 text-sm text-[#8d7f72]">New donation attempts and submitted slips will appear here.</p>
+          </div>
+        ) : null}
+      </div>
+    </Section>
+  );
+}
+
 function ShelterMessagesTab({
   adminMode,
   messageThreads,
@@ -1734,6 +1903,7 @@ function ShelterMessagesTab({
                           {message.sender_role === "system" ? "PawJai/system" : message.sender_label ?? (isShelter ? shelter.name : selectedThread.adopterName)}
                         </p>
                         {message.attachment_url && previewImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             alt={message.attachment_name ?? "Appointment attachment"}
                             className="mt-2 max-h-[260px] w-full rounded-xl object-cover"
@@ -1839,10 +2009,14 @@ function ShelterWorkspace({
   adminMode,
   bookingListHref,
   bookings,
+  calendarReturnTo,
   checkInHref,
   createDogHref,
   dogEditHref,
   dogs,
+  donationReturnTo,
+  donations,
+  initialBookingView,
   messageThreads,
   messagesUnavailable,
   profileReturnTo,
@@ -1853,10 +2027,14 @@ function ShelterWorkspace({
   adminMode: boolean;
   bookingListHref: string;
   bookings: AdminDraftBooking[];
+  calendarReturnTo: string;
   checkInHref: string;
   createDogHref: string;
   dogEditHref: (dog: AdminDraftDog) => string;
   dogs: AdminDraftDog[];
+  donationReturnTo: string;
+  donations: AdminDraftDonation[];
+  initialBookingView?: BookingWorkspaceView;
   messageThreads: AdminDraftMessageThread[];
   messagesUnavailable: boolean;
   profileReturnTo: string;
@@ -1867,7 +2045,7 @@ function ShelterWorkspace({
   return (
     <div className="space-y-6">
       <Section eyebrow={adminMode ? "Partner shelter workspace" : "My Shelter Workspace powered by PAWJAI"} title={shelter.name}>
-        <div className={`mt-5 grid gap-3 ${adminMode ? "md:grid-cols-5" : "grid-cols-2 md:grid-cols-5"}`}>
+        <div className={`mt-5 grid gap-3 ${adminMode ? "md:grid-cols-6" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-6"}`}>
           <ShelterWorkspaceTabButton
             active={tab === "profile"}
             adminMode={adminMode}
@@ -1904,6 +2082,15 @@ function ShelterWorkspace({
             Booking visits
           </ShelterWorkspaceTabButton>
           <ShelterWorkspaceTabButton
+            active={tab === "donations"}
+            adminMode={adminMode}
+            icon={<Banknote className="h-5 w-5" />}
+            meta={`${donations.length} records`}
+            onClick={() => setTab("donations")}
+          >
+            Donations
+          </ShelterWorkspaceTabButton>
+          <ShelterWorkspaceTabButton
             active={tab === "messages"}
             adminMode={adminMode}
             icon={<MessageCircle className="h-5 w-5" />}
@@ -1916,7 +2103,17 @@ function ShelterWorkspace({
       </Section>
       {tab === "profile" ? <ShelterProfileTab returnTo={profileReturnTo} shelter={shelter} /> : null}
       {tab === "dogs" ? <ShelterDogsTab dogEditHref={dogEditHref} dogs={dogs} shelter={shelter} /> : null}
-      {tab === "bookings" ? <ShelterBookingsTab bookingListHref={bookingListHref} bookings={bookings} checkInHref={checkInHref} /> : null}
+      {tab === "bookings" ? (
+        <ShelterBookingsTab
+          bookingListHref={bookingListHref}
+          bookings={bookings}
+          calendarReturnTo={calendarReturnTo}
+          checkInHref={checkInHref}
+          initialView={initialBookingView}
+          shelter={shelter}
+        />
+      ) : null}
+      {tab === "donations" ? <DonationLedger donations={donations} returnTo={donationReturnTo} /> : null}
       {tab === "messages" ? (
         <ShelterMessagesTab
           adminMode={adminMode}
@@ -1933,6 +2130,8 @@ function ShelterWorkspace({
 function PartnerSheltersTab({
   bookings,
   dogs,
+  donations,
+  initialBookingView,
   selectedShelter,
   selectedShelterId,
   setSelectedShelterId,
@@ -1944,6 +2143,8 @@ function PartnerSheltersTab({
 }: {
   bookings: AdminDraftBooking[];
   dogs: AdminDraftDog[];
+  donations: AdminDraftDonation[];
+  initialBookingView?: BookingWorkspaceView;
   messageThreads: AdminDraftMessageThread[];
   messagesUnavailable: boolean;
   selectedShelter: AdminDraftShelter;
@@ -1957,7 +2158,7 @@ function PartnerSheltersTab({
     <div className="space-y-6">
       <Section eyebrow="Partner shelters" title="Shelter umbrella">
         <p className="mt-2 text-sm leading-6 text-[#65584f]">
-          PawJai HQ lands here first. Open a shelter to see its profile, create dog profiles, dog listings, booking visits, and messaging.
+          PawJai HQ lands here first. Open a shelter to see its profile, dog listings, booking visits, donations, and messaging.
         </p>
         <div className="mt-5 flex gap-2 overflow-x-auto rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-2">
           {shelters.map((shelter) => (
@@ -2000,10 +2201,14 @@ function PartnerSheltersTab({
         adminMode
         bookingListHref={`/admindraft?shelter=${selectedShelter.id}&view=bookings`}
         bookings={bookings}
+        calendarReturnTo={`/admindraft?shelter=${selectedShelter.id}&view=bookings&bookingView=calendar`}
         checkInHref={withReturnTo("/booking/check-in", `/admindraft?shelter=${selectedShelter.id}&view=bookings`)}
         createDogHref={`/admindraft/dog-creation?shelter=${selectedShelter.id}`}
         dogEditHref={(dog) => `/admindraft/dogs/${dog.id}/edit`}
         dogs={dogs}
+        donationReturnTo={`/admindraft?shelter=${selectedShelter.id}&view=donations`}
+        donations={donations}
+        initialBookingView={initialBookingView}
         messageThreads={messageThreads}
         messagesUnavailable={messagesUnavailable}
         profileReturnTo={`/admindraft?shelter=${selectedShelter.id}&view=profile`}
@@ -2122,7 +2327,7 @@ function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking
           Show all shelters
         </button>
       </div>
-      <ShelterBookingsTab
+      <ShelterBookingVisitList
         bookingListHref={bookingListHref}
         bookings={filteredBookings}
         checkInHref={withReturnTo("/booking/check-in", bookingListHref)}
@@ -2593,13 +2798,19 @@ function AboutTab({ about }: { about: AdminDraftAboutContent | null }) {
 }
 
 function isShelterTab(value: string | undefined): value is ShelterTab {
-  return value === "profile" || value === "dogs" || value === "bookings" || value === "messages";
+  return value === "profile" || value === "dogs" || value === "bookings" || value === "donations" || value === "messages";
+}
+
+function isBookingWorkspaceView(value: string | undefined): value is BookingWorkspaceView {
+  return value === "visits" || value === "calendar";
 }
 
 export default function AdminReorgDraftPanel({
   accountSettingsHref,
   data,
   initialMainTab,
+  initialBookingWorkspaceView,
+  initialMessage,
   initialRoleView = "pawjai",
   initialShelterId,
   initialShelterTab,
@@ -2608,7 +2819,9 @@ export default function AdminReorgDraftPanel({
 }: {
   accountSettingsHref?: string;
   data?: AdminDraftData;
+  initialBookingWorkspaceView?: string;
   initialMainTab?: string;
+  initialMessage?: string;
   initialRoleView?: RoleView;
   initialShelterId?: string;
   initialShelterTab?: string;
@@ -2618,6 +2831,7 @@ export default function AdminReorgDraftPanel({
   const shelters = data?.shelters.length ? data.shelters : fallbackShelters;
   const dogs = data?.dogs.length ? data.dogs : fallbackDogs;
   const bookings = data?.bookings.length ? data.bookings : fallbackBookings;
+  const donations = data?.donations ?? [];
   const messageThreads = data?.messageThreads ?? [];
   const messagesUnavailable = data?.messagesUnavailable ?? false;
   const adClicks = data?.adClicks ?? [];
@@ -2636,12 +2850,22 @@ export default function AdminReorgDraftPanel({
   const selectedShelter = shelters.find((shelter) => shelter.id === selectedShelterId) ?? shelters[0] ?? fallbackShelters[0];
   const selectedShelterDogs = dogs.filter((dog) => dog.shelterId === selectedShelter.id);
   const selectedShelterBookings = bookings.filter((booking) => booking.shelterId === selectedShelter.id);
+  const selectedShelterDonations = donations.filter((donation) => donation.shelterId === selectedShelter.id);
   const connected = data?.source === "supabase";
   const isShelterPortal = workspaceBaseHref.startsWith("/shelter/");
   const draftShelterRole = !isShelterPortal && role === "shelter" ? "shelter" : undefined;
   const shelterWorkspaceBookingsHref = isShelterPortal
     ? `${workspaceBaseHref}?view=bookings`
     : adminDraftShelterWorkspaceHref(selectedShelter.id, "bookings", draftShelterRole);
+  const shelterWorkspaceCalendarReturnTo = isShelterPortal
+    ? `${workspaceBaseHref}?view=bookings&bookingView=calendar`
+    : `${adminDraftShelterWorkspaceHref(selectedShelter.id, "bookings", draftShelterRole)}&bookingView=calendar`;
+  const shelterWorkspaceDonationReturnTo = isShelterPortal
+    ? `${workspaceBaseHref}?view=donations`
+    : adminDraftShelterWorkspaceHref(selectedShelter.id, "donations", draftShelterRole);
+  const bookingWorkspaceView = isBookingWorkspaceView(initialBookingWorkspaceView)
+    ? initialBookingWorkspaceView
+    : "visits";
   const shelterWorkspaceCreateDogHref = isShelterPortal
     ? `${workspaceBaseHref}/dogs/new`
     : adminDraftShelterCreateDogHref(selectedShelter.id, draftShelterRole);
@@ -2680,14 +2904,14 @@ export default function AdminReorgDraftPanel({
               </p>
               <h1 className="mt-2 text-4xl font-semibold text-[#65584f]">Reorganized admin hierarchy</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-[#65584f]/75">
-                This draft keeps PawJai HQ, partner shelters, dogs, bookings, ads, and content in one branded workspace without changing the adopter app.
+                This draft keeps PawJai HQ, partner shelters, dogs, bookings, donations, ads, and content in one branded workspace without changing the adopter app.
               </p>
               <div className={`mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold ${
                 connected ? "bg-[#eaf6df] text-[#3f6f24]" : "bg-[#f8e8ea] text-[#65584f]"
               }`}>
                 <PawPrint className="h-4 w-4" />
                 {connected
-                  ? `Connected to Supabase: ${shelters.length} shelters, ${dogs.length} dogs, ${bookings.length} bookings`
+                  ? `Connected to Supabase: ${shelters.length} shelters, ${dogs.length} dogs, ${bookings.length} bookings, ${donations.length} donations`
                   : `Using fallback draft data${data?.error ? `: ${data.error}` : ""}`}
               </div>
             </div>
@@ -2720,6 +2944,12 @@ export default function AdminReorgDraftPanel({
           </div>
         </header>
 
+        {initialMessage ? (
+          <div className={`mb-6 rounded-2xl border px-5 py-4 text-sm font-semibold ${/could not|choose|must|required|invalid|failed/i.test(initialMessage) ? "border-[#efc2be] bg-[#fff1f0] text-[#9a3129]" : "border-[#cfe2c5] bg-[#eef5ea] text-[#4f7847]"}`}>
+            {initialMessage}
+          </div>
+        ) : null}
+
         {isPawjai ? (
           <nav className="mb-6 flex flex-wrap gap-3 rounded-[28px] border border-[#d6c8ad] bg-white/90 p-4 shadow-[0_14px_42px_rgba(101,88,79,0.08)] backdrop-blur">
             <PillButton active={mainTab === "shelters"} onClick={() => setMainTab("shelters")}>
@@ -2733,6 +2963,10 @@ export default function AdminReorgDraftPanel({
             <PillButton active={mainTab === "bookings"} onClick={() => setMainTab("bookings")}>
               <CalendarDays className="mr-2 inline h-4 w-4" />
               Bookings
+            </PillButton>
+            <PillButton active={mainTab === "donations"} onClick={() => setMainTab("donations")}>
+              <Banknote className="mr-2 inline h-4 w-4" />
+              Donations
             </PillButton>
             <PillButton active={mainTab === "ads"} onClick={() => setMainTab("ads")}>
               <Megaphone className="mr-2 inline h-4 w-4" />
@@ -2770,6 +3004,8 @@ export default function AdminReorgDraftPanel({
           <PartnerSheltersTab
             bookings={selectedShelterBookings}
             dogs={selectedShelterDogs}
+            donations={selectedShelterDonations}
+            initialBookingView={bookingWorkspaceView}
             selectedShelter={selectedShelter}
             selectedShelterId={selectedShelter.id}
             setSelectedShelterId={setSelectedShelterId}
@@ -2782,6 +3018,7 @@ export default function AdminReorgDraftPanel({
         ) : null}
         {isPawjai && mainTab === "dogs" ? <AllDogsTab dogs={dogs} shelters={shelters} /> : null}
         {isPawjai && mainTab === "bookings" ? <GlobalBookingsTab bookings={bookings} shelters={shelters} /> : null}
+        {isPawjai && mainTab === "donations" ? <DonationLedger donations={donations} returnTo="/admindraft?view=donations" shelters={shelters} showShelterFilter /> : null}
         {isPawjai && mainTab === "ads" ? <AdsTab adClicks={adClicks} ads={ads} /> : null}
         {isPawjai && mainTab === "about" ? <AboutTab about={about} /> : null}
 
@@ -2790,10 +3027,14 @@ export default function AdminReorgDraftPanel({
             adminMode={false}
             bookingListHref={shelterWorkspaceBookingsHref}
             bookings={selectedShelterBookings}
+            calendarReturnTo={shelterWorkspaceCalendarReturnTo}
             checkInHref={withReturnTo("/booking/check-in", shelterWorkspaceBookingsHref)}
             createDogHref={shelterWorkspaceCreateDogHref}
             dogEditHref={shelterWorkspaceDogEditHref}
             dogs={selectedShelterDogs}
+            donationReturnTo={shelterWorkspaceDonationReturnTo}
+            donations={selectedShelterDonations}
+            initialBookingView={bookingWorkspaceView}
             messageThreads={messageThreads}
             messagesUnavailable={messagesUnavailable}
             profileReturnTo={isShelterPortal ? `${workspaceBaseHref}?view=profile` : adminDraftShelterWorkspaceHref(selectedShelter.id, "profile", draftShelterRole)}

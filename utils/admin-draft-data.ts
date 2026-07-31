@@ -95,6 +95,28 @@ export type AdminDraftBooking = {
   visitorNote: string | null;
 };
 
+export type AdminDraftDonation = {
+  amountThb: number;
+  createdAt: string;
+  dogId: string;
+  dogName: string;
+  donorEmail: string | null;
+  donorName: string;
+  donorPhoneNumber: string | null;
+  id: string;
+  proofMimeType: string | null;
+  proofOriginalFileName: string | null;
+  proofSubmittedAt: string | null;
+  proofUrl: string | null;
+  shelterId: string;
+  shelterName: string;
+  shelterNote: string | null;
+  status: string;
+  treatCount: number;
+  updatedAt: string;
+  userId: string;
+};
+
 export type AdminDraftAd = {
   submissionCode: string;
   contactEmail: string | null;
@@ -135,6 +157,7 @@ export type AdminDraftData = {
   adClicks: AdminDraftAdClick[];
   ads: AdminDraftAd[];
   bookings: AdminDraftBooking[];
+  donations: AdminDraftDonation[];
   dogs: AdminDraftDog[];
   error: string | null;
   messageThreads: AppointmentMessageThread[];
@@ -154,6 +177,7 @@ function fallbackData(error: string): AdminDraftData {
     adClicks: [],
     ads: [],
     bookings: [],
+    donations: [],
     dogs: [],
     error,
     messageThreads: [],
@@ -193,7 +217,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     return fallbackData(error instanceof Error ? error.message : "Supabase admin client is unavailable.");
   }
 
-  const [sheltersResult, dogsResult, dogPhotosResult, bookingsResult, messageThreadsResult, adsResult, adClicksResult, aboutResult, availabilityResult, regularHoursResult] = await Promise.all([
+  const [sheltersResult, dogsResult, dogPhotosResult, bookingsResult, donationsResult, messageThreadsResult, adsResult, adClicksResult, aboutResult, availabilityResult, regularHoursResult] = await Promise.all([
     supabase
       .from("shelters")
       .select("id,name,phone_number,email,address_line,subdistrict,district,province,postal_code,description,website_url,facebook_url,instagram_url,logo_url,google_maps_url,meeting_instructions,promptpay_id,bank_name,bank_account_number,bank_account_name")
@@ -213,6 +237,11 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
       .select("*")
       .order("appointment_date", { ascending: true })
       .limit(200),
+    supabase
+      .from("donation_intents")
+      .select("id,user_id,dog_id,shelter_id,treat_count,amount_thb,status,created_at,updated_at,proof_bucket_id,proof_storage_path,proof_mime_type,proof_original_file_name,proof_submitted_at,shelter_note")
+      .order("created_at", { ascending: false })
+      .limit(500),
     loadAppointmentMessageThreads({ shelterIds: options.shelterIds }),
     supabase
       .from("ads")
@@ -239,7 +268,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
       .order("day_of_week", { ascending: true }),
   ]);
 
-  const firstError = sheltersResult.error ?? dogsResult.error ?? dogPhotosResult.error ?? bookingsResult.error ?? adsResult.error ?? aboutResult.error;
+  const firstError = sheltersResult.error ?? dogsResult.error ?? dogPhotosResult.error ?? bookingsResult.error ?? donationsResult.error ?? adsResult.error ?? aboutResult.error;
   if (firstError) {
     return fallbackData(firstError.message);
   }
@@ -261,6 +290,9 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
   const rawBookings = (bookingsResult.data ?? []).filter((booking) => (
     shouldScopeShelters ? returnedShelterIds.has(booking.shelter_id) : true
   ));
+  const rawDonations = (donationsResult.data ?? []).filter((donation) => (
+    shouldScopeShelters ? returnedShelterIds.has(donation.shelter_id) : true
+  ));
   const messageThreads = messageThreadsResult.threads.filter((thread) => (
     shouldScopeShelters ? returnedShelterIds.has(thread.shelterId) : true
   ));
@@ -274,6 +306,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     shouldScopeShelters ? returnedShelterIds.has(hours.shelter_id) : true
   ));
   const bookingAdopterIds = [...new Set(rawBookings.map((booking) => booking.adopter_id).filter(Boolean))];
+  const donationProfileIds = [...new Set(rawDonations.map((donation) => donation.user_id).filter(Boolean))];
   const adClickProfileIds = [...new Set(rawAdClicks.map((click) => click.user_id).filter(Boolean))] as string[];
   const adoptersResult = bookingAdopterIds.length
     ? await supabase
@@ -293,12 +326,35 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
           .in("profile_id", adClickProfileIds),
       ])
     : [{ data: [], error: null }, { data: [], error: null }];
+  const [donationProfilesResult, donationAdoptersResult] = donationProfileIds.length
+    ? await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id,full_name,phone_number")
+          .in("id", donationProfileIds),
+        supabase
+          .from("adopters")
+          .select("profile_id,first_name,last_name,email,phone_number")
+          .in("profile_id", donationProfileIds),
+      ])
+    : [{ data: [], error: null }, { data: [], error: null }];
+  const donationProofUrls = new Map<string, string>();
+  await Promise.all(rawDonations.map(async (donation) => {
+    if (!donation.proof_storage_path) return;
+
+    const { data } = await supabase.storage
+      .from(donation.proof_bucket_id || "donation-slips")
+      .createSignedUrl(donation.proof_storage_path, 60 * 60);
+    if (data?.signedUrl) donationProofUrls.set(donation.id, data.signedUrl);
+  }));
 
   const shelterSummary = new Map(rawShelters.map((shelter) => [shelter.id, shelter]));
   const dogSummary = new Map(rawDogs.map((dog) => [dog.id, dog]));
   const adopterSummary = new Map((adoptersResult.data ?? []).map((adopter) => [adopter.id, adopter]));
   const clickProfileSummary = new Map((clickProfilesResult.data ?? []).map((profile) => [profile.id, profile]));
   const clickAdopterSummary = new Map((clickAdoptersResult.data ?? []).map((adopter) => [adopter.profile_id, adopter]));
+  const donationProfileSummary = new Map((donationProfilesResult.data ?? []).map((profile) => [profile.id, profile]));
+  const donationAdopterSummary = new Map((donationAdoptersResult.data ?? []).map((adopter) => [adopter.profile_id, adopter]));
   const shelterNames = new Map(rawShelters.map((shelter) => [shelter.id, shelter.name]));
   const dogNames = new Map(rawDogs.map((dog) => [dog.id, dog.name]));
   const dogsByShelter = new Map<string, number>();
@@ -433,6 +489,35 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
       status: booking.status,
       visitorNote: booking.visitor_note,
     })),
+    donations: rawDonations.map((donation) => {
+      const adopter = donationAdopterSummary.get(donation.user_id);
+      const profile = donationProfileSummary.get(donation.user_id);
+      const donorName = [adopter?.first_name, adopter?.last_name].filter(Boolean).join(" ")
+        || profile?.full_name
+        || "Unknown donor";
+
+      return {
+        amountThb: donation.amount_thb,
+        createdAt: donation.created_at,
+        dogId: donation.dog_id,
+        dogName: dogNames.get(donation.dog_id) ?? "Dog profile",
+        donorEmail: adopter?.email ?? null,
+        donorName,
+        donorPhoneNumber: adopter?.phone_number ?? profile?.phone_number ?? null,
+        id: donation.id,
+        proofMimeType: donation.proof_mime_type,
+        proofOriginalFileName: donation.proof_original_file_name,
+        proofSubmittedAt: donation.proof_submitted_at,
+        proofUrl: donationProofUrls.get(donation.id) ?? null,
+        shelterId: donation.shelter_id,
+        shelterName: shelterNames.get(donation.shelter_id) ?? "Unknown shelter",
+        shelterNote: donation.shelter_note,
+        status: donation.status,
+        treatCount: donation.treat_count,
+        updatedAt: donation.updated_at,
+        userId: donation.user_id,
+      };
+    }),
     dogs: rawDogs.map((dog) => {
       const photoSummary = photoSummaryByDog.get(dog.id) ?? { coverUrl: null, photosCount: 0 };
 

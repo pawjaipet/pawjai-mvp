@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import DogBreedPicker from "@/components/dogs/DogBreedPicker";
+import PersonalityTagPicker from "@/components/dogs/PersonalityTagPicker";
 import { createDogListingAction } from "./actions";
 import { initialCreateDogListingState } from "./form-state";
 
@@ -666,19 +667,7 @@ export default function DogListingForm({
             <p className="mb-4 text-sm leading-6 text-[#7a6d61]">
               These become the playful beige bubbles on the swipe card and dog profile. Pick the words that actually fit the dog.
             </p>
-            <ChipCheckboxGroup name="personality_tag" options={personalityTags} />
-            <div className="mt-4">
-              <Field
-                label="Other personality tags"
-                hint="Optional. Add extra public tags separated by commas, like Shy at first, Loves belly rubs, Food motivated."
-              >
-                <input
-                  name="custom_personality_tags"
-                  className={inputClass()}
-                  placeholder="Shy at first, Loves belly rubs"
-                />
-              </Field>
-            </div>
+            <PersonalityTagPicker options={personalityTags} />
           </div>
 
           <div>

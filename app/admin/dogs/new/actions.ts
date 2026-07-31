@@ -17,6 +17,7 @@ import {
 import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { canonicalizeBreedLabel, isCanonicalDogBreed } from "@/utils/dog-breeds";
 import { fetchRemoteAsset } from "@/utils/onedrive";
+import { dedupePersonalityTags } from "@/utils/personality-tags";
 import { slugify } from "@/utils/slug";
 import { createAdminClient } from "@/utils/supabase/admin";
 import type { AdminGateState, CreateDogListingState } from "./form-state";
@@ -328,18 +329,17 @@ function normalizeStructuredTraits(formData: FormData) {
       traitValue: traitValue!,
     }));
 
-  const personalityTraits = getStringValues(formData, "personality_tag").map((traitValue) => ({
-    traitType: "personality",
-    traitValue,
-  }));
-  const customPersonalityTraits = getStringValues(formData, "custom_personality_tags")
+  const customPersonalityTags = getStringValues(formData, "custom_personality_tags")
     .flatMap((traitValue) => traitValue.split(/[\n,]+/))
     .map((traitValue) => traitValue.trim())
-    .filter(Boolean)
-    .map((traitValue) => ({
+    .filter(Boolean);
+  const personalityTraits = dedupePersonalityTags([
+    ...getStringValues(formData, "personality_tag"),
+    ...customPersonalityTags,
+  ]).map((traitValue) => ({
       traitType: "personality",
       traitValue,
-    }));
+  }));
 
   const careTraits = getStringValues(formData, "care_tag")
     .filter((traitValue) => traitValue !== "No medical needs")
@@ -348,7 +348,7 @@ function normalizeStructuredTraits(formData: FormData) {
       traitValue,
     }));
 
-  return [...structuredTraits, ...personalityTraits, ...customPersonalityTraits, ...careTraits];
+  return [...structuredTraits, ...personalityTraits, ...careTraits];
 }
 
 function guessExtensionFromUrl(url: string) {

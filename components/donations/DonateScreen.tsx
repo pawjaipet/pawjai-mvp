@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Copy } from "lucide-react";
+import { ArrowLeft, Check, Copy, FileCheck2, Upload } from "lucide-react";
 import generatePromptPayPayload from "promptpay-qr";
 import QRCode from "qrcode";
-import { markIntentViewedQR } from "@/app/donations/actions";
+import {
+  markIntentViewedQR,
+  submitDonationSlipAction,
+  type DonationSlipState,
+} from "@/app/donations/actions";
 
 const M = "Montserrat, sans-serif";
 const BG = "#F5EBDC";
@@ -18,8 +22,11 @@ type DonateScreenProps = {
   dogPhotoUrl: string | null;
   shelterName: string;
   intentId: string | null;
+  intentStatus: string | null;
   treatCount: number | null;
   amountThb: number | null;
+  proofOriginalFileName: string | null;
+  proofSubmittedAt: string | null;
   promptpayId: string | null;
   bankName: string | null;
   bankAccountNumber: string | null;
@@ -120,14 +127,19 @@ export default function DonateScreen({
   dogPhotoUrl,
   shelterName,
   intentId,
+  intentStatus,
   treatCount,
   amountThb,
+  proofOriginalFileName,
+  proofSubmittedAt,
   promptpayId,
   bankName,
   bankAccountNumber,
   bankAccountName,
 }: DonateScreenProps) {
   const [qrDataUrl, setQrDataUrl] = useState("");
+  const initialSlipState: DonationSlipState = { message: "", status: "idle" };
+  const [slipState, submitSlip, slipPending] = useActionState(submitDonationSlipAction, initialSlipState);
 
   // Fire-and-forget: mark the intent as viewed. Silent failure.
   useEffect(() => {
@@ -282,6 +294,66 @@ export default function DonateScreen({
                 <CopyRow label="Amount" value={amountLabel} copyValue={String(amountThb)} bold />
               ) : null}
             </div>
+          </Card>
+        ) : null}
+
+        {intentId ? (
+          <Card>
+            <div className="flex items-start gap-[12px]">
+              <div className="flex h-[40px] w-[40px] flex-shrink-0 items-center justify-center rounded-full bg-[#f8e8ea]">
+                <FileCheck2 size={20} stroke={PINK} strokeWidth={2.2} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <SectionLabel>Transfer slip</SectionLabel>
+                <p className="mt-[6px] text-[13px] leading-5 text-[#8d7f72]">
+                  After paying, attach the bank slip so {shelterName} can match and record your donation.
+                </p>
+              </div>
+            </div>
+
+            {proofOriginalFileName || slipState.status === "success" ? (
+              <div className="mt-[16px] rounded-[14px] bg-[#eef5ea] px-[14px] py-[12px] text-[12px] leading-5 text-[#4f7847]">
+                <p className="font-semibold">
+                  {intentStatus === "verified" ? "Verified by the shelter" : "Slip submitted"}
+                </p>
+                {proofOriginalFileName ? <p className="truncate">{proofOriginalFileName}</p> : null}
+                {proofSubmittedAt ? <p>{new Date(proofSubmittedAt).toLocaleString()}</p> : null}
+              </div>
+            ) : null}
+
+            {intentStatus !== "verified" ? (
+              <form action={submitSlip} className="mt-[16px] space-y-[12px]">
+                <input name="intentId" type="hidden" value={intentId} />
+                <input
+                  accept="image/png,image/jpeg,image/webp,application/pdf"
+                  className="w-full rounded-[14px] border border-[#d8c7ad] bg-[#fffaf5] px-[12px] py-[10px] text-[12px] text-[#65584f] file:mr-[10px] file:rounded-full file:border-0 file:bg-[#efe3cf] file:px-[12px] file:py-[7px] file:text-[12px] file:font-semibold file:text-[#65584f]"
+                  name="slip"
+                  required
+                  type="file"
+                />
+                <button
+                  className="flex w-full items-center justify-center gap-[8px] rounded-full px-[20px] py-[12px] text-[13px] font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-60"
+                  disabled={slipPending}
+                  style={{ background: PINK }}
+                  type="submit"
+                >
+                  <Upload size={16} />
+                  {slipPending ? "Sending slip…" : proofOriginalFileName ? "Replace slip" : "Send slip to shelter"}
+                </button>
+              </form>
+            ) : null}
+
+            {slipState.message ? (
+              <p
+                className="mt-[12px] rounded-[12px] px-[12px] py-[9px] text-[12px] leading-5"
+                style={{
+                  background: slipState.status === "success" ? "#eef5ea" : "#fff1f0",
+                  color: slipState.status === "success" ? "#4f7847" : "#a23f38",
+                }}
+              >
+                {slipState.message}
+              </p>
+            ) : null}
           </Card>
         ) : null}
 

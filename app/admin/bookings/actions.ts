@@ -34,7 +34,7 @@ function bookingsRedirect(shelterId: string, message: string) {
   redirect(`/admin/bookings?${params.toString()}`);
 }
 
-function shelterViewRedirect(shelterId: string, view: string, message: string) {
+function shelterViewRedirect(shelterId: string, view: string, message: string): never {
   const params = new URLSearchParams();
   if (shelterId) params.set("shelter", shelterId);
   if (view) params.set("view", view);
@@ -42,7 +42,7 @@ function shelterViewRedirect(shelterId: string, view: string, message: string) {
   redirect(`/admin/bookings?${params.toString()}`);
 }
 
-function redirectAfterShelterMutation(formData: FormData, shelterId: string, view: string, message: string) {
+function redirectAfterShelterMutation(formData: FormData, shelterId: string, view: string, message: string): never {
   const returnTo = String(formData.get("returnTo") ?? "");
 
   if (returnTo.startsWith("/admindraft")) {
@@ -219,7 +219,10 @@ function parseDecision(value: FormDataEntryValue | null): BookingDecision | null
 }
 
 function isIsoDate(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
 function statusForDecision(decision: BookingDecision): AppointmentStatus {
@@ -670,7 +673,7 @@ export async function updateShelterOperatingDaysAction(formData: FormData) {
   redirectAfterShelterMutation(
     formData,
     shelterId,
-    "profile",
+    "bookings",
     isMissingSchemaError(error)
       ? fallbackError
         ? `Weekly operating days could not be saved: ${fallbackError.message}`
@@ -682,18 +685,57 @@ export async function updateShelterOperatingDaysAction(formData: FormData) {
 }
 
 export async function createShelterBlockoutAction(formData: FormData) {
-  const shelterId = String(formData.get("shelterId") ?? "");
-  const startDate = String(formData.get("startDate") ?? "");
-  const endDate = String(formData.get("endDate") || startDate);
+  const shelterId = String(formData.get("shelterId") ?? "").trim();
+  const startDate = String(formData.get("startDate") ?? "").trim();
+  const requestedEndDate = String(formData.get("endDate") ?? "").trim();
+  const endDate = requestedEndDate || startDate;
   const note = cleanText(formData.get("note"));
 
-  if (!shelterId || !startDate || !endDate || endDate < startDate) {
+  if (!shelterId) {
     return;
   }
 
   const adminContext = await requireShelterAccess(shelterId, "/admin/bookings");
 
+  if (!isIsoDate(startDate)) {
+    redirectAfterShelterMutation(formData, shelterId, "bookings", "Choose a valid start date for the blockout.");
+  }
+
+  if (!isIsoDate(endDate)) {
+    redirectAfterShelterMutation(formData, shelterId, "bookings", "Choose a valid end date for the blockout.");
+  }
+
+  if (endDate < startDate) {
+    redirectAfterShelterMutation(formData, shelterId, "bookings", "The blockout end date must be on or after the start date.");
+  }
+
+  if (!note) {
+    redirectAfterShelterMutation(formData, shelterId, "bookings", "Add a reason for this blockout date.");
+  }
+
   const admin = createAdminClient() as any;
+  const { data: existingRanges, error: existingRangeError } = await admin
+    .from("shelter_availability")
+    .select("id")
+    .eq("shelter_id", shelterId)
+    .eq("availability_type", "unavailable")
+    .eq("start_date", startDate)
+    .eq("end_date", endDate)
+    .limit(1);
+
+  if (existingRangeError) {
+    redirectAfterShelterMutation(
+      formData,
+      shelterId,
+      "bookings",
+      `Existing blockout dates could not be checked: ${existingRangeError.message}`,
+    );
+  }
+
+  if (existingRanges?.length) {
+    redirectAfterShelterMutation(formData, shelterId, "bookings", "That blockout date range already exists.");
+  }
+
   const { error } = await admin
     .from("shelter_availability")
     .insert({
@@ -702,7 +744,9 @@ export async function createShelterBlockoutAction(formData: FormData) {
       note,
       shelter_id: shelterId,
       start_date: startDate,
-    });
+    })
+    .select("id")
+    .single();
 
   revalidatePath("/admin/bookings");
   revalidatePath("/admindraft");
@@ -719,7 +763,12 @@ export async function createShelterBlockoutAction(formData: FormData) {
       targetTable: "shelter_availability",
     });
   }
-  redirectAfterShelterMutation(formData, shelterId, "profile", error ? "Blockout date could not be added." : "Blockout date added.");
+  redirectAfterShelterMutation(
+    formData,
+    shelterId,
+    "bookings",
+    error ? `Blockout date could not be added: ${error.message}` : "Blockout date added.",
+  );
 }
 
 export async function toggleShelterBlockoutDateAction(formData: FormData) {
@@ -765,7 +814,7 @@ export async function toggleShelterBlockoutDateAction(formData: FormData) {
       targetTable: "shelter_availability",
     });
   }
-  redirectAfterShelterMutation(formData, shelterId, "profile", error ? "Calendar date could not be updated." : "Calendar date updated.");
+  redirectAfterShelterMutation(formData, shelterId, "bookings", error ? `Calendar date could not be updated: ${error.message}` : "Calendar date updated.");
 }
 
 export async function deleteShelterAvailabilityAction(formData: FormData) {
@@ -797,7 +846,75 @@ export async function deleteShelterAvailabilityAction(formData: FormData) {
       targetTable: "shelter_availability",
     });
   }
-  redirectAfterShelterMutation(formData, shelterId, "profile", error ? "Blockout date could not be removed." : "Blockout date removed.");
+  redirectAfterShelterMutation(formData, shelterId, "bookings", error ? `Blockout date could not be removed: ${error.message}` : "Blockout date removed.");
+}
+
+export async function reviewDonationAction(formData: FormData) {
+  const donationId = String(formData.get("donationId") ?? "").trim();
+  const shelterId = String(formData.get("shelterId") ?? "").trim();
+  const decision = String(formData.get("decision") ?? "").trim();
+  const shelterNote = cleanText(formData.get("shelterNote"));
+
+  if (!donationId || !shelterId || (decision !== "verify" && decision !== "reject")) {
+    return;
+  }
+
+  const adminContext = await requireShelterAccess(shelterId, "/admin/bookings");
+  const admin = createAdminClient();
+  const { data: donation, error: loadError } = await admin
+    .from("donation_intents")
+    .select("id,amount_thb,dog_id,proof_storage_path,shelter_id")
+    .eq("id", donationId)
+    .eq("shelter_id", shelterId)
+    .maybeSingle();
+
+  if (loadError || !donation) {
+    redirectAfterShelterMutation(formData, shelterId, "donations", "Donation could not be found for this shelter.");
+  }
+
+  if (!donation.proof_storage_path) {
+    redirectAfterShelterMutation(formData, shelterId, "donations", "A transfer slip is required before this donation can be reviewed.");
+  }
+
+  const reviewedAt = new Date().toISOString();
+  const status = decision === "verify" ? "verified" : "rejected";
+  const { error } = await admin
+    .from("donation_intents")
+    .update({
+      reviewed_at: reviewedAt,
+      reviewed_by: adminContext.userId,
+      shelter_note: shelterNote,
+      status,
+    })
+    .eq("id", donation.id)
+    .eq("shelter_id", shelterId);
+
+  revalidatePath("/admindraft");
+  revalidatePath("/shelter/[slug]", "page");
+  revalidatePath(`/dogs/${donation.dog_id}/donate`);
+
+  if (!error) {
+    await logAdminAuditEvent({
+      action: decision === "verify" ? "donation.verify" : "donation.reject",
+      context: adminContext,
+      metadata: {
+        amountThb: donation.amount_thb,
+        hasShelterNote: Boolean(shelterNote),
+      },
+      shelterId,
+      targetId: donation.id,
+      targetTable: "donation_intents",
+    });
+  }
+
+  redirectAfterShelterMutation(
+    formData,
+    shelterId,
+    "donations",
+    error
+      ? `Donation could not be updated: ${error.message}`
+      : decision === "verify" ? "Donation verified." : "Donation marked for follow-up.",
+  );
 }
 
 export async function checkInBookingAction(formData: FormData) {

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CalendarDays, FileText, Megaphone, PawPrint, ShieldCheck, Users } from "lucide-react";
+import { Banknote, CalendarDays, FileText, Megaphone, PawPrint, ShieldCheck, Users } from "lucide-react";
 
 type AdminWorkspaceBasePath = "/admin" | "/admindraft";
-type AdminWorkspaceNavItem = "home" | "dogs" | "bookings" | "ads" | "about" | "accounts" | "audit";
+type AdminWorkspaceNavItem = "home" | "dogs" | "bookings" | "donations" | "ads" | "about" | "accounts" | "audit";
 
 const labels: Record<AdminWorkspaceNavItem, string> = {
   accounts: "Accounts",
@@ -11,6 +11,7 @@ const labels: Record<AdminWorkspaceNavItem, string> = {
   audit: "Audit",
   about: "About content",
   bookings: "Bookings",
+  donations: "Donations",
   dogs: "Manage listings",
   home: "Create dog",
 };
@@ -33,6 +34,8 @@ function navHref(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) 
         return "/admindraft?view=dogs";
       case "bookings":
         return "/admindraft?view=bookings";
+      case "donations":
+        return "/admindraft?view=donations";
       case "ads":
         return "/admindraft/ads";
       case "about":
@@ -50,6 +53,8 @@ function navHref(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) 
     case "dogs":
       return "/admin/listings";
     case "bookings":
+      return "/admin/bookings";
+    case "donations":
       return "/admin/bookings";
     case "ads":
       return "/admin/ads";
@@ -76,6 +81,7 @@ const icons: Record<AdminWorkspaceNavItem, ReactNode> = {
   audit: <ShieldCheck className="mr-2 h-4 w-4" />,
   about: <FileText className="mr-2 h-4 w-4" />,
   bookings: <CalendarDays className="mr-2 h-4 w-4" />,
+  donations: <Banknote className="mr-2 h-4 w-4" />,
   dogs: <PawPrint className="mr-2 h-4 w-4" />,
   home: <PawPrint className="mr-2 h-4 w-4" />,
 };
@@ -96,7 +102,11 @@ export function AdminWorkspaceNav({
   showGlobalOnly?: boolean;
 }) {
   const items: AdminWorkspaceNavItem[] = [
-    ...(includePrimary ? (["home", "dogs", "bookings"] as AdminWorkspaceNavItem[]) : []),
+    ...(includePrimary
+      ? (basePath === "/admindraft"
+          ? (["home", "dogs", "bookings", "donations"] as AdminWorkspaceNavItem[])
+          : (["home", "dogs", "bookings"] as AdminWorkspaceNavItem[]))
+      : []),
     ...(showAds ? (["ads"] as AdminWorkspaceNavItem[]) : []),
     ...(showGlobalOnly ? (["about", "accounts"] as AdminWorkspaceNavItem[]) : []),
     "audit",

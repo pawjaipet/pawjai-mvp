@@ -13,6 +13,7 @@ import { requireAdminWorkspace, requireShelterAccess } from "@/utils/admin-auth"
 import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { canonicalizeBreedLabel, isCanonicalDogBreed } from "@/utils/dog-breeds";
 import { buildDogMediaItems, parseDogMediaManifest } from "@/utils/dog-media";
+import { dedupePersonalityTags, personalityTagKey } from "@/utils/personality-tags";
 import { slugify } from "@/utils/slug";
 import { createAdminClient } from "@/utils/supabase/admin";
 import type { EditDogProfileState } from "./form-state";
@@ -378,19 +379,17 @@ function normalizeStructuredTraits(formData: FormData) {
       traitValue: traitValue!,
     }));
 
-  const personalityTraits = getStringValues(formData, "personality_tag").map((traitValue) => ({
-    traitType: "personality",
-    traitValue,
-  }));
-
-  const customPersonalityTraits = getStringValues(formData, "custom_personality_tags")
+  const customPersonalityTags = getStringValues(formData, "custom_personality_tags")
     .flatMap((traitValue) => traitValue.split(/[\n,]+/))
     .map((traitValue) => traitValue.trim())
-    .filter(Boolean)
-    .map((traitValue) => ({
+    .filter(Boolean);
+  const personalityTraits = dedupePersonalityTags([
+    ...getStringValues(formData, "personality_tag"),
+    ...customPersonalityTags,
+  ]).map((traitValue) => ({
       traitType: "personality",
       traitValue,
-    }));
+  }));
 
   const careTraits = getStringValues(formData, "care_tag")
     .filter((traitValue) => traitValue !== "No medical needs")
@@ -400,8 +399,11 @@ function normalizeStructuredTraits(formData: FormData) {
     }));
 
   const unique = new Map<string, { traitType: string; traitValue: string }>();
-  for (const trait of [...structuredTraits, ...personalityTraits, ...customPersonalityTraits, ...careTraits]) {
-    unique.set(`${trait.traitType}:${trait.traitValue.toLowerCase()}`, trait);
+  for (const trait of [...structuredTraits, ...personalityTraits, ...careTraits]) {
+    const valueKey = trait.traitType === "personality"
+      ? personalityTagKey(trait.traitValue)
+      : trait.traitValue.trim().toLocaleLowerCase("en");
+    unique.set(`${trait.traitType}:${valueKey}`, trait);
   }
 
   return [...unique.values()];

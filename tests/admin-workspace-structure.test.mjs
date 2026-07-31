@@ -35,24 +35,24 @@ test("global admins see the PawJai HQ umbrella first", () => {
   assert.equal(draft.defaultPath, "/admindraft");
   assertArrayValues(
     draft.primarySections.map((section) => section.label),
-    ["Overview", "Shelters", "Dogs", "Bookings", "Ads", "About content", "Accounts", "Audit"],
+    ["Overview", "Shelters", "Dogs", "Bookings", "Donations", "Ads", "About content", "Accounts", "Audit"],
   );
 });
 
-test("shelter admins see My Shelter Workspace with dogs first and bookings beside it", () => {
+test("shelter admins see the complete scoped shelter workspace", () => {
   const { getAdminWorkspaceDraft } = loadAdminWorkspaceStructure();
 
   const draft = getAdminWorkspaceDraft("shelter_admin");
 
   assert.equal(draft.title, "My Shelter Workspace");
   assert.equal(draft.subtitle, "powered by PAWJAI");
-  assert.equal(draft.defaultPath, "/admin/workspace");
+  assert.equal(draft.defaultPath, "/shelter");
   assertArrayValues(
     draft.primarySections.map((section) => section.label),
-    ["Dogs", "Bookings"],
+    ["Shelter profile", "Dogs", "Create dog", "Bookings", "Donations", "Messaging"],
   );
-  assert.equal(draft.primarySections[0].path, "/admin/dogs");
-  assert.equal(draft.primarySections[1].path, "/admin/bookings");
+  assert.equal(draft.primarySections[0].path, "/shelter/[slug]?view=profile");
+  assert.equal(draft.primarySections[4].path, "/shelter/[slug]?view=donations");
 });
 
 test("draft structure marks global-only sections", () => {
@@ -87,12 +87,15 @@ test("dog draft workflow includes current admin upload steps, filters, media con
 
 test("draft launches dog editing natively and leaves unfinished workflows on old admin routes", () => {
   const source = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+  const navSource = readFileSync(new URL("../components/admin/AdminWorkspaceNav.tsx", import.meta.url), "utf8");
+  const adsRouteSource = readFileSync(new URL("../app/admindraft/ads/page.tsx", import.meta.url), "utf8");
 
   assert.equal(source.includes("`/admindraft/dogs/${dog.id}/edit`"), true);
   assert.equal(source.includes("`${workspaceBaseHref}/dogs/${dog.id}/edit`"), true);
   assert.equal(source.includes("href={`/admin/bookings?shelter=${shelter.id}&view=messages`}"), false);
   assert.equal(source.includes('href="/admin/ads"'), false);
-  assert.equal(source.includes('href="/admindraft/ads"'), true);
+  assert.equal(navSource.includes('return "/admindraft/ads"'), true);
+  assert.equal(adsRouteSource.includes("AdminAdsPage"), true);
   assert.equal(source.includes('href="/admindraft/aboutcontent"'), true);
   assert.equal(source.includes('href="/admindraft/accounts"'), true);
   assert.equal(source.includes('href="/admindraft/audit"'), true);

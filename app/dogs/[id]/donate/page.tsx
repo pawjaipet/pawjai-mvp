@@ -45,11 +45,14 @@ export default async function DonatePage({
     shelter_id: string;
     treat_count: number;
     amount_thb: number;
+    proof_original_file_name: string | null;
+    proof_submitted_at: string | null;
+    status: string;
   } | null = null;
   if (intentId) {
     const { data } = await supabase
       .from("donation_intents")
-      .select("id, shelter_id, treat_count, amount_thb")
+      .select("id, shelter_id, treat_count, amount_thb, status, proof_original_file_name, proof_submitted_at")
       .eq("id", intentId)
       .maybeSingle();
     intent = data ?? null;
@@ -74,6 +77,9 @@ export default async function DonatePage({
       intentId={intent?.id ?? null}
       treatCount={intent?.treat_count ?? null}
       amountThb={intent?.amount_thb ?? null}
+      intentStatus={intent?.status ?? null}
+      proofOriginalFileName={intent?.proof_original_file_name ?? null}
+      proofSubmittedAt={intent?.proof_submitted_at ?? null}
       promptpayId={donation?.promptpay_id ?? null}
       bankName={donation?.bank_name ?? null}
       bankAccountNumber={donation?.bank_account_number ?? null}

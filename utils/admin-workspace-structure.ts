@@ -68,6 +68,12 @@ const pawjaiHqDraft: AdminWorkspaceDraft = {
       status: "current",
     },
     {
+      description: "Donation attempts, transfer slips, shelter review, and verified totals across every shelter.",
+      label: "Donations",
+      path: "/admindraft?view=donations",
+      status: "current",
+    },
+    {
       description: "PawJai-managed brand placements. This stays internal for now.",
       globalOnly: true,
       label: "Ads",
@@ -99,20 +105,44 @@ const pawjaiHqDraft: AdminWorkspaceDraft = {
 };
 
 const shelterWorkspaceDraft: AdminWorkspaceDraft = {
-  defaultPath: "/admin/workspace",
+  defaultPath: "/shelter",
   subtitle: "powered by PAWJAI",
   title: "My Shelter Workspace",
   primarySections: [
     {
-      description: "Create, edit, preview, and manage the shelter dog database.",
-      label: "Dogs",
-      path: "/admin/dogs",
-      status: "move",
+      description: "Contact, location, branding, and direct donation payment details for this shelter.",
+      label: "Shelter profile",
+      path: "/shelter/[slug]?view=profile",
+      status: "current",
     },
     {
-      description: "Switch to visits, QR check-in, follow-ups, and messages for the same shelter.",
+      description: "Create, edit, preview, and manage the shelter dog database.",
+      label: "Dogs",
+      path: "/shelter/[slug]?view=dogs",
+      status: "current",
+    },
+    {
+      description: "Create a complete dog profile with photos, matching data, and searchable personality tags.",
+      label: "Create dog",
+      path: "/shelter/[slug]/dogs/new",
+      status: "current",
+    },
+    {
+      description: "Visit requests, QR check-in, follow-ups, and the shelter operating calendar.",
       label: "Bookings",
-      path: "/admin/bookings",
+      path: "/shelter/[slug]?view=bookings",
+      status: "current",
+    },
+    {
+      description: "Donor details, transfer slips, review status, and verified donation totals for this shelter.",
+      label: "Donations",
+      path: "/shelter/[slug]?view=donations",
+      status: "current",
+    },
+    {
+      description: "Appointment-linked conversations between shelter staff and adopters.",
+      label: "Messaging",
+      path: "/shelter/[slug]?view=messages",
       status: "current",
     },
   ],
@@ -226,8 +256,7 @@ export const adminDogDraftWorkflow: AdminDogDraftWorkflow = {
         { label: "Good with cats?", options: ["Not sure", "Yes", "No / unknown"], type: "select" },
         { label: "Good with kids?", options: ["Not sure", "Yes", "No / unknown"], type: "select" },
         { label: "House training", options: ["Not sure", "House trained", "Not house trained yet"], type: "select" },
-        { label: "Public personality tags", type: "choice" },
-        { label: "Other personality tags", type: "text" },
+        { label: "Search, select, or add personality tags", type: "choice" },
         { label: "Care and medical tags", type: "choice" },
         { label: "Sterilized", type: "checkbox" },
         { label: "Leash trained", type: "checkbox" },

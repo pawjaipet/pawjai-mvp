@@ -8,6 +8,7 @@ test("/admindraft is the canonical Supabase-backed draft route", () => {
   assert.equal(source.includes("loadAdminDraftData"), true);
   assert.equal(source.includes("initialShelterId={resolvedSearchParams?.shelter}"), true);
   assert.equal(source.includes("initialShelterTab={resolvedSearchParams?.view}"), true);
+  assert.equal(source.includes('initialRoleView={resolvedSearchParams?.role === "shelter" ? "shelter" : "pawjai"}'), true);
   assert.equal(source.includes('dynamic = "force-dynamic"'), true);
 });
 
@@ -213,13 +214,16 @@ test("admin draft has a focused create-dog route that reuses the real dog listin
 
   assert.equal(panelSource.includes("`/admindraft/dog-creation?shelter=${selectedShelter.id}`"), true);
   assert.equal(panelSource.includes("`${workspaceBaseHref}/dogs/new`"), true);
+  assert.equal(panelSource.includes("adminDraftShelterCreateDogHref"), true);
+  assert.equal(panelSource.includes('params.set("role", "shelter")'), true);
   assert.equal(draftCreateAliasSource.includes("../dogs/new/page"), true);
   assert.equal(draftCreateSource.includes("DogListingForm"), true);
   assert.equal(draftCreateSource.includes("isAdminDraftUnlocked"), true);
   assert.equal(draftCreateSource.includes("Exit"), true);
   assert.equal(draftCreateSource.includes('cancelLabel="Exit"'), true);
   assert.equal(draftCreateSource.includes('submitLabel="Save Draft"'), true);
-  assert.equal(draftCreateSource.includes("/admindraft?shelter="), true);
+  assert.equal(draftCreateSource.includes('if (resolvedSearchParams?.role === "shelter") listingsParams.set("role", "shelter")'), true);
+  assert.equal(draftCreateSource.includes("returnTo={cancelHref}"), true);
   assert.equal(formSource.includes("showIntro = true"), true);
   assert.equal(formSource.includes('cancelLabel = "Cancel"'), true);
   assert.equal(formSource.includes("successListingsHref"), true);
@@ -240,7 +244,7 @@ test("admin draft dog listings remove the inline field map and expose creation a
   assert.equal(panelSource.includes("matchingGroups"), false);
   assert.equal(panelSource.includes("ShelterWorkspaceLinkTab"), true);
   assert.equal(panelSource.includes("Create dog profile"), true);
-  assert.equal(panelSource.includes("md:grid-cols-5"), true);
+  assert.equal(panelSource.includes("md:grid-cols-6"), true);
 });
 
 test("admin draft dog cards edit through a draft-native dog edit route", () => {
@@ -256,7 +260,8 @@ test("admin draft dog cards edit through a draft-native dog edit route", () => {
   assert.equal(draftEditSource.includes("isAdminDraftUnlocked"), true);
   assert.equal(draftEditSource.includes("AdminDraftGate"), true);
   assert.equal(draftEditSource.includes("Back to dog listings"), true);
-  assert.equal(draftEditSource.includes("/admindraft?shelter=${dog.shelter_id}&view=dogs"), true);
+  assert.equal(draftEditSource.includes('if (resolvedSearchParams?.role === "shelter") listingsParams.set("role", "shelter")'), true);
+  assert.equal(draftEditSource.includes("returnTo={draftEditHref}"), true);
   assert.equal(draftEditSource.includes("PawJai Admin Draft"), true);
   assert.equal(shelterEditSource.includes("getAdminAuthContext({ includePhraseGate: false })"), true);
   assert.equal(shelterEditSource.includes("getShelterByPortalSlug"), true);

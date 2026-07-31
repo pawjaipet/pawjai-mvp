@@ -14,7 +14,7 @@ export default async function ShelterPortalPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ view?: string }>;
+  searchParams?: Promise<{ bookingView?: string; message?: string; view?: string }>;
 }) {
   const [{ slug }, resolvedSearchParams] = await Promise.all([params, searchParams]);
   const context = await getAdminAuthContext({ includePhraseGate: false });
@@ -39,6 +39,8 @@ export default async function ShelterPortalPage({
     <AdminReorgDraftPanel
       accountSettingsHref={`/shelter/${slug}/settings`}
       data={data}
+      initialBookingWorkspaceView={resolvedSearchParams?.bookingView}
+      initialMessage={resolvedSearchParams?.message}
       initialRoleView="shelter"
       initialShelterId={shelter.id}
       initialShelterTab={resolvedSearchParams?.view}

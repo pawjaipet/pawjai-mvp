@@ -449,9 +449,18 @@ export type Database = {
           created_at: string
           dog_id: string
           id: string
+          proof_bucket_id: string | null
+          proof_mime_type: string | null
+          proof_original_file_name: string | null
+          proof_storage_path: string | null
+          proof_submitted_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          shelter_note: string | null
           shelter_id: string
           status: string
           treat_count: number
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -459,9 +468,18 @@ export type Database = {
           created_at?: string
           dog_id: string
           id?: string
+          proof_bucket_id?: string | null
+          proof_mime_type?: string | null
+          proof_original_file_name?: string | null
+          proof_storage_path?: string | null
+          proof_submitted_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shelter_note?: string | null
           shelter_id: string
           status?: string
           treat_count: number
+          updated_at?: string
           user_id: string
         }
         Update: Partial<Database["public"]["Tables"]["donation_intents"]["Insert"]>
