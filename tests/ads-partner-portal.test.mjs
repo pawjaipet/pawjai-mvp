@@ -22,7 +22,8 @@ test("/ads is a public business ad submission page and does not expose the inter
   assert.equal(createSource.includes("No login is needed"), true);
   assert.equal(createSource.includes("Continue to preview"), true);
   assert.equal(createSource.includes("Submit for review"), true);
-  assert.equal(createSource.includes("370 x 620 px vertical"), true);
+  assert.equal(createSource.includes("370 x 560 px vertical"), true);
+  assert.equal(createSource.includes("37:56 portrait"), true);
   assert.equal(createSource.includes("MP4, MOV, or WebM"), true);
   assert.equal(createSource.includes('accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"'), true);
   assert.equal(createSource.includes('name="contact_email"'), true);

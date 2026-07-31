@@ -20,8 +20,8 @@ type PreviewState = {
 };
 
 const assetSpecs = [
-  "Best size: 370 x 620 px vertical",
-  "Safe ratio: 9:16 portrait",
+  "Best size: 370 x 560 px vertical",
+  "Safe ratio: 37:56 portrait",
   "Images: JPG, PNG, or WebP",
   "Videos: MP4, MOV, or WebM, under 210 MB",
 ];
@@ -100,16 +100,16 @@ export default function PartnerAdCreatePage() {
 
   if (state.success && state.ad) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-8 text-[#4f4338]">
+      <div className="mx-auto max-w-5xl px-4 py-8 text-[#65584f]">
         <div className="mb-6">
-          <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#b77624]">PawJai Ads</p>
+          <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#cd8188]">PawJai Ads</p>
           <h1 className="mt-1 text-3xl font-semibold">Ad submitted</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#74685d]">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#8a7b70]">
             Your ad is now with the PawJai team for review. Once approved, it can appear between dog profiles in this format.
           </p>
         </div>
 
-        <div className="grid gap-6 rounded-[28px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)] lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="grid gap-6 rounded-[28px] border border-[#d6c8ad] bg-white p-6 shadow-[0_16px_50px_rgba(101,88,79,0.08)] lg:grid-cols-[390px_minmax(0,1fr)]">
           <div className="flex justify-center">
             <AdCard
               ad={{
@@ -120,7 +120,7 @@ export default function PartnerAdCreatePage() {
                 mediaType: state.ad.mediaType,
               }}
               cardHeight={560}
-              cardWidth={334}
+              cardWidth={370}
               trackClicks={false}
             />
           </div>
@@ -130,36 +130,36 @@ export default function PartnerAdCreatePage() {
               Submitted for review
             </div>
             <h2 className="mt-5 text-2xl font-semibold">{state.ad.companyName}</h2>
-            <p className="mt-3 text-sm leading-6 text-[#74685d]">
+            <p className="mt-3 text-sm leading-6 text-[#8a7b70]">
               PawJai will review the creative, link, and dates before it goes live.
             </p>
-            <div className="mt-5 rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9a8c80]">Ad submission code</p>
-              <p className="mt-1 text-2xl font-semibold text-[#b77624]">{state.ad.submissionCode}</p>
+            <div className="mt-5 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8a7b70]">Ad submission code</p>
+              <p className="mt-1 text-2xl font-semibold text-[#cd8188]">{state.ad.submissionCode}</p>
             </div>
             <dl className="mt-6 grid gap-3 text-sm">
               <div>
-                <dt className="font-semibold text-[#9a8c80]">Destination URL</dt>
-                <dd className="mt-1 break-all text-[#b77624]">{state.ad.clickUrl}</dd>
+                <dt className="font-semibold text-[#8a7b70]">Destination URL</dt>
+                <dd className="mt-1 break-all text-[#cd8188]">{state.ad.clickUrl}</dd>
               </div>
               <div>
-                <dt className="font-semibold text-[#9a8c80]">Ad format</dt>
+                <dt className="font-semibold text-[#8a7b70]">Ad format</dt>
                 <dd className="mt-1">{state.ad.mediaType === "video" ? "Video" : "Image"}</dd>
               </div>
               <div>
-                <dt className="font-semibold text-[#9a8c80]">Requested dates</dt>
+                <dt className="font-semibold text-[#8a7b70]">Requested dates</dt>
                 <dd className="mt-1">{state.ad.startDate} to {state.ad.endDate}</dd>
               </div>
               <div>
-                <dt className="font-semibold text-[#9a8c80]">Contact email</dt>
+                <dt className="font-semibold text-[#8a7b70]">Contact email</dt>
                 <dd className="mt-1">{state.ad.contactEmail || "Not provided"}</dd>
               </div>
               <div>
-                <dt className="font-semibold text-[#9a8c80]">Contact phone</dt>
+                <dt className="font-semibold text-[#8a7b70]">Contact phone</dt>
                 <dd className="mt-1">{state.ad.contactPhone || "Not provided"}</dd>
               </div>
               <div>
-                <dt className="font-semibold text-[#9a8c80]">Keep this code</dt>
+                <dt className="font-semibold text-[#8a7b70]">Keep this code</dt>
                 <dd className="mt-1">Use this code when following up with PawJai.</dd>
               </div>
             </dl>
@@ -170,12 +170,12 @@ export default function PartnerAdCreatePage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 text-[#4f4338]">
+    <div className="mx-auto max-w-5xl px-4 py-8 text-[#65584f]">
       <div className="mb-6">
-        <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#b77624]">PawJai Ads</p>
+        <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#cd8188]">PawJai Ads</p>
         <h1 className="mt-1 text-3xl font-semibold">{preview ? "Preview ad" : "Create ad"}</h1>
         {!preview ? (
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#74685d]">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#8a7b70]">
             Submit a product or brand ad for PawJai review. No login is needed; we will email your ad ID after submission.
           </p>
         ) : null}
@@ -184,7 +184,7 @@ export default function PartnerAdCreatePage() {
       <form
         ref={formRef}
         action={action}
-        className="rounded-[28px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]"
+        className="rounded-[28px] border border-[#d6c8ad] bg-white p-6 shadow-[0_16px_50px_rgba(101,88,79,0.08)]"
       >
         <div className={preview ? "hidden" : "space-y-5"}>
           {(clientError || state.error) ? (
@@ -192,16 +192,16 @@ export default function PartnerAdCreatePage() {
           ) : null}
 
           <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">Ad creative *</span>
-            <span className="mt-2 grid min-h-[168px] cursor-pointer gap-5 rounded-[24px] border-2 border-dashed border-[#e3d3bd] bg-[#fffdfa] px-5 py-6 transition hover:border-[#b77624] hover:bg-[#faf4ec] md:grid-cols-[minmax(0,1fr)_260px] md:items-center">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#8a7b70]">Ad creative *</span>
+            <span className="mt-2 grid min-h-[168px] cursor-pointer gap-5 rounded-[24px] border-2 border-dashed border-[#d6c8ad] bg-[#fffaf5] px-5 py-6 transition hover:border-[#cd8188] hover:bg-[#f5f1e8] md:grid-cols-[minmax(0,1fr)_260px] md:items-center">
               <span className="flex flex-col items-center justify-center text-center">
-                <ImagePlus className="mb-3 h-10 w-10 text-[#b77624]" />
-                <span className="text-lg font-semibold text-[#4f4338]">Choose image or video</span>
-                <span className="mt-1 text-sm text-[#9a8c80]">This is the asset users will tap in the swipe feed.</span>
+                <ImagePlus className="mb-3 h-10 w-10 text-[#cd8188]" />
+                <span className="text-lg font-semibold text-[#65584f]">Choose image or video</span>
+                <span className="mt-1 text-sm text-[#8a7b70]">This is the asset users will tap in the swipe feed.</span>
               </span>
-              <span className="rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-left">
-                <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-[#9a8c80]">Creative specs</span>
-                <span className="mt-2 grid gap-1 text-sm text-[#74685d]">
+              <span className="rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-left">
+                <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-[#8a7b70]">Creative specs</span>
+                <span className="mt-2 grid gap-1 text-sm text-[#65584f]">
                   {assetSpecs.map((spec) => (
                     <span key={spec}>{spec}</span>
                   ))}
@@ -209,7 +209,7 @@ export default function PartnerAdCreatePage() {
               </span>
               <input
                 accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
-                className="block w-full text-sm text-[#5b4d40] file:mr-3 file:rounded-full file:border-0 file:bg-[#b77624] file:px-6 file:py-3 file:text-sm file:font-semibold file:text-white hover:file:bg-[#9a6220] md:col-span-2"
+                className="block w-full text-sm text-[#65584f] file:mr-3 file:rounded-full file:border-0 file:bg-[#cd8188] file:px-6 file:py-3 file:text-sm file:font-semibold file:text-white hover:file:bg-[#b87179] md:col-span-2"
                 name="image_file"
                 required
                 type="file"
@@ -218,9 +218,9 @@ export default function PartnerAdCreatePage() {
           </label>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">Company name *</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-[#8a7b70]">Company name *</label>
             <input
-              className="w-full rounded-xl border border-[#eadfce] px-3 py-3 text-sm text-[#4f4338] focus:border-[#b77624] focus:outline-none"
+              className="w-full rounded-xl border border-[#d6c8ad] px-3 py-3 text-sm text-[#65584f] focus:border-[#cd8188] focus:outline-none"
               name="company_name"
               placeholder="e.g. PETBEO"
               required
@@ -230,18 +230,18 @@ export default function PartnerAdCreatePage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">Email</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#8a7b70]">Email</label>
               <input
-                className="w-full rounded-xl border border-[#eadfce] px-3 py-3 text-sm text-[#4f4338] focus:border-[#b77624] focus:outline-none"
+                className="w-full rounded-xl border border-[#d6c8ad] px-3 py-3 text-sm text-[#65584f] focus:border-[#cd8188] focus:outline-none"
                 name="contact_email"
                 placeholder="name@company.com"
                 type="email"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">Phone number</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#8a7b70]">Phone number</label>
               <input
-                className="w-full rounded-xl border border-[#eadfce] px-3 py-3 text-sm text-[#4f4338] focus:border-[#b77624] focus:outline-none"
+                className="w-full rounded-xl border border-[#d6c8ad] px-3 py-3 text-sm text-[#65584f] focus:border-[#cd8188] focus:outline-none"
                 name="contact_phone"
                 placeholder="+66..."
                 type="tel"
@@ -250,9 +250,9 @@ export default function PartnerAdCreatePage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">Click URL *</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-[#8a7b70]">Click URL *</label>
             <input
-              className="w-full rounded-xl border border-[#eadfce] px-3 py-3 text-sm text-[#4f4338] focus:border-[#b77624] focus:outline-none"
+              className="w-full rounded-xl border border-[#d6c8ad] px-3 py-3 text-sm text-[#65584f] focus:border-[#cd8188] focus:outline-none"
               name="click_url"
               placeholder="pawjaipet.com/ads"
               required
@@ -262,9 +262,9 @@ export default function PartnerAdCreatePage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">Requested start date *</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#8a7b70]">Requested start date *</label>
               <input
-                className="w-full rounded-xl border border-[#eadfce] px-3 py-3 text-sm text-[#4f4338] focus:border-[#b77624] focus:outline-none"
+                className="w-full rounded-xl border border-[#d6c8ad] px-3 py-3 text-sm text-[#65584f] focus:border-[#cd8188] focus:outline-none"
                 defaultValue={today}
                 min={today}
                 name="start_date"
@@ -273,9 +273,9 @@ export default function PartnerAdCreatePage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">Requested end date *</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#8a7b70]">Requested end date *</label>
               <input
-                className="w-full rounded-xl border border-[#eadfce] px-3 py-3 text-sm text-[#4f4338] focus:border-[#b77624] focus:outline-none"
+                className="w-full rounded-xl border border-[#d6c8ad] px-3 py-3 text-sm text-[#65584f] focus:border-[#cd8188] focus:outline-none"
                 defaultValue={today}
                 min={today}
                 name="end_date"
@@ -286,7 +286,7 @@ export default function PartnerAdCreatePage() {
           </div>
 
           <button
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#b77624] px-6 py-3 text-sm font-semibold text-white hover:bg-[#9a6220]"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white hover:bg-[#b87179]"
             onClick={handlePreview}
             type="button"
           >
@@ -296,7 +296,7 @@ export default function PartnerAdCreatePage() {
         </div>
 
         {preview ? (
-          <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+          <div className="grid gap-6 lg:grid-cols-[390px_minmax(0,1fr)]">
             <div className="flex justify-center">
               <AdCard
                 ad={{
@@ -307,7 +307,7 @@ export default function PartnerAdCreatePage() {
                   mediaType: preview.mediaType,
                 }}
                 cardHeight={560}
-                cardWidth={334}
+                cardWidth={370}
                 trackClicks={false}
               />
             </div>
@@ -315,40 +315,40 @@ export default function PartnerAdCreatePage() {
               {(clientError || state.error) ? (
                 <p className="mb-5 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-600">{clientError || state.error}</p>
               ) : null}
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">Review before submitting</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">Review before submitting</p>
               <h2 className="mt-3 text-2xl font-semibold">{preview.companyName}</h2>
-              <p className="mt-3 break-all text-sm font-semibold text-[#b77624]">{preview.clickUrl}</p>
-              <p className="mt-5 text-sm leading-6 text-[#74685d]">
+              <p className="mt-3 break-all text-sm font-semibold text-[#cd8188]">{preview.clickUrl}</p>
+              <p className="mt-5 text-sm leading-6 text-[#8a7b70]">
                 This is the same ad-card format users will see in the swipe feed after PawJai approves it.
               </p>
               <dl className="mt-6 grid gap-3 text-sm">
                 <div>
-                  <dt className="font-semibold text-[#9a8c80]">Ad format</dt>
+                  <dt className="font-semibold text-[#8a7b70]">Ad format</dt>
                   <dd>{preview.mediaType === "video" ? "Video" : "Image"}</dd>
                 </div>
                 <div>
-                  <dt className="font-semibold text-[#9a8c80]">Contact email</dt>
+                  <dt className="font-semibold text-[#8a7b70]">Contact email</dt>
                   <dd>{preview.contactEmail || "Not provided"}</dd>
                 </div>
                 <div>
-                  <dt className="font-semibold text-[#9a8c80]">Contact phone</dt>
+                  <dt className="font-semibold text-[#8a7b70]">Contact phone</dt>
                   <dd>{preview.contactPhone || "Not provided"}</dd>
                 </div>
                 <div>
-                  <dt className="font-semibold text-[#9a8c80]">Requested dates</dt>
+                  <dt className="font-semibold text-[#8a7b70]">Requested dates</dt>
                   <dd>{preview.startDate} to {preview.endDate}</dd>
                 </div>
               </dl>
               <div className="mt-8 flex flex-wrap gap-3">
                 <button
-                  className="rounded-full border border-[#eadfce] bg-white px-6 py-3 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]"
+                  className="rounded-full border border-[#d6c8ad] bg-white px-6 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
                   onClick={() => setPreview(null)}
                   type="button"
                 >
                   Modify ad
                 </button>
                 <button
-                  className="rounded-full bg-[#b77624] px-6 py-3 text-sm font-semibold text-white hover:bg-[#9a6220] disabled:opacity-50"
+                  className="rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white hover:bg-[#b87179] disabled:opacity-50"
                   disabled={pending}
                   type="submit"
                 >
