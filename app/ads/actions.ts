@@ -1,18 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import {
-  isAdsPartnerGateOpen,
-  openAdsPartnerGate,
-  validateAdsPartnerCredentials,
-} from "@/utils/ads-partner-auth";
 import { createAdFromFormData } from "@/utils/ad-submissions";
-import { sendAdSubmissionConfirmation } from "@/utils/ad-email";
-
-export type AdsGateState = {
-  message: string;
-  status: "idle" | "success" | "error";
-};
+import {
+  sendAdSubmissionConfirmation,
+  sendPawjaiAdSubmissionNotification,
+} from "@/utils/ad-email";
 
 export type PartnerAdCreateState = {
   ad?: {
@@ -23,6 +16,7 @@ export type PartnerAdCreateState = {
     endDate: string;
     id: string;
     imageUrl: string;
+    mediaType: "image" | "video";
     startDate: string;
     submissionCode: string;
   };
@@ -30,43 +24,10 @@ export type PartnerAdCreateState = {
   success?: string;
 };
 
-export async function unlockAdsGateAction(
-  _prevState: AdsGateState,
-  formData: FormData,
-): Promise<AdsGateState> {
-  const username = String(formData.get("username") ?? "");
-  const password = String(formData.get("password") ?? "");
-
-  if (!username.trim() || !password.trim()) {
-    return {
-      message: "Enter the ads username and password.",
-      status: "error",
-    };
-  }
-
-  if (!validateAdsPartnerCredentials(username, password)) {
-    return {
-      message: "Ads login did not match.",
-      status: "error",
-    };
-  }
-
-  await openAdsPartnerGate();
-
-  return {
-    message: "Ads workspace unlocked.",
-    status: "success",
-  };
-}
-
 export async function createPartnerAdAction(
   _prevState: PartnerAdCreateState | undefined,
   formData: FormData,
 ) {
-  if (!(await isAdsPartnerGateOpen())) {
-    return { error: "Sign in to the ads workspace first." };
-  }
-
   const today = new Date().toISOString().slice(0, 10);
   const result = await createAdFromFormData(formData, {
     isActive: false,
@@ -78,18 +39,30 @@ export async function createPartnerAdAction(
     return { error: result.error };
   }
 
-  if (result.contactEmail && result.submissionCode && result.companyName && result.clickUrl && result.startDate && result.endDate) {
+  if (result.submissionCode && result.companyName && result.clickUrl && result.startDate && result.endDate) {
     try {
-      await sendAdSubmissionConfirmation({
+      const emailDetails = {
         clickUrl: result.clickUrl,
         companyName: result.companyName,
+        contactEmail: result.contactEmail,
+        contactPhone: result.contactPhone,
         endDate: result.endDate,
+        mediaType: result.mediaType ?? "image",
         recipientEmail: result.contactEmail,
         startDate: result.startDate,
         submissionCode: result.submissionCode,
-      });
+      };
+      const emailResults = await Promise.all([
+        sendAdSubmissionConfirmation(emailDetails),
+        sendPawjaiAdSubmissionNotification(emailDetails),
+      ]);
+      for (const emailResult of emailResults) {
+        if ("error" in emailResult && emailResult.error) {
+          console.error("ad submission email failed", emailResult.error);
+        }
+      }
     } catch (error) {
-      console.error("ad submission confirmation email failed", error);
+      console.error("ad submission email failed", error);
     }
   }
 
@@ -108,6 +81,7 @@ export async function createPartnerAdAction(
           endDate: result.endDate,
           id: result.adId,
           imageUrl: result.imageUrl,
+          mediaType: result.mediaType ?? "image",
           startDate: result.startDate,
           submissionCode: result.submissionCode,
         }

@@ -5,6 +5,7 @@ import { normalizeDogMediaUrl } from "@/utils/dog-media";
 export interface Ad {
   id: string;
   imageUrl: string;
+  mediaType?: "image" | "video";
   companyName: string;
   clickUrl: string;
 }
@@ -15,7 +16,7 @@ export async function fetchActiveAds(): Promise<Ad[]> {
 
   const { data } = await supabase
     .from("ads")
-    .select("id, image_url, company_name, click_url")
+    .select("id, image_url, media_type, company_name, click_url")
     .eq("ad_status", "approved")
     .eq("is_active", true)
     .lte("start_date", today)
@@ -25,6 +26,7 @@ export async function fetchActiveAds(): Promise<Ad[]> {
   const ads = (data ?? []).map((row) => ({
     id: row.id,
     imageUrl: normalizeDogMediaUrl(row.image_url) ?? row.image_url,
+    mediaType: row.media_type ?? "image",
     companyName: row.company_name,
     clickUrl: row.click_url,
   }));

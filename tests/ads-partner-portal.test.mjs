@@ -2,39 +2,43 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("/ads uses partner login and does not expose the internal ad list", () => {
+test("/ads is a public business ad submission page and does not expose the internal ad list", () => {
   const pageSource = readFileSync(new URL("../app/ads/page.tsx", import.meta.url), "utf8");
-  const formSource = readFileSync(new URL("../app/ads/AdsGateForm.tsx", import.meta.url), "utf8");
   const createSource = readFileSync(new URL("../app/ads/PartnerAdCreatePage.tsx", import.meta.url), "utf8");
   const actionsSource = readFileSync(new URL("../app/ads/actions.ts", import.meta.url), "utf8");
-  const authSource = readFileSync(new URL("../utils/ads-partner-auth.ts", import.meta.url), "utf8");
+  const submissionSource = readFileSync(new URL("../utils/ad-submissions.ts", import.meta.url), "utf8");
+  const adEmailSource = readFileSync(new URL("../utils/ad-email.ts", import.meta.url), "utf8");
 
   assert.equal(pageSource.includes("AdminAdsPage"), false);
   assert.equal(pageSource.includes("requireGlobalAdmin"), false);
   assert.equal(pageSource.includes("PartnerAdCreatePage"), true);
-  assert.equal(pageSource.includes("isAdsPartnerGateOpen"), true);
-
-  assert.equal(formSource.includes("Partner ads login."), true);
-  assert.equal(formSource.includes('name="username"'), true);
-  assert.equal(formSource.includes('name="password"'), true);
-  assert.equal(authSource.includes("ADS_PARTNER_USERNAME"), true);
-  assert.equal(authSource.includes("pawjaiads"), true);
+  assert.equal(pageSource.includes("isAdsPartnerGateOpen"), false);
+  assert.equal(pageSource.includes("AdsGateForm"), false);
 
   assert.equal(createSource.includes("All Ads"), false);
   assert.equal(createSource.includes("deleteAdAction"), false);
   assert.equal(createSource.includes("toggleAdAction"), false);
   assert.equal(createSource.includes("createPartnerAdAction"), true);
+  assert.equal(createSource.includes("No login is needed"), true);
   assert.equal(createSource.includes("Continue to preview"), true);
   assert.equal(createSource.includes("Submit for review"), true);
+  assert.equal(createSource.includes("370 x 620 px vertical"), true);
+  assert.equal(createSource.includes("MP4, MOV, or WebM"), true);
+  assert.equal(createSource.includes('accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"'), true);
   assert.equal(createSource.includes('name="contact_email"'), true);
   assert.equal(createSource.includes('name="contact_phone"'), true);
   assert.equal(createSource.includes('name="end_date"'), true);
   assert.equal(createSource.includes("Requested end date"), true);
   assert.equal(createSource.includes("Ad submission code"), true);
   assert.equal(actionsSource.includes("createAdFromFormData"), true);
+  assert.equal(actionsSource.includes("isAdsPartnerGateOpen"), false);
   assert.equal(actionsSource.includes('reviewStatus: "pending"'), true);
   assert.equal(actionsSource.includes("isActive: false"), true);
   assert.equal(actionsSource.includes("sendAdSubmissionConfirmation"), true);
+  assert.equal(actionsSource.includes("sendPawjaiAdSubmissionNotification"), true);
+  assert.equal(submissionSource.includes("media_type: mediaType"), true);
+  assert.equal(submissionSource.includes("video/mp4"), true);
+  assert.equal(adEmailSource.includes("New PawJai ad submission"), true);
 });
 
 test("admin draft remains the internal ad review surface", () => {
@@ -59,6 +63,7 @@ test("admin draft remains the internal ad review surface", () => {
   assert.equal(draftSource.includes("Clicks over last 14 days"), true);
   assert.equal(draftSource.includes("Recent clickers"), true);
   assert.equal(draftSource.includes("submissionCode"), true);
+  assert.equal(draftSource.includes("Creative type"), true);
   assert.equal(draftSource.includes("updateAdReviewStatusAction"), true);
   assert.equal(draftSource.includes("toggleAdAction"), true);
   assert.equal(draftSource.includes("updateAdDatesFromFormAction"), true);
@@ -66,7 +71,9 @@ test("admin draft remains the internal ad review surface", () => {
   assert.equal(draftSource.includes("Review ads"), true);
   assert.equal(dataSource.includes('.from("ad_clicks")'), true);
   assert.equal(dataSource.includes("submission_code"), true);
+  assert.equal(dataSource.includes("media_type"), true);
   assert.equal(adCardSource.includes("/ads/click/${ad.id}"), true);
+  assert.equal(adCardSource.includes("<video"), true);
   assert.equal(clickRouteSource.includes('.from("ad_clicks")'), true);
   assert.equal(clickRouteSource.includes("supabase.auth.getUser"), true);
   assert.equal(adminAdsSource.includes("AdReviewCard"), true);

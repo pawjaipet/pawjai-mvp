@@ -15,6 +15,7 @@ const M = "Montserrat, sans-serif";
 export default function AdCard({ ad, cardWidth, cardHeight, trackClicks = true }: Props) {
   const imageUrl = normalizeDogMediaUrl(ad.imageUrl) ?? ad.imageUrl;
   const href = trackClicks && ad.id !== "preview" ? `/ads/click/${ad.id}` : ad.clickUrl || "#";
+  const isVideo = ad.mediaType === "video";
 
   return (
     <a
@@ -26,12 +27,24 @@ export default function AdCard({ ad, cardWidth, cardHeight, trackClicks = true }
       data-ad-slot="filled"
       data-ad-id={ad.id}
     >
-      <img
-        src={imageUrl}
-        alt={ad.companyName}
-        className="w-full h-full object-cover"
-        draggable={false}
-      />
+      {isVideo ? (
+        <video
+          src={imageUrl}
+          aria-label={ad.companyName}
+          className="h-full w-full object-cover"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      ) : (
+        <img
+          src={imageUrl}
+          alt={ad.companyName}
+          className="w-full h-full object-cover"
+          draggable={false}
+        />
+      )}
 
       {/* Sponsored badge */}
       <div className="absolute top-[14px] right-[14px] bg-black/50 backdrop-blur-sm rounded-full px-[10px] py-[4px]">

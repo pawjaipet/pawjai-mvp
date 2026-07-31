@@ -17,6 +17,7 @@ export type Database = {
           contact_email: string | null
           contact_phone: string | null
           image_url: string
+          media_type: "image" | "video"
           click_url: string
           submission_code: string
           start_date: string
@@ -33,6 +34,7 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           image_url: string
+          media_type?: "image" | "video"
           click_url: string
           submission_code?: string
           start_date: string

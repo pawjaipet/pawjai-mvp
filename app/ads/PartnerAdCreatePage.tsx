@@ -15,8 +15,16 @@ type PreviewState = {
   contactPhone: string;
   endDate: string;
   imageUrl: string;
+  mediaType: "image" | "video";
   startDate: string;
 };
+
+const assetSpecs = [
+  "Best size: 370 x 620 px vertical",
+  "Safe ratio: 9:16 portrait",
+  "Images: JPG, PNG, or WebP",
+  "Videos: MP4, MOV, or WebM, under 210 MB",
+];
 
 export default function PartnerAdCreatePage() {
   const [state, action, pending] = useActionState(createPartnerAdAction, initialCreateState);
@@ -56,7 +64,13 @@ export default function PartnerAdCreatePage() {
     }
 
     if (!(file instanceof File) || file.size <= 0) {
-      setClientError("Choose an ad image before previewing.");
+      setClientError("Choose an ad image or video before previewing.");
+      return;
+    }
+
+    const mediaType = file.type.startsWith("video/") ? "video" : "image";
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      setClientError("Upload a JPG, PNG, WebP, MP4, MOV, or WebM ad asset.");
       return;
     }
 
@@ -79,6 +93,7 @@ export default function PartnerAdCreatePage() {
       contactPhone: String(formData.get("contact_phone") ?? "").trim(),
       endDate,
       imageUrl: URL.createObjectURL(file),
+      mediaType,
       startDate,
     });
   }
@@ -102,6 +117,7 @@ export default function PartnerAdCreatePage() {
                 companyName: state.ad.companyName,
                 id: state.ad.id,
                 imageUrl: state.ad.imageUrl,
+                mediaType: state.ad.mediaType,
               }}
               cardHeight={560}
               cardWidth={334}
@@ -115,7 +131,7 @@ export default function PartnerAdCreatePage() {
             </div>
             <h2 className="mt-5 text-2xl font-semibold">{state.ad.companyName}</h2>
             <p className="mt-3 text-sm leading-6 text-[#74685d]">
-              PawJai will review the image, link, and dates before it goes live.
+              PawJai will review the creative, link, and dates before it goes live.
             </p>
             <div className="mt-5 rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9a8c80]">Ad submission code</p>
@@ -125,6 +141,10 @@ export default function PartnerAdCreatePage() {
               <div>
                 <dt className="font-semibold text-[#9a8c80]">Destination URL</dt>
                 <dd className="mt-1 break-all text-[#b77624]">{state.ad.clickUrl}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-[#9a8c80]">Ad format</dt>
+                <dd className="mt-1">{state.ad.mediaType === "video" ? "Video" : "Image"}</dd>
               </div>
               <div>
                 <dt className="font-semibold text-[#9a8c80]">Requested dates</dt>
@@ -154,6 +174,11 @@ export default function PartnerAdCreatePage() {
       <div className="mb-6">
         <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#b77624]">PawJai Ads</p>
         <h1 className="mt-1 text-3xl font-semibold">{preview ? "Preview ad" : "Create ad"}</h1>
+        {!preview ? (
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#74685d]">
+            Submit a product or brand ad for PawJai review. No login is needed; we will email your ad ID after submission.
+          </p>
+        ) : null}
       </div>
 
       <form
@@ -167,14 +192,24 @@ export default function PartnerAdCreatePage() {
           ) : null}
 
           <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">Ad image *</span>
-            <span className="mt-2 flex min-h-[112px] cursor-pointer flex-col items-center justify-center rounded-[22px] border-2 border-dashed border-[#e3d3bd] bg-[#fffdfa] px-5 py-6 text-center transition hover:border-[#b77624] hover:bg-[#faf4ec]">
-              <ImagePlus className="mb-3 h-8 w-8 text-[#b77624]" />
-              <span className="text-base font-semibold text-[#4f4338]">Choose ad image</span>
-              <span className="mt-1 text-sm text-[#9a8c80]">JPG, PNG, or WebP</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">Ad creative *</span>
+            <span className="mt-2 grid min-h-[168px] cursor-pointer gap-5 rounded-[24px] border-2 border-dashed border-[#e3d3bd] bg-[#fffdfa] px-5 py-6 transition hover:border-[#b77624] hover:bg-[#faf4ec] md:grid-cols-[minmax(0,1fr)_260px] md:items-center">
+              <span className="flex flex-col items-center justify-center text-center">
+                <ImagePlus className="mb-3 h-10 w-10 text-[#b77624]" />
+                <span className="text-lg font-semibold text-[#4f4338]">Choose image or video</span>
+                <span className="mt-1 text-sm text-[#9a8c80]">This is the asset users will tap in the swipe feed.</span>
+              </span>
+              <span className="rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-left">
+                <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-[#9a8c80]">Creative specs</span>
+                <span className="mt-2 grid gap-1 text-sm text-[#74685d]">
+                  {assetSpecs.map((spec) => (
+                    <span key={spec}>{spec}</span>
+                  ))}
+                </span>
+              </span>
               <input
-                accept="image/*"
-                className="mt-4 block w-full max-w-sm text-sm text-[#5b4d40] file:mr-3 file:rounded-full file:border-0 file:bg-[#b77624] file:px-5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#9a6220]"
+                accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
+                className="block w-full text-sm text-[#5b4d40] file:mr-3 file:rounded-full file:border-0 file:bg-[#b77624] file:px-6 file:py-3 file:text-sm file:font-semibold file:text-white hover:file:bg-[#9a6220] md:col-span-2"
                 name="image_file"
                 required
                 type="file"
@@ -269,6 +304,7 @@ export default function PartnerAdCreatePage() {
                   companyName: preview.companyName,
                   id: "preview",
                   imageUrl: preview.imageUrl,
+                  mediaType: preview.mediaType,
                 }}
                 cardHeight={560}
                 cardWidth={334}
@@ -286,6 +322,10 @@ export default function PartnerAdCreatePage() {
                 This is the same ad-card format users will see in the swipe feed after PawJai approves it.
               </p>
               <dl className="mt-6 grid gap-3 text-sm">
+                <div>
+                  <dt className="font-semibold text-[#9a8c80]">Ad format</dt>
+                  <dd>{preview.mediaType === "video" ? "Video" : "Image"}</dd>
+                </div>
                 <div>
                   <dt className="font-semibold text-[#9a8c80]">Contact email</dt>
                   <dd>{preview.contactEmail || "Not provided"}</dd>

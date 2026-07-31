@@ -17,10 +17,24 @@ export type AdSubmissionResult = {
   error?: string;
   imageUrl?: string;
   isActive?: boolean;
+  mediaType?: "image" | "video";
   reviewStatus?: AdReviewStatus;
   startDate?: string;
   submissionCode?: string;
   success?: string;
+};
+
+const MAX_AD_MEDIA_BYTES = 210 * 1024 * 1024;
+const VIDEO_EXTENSIONS: Record<string, string> = {
+  "video/mp4": "mp4",
+  "video/quicktime": "mov",
+  "video/webm": "webm",
+};
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
 };
 
 function randomHex(bytes = 4) {
@@ -70,8 +84,12 @@ export async function createAdFromFormData(
 
   if (!companyName) return { error: "Company name is required." };
   if (!clickUrl) return { error: "Click URL is required." };
-  if (!imageFile || imageFile.size === 0) return { error: "Ad image is required." };
-  if (!imageFile.type.startsWith("image/")) return { error: "File must be an image." };
+  if (!imageFile || imageFile.size === 0) return { error: "Ad image or video is required." };
+  if (imageFile.size > MAX_AD_MEDIA_BYTES) return { error: "Ad media must be under 210 MB." };
+
+  const mediaType = imageFile.type.startsWith("video/") ? "video" : "image";
+  const ext = mediaType === "video" ? VIDEO_EXTENSIONS[imageFile.type] : IMAGE_EXTENSIONS[imageFile.type];
+  if (!ext) return { error: "File must be a JPG, PNG, WebP, MP4, MOV, or WebM ad asset." };
 
   let dateRange: ReturnType<typeof parseAdDateRange>;
   try {
@@ -84,7 +102,6 @@ export async function createAdFromFormData(
   }
 
   const body = Buffer.from(await imageFile.arrayBuffer());
-  const ext = imageFile.type.includes("png") ? "png" : imageFile.type.includes("webp") ? "webp" : "jpg";
   const desiredPath = `ads/${Date.now()}-${randomHex(4)}.${ext}`;
 
   let imageUrl: string;
@@ -106,6 +123,7 @@ export async function createAdFromFormData(
     end_date: dateRange.endDate,
     image_url: imageUrl,
     is_active: isActive,
+    media_type: mediaType,
     start_date: dateRange.startDate,
     submission_code: submissionCode,
   }).select("id").single();
@@ -121,6 +139,7 @@ export async function createAdFromFormData(
     endDate: dateRange.endDate,
     imageUrl,
     isActive,
+    mediaType,
     reviewStatus,
     startDate: dateRange.startDate,
     submissionCode,

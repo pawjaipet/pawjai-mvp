@@ -2587,6 +2587,7 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                         companyName: ad.companyName,
                         id: ad.id,
                         imageUrl: ad.imageUrl,
+                        mediaType: ad.mediaType,
                       }}
                       cardHeight={360}
                       cardWidth={240}
@@ -2608,6 +2609,10 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                     </div>
                     <h3 className="mt-4 text-2xl font-semibold text-[#65584f]">{ad.companyName}</h3>
                     <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Creative type</p>
+                        <p className="mt-1 text-sm text-[#65584f]">{ad.mediaType === "video" ? "Video" : "Image"}</p>
+                      </div>
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Campaign dates</p>
                         <p className="mt-1 text-sm text-[#65584f]">
@@ -2755,6 +2760,7 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
                 companyName: previewAd.companyName,
                 id: previewAd.id,
                 imageUrl: previewAd.imageUrl,
+                mediaType: previewAd.mediaType,
               }}
               cardHeight="min(620px, calc(100dvh - 180px))"
               cardWidth="min(370px, calc(100vw - 48px))"

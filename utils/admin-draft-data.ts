@@ -128,6 +128,7 @@ export type AdminDraftAd = {
   id: string;
   imageUrl: string;
   isActive: boolean;
+  mediaType: "image" | "video";
   reviewStatus: "pending" | "approved" | "denied";
   startDate: string;
 };
@@ -245,7 +246,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     loadAppointmentMessageThreads({ shelterIds: options.shelterIds }),
     supabase
       .from("ads")
-      .select("id,submission_code,company_name,contact_info,contact_email,contact_phone,image_url,click_url,is_active,ad_status,start_date,end_date")
+      .select("id,submission_code,company_name,contact_info,contact_email,contact_phone,image_url,media_type,click_url,is_active,ad_status,start_date,end_date")
       .order("created_at", { ascending: false })
       .limit(50),
     supabase
@@ -459,6 +460,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
       id: ad.id,
       imageUrl: normalizeDogMediaUrl(ad.image_url) ?? ad.image_url,
       isActive: ad.is_active,
+      mediaType: ad.media_type ?? "image",
       reviewStatus: ad.ad_status,
       startDate: ad.start_date,
       submissionCode: ad.submission_code,

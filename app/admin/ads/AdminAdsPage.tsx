@@ -33,6 +33,7 @@ type Ad = {
   id: string;
   image_url: string;
   is_active: boolean;
+  media_type: "image" | "video";
   start_date: string;
 };
 
@@ -82,6 +83,7 @@ function matchesAd(ad: Ad, search: string, status: StatusFilter, today: string) 
     ad.contact_email,
     ad.contact_phone,
     ad.contact_info,
+    ad.media_type,
     ad.start_date,
     ad.end_date,
   ].filter(Boolean).join(" ").toLowerCase();
@@ -115,6 +117,7 @@ function AdReviewCard({
     companyName: ad.company_name,
     id: ad.id,
     imageUrl: ad.image_url,
+    mediaType: ad.media_type ?? "image",
   };
 
   function runMutation(mutation: () => Promise<{ error?: string } | void>) {
@@ -164,6 +167,10 @@ function AdReviewCard({
           <div>
             <dt className="font-semibold text-[#9a8c80]">Dates</dt>
             <dd className="mt-1">{displayDateRange(ad)}</dd>
+          </div>
+          <div>
+            <dt className="font-semibold text-[#9a8c80]">Creative type</dt>
+            <dd className="mt-1">{ad.media_type === "video" ? "Video" : "Image"}</dd>
           </div>
           <div className="md:col-span-2">
             <dt className="font-semibold text-[#9a8c80]">Destination URL</dt>
@@ -399,12 +406,12 @@ export default function AdminAdsPage({ basePath = "/admin" }: { basePath?: "/adm
 
             <div className="space-y-4">
               <label className="block">
-                <span className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">Ad Image *</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-[#9a8c80]">Ad creative *</span>
                 <span className="mt-2 flex min-h-[96px] cursor-pointer flex-col items-center justify-center rounded-[22px] border-2 border-dashed border-[#e3d3bd] bg-[#fffdfa] px-5 py-5 text-center transition hover:border-[#b77624] hover:bg-[#faf4ec]">
                   <ImagePlus className="mb-2 h-7 w-7 text-[#b77624]" />
-                  <span className="text-sm font-semibold text-[#4f4338]">Choose ad image</span>
+                  <span className="text-sm font-semibold text-[#4f4338]">Choose image or video</span>
                   <input
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
                     className="mt-3 block w-full max-w-sm text-sm text-[#5b4d40] file:mr-3 file:rounded-full file:border-0 file:bg-[#b77624] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#9a6220]"
                     name="image_file"
                     required
@@ -450,6 +457,7 @@ export default function AdminAdsPage({ basePath = "/admin" }: { basePath?: "/adm
                 companyName: previewAd.company_name,
                 id: previewAd.id,
                 imageUrl: previewAd.image_url,
+                mediaType: previewAd.media_type ?? "image",
               }}
               cardHeight="min(620px, calc(100dvh - 180px))"
               cardWidth="min(370px, calc(100vw - 48px))"
