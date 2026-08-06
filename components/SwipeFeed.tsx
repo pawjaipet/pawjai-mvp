@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import SwipeDogCard, { type SwipeDog } from "./SwipeDogCard";
 import AdCard from "./AdCard";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 import type { Ad } from "@/utils/ads";
 import { buildSwipeFeed, isActiveDogFeedItem } from "@/utils/swipe-feed-model";
 
@@ -23,6 +25,7 @@ interface Props {
 export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [] }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const { t } = useLanguage();
 
   const feed = buildSwipeFeed(dogs, ads, AD_EVERY);
 
@@ -59,6 +62,9 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [] }: Prop
             className="h-full w-full object-contain object-left"
           />
         </Link>
+        <div className="absolute right-[16px] top-[20px]">
+          <LanguageSwitcher />
+        </div>
       </div>
 
       {/* Snap scroll container */}
@@ -73,8 +79,8 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [] }: Prop
         {dogs.length === 0 && (
           <div className="snap-start flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ minHeight: "calc(100dvh - 134px)" }}>
             <p className="text-6xl">🐾</p>
-            <p className="text-xl font-bold text-[#65584f]">No dogs available yet</p>
-            <p className="text-sm text-[#65584f]/60">Shelters are getting ready — check back soon!</p>
+            <p className="text-xl font-bold text-[#65584f]">{t("No dogs available yet")}</p>
+            <p className="text-sm text-[#65584f]/60">{t("Shelters are getting ready — check back soon!")}</p>
           </div>
         )}
 
@@ -111,21 +117,21 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [] }: Prop
             className="snap-start flex flex-col items-center justify-center gap-5 px-6 text-center"
             style={{ minHeight: "calc(100dvh - 134px)", scrollSnapStop: "always" }}
           >
-            <p className="font-['Montserrat',sans-serif] text-[18px] font-semibold text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>You&apos;ve seen them all!</p>
-            <p className="text-[14px] text-[#65584f]/60" style={{ fontFamily: "Montserrat, sans-serif" }}>All available dogs are shown above.</p>
+            <p className="font-['Montserrat',sans-serif] text-[18px] font-semibold text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>{t("You've seen them all!")}</p>
+            <p className="text-[14px] text-[#65584f]/60" style={{ fontFamily: "Montserrat, sans-serif" }}>{t("All available dogs are shown above.")}</p>
             <Link
               href="/filter"
               className="bg-[#cd8188] text-white font-semibold px-[24px] py-[12px] rounded-[22px] shadow-lg active:bg-[#b87179] hover:bg-[#b87179] flex items-center gap-[8px]"
               style={{ fontFamily: "Montserrat, sans-serif", fontSize: 14 }}
             >
-              Set preferences
+              {t("Set preferences")}
             </Link>
             <button
               onClick={scrollToTop}
               className="bg-[#cd8188] text-white font-semibold px-[32px] py-[14px] rounded-[22px] shadow-lg active:bg-[#b87179] hover:bg-[#b87179] flex items-center gap-[12px]"
               style={{ fontFamily: "Montserrat, sans-serif", fontSize: 16 }}
             >
-              Back to top
+              {t("Back to top")}
             </button>
           </div>
         )}

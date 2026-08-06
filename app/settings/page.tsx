@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CreditCard, HelpCircle, Mail } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { createClient } from "@/utils/supabase/server";
 
 const M = "Montserrat, sans-serif";
@@ -75,7 +76,10 @@ export default async function SettingsPage() {
         >
           <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
         </Link>
-        <h1 className="text-[18px] font-bold" style={{ color: "#65584f" }}>Settings</h1>
+        <div className="flex items-center gap-[10px]">
+          <h1 className="text-[18px] font-bold" style={{ color: "#65584f" }}>Settings</h1>
+          <LanguageSwitcher compact />
+        </div>
       </div>
 
       {/* Account email */}

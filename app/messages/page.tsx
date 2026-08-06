@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import type { AppointmentMessageRow } from "@/utils/appointment-messages";
 import { isAppointmentMessagesUnavailableError } from "@/utils/appointment-messages";
@@ -80,9 +81,12 @@ export default async function MessagesPage() {
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
       <div className="sticky top-0 z-10 px-[16px] pt-[14px] pb-[20px] shrink-0" style={{ background: "#65584f" }}>
-        <Link href="/" className="block h-[56px] w-[56px] mb-[10px] active:scale-95 transition-transform" aria-label="PawJai home" style={{ filter: "brightness(0) invert(1)" }}>
-          <Image src="/pawjai-logo.png" alt="PawJai" width={56} height={56} className="h-full w-full object-contain object-left" priority />
-        </Link>
+        <div className="mb-[10px] flex items-start justify-between">
+          <Link href="/" className="block h-[56px] w-[56px] active:scale-95 transition-transform" aria-label="PawJai home" style={{ filter: "brightness(0) invert(1)" }}>
+            <Image src="/pawjai-logo.png" alt="PawJai" width={56} height={56} className="h-full w-full object-contain object-left" priority />
+          </Link>
+          <LanguageSwitcher className="mt-[2px]" />
+        </div>
         <h1 className="font-bold text-[32px] text-white leading-[1.2]" style={{ fontFamily: M }}>Messages</h1>
         <p className="text-[14px] text-white/80 mt-[4px]" style={{ fontFamily: M }}>Your conversations with shelters</p>
       </div>

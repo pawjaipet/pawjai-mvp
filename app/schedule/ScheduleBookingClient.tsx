@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import { bookAppointment } from "@/app/dogs/[id]/actions";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 import type { MonthAvailability } from "@/utils/shelter-availability";
 
 const M = "Montserrat, sans-serif";
@@ -82,6 +84,7 @@ export default function ScheduleBookingClient({
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [note, setNote] = useState("");
+  const { language, t } = useLanguage();
   const totalDays = daysInMonth(viewYear, viewMonth);
   const firstDay = firstDayOfMonth(viewYear, viewMonth);
   const previousMonth = getAdjacentMonth(viewYear, viewMonth, -1);
@@ -90,13 +93,13 @@ export default function ScheduleBookingClient({
   const selectedSlots = selectedAvailability?.slots ?? [];
   const selectedMonthLabel = useMemo(() => {
     if (!selectedDate) return "";
-    return `${Number(selectedDate.slice(-2))} ${MONTH_NAMES[viewMonth]}`;
-  }, [selectedDate, viewMonth]);
+    return `${Number(selectedDate.slice(-2))} ${t(MONTH_NAMES[viewMonth])}`;
+  }, [selectedDate, t, viewMonth]);
   const selectedSlotsStatus = slotsLoading
-    ? "Loading visit times for this date..."
+    ? t("Loading visit times for this date...")
     : selectedSlots.length > 0
-      ? `${selectedSlots.length} visit times available. Choose one below.`
-      : "No visit times are available for this date.";
+      ? t(`${selectedSlots.length} visit times available. Choose one below.`)
+      : t("No visit times are available for this date.");
 
   useEffect(() => {
     if (!selectedDate) {
@@ -126,10 +129,11 @@ export default function ScheduleBookingClient({
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
-      <div className="px-[8px] pt-[7px] pb-[12px]">
+      <div className="flex items-start justify-between px-[8px] pt-[7px] pb-[12px]">
         <Link href="/" className="relative block h-[80px] w-[80px] active:scale-95 transition-transform" aria-label="PawJai home">
           <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain object-left" priority />
         </Link>
+        <LanguageSwitcher className="mt-[12px] mr-[8px]" />
       </div>
 
       <div className="px-[16px] pt-[100px]">
@@ -144,21 +148,23 @@ export default function ScheduleBookingClient({
             </svg>
           </Link>
           <h1 className="text-[24px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
-            Book a Visit
+            {t("Book a Visit")}
           </h1>
         </div>
         <p className="mb-[24px] pl-[46px] text-[13px] text-[#65584f]/60" style={{ fontFamily: M }}>
-          Meet <span className="font-semibold text-[#cd8188]">{dog.name}</span> at {shelter.name}
+          {language === "th" ? "นัดพบ " : "Meet "}
+          <span className="font-semibold text-[#cd8188]">{dog.name}</span>
+          {language === "th" ? ` ที่ ${shelter.name}` : ` at ${shelter.name}`}
         </p>
 
         <div className="mb-[10px] flex items-center justify-center gap-[18px] text-[11px] font-semibold text-[#65584f]/65">
           <span className="flex items-center gap-[6px]">
             <span className="h-[10px] w-[10px] rounded-full bg-[#6b5d52]" />
-            Unavailable
+            {t("Unavailable")}
           </span>
           <span className="flex items-center gap-[6px]">
             <span className="h-[10px] w-[10px] rounded-full bg-[#cd8188]" />
-            Your Select
+            {t("Your Select")}
           </span>
         </div>
 
@@ -174,7 +180,7 @@ export default function ScheduleBookingClient({
               </svg>
             </Link>
             <p className="text-[16px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
-              {MONTH_NAMES[viewMonth]} {viewYear + 543} ({viewYear})
+              {t(MONTH_NAMES[viewMonth])} {viewYear + 543} ({viewYear})
             </p>
             <Link
               href={monthHref(dog.id, nextMonth.year, nextMonth.month)}
@@ -190,7 +196,7 @@ export default function ScheduleBookingClient({
           <div className="mb-[8px] grid grid-cols-7">
             {DAY_NAMES.map((dayName) => (
               <div key={dayName} className="py-[4px] text-center text-[11px] font-semibold text-[#65584f]/40" style={{ fontFamily: M }}>
-                {dayName}
+                {t(dayName)}
               </div>
             ))}
           </div>
@@ -239,14 +245,14 @@ export default function ScheduleBookingClient({
         {selectedDate && (
           <div className="mb-[20px] rounded-[20px] bg-white p-[16px]" aria-live="polite">
             <p className="mb-[12px] text-[13px] font-semibold text-[#65584f]/60" style={{ fontFamily: M }}>
-              Available times — {selectedMonthLabel}
+              {t("Available times")} — {selectedMonthLabel}
             </p>
             <p className="mb-[12px] rounded-[14px] bg-[#f5f1e8] px-[14px] py-[10px] text-[13px] font-medium text-[#65584f]/70" style={{ fontFamily: M }}>
               {selectedSlotsStatus}
             </p>
             {slotsLoading ? (
               <div className="rounded-[14px] bg-[#f5f1e8] px-[14px] py-[12px] text-[13px] font-medium text-[#65584f]/65" style={{ fontFamily: M }}>
-                Loading visit times for this date...
+                {t("Loading visit times for this date...")}
               </div>
             ) : selectedSlots.length > 0 ? (
               <div className="flex flex-wrap gap-[8px]">
@@ -272,7 +278,7 @@ export default function ScheduleBookingClient({
                 })}
               </div>
             ) : (
-              <p className="text-[13px] text-[#65584f]/55">No visit times are available on this date.</p>
+              <p className="text-[13px] text-[#65584f]/55">{t("No visit times are available on this date.")}</p>
             )}
           </div>
         )}
@@ -280,12 +286,12 @@ export default function ScheduleBookingClient({
         {selectedTime && (
           <div className="mb-[24px] rounded-[20px] bg-white p-[16px]">
             <label className="mb-[8px] block text-[12px] font-semibold uppercase tracking-wider text-[#65584f]/60" style={{ fontFamily: M }}>
-              Note (optional)
+              {t("Note (optional)")}
             </label>
             <textarea
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="e.g. I have a child aged 5. Does the dog get along with kids?"
+              placeholder={t("e.g. I have a child aged 5. Does the dog get along with kids?")}
               rows={3}
               className="w-full resize-none rounded-[12px] border-none px-[14px] py-[12px] text-[13px] text-[#65584f] outline-none"
               style={{ background: "#d6c8ad", fontFamily: M }}
@@ -304,7 +310,7 @@ export default function ScheduleBookingClient({
             className="w-full rounded-full py-[15px] text-[16px] font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40"
             style={{ background: "#cd8188", fontFamily: M }}
           >
-            {slotsLoading ? "Loading visit times..." : "Confirm Visit"}
+            {slotsLoading ? t("Loading visit times...") : t("Confirm Visit")}
           </button>
         </form>
       </div>

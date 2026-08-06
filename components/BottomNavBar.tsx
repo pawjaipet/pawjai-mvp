@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, SlidersHorizontal, Calendar, User, MoreHorizontal } from "lucide-react";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 const TABS = [
   { href: "/", label: "Home", Icon: Home },
@@ -14,6 +15,7 @@ const TABS = [
 
 export default function BottomNavBar() {
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   if (
     pathname.startsWith("/admin") ||
@@ -46,7 +48,7 @@ export default function BottomNavBar() {
                 aria-hidden="true"
               />
               <span className={`text-[11px] transition-colors ${active ? "text-[#cd8188] font-semibold" : "text-[#65584f]/60 font-medium"}`}>
-                {label}
+                {t(label)}
               </span>
             </Link>
           );

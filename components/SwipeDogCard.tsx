@@ -6,6 +6,8 @@ import { Share2, CalendarDays, Bookmark } from "lucide-react";
 import { toggleWishlistAction } from "@/app/actions/wishlist";
 import { useAuthModal } from "@/components/auth/AuthProvider";
 import TreatButton from "@/components/donations/TreatButton";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
+import { translateAgeLabel, translateDogValue } from "@/components/i18n/translations";
 import type { Dog, DogPhoto, DogTrait } from "@/types/database";
 import { normalizeDogMediaUrl, type DogMediaItem } from "@/utils/dog-media";
 
@@ -55,6 +57,7 @@ export default function SwipeDogCard({
   const [saved, setSaved]       = useState(initialSaved);
   const [pending, startTransition] = useTransition();
   const { openAuthModal } = useAuthModal();
+  const { language, t } = useLanguage();
 
   const photos = dog.photos.length
     ? dog.photos
@@ -127,7 +130,7 @@ export default function SwipeDogCard({
     if (!isLoggedIn) {
       openAuthModal({
         nextPath: "/swipe",
-        reason: "Sign in to save dogs to your wishlist.",
+        reason: t("Sign in to save dogs to your wishlist."),
       });
       return;
     }
@@ -226,7 +229,7 @@ export default function SwipeDogCard({
             className="font-black text-[18px] leading-[1.1] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] break-words mt-[6px]"
             style={{ fontFamily: "Montserrat, sans-serif" }}
           >
-            {dog.breed}
+            {translateDogValue(dog.breed, language)}
           </p>
         )}
       </div>
@@ -254,7 +257,7 @@ export default function SwipeDogCard({
                 key={t}
                 data-tag
                 className={`${TAG_BEIGE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] whitespace-nowrap shrink-0${i >= visibleTagCount ? " hidden" : ""}`}
-              >{t}</span>
+              >{translateDogValue(translateAgeLabel(t, language), language)}</span>
             ))}
             <button
               onClick={() => setTagsOpen(true)}
@@ -267,7 +270,9 @@ export default function SwipeDogCard({
           <div className="flex flex-col gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
             <div className="flex gap-1.5 w-max">
               {row1.map((t) => (
-                <span key={t} className={`${TAG_BEIGE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] whitespace-nowrap`}>{t}</span>
+                <span key={t} className={`${TAG_BEIGE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] whitespace-nowrap`}>
+                  {translateDogValue(translateAgeLabel(t, language), language)}
+                </span>
               ))}
               <button
                 onClick={() => setTagsOpen(false)}
@@ -278,7 +283,9 @@ export default function SwipeDogCard({
             </div>
             <div className="flex gap-1.5 w-max">
               {row2.map((t) => (
-                <span key={t} className={`${TAG_BEIGE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] whitespace-nowrap`}>{t}</span>
+                <span key={t} className={`${TAG_BEIGE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] whitespace-nowrap`}>
+                  {translateDogValue(translateAgeLabel(t, language), language)}
+                </span>
               ))}
             </div>
           </div>
@@ -290,14 +297,14 @@ export default function SwipeDogCard({
         <button
           onClick={handleShare}
           className="bg-[#cd8188] w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-          aria-label="Share"
+          aria-label={t("Share")}
         >
           <Share2 size={24} stroke="white" strokeWidth={2} />
         </button>
         <Link
           href={`/schedule/${dog.id}`}
           className="bg-[#cd8188] w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-          aria-label="Book appointment"
+          aria-label={t("Book appointment")}
         >
           <CalendarDays size={24} stroke="white" strokeWidth={2} />
         </Link>
@@ -306,7 +313,7 @@ export default function SwipeDogCard({
           disabled={pending}
           className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform disabled:opacity-60"
           style={{ background: saved ? "#65584f" : "#cd8188" }}
-          aria-label={saved ? "Saved" : "Save"}
+          aria-label={saved ? t("Saved") : t("Save")}
         >
           <Bookmark size={24} stroke="white" fill={saved ? "white" : "none"} strokeWidth={2} />
         </button>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { acceptRescheduleRequestAction, cancelAppointmentFromListAction } from "@/app/appointments/actions";
 import { cancelAppointmentAction, sendAppointmentMessageAction, submitReturnInquiryAction } from "@/app/appointments/[id]/actions";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { createClient as createBrowserSupabaseClient } from "@/utils/supabase/client";
 
 const M = "Montserrat, sans-serif";
@@ -135,14 +136,17 @@ export default function AppointmentDetailClient({
         style={{ background: "#65584f" }}
       >
         {/* Logo top-left — doubles as home link */}
-        <Link
-          href="/"
-          className="block h-[52px] w-[52px] mb-[12px] active:scale-95 transition-transform"
-          aria-label="PawJai home"
-          style={{ filter: "brightness(0) invert(1)" }}
-        >
-          <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
-        </Link>
+        <div className="mb-[12px] flex items-start justify-between">
+          <Link
+            href="/"
+            className="block h-[52px] w-[52px] active:scale-95 transition-transform"
+            aria-label="PawJai home"
+            style={{ filter: "brightness(0) invert(1)" }}
+          >
+            <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
+          </Link>
+          <LanguageSwitcher className="mt-[2px]" />
+        </div>
 
         <div className="flex items-center gap-[12px]">
           <div className="w-[48px] h-[48px] rounded-[10px] overflow-hidden flex-shrink-0" style={{ background: "rgba(255,255,255,0.15)" }}>

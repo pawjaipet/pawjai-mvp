@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { normalizeDogMediaUrl } from "@/utils/dog-media";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -68,9 +69,12 @@ export default async function AdoptedPage() {
 
       {/* Beige header with logo + title */}
       <div className="px-[16px] pt-[14px] pb-[24px]" style={{ background: "#d6c8ad" }}>
-        <Link href="/" className="block h-[60px] w-[60px] mb-[18px] active:scale-95 transition-transform">
-          <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
-        </Link>
+        <div className="mb-[18px] flex items-start justify-between">
+          <Link href="/" className="block h-[60px] w-[60px] active:scale-95 transition-transform">
+            <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
+          </Link>
+          <LanguageSwitcher className="mt-[4px]" />
+        </div>
         <h1 className="font-bold text-[34px] text-[#65584f] leading-[1.1]" style={{ fontFamily: M }}>My Adopted Pets</h1>
         <p className="text-[14px] text-[#65584f]/75 mt-[4px]" style={{ fontFamily: M }}>Chat with your adopted companions</p>
       </div>

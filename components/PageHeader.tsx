@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 
 /**
  * Sticky gradient header used across all pages.
@@ -24,6 +25,9 @@ export default function PageHeader() {
             priority
           />
         </Link>
+      </div>
+      <div className="pointer-events-auto absolute right-[16px] top-[18px]">
+        <LanguageSwitcher />
       </div>
     </div>
   );

@@ -4,6 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { Camera, Check, X, Pencil, Award, Gift, Star } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { updateProfile } from "@/app/profile/actions";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 const M = "Montserrat, sans-serif";
 
@@ -37,6 +39,7 @@ export default function EditableProfileHeader({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [pending, startTransition] = useTransition();
+  const { t } = useLanguage();
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -166,6 +169,10 @@ export default function EditableProfileHeader({
           </button>
         )}
 
+        {!editing && (
+          <LanguageSwitcher className="absolute right-[62px] top-[14px] z-20" compact />
+        )}
+
         {/* Cover change overlay — only in edit mode */}
         {editing && (
           <button
@@ -182,7 +189,7 @@ export default function EditableProfileHeader({
                 <Camera size={26} stroke="#65584f" strokeWidth={2} />
               </div>
               <span className="text-white text-[13px] font-semibold" style={{ fontFamily: M }}>
-                Change cover photo
+                {t("Change cover photo")}
               </span>
             </div>
           </button>
@@ -219,11 +226,11 @@ export default function EditableProfileHeader({
               onClick={() => avatarInputRef.current?.click()}
               className="absolute inset-0 flex flex-col items-center justify-center gap-[4px]"
               style={{ background: "rgba(0,0,0,0.55)" }}
-              aria-label="Change profile photo"
+              aria-label={t("Change profile photo")}
             >
               <Camera size={28} stroke="white" strokeWidth={2.2} />
               <span className="text-white text-[10px] font-semibold leading-none" style={{ fontFamily: M }}>
-                Change
+                {t("Change")}
               </span>
             </button>
           )}
@@ -232,7 +239,7 @@ export default function EditableProfileHeader({
         {/* Edit-mode hint — clarifies both upload zones */}
         {editing && (
           <p className="mt-[10px] text-[12px] text-[#65584f]/65 text-center" style={{ fontFamily: M }}>
-            Tap photo or banner to upload
+            {t("Tap photo or banner to upload")}
           </p>
         )}
 
@@ -242,7 +249,7 @@ export default function EditableProfileHeader({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
+            placeholder={t("Your name")}
             maxLength={60}
             className="mt-[18px] w-full max-w-[300px] text-center text-[34px] font-bold leading-tight outline-none rounded-[10px] px-[12px] py-[6px]"
             style={{
@@ -283,7 +290,7 @@ export default function EditableProfileHeader({
                 }}
               >
                 <Icon size={16} stroke={isFilled ? "white" : "#cd8188"} strokeWidth={2.2} />
-                <span className="text-[14px] font-semibold whitespace-nowrap">{label}</span>
+                <span className="text-[14px] font-semibold whitespace-nowrap">{t(label)}</span>
               </div>
             );
           })}
@@ -304,7 +311,7 @@ export default function EditableProfileHeader({
                 fontFamily: M,
               }}
             >
-              <X size={15} /> Cancel
+              <X size={15} /> {t("Cancel")}
             </button>
             <button
               type="button"
@@ -313,7 +320,7 @@ export default function EditableProfileHeader({
               className="flex-1 rounded-[12px] py-[12px] text-[14px] font-semibold text-white flex items-center justify-center gap-[6px] transition-all active:scale-[0.98] disabled:opacity-60"
               style={{ background: "#cd8188", fontFamily: M }}
             >
-              <Check size={15} /> {pending ? "Saving…" : "Save"}
+              <Check size={15} /> {pending ? t("Saving...") : t("Save")}
             </button>
           </div>
         )}

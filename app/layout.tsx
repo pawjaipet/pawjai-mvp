@@ -3,6 +3,7 @@ import { Montserrat } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import BottomNavBar from "@/components/BottomNavBar";
+import { LanguageProvider } from "@/components/i18n/LanguageProvider";
 import { SITE_URL } from "@/utils/seo";
 
 const montserrat = Montserrat({
@@ -37,10 +38,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={montserrat.variable}>
       <body className="bg-[#f5f0e8] text-[#65584f] antialiased font-[family-name:var(--font-montserrat)]">
-        <AuthProvider>
-          <main className="min-h-screen pb-[70px]">{children}</main>
-          <BottomNavBar />
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <main className="min-h-screen pb-[70px]">{children}</main>
+            <BottomNavBar />
+          </AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

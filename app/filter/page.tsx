@@ -4,6 +4,9 @@ import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getSavedFilterPreferences, saveFilterPreferences } from "@/app/actions/preferences";
 import ClientAuthGate from "@/components/auth/ClientAuthGate";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
+import { translateAgeLabel, translateDogValue } from "@/components/i18n/translations";
 import { DOG_FILTER_BREED_OPTIONS } from "@/utils/dog-breeds";
 import { createClient } from "@/utils/supabase/client";
 
@@ -384,6 +387,7 @@ function ScrollFilter({
 }: ScrollFilterProps) {
   const minPercent = (ageRange[0] / 7) * 100;
   const maxPercent = (ageRange[1] / 7) * 100;
+  const { language, t } = useLanguage();
 
   return (
     <div
@@ -402,15 +406,18 @@ function ScrollFilter({
         className="sticky top-0 z-20 px-[20px] py-[14px] flex items-center justify-between"
         style={{ background: "rgba(245,241,232,0.96)", backdropFilter: "blur(8px)", borderBottom: "1px solid rgba(101,88,79,0.08)" }}
       >
-        <h1 className="text-[18px] font-bold text-[#65584f]" style={{ fontFamily: M }}>Filter</h1>
-        <button
-          type="button"
-          onClick={onReset}
-          className="rounded-full px-[14px] py-[6px] text-[12px] font-semibold border active:scale-95 transition-transform"
-          style={{ borderColor: "rgba(101,88,79,0.25)", color: "#65584f", background: "white", fontFamily: M }}
-        >
-          Reset
-        </button>
+        <h1 className="text-[18px] font-bold text-[#65584f]" style={{ fontFamily: M }}>{t("Filter")}</h1>
+        <div className="flex items-center gap-[8px]">
+          <LanguageSwitcher compact />
+          <button
+            type="button"
+            onClick={onReset}
+            className="rounded-full px-[14px] py-[6px] text-[12px] font-semibold border active:scale-95 transition-transform"
+            style={{ borderColor: "rgba(101,88,79,0.25)", color: "#65584f", background: "white", fontFamily: M }}
+          >
+            {t("Reset")}
+          </button>
+        </div>
       </div>
 
       {/* Stacked questions */}
@@ -420,10 +427,10 @@ function ScrollFilter({
           return (
             <section key={q.id} className="mb-[28px]">
               <h2 className="text-[16px] font-bold text-[#65584f] mb-[4px]" style={{ fontFamily: M }}>
-                {q.question}
+                {t(q.question)}
               </h2>
               <p className="text-[11px] mb-[12px]" style={{ color: "rgba(101,88,79,0.6)", fontFamily: M }}>
-                {q.subtitle}
+                {t(q.subtitle)}
               </p>
 
               {q.type === "cards" && (
@@ -442,11 +449,11 @@ function ScrollFilter({
                         }}
                       >
                         <p className="font-semibold text-[14px]" style={{ color: selected ? "white" : "#65584f", fontFamily: M }}>
-                          {option.label}
+                          {translateDogValue(option.label, language)}
                         </p>
                         {"description" in option && option.description && (
                           <p className="text-[12px] mt-[2px]" style={{ color: selected ? "rgba(255,255,255,0.8)" : "rgba(101,88,79,0.55)", fontFamily: M }}>
-                            {option.description}
+                            {t(option.description)}
                           </p>
                         )}
                       </button>
@@ -458,7 +465,7 @@ function ScrollFilter({
               {q.type === "slider" && (
                 <div className="pt-[8px] pb-[4px]">
                   <p className="text-center font-semibold text-[20px] mb-[18px]" style={{ color: "#cd8188", fontFamily: M }}>
-                    {getAgeLabel(ageRange[0], ageRange[1])}
+                    {translateAgeLabel(getAgeLabel(ageRange[0], ageRange[1]), language)}
                   </p>
                   <div
                     ref={sliderRef}
@@ -512,7 +519,7 @@ function ScrollFilter({
                         }}
                       >
                         <p className="text-[13px] whitespace-nowrap" style={{ color: selected ? "white" : "#65584f", fontFamily: M }}>
-                          {option.label}
+                          {translateDogValue(option.label, language)}
                         </p>
                       </button>
                     );
@@ -542,7 +549,7 @@ function ScrollFilter({
           className="w-full h-[52px] rounded-[12px] flex items-center justify-center gap-[8px] text-[15px] font-bold transition-all active:scale-[0.98]"
           style={{ background: "#65584f", color: "white", pointerEvents: "auto", fontFamily: M }}
         >
-          Show Dogs
+          {t("Show Dogs")}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { acceptRescheduleRequestAction, cancelAppointmentFromListAction, updateAppointmentDateTimeAction } from "@/app/appointments/actions";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adopter";
 import {
   APPOINTMENT_TIME_SLOTS,
@@ -322,9 +323,12 @@ function PageShell({
 
       {/* Beige header with PAWJAI logo — matches Figma */}
       <div className="px-[16px] pt-[14px] pb-[24px]" style={{ background: "#d6c8ad" }}>
-        <Link href="/" className="block h-[60px] w-[60px] mb-[18px]">
-          <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
-        </Link>
+        <div className="mb-[18px] flex items-start justify-between">
+          <Link href="/" className="block h-[60px] w-[60px]">
+            <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
+          </Link>
+          <LanguageSwitcher className="mt-[4px]" />
+        </div>
         <h1 className="font-bold text-[34px] text-[#65584f] leading-[1.1]" style={{ fontFamily: M }}>Appointments</h1>
         <p className="text-[14px] text-[#65584f]/75 mt-[4px]" style={{ fontFamily: M }}>Your upcoming shelter visits</p>
       </div>

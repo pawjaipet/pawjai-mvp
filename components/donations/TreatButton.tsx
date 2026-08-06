@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Bone } from "lucide-react";
 import { useAuthModal } from "@/components/auth/AuthProvider";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { createDonationIntent } from "@/app/donations/actions";
 import TreatModal, { type TreatSelection } from "./TreatModal";
 
@@ -38,6 +39,7 @@ export default function TreatButton({
 }: TreatButtonProps) {
   const router = useRouter();
   const { openAuthModal } = useAuthModal();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(autoOpenCount != null);
   const [mounted, setMounted] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -52,7 +54,7 @@ export default function TreatButton({
       setOpen(false);
       openAuthModal({
         nextPath: `/dogs/${dogId}?treat=${treatCount}`,
-        reason: `Sign in to send treats to ${dogName}.`,
+        reason: t(`Sign in to send treats to ${dogName}.`),
       });
       return;
     }
@@ -77,7 +79,7 @@ export default function TreatButton({
         className="w-full rounded-full py-[15px] flex items-center justify-center gap-[8px] font-bold text-[16px] transition-all active:scale-[0.98]"
         style={{ border: `2px solid ${PINK}`, color: BROWN, background: "transparent", fontFamily: "Montserrat, sans-serif" }}
       >
-        🦴 Treat {dogName}
+        🦴 {t(`Treat ${dogName}`)}
       </button>
     ) : (
       <button
@@ -88,7 +90,7 @@ export default function TreatButton({
           setOpen(true);
         }}
         className={`bg-[#cd8188] ${size === "sm" ? "w-[48px] h-[48px]" : "w-14 h-14"} rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform`}
-        aria-label={`Treat ${dogName}`}
+        aria-label={t(`Treat ${dogName}`)}
       >
         <Bone size={size === "sm" ? 22 : 24} stroke="white" strokeWidth={2} />
       </button>

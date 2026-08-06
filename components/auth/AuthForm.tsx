@@ -12,6 +12,8 @@ import {
   parseVerificationCode,
   sanitizeNextPath,
 } from "@/utils/account-model";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { createClient } from "@/utils/supabase/client";
 
 type AuthFormProps = {
@@ -81,6 +83,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
   const [isPending, startTransition] = useTransition();
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const googleNonceRef = useRef<string | null>(null);
+  const { t } = useLanguage();
   const isSignup = mode === "signup";
   const isVerification = mode === "verify";
 
@@ -350,20 +353,24 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
         </button>
       )}
 
+      <div className={`absolute top-[14px] ${onClose ? "left-[14px]" : "right-[14px]"}`}>
+        <LanguageSwitcher compact />
+      </div>
+
       <div className="mx-auto mb-[22px] h-[120px] w-[120px] relative">
         <Image src="/pawjai-logo.png" alt="PawJai" fill sizes="96px" className="object-contain" priority />
       </div>
 
       <div className="mb-[24px] text-center">
         <h1 className="text-[38px] font-extrabold leading-[1] text-[#65584f]">
-          {isVerification ? "Verify email" : isSignup ? "Create account" : "Sign in"}
+          {isVerification ? t("Verify email") : isSignup ? t("Create account") : t("Sign in")}
         </h1>
         <p className="mx-auto mt-[10px] max-w-[270px] text-[14px] leading-[1.45] text-[#65584f]/60">
           {isVerification
-            ? "Use the code from your PawJai email."
+            ? t("Use the code from your PawJai email.")
             : isSignup
-            ? "Use your email now. Profile details can wait until documents."
-            : "Save your dogs, preferences, visits, and documents."}
+            ? t("Use your email now. Profile details can wait until documents.")
+            : t("Save your dogs, preferences, visits, and documents.")}
         </p>
       </div>
 
@@ -380,7 +387,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
             <input
               name="email"
               type="email"
-              placeholder="Email"
+              placeholder={t("Email")}
               autoComplete="email"
               required
               value={pendingVerificationEmail}
@@ -392,7 +399,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
               type="text"
               inputMode="numeric"
               pattern="[0-9 ]{6,8}"
-              placeholder="6-digit code"
+              placeholder={t("6-digit code")}
               autoComplete="one-time-code"
               required
               className="h-[58px] w-full rounded-[18px] border-0 bg-[#d6c8ad] px-[20px] text-center text-[24px] font-bold tracking-[0.16em] text-[#65584f] outline-none placeholder:text-left placeholder:text-[16px] placeholder:font-normal placeholder:tracking-normal placeholder:text-[#65584f]/45"
@@ -403,7 +410,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
                 disabled={isPending}
                 className="h-[58px] w-full rounded-[20px] border-0 bg-[#cd8188] text-[18px] font-bold text-white transition-all active:bg-[#65584f]"
               >
-                {isPending ? "Verifying..." : "Verify account"}
+                {isPending ? t("Verifying...") : t("Verify account")}
               </button>
             </div>
           </form>
@@ -414,7 +421,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
               disabled={isPending || !pendingVerificationEmail}
               className="h-[48px] w-full rounded-[18px] border border-[rgba(101,88,79,0.2)] bg-white text-[14px] font-bold text-[#65584f] transition-all active:bg-[#f5f0eb] disabled:opacity-50"
             >
-              Resend verification email
+              {t("Resend verification email")}
             </button>
           </form>
         </div>
@@ -424,7 +431,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
           <input
             name="email"
             type="email"
-            placeholder="Email"
+            placeholder={t("Email")}
             autoComplete="email"
             required
             className="h-[58px] w-full rounded-[18px] border-0 bg-[#d6c8ad] px-[20px] text-[16px] text-[#65584f] outline-none placeholder:text-[#65584f]/45"
@@ -432,7 +439,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
           <input
             name="password"
             type="password"
-            placeholder="Create password"
+            placeholder={t("Create password")}
             autoComplete="new-password"
             required
             minLength={8}
@@ -441,7 +448,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
           <input
             name="confirmPassword"
             type="password"
-            placeholder="Confirm password"
+            placeholder={t("Confirm password")}
             autoComplete="new-password"
             required
             minLength={8}
@@ -453,7 +460,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
               disabled={isPending}
               className="h-[58px] w-full rounded-[20px] border-0 bg-[#cd8188] text-[18px] font-bold text-white transition-all active:bg-[#65584f]"
             >
-              {isPending ? "Creating..." : "Create account"}
+              {isPending ? t("Creating...") : t("Create account")}
             </button>
           </div>
         </form>
@@ -463,7 +470,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
           <input
             name="email"
             type="email"
-            placeholder="Email"
+            placeholder={t("Email")}
             autoComplete="email"
             required
             className="h-[58px] w-full rounded-[18px] border-0 bg-[#d6c8ad] px-[20px] text-[16px] text-[#65584f] outline-none placeholder:text-[#65584f]/45"
@@ -471,7 +478,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
           <input
             name="password"
             type="password"
-            placeholder="Password"
+            placeholder={t("Password")}
             autoComplete="current-password"
             required
             minLength={8}
@@ -483,7 +490,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
               disabled={isPending}
               className="h-[58px] w-full rounded-[20px] border-0 bg-[#cd8188] text-[18px] font-bold text-white transition-all active:bg-[#65584f]"
             >
-              {isPending ? "Signing in..." : "Log in"}
+              {isPending ? t("Signing in...") : t("Log in")}
             </button>
           </div>
         </form>
@@ -501,7 +508,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
 
           <div className="my-[18px] flex items-center gap-[12px]">
             <div className="h-px flex-1 bg-[#d6c8ad]" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#65584f]/38">or</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#65584f]/38">{t("or")}</span>
             <div className="h-px flex-1 bg-[#d6c8ad]" />
           </div>
 
@@ -510,7 +517,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
               <div className="w-full [&>div]:mx-auto" ref={googleButtonRef} />
               {isGooglePending && (
                 <div className="pt-2 text-center text-[13px] font-semibold text-[#65584f]/70">
-                  Signing in with Google...
+                  {t("Signing in with Google...")}
                 </div>
               )}
             </div>
@@ -527,7 +534,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
                   <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                 </svg>
-                Continue with Google
+                {t("Continue with Google")}
               </button>
             </form>
           )}
@@ -543,7 +550,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
           }}
           className="rounded-full px-[14px] py-[8px] text-[14px] font-semibold text-[#65584f]/75 transition-all active:bg-[#d6c8ad]/35"
         >
-          {isSignup || isVerification ? "Already have an account? Log in" : "New here? Create account"}
+          {isSignup || isVerification ? t("Already have an account? Log in") : t("New here? Create account")}
         </button>
       </div>
     </div>

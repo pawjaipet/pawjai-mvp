@@ -13,6 +13,7 @@ import {
   MAX_HOME_PHOTOS,
   syncVerificationFileFields,
 } from "@/utils/adopter-documents";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 
 const M = "Montserrat, sans-serif";
 
@@ -411,17 +412,20 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
         >
           <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
         </Link>
-        {section !== "done" && (
-          <button
-            type="button"
-            disabled={isSubmitting}
-            onClick={() => setShowExitWarning(true)}
-            className="text-[12px] font-bold rounded-full px-[14px] py-[8px]"
-            style={{ background: "#cd8188", color: "white", fontFamily: M, opacity: isSubmitting ? 0.5 : 1 }}
-          >
-            Save & Exit
-          </button>
-        )}
+        <div className="flex items-center gap-[8px]">
+          <LanguageSwitcher compact />
+          {section !== "done" && (
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => setShowExitWarning(true)}
+              className="text-[12px] font-bold rounded-full px-[14px] py-[8px]"
+              style={{ background: "#cd8188", color: "white", fontFamily: M, opacity: isSubmitting ? 0.5 : 1 }}
+            >
+              Save & Exit
+            </button>
+          )}
+        </div>
       </div>
 
       {showExitWarning && section !== "done" && (

@@ -8,6 +8,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import AuthPromptButton from "@/components/auth/AuthPromptButton";
 import DogPhotoGallery from "@/components/dogs/DogPhotoGallery";
 import TreatButton from "@/components/donations/TreatButton";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import type { DogPhoto, DogTrait } from "@/types/database";
 import { buildDogMediaItems, normalizeDogMediaUrl } from "@/utils/dog-media";
 import { NOINDEX_ROBOTS, canonicalUrl } from "@/utils/seo";
@@ -272,6 +273,9 @@ export default async function DogProfilePage({
             </button>
           </form>
         )}
+        <div className={`absolute right-[14px] ${user ? "top-[74px]" : "top-[14px]"} z-10`}>
+          <LanguageSwitcher compact />
+        </div>
       </div>
 
       {/* Main content */}

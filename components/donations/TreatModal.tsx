@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 const M = "Montserrat, sans-serif";
 const PINK = "#cd8188";
@@ -40,6 +41,7 @@ export default function TreatModal({
   const [count, setCount] = useState(initialCount);
   const [customOpen, setCustomOpen] = useState(false);
   const [customAmount, setCustomAmount] = useState("");
+  const { language, t } = useLanguage();
 
   useEffect(() => {
     if (open) {
@@ -91,10 +93,12 @@ export default function TreatModal({
 
         {/* Title + subtitle */}
         <h2 className="mt-[16px] text-center text-[20px] font-bold leading-tight" style={{ color: BROWN }}>
-          Buy {dogName} snacks and toys 🦴
+          {language === "th" ? `ซื้อขนมและของเล่นให้ ${dogName} 🦴` : `Buy ${dogName} snacks and toys 🦴`}
         </h2>
         <p className="mt-[8px] text-center text-[13px] leading-5 text-[#8d7f72]">
-          Your treats go to {shelterName} to care for {dogName} and friends.
+          {language === "th"
+            ? `เงินขนมของคุณจะส่งให้ ${shelterName} เพื่อดูแล ${dogName} และเพื่อนๆ`
+            : `Your treats go to ${shelterName} to care for ${dogName} and friends.`}
         </p>
 
         {/* Treat tiles */}
@@ -117,7 +121,7 @@ export default function TreatModal({
               >
                 <span className="text-[18px] leading-none">{tile.bones}</span>
                 <span className="mt-[8px] text-[13px] font-bold">
-                  {tile.count} treat{tile.count > 1 ? "s" : ""}
+                  {t(`${tile.count} treat${tile.count > 1 ? "s" : ""}`)}
                 </span>
                 <span className="mt-[2px] text-[12px] font-semibold opacity-80">
                   ฿{tile.count * PRICE_PER_TREAT}
@@ -135,12 +139,12 @@ export default function TreatModal({
             className="mt-[14px] block w-full text-center text-[13px] font-semibold"
             style={{ color: PINK }}
           >
-            Give more →
+            {t("Give more →")}
           </button>
         ) : (
           <div className="mt-[14px]">
             <label className="mb-[6px] block text-[12px] font-semibold uppercase tracking-[0.14em] text-[#8d7f72]">
-              Custom amount (฿)
+              {t("Custom amount (฿)")}
             </label>
             <input
               autoFocus
@@ -148,7 +152,7 @@ export default function TreatModal({
               min={PRICE_PER_TREAT}
               value={customAmount}
               onChange={(e) => setCustomAmount(e.target.value.replace(/[^\d]/g, ""))}
-              placeholder="e.g. 100"
+              placeholder={t("e.g. 100")}
               className="w-full rounded-[14px] border border-[#eadfce] bg-[#fffdfa] px-[16px] py-[12px] text-[15px] font-bold outline-none focus:border-[#cd8188]"
               style={{ color: BROWN }}
             />
@@ -157,7 +161,7 @@ export default function TreatModal({
               onClick={() => setCustomOpen(false)}
               className="mt-[8px] text-[12px] font-semibold text-[#8d7f72]"
             >
-              ← Back to treats
+              {t("← Back to treats")}
             </button>
           </div>
         )}
@@ -170,7 +174,7 @@ export default function TreatModal({
           className="mt-[20px] w-full rounded-full py-[15px] text-[16px] font-bold text-white transition-all active:scale-[0.98] disabled:opacity-60"
           style={{ background: PINK, boxShadow: "0 6px 18px rgba(205,129,136,0.35)" }}
         >
-          {pending ? "…" : "Continue"}
+          {pending ? "…" : t("Continue")}
         </button>
 
         {/* Maybe later */}
@@ -179,7 +183,7 @@ export default function TreatModal({
           onClick={onClose}
           className="mt-[12px] block w-full text-center text-[13px] font-semibold text-[#8d7f72]"
         >
-          Maybe later
+          {t("Maybe later")}
         </button>
       </div>
     </div>

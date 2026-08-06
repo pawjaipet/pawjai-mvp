@@ -5,6 +5,7 @@ import {
   loadPawjaiProfileContent,
   pawjaiContactIcon,
 } from "@/utils/pawjai-profile";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { createClient } from "@/utils/supabase/server";
 import { canonicalUrl } from "@/utils/seo";
 
@@ -43,9 +44,12 @@ export default async function AboutPage() {
 
       {/* Hero */}
       <div
-        className="w-full flex flex-col items-center justify-center pt-[48px] pb-[36px] px-[24px]"
+        className="relative w-full flex flex-col items-center justify-center pt-[48px] pb-[36px] px-[24px]"
         style={{ background: "linear-gradient(160deg, #d6c8ad 0%, #c4b49a 100%)", minHeight: 360 }}
       >
+        <div className="absolute right-[16px] top-[18px]">
+          <LanguageSwitcher />
+        </div>
         <div className="relative h-[220px] w-[300px] mb-[18px]">
           <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain" priority />
         </div>
