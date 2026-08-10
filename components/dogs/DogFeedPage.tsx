@@ -11,6 +11,7 @@ import {
 } from "@/utils/dog-preference-filter";
 import type { SwipeDog } from "@/components/SwipeDogCard";
 import SwipeFeed from "@/components/SwipeFeed";
+import { shuffleFeedDogs } from "@/utils/swipe-feed-model";
 import type { Database } from "@/types/database";
 import { hasSupabaseAuthCookies } from "@/utils/supabase/auth-cookies";
 
@@ -115,7 +116,7 @@ async function getDogs(preference: PreferenceForDogFilter | null): Promise<Swipe
     preference,
   );
 
-  return matchingDogs
+  const enrichedDogs = matchingDogs
     .map((d) => ({
       ...d,
       shelter_name: shelterNameMap.get(d.shelter_id) ?? null,
@@ -133,6 +134,14 @@ async function getDogs(preference: PreferenceForDogFilter | null): Promise<Swipe
       if (aUploaded !== bUploaded) return aUploaded ? -1 : 1;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
+
+  const dogsWithPhotos = enrichedDogs.filter(hasUploadedPhoto);
+  const dogsWithoutPhotos = enrichedDogs.filter((dog) => !hasUploadedPhoto(dog));
+
+  return [
+    ...shuffleFeedDogs(dogsWithPhotos),
+    ...shuffleFeedDogs(dogsWithoutPhotos),
+  ];
 }
 
 export default async function DogFeedPage() {

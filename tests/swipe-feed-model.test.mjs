@@ -46,6 +46,16 @@ test("does not reserve ad slots when there are no live ads", () => {
   assert.equal(feed.every((item) => item.kind === "dog"), true);
 });
 
+test("shuffles dog profiles without mutating the filtered result", () => {
+  const { shuffleFeedDogs } = loadSwipeFeedModel();
+  const dogs = Array.from({ length: 5 }, (_, index) => ({ id: `dog-${index + 1}` }));
+  const randomValues = [0.2, 0.8, 0.1, 0.6];
+  const shuffled = shuffleFeedDogs(dogs, () => randomValues.shift() ?? 0);
+
+  assert.deepEqual(dogs.map((dog) => dog.id), ["dog-1", "dog-2", "dog-3", "dog-4", "dog-5"]);
+  assert.deepEqual(Array.from(shuffled, (dog) => dog.id), ["dog-3", "dog-5", "dog-1", "dog-4", "dog-2"]);
+});
+
 test("marks dog cards active by feed index after ad insertion", () => {
   const { buildSwipeFeed, isActiveDogFeedItem } = loadSwipeFeedModel();
   const dogs = Array.from({ length: 6 }, (_, index) => ({ id: `dog-${index + 1}` }));
