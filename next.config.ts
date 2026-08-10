@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   },
   outputFileTracingIncludes: {
     "/admin/**/*": ["./node_modules/ffmpeg-static/ffmpeg"],
+    "/ads/**/*": ["./node_modules/ffmpeg-static/ffmpeg"],
+    "/admindraft/**/*": ["./node_modules/ffmpeg-static/ffmpeg"],
   },
   serverExternalPackages: ["ffmpeg-static"],
   images: {

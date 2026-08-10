@@ -1,6 +1,11 @@
 import "server-only";
 
 import { createAdminClient } from "@/utils/supabase/admin";
+import {
+  DEFAULT_AD_CREATIVE_SETTINGS,
+  normalizeAdCreativeSettings,
+  type AdCreativeSettings,
+} from "@/utils/ad-creative-settings";
 import { normalizeDogMediaUrl } from "@/utils/dog-media";
 import {
   loadAppointmentMessageThreads,
@@ -155,6 +160,7 @@ export type AdminDraftAboutContent = {
 
 export type AdminDraftData = {
   about: AdminDraftAboutContent | null;
+  adCreativeSettings: AdCreativeSettings;
   adClicks: AdminDraftAdClick[];
   ads: AdminDraftAd[];
   bookings: AdminDraftBooking[];
@@ -175,6 +181,7 @@ export type LoadAdminDraftDataOptions = {
 function fallbackData(error: string): AdminDraftData {
   return {
     about: null,
+    adCreativeSettings: DEFAULT_AD_CREATIVE_SETTINGS,
     adClicks: [],
     ads: [],
     bookings: [],
@@ -218,7 +225,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     return fallbackData(error instanceof Error ? error.message : "Supabase admin client is unavailable.");
   }
 
-  const [sheltersResult, dogsResult, dogPhotosResult, bookingsResult, donationsResult, messageThreadsResult, adsResult, adClicksResult, aboutResult, availabilityResult, regularHoursResult] = await Promise.all([
+  const [sheltersResult, dogsResult, dogPhotosResult, bookingsResult, donationsResult, messageThreadsResult, adsResult, adClicksResult, aboutResult, availabilityResult, regularHoursResult, adCreativeSettingsResult] = await Promise.all([
     supabase
       .from("shelters")
       .select("id,name,phone_number,email,address_line,subdistrict,district,province,postal_code,description,website_url,facebook_url,instagram_url,logo_url,google_maps_url,meeting_instructions,promptpay_id,bank_name,bank_account_number,bank_account_name")
@@ -267,6 +274,11 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
       .from("shelter_regular_hours")
       .select("id,shelter_id,day_of_week,is_closed,opens_at,closes_at,slot_duration_minutes")
       .order("day_of_week", { ascending: true }),
+    supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "ads_creative_specs")
+      .maybeSingle(),
   ]);
 
   const firstError = sheltersResult.error ?? dogsResult.error ?? dogPhotosResult.error ?? bookingsResult.error ?? donationsResult.error ?? adsResult.error ?? aboutResult.error;
@@ -300,6 +312,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
   const rawAds = adsResult.data ?? [];
   const rawAdClicks = adClicksResult.error ? [] : adClicksResult.data ?? [];
   const rawAbout = aboutResult.data ?? null;
+  const rawAdCreativeSettings = adCreativeSettingsResult.error ? null : adCreativeSettingsResult.data?.value;
   const rawAvailability = (availabilityResult.error ? [] : availabilityResult.data ?? []).filter((range: { shelter_id: string }) => (
     shouldScopeShelters ? returnedShelterIds.has(range.shelter_id) : true
   ));
@@ -431,6 +444,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
           updatedAt: rawAbout.updated_at,
         }
       : null,
+    adCreativeSettings: normalizeAdCreativeSettings(rawAdCreativeSettings),
     adClicks: rawAdClicks.map((click) => {
       const adopter = click.user_id ? clickAdopterSummary.get(click.user_id) : null;
       const profile = click.user_id ? clickProfileSummary.get(click.user_id) : null;

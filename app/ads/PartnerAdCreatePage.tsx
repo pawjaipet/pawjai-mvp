@@ -19,19 +19,81 @@ type PreviewState = {
   startDate: string;
 };
 
-const assetSpecs = [
-  "Best size: 370 x 560 px vertical",
-  "Safe ratio: 37:56 portrait",
-  "Images: JPG, PNG, or WebP",
-  "Videos: MP4, MOV, or WebM, under 210 MB",
-];
+type AdCreativeSettings = {
+  height: number;
+  maxUploadMb: number;
+  maxVideoSeconds: number;
+  width: number;
+};
 
-export default function PartnerAdCreatePage() {
+function gcd(left: number, right: number): number {
+  return right === 0 ? left : gcd(right, left % right);
+}
+
+function ratioLabel(settings: AdCreativeSettings) {
+  const divisor = gcd(settings.width, settings.height);
+  return `${settings.width / divisor}:${settings.height / divisor}`;
+}
+
+function assetSpecs(settings: AdCreativeSettings) {
+  return [
+    `Best size: ${settings.width} x ${settings.height} px vertical`,
+    `Safe ratio: ${ratioLabel(settings)} portrait`,
+    "Images: JPG, PNG, WebP, HEIC, or HEIF",
+    `Videos: MP4 or MOV, ${settings.maxVideoSeconds}s max, under ${settings.maxUploadMb} MB`,
+  ];
+}
+
+function extensionFromFileName(name: string) {
+  return name.split(".").pop()?.toLowerCase() ?? "";
+}
+
+function isAcceptedAdAsset(file: File) {
+  const extension = extensionFromFileName(file.name);
+  const type = file.type.split(";")[0]?.trim().toLowerCase();
+  return (
+    ["heic", "heif", "jpeg", "jpg", "mov", "mp4", "png", "webp"].includes(extension) ||
+    [
+      "image/heic",
+      "image/heif",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "video/mp4",
+      "video/quicktime",
+    ].includes(type)
+  );
+}
+
+function isVideoAsset(file: File) {
+  const extension = extensionFromFileName(file.name);
+  return file.type.startsWith("video/") || extension === "mov" || extension === "mp4";
+}
+
+function getVideoDuration(file: File, maxVideoSeconds: number) {
+  return new Promise<number>((resolve, reject) => {
+    const video = document.createElement("video");
+    const url = URL.createObjectURL(file);
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve(video.duration);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error(`Could not read this video length. Please upload an MP4 or MOV under ${maxVideoSeconds} seconds.`));
+    };
+    video.src = url;
+  });
+}
+
+export default function PartnerAdCreatePage({ creativeSettings }: { creativeSettings: AdCreativeSettings }) {
   const [state, action, pending] = useActionState(createPartnerAdAction, initialCreateState);
   const [clientError, setClientError] = useState("");
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const today = new Date().toISOString().slice(0, 10);
+  const specs = assetSpecs(creativeSettings);
 
   useEffect(() => {
     return () => {
@@ -41,7 +103,7 @@ export default function PartnerAdCreatePage() {
     };
   }, [preview?.imageUrl]);
 
-  function handlePreview() {
+  async function handlePreview() {
     const form = formRef.current;
     if (!form) return;
 
@@ -68,10 +130,28 @@ export default function PartnerAdCreatePage() {
       return;
     }
 
-    const mediaType = file.type.startsWith("video/") ? "video" : "image";
-    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
-      setClientError("Upload a JPG, PNG, WebP, MP4, MOV, or WebM ad asset.");
+    if (file.size > creativeSettings.maxUploadMb * 1024 * 1024) {
+      setClientError(`Upload a file under ${creativeSettings.maxUploadMb} MB.`);
       return;
+    }
+
+    if (!isAcceptedAdAsset(file)) {
+      setClientError("Upload a JPG, PNG, WebP, HEIC, HEIF, MP4, or MOV ad asset.");
+      return;
+    }
+
+    const mediaType = isVideoAsset(file) ? "video" : "image";
+    if (mediaType === "video") {
+      try {
+        const duration = await getVideoDuration(file, creativeSettings.maxVideoSeconds);
+        if (duration > creativeSettings.maxVideoSeconds + 0.25) {
+          setClientError(`Ad videos must be ${creativeSettings.maxVideoSeconds} seconds or shorter.`);
+          return;
+        }
+      } catch (error) {
+        setClientError(error instanceof Error ? error.message : "Could not read this video length.");
+        return;
+      }
     }
 
     let clickUrl = "";
@@ -202,13 +282,13 @@ export default function PartnerAdCreatePage() {
               <span className="rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-left">
                 <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-[#8a7b70]">Creative specs</span>
                 <span className="mt-2 grid gap-1 text-sm text-[#65584f]">
-                  {assetSpecs.map((spec) => (
+                  {specs.map((spec) => (
                     <span key={spec}>{spec}</span>
                   ))}
                 </span>
               </span>
               <input
-                accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
+                accept=".heic,.heif,.jpg,.jpeg,.mov,.mp4,.png,.webp,image/heic,image/heif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
                 className="block w-full text-sm text-[#65584f] file:mr-3 file:rounded-full file:border-0 file:bg-[#cd8188] file:px-6 file:py-3 file:text-sm file:font-semibold file:text-white hover:file:bg-[#b87179] md:col-span-2"
                 name="image_file"
                 required

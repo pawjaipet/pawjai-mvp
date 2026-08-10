@@ -1,11 +1,16 @@
 import "server-only";
 
 import { uploadBufferToBackblaze } from "@/utils/backblaze";
+import {
+  DEFAULT_AD_CREATIVE_SETTINGS,
+  type AdCreativeSettings,
+} from "@/utils/ad-creative-settings";
 import { parseAdDateRange } from "@/utils/ad-date-range";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { normalizeAdClickUrl } from "@/utils/ad-click-url";
 import { OPEN_ENDED_AD_END_DATE, type AdReviewStatus } from "@/utils/ad-workflow";
 import { generateAdSubmissionCode } from "@/utils/ad-codes";
+import { optimizeAdMedia } from "@/utils/ad-media";
 
 export type AdSubmissionResult = {
   adId?: string;
@@ -22,19 +27,6 @@ export type AdSubmissionResult = {
   startDate?: string;
   submissionCode?: string;
   success?: string;
-};
-
-const MAX_AD_MEDIA_BYTES = 210 * 1024 * 1024;
-const VIDEO_EXTENSIONS: Record<string, string> = {
-  "video/mp4": "mp4",
-  "video/quicktime": "mov",
-  "video/webm": "webm",
-};
-const IMAGE_EXTENSIONS: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/jpg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
 };
 
 function randomHex(bytes = 4) {
@@ -61,6 +53,7 @@ export async function createAdFromFormData(
   formData: FormData,
   options: {
     defaultEndDate?: string;
+    creativeSettings?: AdCreativeSettings;
     isActive?: boolean;
     minStartDate?: string;
     reviewStatus?: AdReviewStatus;
@@ -85,11 +78,9 @@ export async function createAdFromFormData(
   if (!companyName) return { error: "Company name is required." };
   if (!clickUrl) return { error: "Click URL is required." };
   if (!imageFile || imageFile.size === 0) return { error: "Ad image or video is required." };
-  if (imageFile.size > MAX_AD_MEDIA_BYTES) return { error: "Ad media must be under 210 MB." };
-
-  const mediaType = imageFile.type.startsWith("video/") ? "video" : "image";
-  const ext = mediaType === "video" ? VIDEO_EXTENSIONS[imageFile.type] : IMAGE_EXTENSIONS[imageFile.type];
-  if (!ext) return { error: "File must be a JPG, PNG, WebP, MP4, MOV, or WebM ad asset." };
+  const creativeSettings = options.creativeSettings ?? DEFAULT_AD_CREATIVE_SETTINGS;
+  const maxBytes = creativeSettings.maxUploadMb * 1024 * 1024;
+  if (imageFile.size > maxBytes) return { error: `Ad media must be under ${creativeSettings.maxUploadMb} MB.` };
 
   let dateRange: ReturnType<typeof parseAdDateRange>;
   try {
@@ -101,12 +92,22 @@ export async function createAdFromFormData(
     return { error: error instanceof Error ? error.message : "Dates are invalid." };
   }
 
-  const body = Buffer.from(await imageFile.arrayBuffer());
-  const desiredPath = `ads/${Date.now()}-${randomHex(4)}.${ext}`;
+  let optimizedMedia: Awaited<ReturnType<typeof optimizeAdMedia>>;
+  try {
+    optimizedMedia = await optimizeAdMedia(imageFile, creativeSettings);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Ad media could not be optimized." };
+  }
+
+  const desiredPath = `ads/${Date.now()}-${randomHex(4)}.${optimizedMedia.extension}`;
 
   let imageUrl: string;
   try {
-    const uploaded = await uploadBufferToBackblaze({ body, contentType: imageFile.type, desiredPath });
+    const uploaded = await uploadBufferToBackblaze({
+      body: optimizedMedia.body,
+      contentType: optimizedMedia.contentType,
+      desiredPath,
+    });
     imageUrl = uploaded.publicUrl;
   } catch (err) {
     return { error: `B2 upload failed: ${err instanceof Error ? err.message : "unknown error"}` };
@@ -123,7 +124,7 @@ export async function createAdFromFormData(
     end_date: dateRange.endDate,
     image_url: imageUrl,
     is_active: isActive,
-    media_type: mediaType,
+    media_type: optimizedMedia.mediaType,
     start_date: dateRange.startDate,
     submission_code: submissionCode,
   }).select("id").single();
@@ -139,7 +140,7 @@ export async function createAdFromFormData(
     endDate: dateRange.endDate,
     imageUrl,
     isActive,
-    mediaType,
+    mediaType: optimizedMedia.mediaType,
     reviewStatus,
     startDate: dateRange.startDate,
     submissionCode,

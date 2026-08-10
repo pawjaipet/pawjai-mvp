@@ -511,6 +511,20 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["pawjai_profile"]["Insert"]>
         Relationships: []
       }
+      site_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: Partial<Database["public"]["Tables"]["site_settings"]["Insert"]>
+        Relationships: []
+      }
       profiles: {
         Row: {
           cover_photo_url: string | null

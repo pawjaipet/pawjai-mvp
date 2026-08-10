@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdFromFormData } from "@/utils/ad-submissions";
+import { fetchAdCreativeSettings } from "@/utils/ad-creative-settings";
 import {
   sendAdSubmissionConfirmation,
   sendPawjaiAdSubmissionNotification,
@@ -29,7 +30,9 @@ export async function createPartnerAdAction(
   formData: FormData,
 ) {
   const today = new Date().toISOString().slice(0, 10);
+  const creativeSettings = await fetchAdCreativeSettings();
   const result = await createAdFromFormData(formData, {
+    creativeSettings,
     isActive: false,
     minStartDate: today,
     reviewStatus: "pending",

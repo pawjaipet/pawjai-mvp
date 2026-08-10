@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/utils/supabase/admin";
+import {
+  normalizeAdCreativeSettings,
+  saveAdCreativeSettings,
+} from "@/utils/ad-creative-settings";
 import { parseAdDateRange } from "@/utils/ad-date-range";
 import { requireGlobalAdmin } from "@/utils/admin-auth";
 import { logAdminAuditEvent } from "@/utils/admin-audit";
@@ -38,6 +42,11 @@ function revalidateAdSurfaces(returnPath: string) {
   if (returnPath !== ADMIN_ADS_PATH && returnPath !== ADMIN_DRAFT_ADS_PATH) {
     revalidatePath(returnPath);
   }
+}
+
+function getPositiveInteger(formData: FormData, name: string) {
+  const value = Number(String(formData.get(name) ?? "").trim());
+  return Number.isFinite(value) ? Math.round(value) : Number.NaN;
 }
 
 export async function createAdAction(_prev: { error?: string; success?: string } | undefined, formData: FormData) {
@@ -178,6 +187,34 @@ export async function updateAdDatesFromFormAction(id: string, returnPathValue: s
     returnPath,
   );
   redirectAfterAdMutation(returnPath, result?.error ?? result?.success ?? "Ad dates saved.");
+}
+
+export async function updateAdCreativeSettingsFromFormAction(returnPathValue: string, formData: FormData) {
+  const returnPath = getAdsReturnPath(returnPathValue);
+  const adminContext = await requireGlobalAdmin(returnPath);
+  const settings = normalizeAdCreativeSettings({
+    height: getPositiveInteger(formData, "height"),
+    maxUploadMb: getPositiveInteger(formData, "max_upload_mb"),
+    maxVideoSeconds: getPositiveInteger(formData, "max_video_seconds"),
+    width: getPositiveInteger(formData, "width"),
+  });
+
+  const { error } = await saveAdCreativeSettings(settings);
+
+  if (error) {
+    redirectAfterAdMutation(returnPath, `Creative settings failed: ${error.message}`);
+  }
+
+  await logAdminAuditEvent({
+    action: "ad.creative_settings.update",
+    context: adminContext,
+    metadata: settings,
+    targetId: "ads_creative_specs",
+    targetTable: "site_settings",
+  });
+
+  revalidateAdSurfaces(returnPath);
+  redirectAfterAdMutation(returnPath, "Ad creative specs updated.");
 }
 
 export async function updateAdReviewStatusFromFormAction(id: string, status: AdReviewStatus, returnPathValue: string) {

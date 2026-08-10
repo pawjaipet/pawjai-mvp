@@ -12,6 +12,7 @@ test("/ads is a public business ad submission page and does not expose the inter
   assert.equal(pageSource.includes("AdminAdsPage"), false);
   assert.equal(pageSource.includes("requireGlobalAdmin"), false);
   assert.equal(pageSource.includes("PartnerAdCreatePage"), true);
+  assert.equal(pageSource.includes("fetchAdCreativeSettings"), true);
   assert.equal(pageSource.includes("isAdsPartnerGateOpen"), false);
   assert.equal(pageSource.includes("AdsGateForm"), false);
 
@@ -22,10 +23,12 @@ test("/ads is a public business ad submission page and does not expose the inter
   assert.equal(createSource.includes("No login is needed"), true);
   assert.equal(createSource.includes("Continue to preview"), true);
   assert.equal(createSource.includes("Submit for review"), true);
-  assert.equal(createSource.includes("370 x 560 px vertical"), true);
-  assert.equal(createSource.includes("37:56 portrait"), true);
-  assert.equal(createSource.includes("MP4, MOV, or WebM"), true);
-  assert.equal(createSource.includes('accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"'), true);
+  assert.equal(createSource.includes("creativeSettings"), true);
+  assert.equal(createSource.includes("HEIC, or HEIF"), true);
+  assert.equal(createSource.includes("MP4 or MOV"), true);
+  assert.equal(createSource.includes("getVideoDuration"), true);
+  assert.equal(createSource.includes("maxVideoSeconds"), true);
+  assert.equal(createSource.includes('accept=".heic,.heif,.jpg,.jpeg,.mov,.mp4,.png,.webp,image/heic,image/heif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime"'), true);
   assert.equal(createSource.includes('name="contact_email"'), true);
   assert.equal(createSource.includes('name="contact_phone"'), true);
   assert.equal(createSource.includes('name="end_date"'), true);
@@ -37,8 +40,9 @@ test("/ads is a public business ad submission page and does not expose the inter
   assert.equal(actionsSource.includes("isActive: false"), true);
   assert.equal(actionsSource.includes("sendAdSubmissionConfirmation"), true);
   assert.equal(actionsSource.includes("sendPawjaiAdSubmissionNotification"), true);
-  assert.equal(submissionSource.includes("media_type: mediaType"), true);
-  assert.equal(submissionSource.includes("video/mp4"), true);
+  assert.equal(submissionSource.includes("media_type: optimizedMedia.mediaType"), true);
+  assert.equal(submissionSource.includes("optimizeAdMedia"), true);
+  assert.equal(submissionSource.includes("maxUploadMb"), true);
   assert.equal(adEmailSource.includes("New PawJai ad submission"), true);
 });
 
@@ -65,6 +69,8 @@ test("admin draft remains the internal ad review surface", () => {
   assert.equal(draftSource.includes("Recent clickers"), true);
   assert.equal(draftSource.includes("submissionCode"), true);
   assert.equal(draftSource.includes("Creative type"), true);
+  assert.equal(draftSource.includes("Creative specs shown on /ads"), true);
+  assert.equal(draftSource.includes("updateAdCreativeSettingsFromFormAction"), true);
   assert.equal(draftSource.includes("updateAdReviewStatusAction"), true);
   assert.equal(draftSource.includes("toggleAdAction"), true);
   assert.equal(draftSource.includes("updateAdDatesFromFormAction"), true);

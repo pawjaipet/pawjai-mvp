@@ -38,6 +38,7 @@ import {
 } from "@/utils/appointments-model";
 import {
   toggleAdAction,
+  updateAdCreativeSettingsFromFormAction,
   updateAdDatesFromFormAction,
   updateAdReviewStatusAction,
 } from "@/app/admin/ads/actions";
@@ -2336,7 +2337,15 @@ function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking
   );
 }
 
-function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAdClick[] }) {
+function AdsTab({
+  adClicks,
+  ads,
+  creativeSettings,
+}: {
+  adClicks: AdminDraftAdClick[];
+  ads: AdminDraftAd[];
+  creativeSettings: AdminDraftData["adCreativeSettings"];
+}) {
   const router = useRouter();
   const [view, setView] = useState<AdWorkspaceView>("review");
   const [search, setSearch] = useState("");
@@ -2369,6 +2378,72 @@ function AdsTab({ ads, adClicks }: { ads: AdminDraftAd[]; adClicks: AdminDraftAd
         <p className="mt-2 text-sm leading-6 text-[#65584f]">
           Partner submissions from /ads land in the same ads table. PawJai reviews, pauses, and date-edits records internally. Connected ads: {ads.length}.
         </p>
+        <form
+          action={updateAdCreativeSettingsFromFormAction.bind(null, ADS_DRAFT_RETURN_TO)}
+          className="mt-5 rounded-[24px] border border-[#d6c8ad] bg-[#fffaf5] p-4"
+        >
+          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#cd8188]">Creative specs shown on /ads</p>
+              <p className="mt-1 text-sm leading-6 text-[#65584f]">
+                Change the recommended ad card dimensions and media limits without redeploying code.
+              </p>
+            </div>
+            <button className="rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white hover:bg-[#b87179]" type="submit">
+              Save specs
+            </button>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#65584f]">Width px</span>
+              <input
+                className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+                defaultValue={creativeSettings.width}
+                max={900}
+                min={240}
+                name="width"
+                required
+                type="number"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#65584f]">Height px</span>
+              <input
+                className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+                defaultValue={creativeSettings.height}
+                max={1200}
+                min={320}
+                name="height"
+                required
+                type="number"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#65584f]">Video seconds</span>
+              <input
+                className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+                defaultValue={creativeSettings.maxVideoSeconds}
+                max={30}
+                min={5}
+                name="max_video_seconds"
+                required
+                type="number"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#65584f]">Upload MB</span>
+              <input
+                className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+                defaultValue={creativeSettings.maxUploadMb}
+                max={200}
+                min={10}
+                name="max_upload_mb"
+                required
+                type="number"
+              />
+            </label>
+          </div>
+        </form>
         <div className="mt-5 flex flex-wrap gap-2">
           <button
             className={`rounded-full px-5 py-3 text-sm font-semibold ${
@@ -2843,6 +2918,12 @@ export default function AdminReorgDraftPanel({
   const adClicks = data?.adClicks ?? [];
   const ads = data?.ads ?? [];
   const about = data?.about ?? null;
+  const adCreativeSettings = data?.adCreativeSettings ?? {
+    height: 560,
+    maxUploadMb: 100,
+    maxVideoSeconds: 30,
+    width: 370,
+  };
   const [role, setRole] = useState<RoleView>(initialRoleView);
   const [mainTab, setMainTab] = useState<MainTab>(isMainTab(initialMainTab) ? initialMainTab : "shelters");
   const [selectedShelterId, setSelectedShelterId] = useState(
@@ -3025,7 +3106,7 @@ export default function AdminReorgDraftPanel({
         {isPawjai && mainTab === "dogs" ? <AllDogsTab dogs={dogs} shelters={shelters} /> : null}
         {isPawjai && mainTab === "bookings" ? <GlobalBookingsTab bookings={bookings} shelters={shelters} /> : null}
         {isPawjai && mainTab === "donations" ? <DonationLedger donations={donations} returnTo="/admindraft?view=donations" shelters={shelters} showShelterFilter /> : null}
-        {isPawjai && mainTab === "ads" ? <AdsTab adClicks={adClicks} ads={ads} /> : null}
+        {isPawjai && mainTab === "ads" ? <AdsTab adClicks={adClicks} ads={ads} creativeSettings={adCreativeSettings} /> : null}
         {isPawjai && mainTab === "about" ? <AboutTab about={about} /> : null}
 
         {!isPawjai ? (

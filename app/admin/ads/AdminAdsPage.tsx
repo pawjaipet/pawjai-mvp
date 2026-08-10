@@ -411,7 +411,7 @@ export default function AdminAdsPage({ basePath = "/admin" }: { basePath?: "/adm
                   <ImagePlus className="mb-2 h-7 w-7 text-[#b77624]" />
                   <span className="text-sm font-semibold text-[#4f4338]">Choose image or video</span>
                   <input
-                    accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
+                    accept=".heic,.heif,.jpg,.jpeg,.mov,.mp4,.png,.webp,image/heic,image/heif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
                     className="mt-3 block w-full max-w-sm text-sm text-[#5b4d40] file:mr-3 file:rounded-full file:border-0 file:bg-[#b77624] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#9a6220]"
                     name="image_file"
                     required
