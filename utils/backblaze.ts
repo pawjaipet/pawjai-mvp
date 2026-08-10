@@ -155,3 +155,26 @@ export async function uploadBufferToBackblaze({
     storagePath: fileName,
   };
 }
+
+export async function createBackblazeUploadTarget({
+  contentType,
+  desiredPath,
+}: {
+  contentType: string | null;
+  desiredPath: string;
+}) {
+  const bucketId = requireEnv("B2_BUCKET_ID");
+  const auth = await authorizeBackblaze();
+  const upload = await getUploadUrl(auth, bucketId);
+  const fileName = desiredPath.replace(/^\/+/, "");
+  const resolvedContentType =
+    contentType?.split(";")[0]?.trim() || "b2/x-auto";
+
+  return {
+    authorizationToken: upload.authorizationToken,
+    contentType: resolvedContentType,
+    fileName,
+    publicUrl: buildBackblazePublicUrl(fileName),
+    uploadUrl: upload.uploadUrl,
+  };
+}

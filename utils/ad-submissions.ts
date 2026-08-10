@@ -29,6 +29,21 @@ export type AdSubmissionResult = {
   success?: string;
 };
 
+type AdCreateFields = {
+  clickUrl: string;
+  companyName: string;
+  contactEmail: string | null;
+  contactInfo: string | null;
+  contactPhone: string | null;
+  endDate: string;
+  imageUrl: string;
+  isActive: boolean;
+  mediaType: "image" | "video";
+  reviewStatus: AdReviewStatus;
+  startDate: string;
+  submissionCode: string;
+};
+
 function randomHex(bytes = 4) {
   return Math.floor(Math.random() * 16 ** (bytes * 2))
     .toString(16)
@@ -47,6 +62,44 @@ function combineContactInfo(email: string | null, phone: string | null, fallback
   ].filter(Boolean);
 
   return parts.length ? parts.join("\n") : fallback;
+}
+
+async function insertAdRecord(fields: AdCreateFields): Promise<AdSubmissionResult> {
+  const supabase = createAdminClient();
+  const { data: ad, error: dbError } = await supabase.from("ads").insert({
+    ad_status: fields.reviewStatus,
+    click_url: fields.clickUrl,
+    company_name: fields.companyName,
+    contact_email: fields.contactEmail,
+    contact_info: fields.contactInfo,
+    contact_phone: fields.contactPhone,
+    end_date: fields.endDate,
+    image_url: fields.imageUrl,
+    is_active: fields.isActive,
+    media_type: fields.mediaType,
+    start_date: fields.startDate,
+    submission_code: fields.submissionCode,
+  }).select("id").single();
+
+  if (dbError) return { error: `DB insert failed: ${dbError.message}` };
+
+  return {
+    adId: ad?.id,
+    clickUrl: fields.clickUrl,
+    companyName: fields.companyName,
+    contactEmail: fields.contactEmail,
+    contactPhone: fields.contactPhone,
+    endDate: fields.endDate,
+    imageUrl: fields.imageUrl,
+    isActive: fields.isActive,
+    mediaType: fields.mediaType,
+    reviewStatus: fields.reviewStatus,
+    startDate: fields.startDate,
+    submissionCode: fields.submissionCode,
+    success: fields.reviewStatus === "pending"
+      ? `Ad for ${fields.companyName} submitted for review.`
+      : `Ad for ${fields.companyName} created.`,
+  };
 }
 
 export async function createAdFromFormData(
@@ -113,29 +166,11 @@ export async function createAdFromFormData(
     return { error: `B2 upload failed: ${err instanceof Error ? err.message : "unknown error"}` };
   }
 
-  const supabase = createAdminClient();
-  const { data: ad, error: dbError } = await supabase.from("ads").insert({
-    ad_status: reviewStatus,
-    click_url: clickUrl,
-    company_name: companyName,
-    contact_email: contactEmail,
-    contact_info: contactInfo,
-    contact_phone: contactPhone,
-    end_date: dateRange.endDate,
-    image_url: imageUrl,
-    is_active: isActive,
-    media_type: optimizedMedia.mediaType,
-    start_date: dateRange.startDate,
-    submission_code: submissionCode,
-  }).select("id").single();
-
-  if (dbError) return { error: `DB insert failed: ${dbError.message}` };
-
-  return {
-    adId: ad?.id,
+  return insertAdRecord({
     clickUrl,
     companyName,
     contactEmail,
+    contactInfo,
     contactPhone,
     endDate: dateRange.endDate,
     imageUrl,
@@ -144,8 +179,61 @@ export async function createAdFromFormData(
     reviewStatus,
     startDate: dateRange.startDate,
     submissionCode,
-    success: reviewStatus === "pending"
-      ? `Ad for ${companyName} submitted for review.`
-      : `Ad for ${companyName} created.`,
-  };
+  });
+}
+
+export async function createAdFromUploadedMedia(
+  formData: FormData,
+  options: {
+    defaultEndDate?: string;
+    isActive?: boolean;
+    minStartDate?: string;
+    reviewStatus?: AdReviewStatus;
+  } = {},
+): Promise<AdSubmissionResult> {
+  const companyName = getString(formData, "company_name");
+  const contactEmail = getString(formData, "contact_email") || null;
+  const contactPhone = getString(formData, "contact_phone") || null;
+  const fallbackContactInfo = getString(formData, "contact_info") || null;
+  const contactInfo = combineContactInfo(contactEmail, contactPhone, fallbackContactInfo);
+  const uploadedImageUrl = getString(formData, "uploaded_image_url");
+  const uploadedMediaType = getString(formData, "uploaded_media_type");
+  const submissionCode = generateAdSubmissionCode();
+  let clickUrl: string;
+
+  try {
+    clickUrl = normalizeAdClickUrl(formData.get("click_url"));
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Enter a valid click URL." };
+  }
+
+  if (!companyName) return { error: "Company name is required." };
+  if (!clickUrl) return { error: "Click URL is required." };
+  if (!uploadedImageUrl.startsWith("https://")) return { error: "Uploaded ad media URL is invalid." };
+  if (uploadedMediaType !== "image" && uploadedMediaType !== "video") return { error: "Uploaded ad media type is invalid." };
+
+  let dateRange: ReturnType<typeof parseAdDateRange>;
+  try {
+    dateRange = parseAdDateRange(formData.get("start_date"), formData.get("end_date"), {
+      defaultEndDate: options.defaultEndDate ?? OPEN_ENDED_AD_END_DATE,
+      minStartDate: options.minStartDate,
+    });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Dates are invalid." };
+  }
+
+  return insertAdRecord({
+    clickUrl,
+    companyName,
+    contactEmail,
+    contactInfo,
+    contactPhone,
+    endDate: dateRange.endDate,
+    imageUrl: uploadedImageUrl,
+    isActive: options.isActive ?? false,
+    mediaType: uploadedMediaType,
+    reviewStatus: options.reviewStatus ?? "pending",
+    startDate: dateRange.startDate,
+    submissionCode,
+  });
 }

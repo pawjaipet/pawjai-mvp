@@ -1,10 +1,15 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, type FormEvent } from "react";
 import { CheckCircle2, ImagePlus, Upload } from "lucide-react";
 import AdCard from "@/components/AdCard";
 import { normalizeAdClickUrl } from "@/utils/ad-click-url";
-import { createPartnerAdAction, type PartnerAdCreateState } from "./actions";
+import {
+  createPartnerAdAction,
+  createPartnerAdFromUploadedMediaAction,
+  prepareDirectAdMediaUploadAction,
+  type PartnerAdCreateState,
+} from "./actions";
 
 const initialCreateState: PartnerAdCreateState = {};
 
@@ -87,13 +92,24 @@ function getVideoDuration(file: File, maxVideoSeconds: number) {
   });
 }
 
+async function sha1Hex(file: File) {
+  const digest = await crypto.subtle.digest("SHA-1", await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export default function PartnerAdCreatePage({ creativeSettings }: { creativeSettings: AdCreativeSettings }) {
   const [state, action, pending] = useActionState(createPartnerAdAction, initialCreateState);
   const [clientError, setClientError] = useState("");
+  const [directSubmitState, setDirectSubmitState] = useState<PartnerAdCreateState>({});
+  const [directSubmitPending, setDirectSubmitPending] = useState(false);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const today = new Date().toISOString().slice(0, 10);
   const specs = assetSpecs(creativeSettings);
+  const resultState = directSubmitState.success || directSubmitState.error ? directSubmitState : state;
+  const submitting = pending || directSubmitPending;
 
   useEffect(() => {
     return () => {
@@ -108,6 +124,7 @@ export default function PartnerAdCreatePage({ creativeSettings }: { creativeSett
     if (!form) return;
 
     setClientError("");
+    setDirectSubmitState({});
     if (!form.reportValidity()) return;
 
     const formData = new FormData(form);
@@ -178,7 +195,72 @@ export default function PartnerAdCreatePage({ creativeSettings }: { creativeSett
     });
   }
 
-  if (state.success && state.ad) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (!preview || preview.mediaType !== "video") return;
+
+    event.preventDefault();
+    const form = formRef.current;
+    if (!form || directSubmitPending) return;
+
+    setClientError("");
+    setDirectSubmitState({});
+
+    const originalFormData = new FormData(form);
+    const file = originalFormData.get("image_file");
+    if (!(file instanceof File) || file.size <= 0) {
+      setClientError("Choose an ad video before submitting.");
+      return;
+    }
+
+    setDirectSubmitPending(true);
+    try {
+      const uploadTarget = await prepareDirectAdMediaUploadAction({
+        contentType: file.type,
+        fileName: file.name,
+        mediaType: "video",
+        size: file.size,
+      });
+
+      if (uploadTarget.error || !uploadTarget.authorizationToken || !uploadTarget.uploadUrl || !uploadTarget.fileName || !uploadTarget.publicUrl || !uploadTarget.contentType) {
+        setClientError(uploadTarget.error ?? "Could not prepare the video upload.");
+        return;
+      }
+
+      const checksum = await sha1Hex(file);
+      const uploadResponse = await fetch(uploadTarget.uploadUrl, {
+        body: file,
+        headers: {
+          Authorization: uploadTarget.authorizationToken,
+          "Content-Type": uploadTarget.contentType,
+          "X-Bz-Content-Sha1": checksum,
+          "X-Bz-File-Name": encodeURIComponent(uploadTarget.fileName),
+        },
+        method: "POST",
+      });
+
+      if (!uploadResponse.ok) {
+        setClientError(`Video upload failed with status ${uploadResponse.status}. Please try a smaller MP4 or contact PawJai.`);
+        return;
+      }
+
+      const metadata = new FormData();
+      for (const [key, value] of originalFormData.entries()) {
+        if (key !== "image_file") metadata.append(key, value);
+      }
+      metadata.set("uploaded_image_url", uploadTarget.publicUrl);
+      metadata.set("uploaded_media_type", "video");
+
+      const result = await createPartnerAdFromUploadedMediaAction(undefined, metadata);
+      setDirectSubmitState(result);
+      if (result.error) setClientError(result.error);
+    } catch (error) {
+      setClientError(error instanceof Error ? error.message : "Video upload failed. Please try a smaller MP4 or contact PawJai.");
+    } finally {
+      setDirectSubmitPending(false);
+    }
+  }
+
+  if (resultState.success && resultState.ad) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-8 text-[#65584f]">
         <div className="mb-6">
@@ -193,11 +275,11 @@ export default function PartnerAdCreatePage({ creativeSettings }: { creativeSett
           <div className="flex justify-center">
             <AdCard
               ad={{
-                clickUrl: state.ad.clickUrl,
-                companyName: state.ad.companyName,
-                id: state.ad.id,
-                imageUrl: state.ad.imageUrl,
-                mediaType: state.ad.mediaType,
+                clickUrl: resultState.ad.clickUrl,
+                companyName: resultState.ad.companyName,
+                id: resultState.ad.id,
+                imageUrl: resultState.ad.imageUrl,
+                mediaType: resultState.ad.mediaType,
               }}
               cardHeight={560}
               cardWidth={370}
@@ -209,34 +291,34 @@ export default function PartnerAdCreatePage({ creativeSettings }: { creativeSett
               <CheckCircle2 className="h-4 w-4" />
               Submitted for review
             </div>
-            <h2 className="mt-5 text-2xl font-semibold">{state.ad.companyName}</h2>
+            <h2 className="mt-5 text-2xl font-semibold">{resultState.ad.companyName}</h2>
             <p className="mt-3 text-sm leading-6 text-[#8a7b70]">
               PawJai will review the creative, link, and dates before it goes live.
             </p>
             <div className="mt-5 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8a7b70]">Ad submission code</p>
-              <p className="mt-1 text-2xl font-semibold text-[#cd8188]">{state.ad.submissionCode}</p>
+              <p className="mt-1 text-2xl font-semibold text-[#cd8188]">{resultState.ad.submissionCode}</p>
             </div>
             <dl className="mt-6 grid gap-3 text-sm">
               <div>
                 <dt className="font-semibold text-[#8a7b70]">Destination URL</dt>
-                <dd className="mt-1 break-all text-[#cd8188]">{state.ad.clickUrl}</dd>
+                <dd className="mt-1 break-all text-[#cd8188]">{resultState.ad.clickUrl}</dd>
               </div>
               <div>
                 <dt className="font-semibold text-[#8a7b70]">Ad format</dt>
-                <dd className="mt-1">{state.ad.mediaType === "video" ? "Video" : "Image"}</dd>
+                <dd className="mt-1">{resultState.ad.mediaType === "video" ? "Video" : "Image"}</dd>
               </div>
               <div>
                 <dt className="font-semibold text-[#8a7b70]">Requested dates</dt>
-                <dd className="mt-1">{state.ad.startDate} to {state.ad.endDate}</dd>
+                <dd className="mt-1">{resultState.ad.startDate} to {resultState.ad.endDate}</dd>
               </div>
               <div>
                 <dt className="font-semibold text-[#8a7b70]">Contact email</dt>
-                <dd className="mt-1">{state.ad.contactEmail || "Not provided"}</dd>
+                <dd className="mt-1">{resultState.ad.contactEmail || "Not provided"}</dd>
               </div>
               <div>
                 <dt className="font-semibold text-[#8a7b70]">Contact phone</dt>
-                <dd className="mt-1">{state.ad.contactPhone || "Not provided"}</dd>
+                <dd className="mt-1">{resultState.ad.contactPhone || "Not provided"}</dd>
               </div>
               <div>
                 <dt className="font-semibold text-[#8a7b70]">Keep this code</dt>
@@ -265,10 +347,11 @@ export default function PartnerAdCreatePage({ creativeSettings }: { creativeSett
         ref={formRef}
         action={action}
         className="rounded-[28px] border border-[#d6c8ad] bg-white p-6 shadow-[0_16px_50px_rgba(101,88,79,0.08)]"
+        onSubmit={handleSubmit}
       >
         <div className={preview ? "hidden" : "space-y-5"}>
-          {(clientError || state.error) ? (
-            <p className="rounded-xl bg-red-50 px-4 py-2 text-sm text-red-600">{clientError || state.error}</p>
+          {(clientError || resultState.error) ? (
+            <p className="rounded-xl bg-red-50 px-4 py-2 text-sm text-red-600">{clientError || resultState.error}</p>
           ) : null}
 
           <label className="block">
@@ -392,8 +475,8 @@ export default function PartnerAdCreatePage({ creativeSettings }: { creativeSett
               />
             </div>
             <div className="flex flex-col justify-center">
-              {(clientError || state.error) ? (
-                <p className="mb-5 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-600">{clientError || state.error}</p>
+              {(clientError || resultState.error) ? (
+                <p className="mb-5 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-600">{clientError || resultState.error}</p>
               ) : null}
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">Review before submitting</p>
               <h2 className="mt-3 text-2xl font-semibold">{preview.companyName}</h2>
@@ -429,10 +512,10 @@ export default function PartnerAdCreatePage({ creativeSettings }: { creativeSett
                 </button>
                 <button
                   className="rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white hover:bg-[#b87179] disabled:opacity-50"
-                  disabled={pending}
+                  disabled={submitting}
                   type="submit"
                 >
-                  {pending ? "Submitting..." : "Submit for review"}
+                  {submitting ? (preview.mediaType === "video" ? "Uploading video..." : "Submitting...") : "Submit for review"}
                 </button>
               </div>
             </div>

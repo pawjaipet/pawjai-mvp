@@ -27,6 +27,10 @@ test("/ads is a public business ad submission page and does not expose the inter
   assert.equal(createSource.includes("HEIC, or HEIF"), true);
   assert.equal(createSource.includes("MP4 or MOV"), true);
   assert.equal(createSource.includes("getVideoDuration"), true);
+  assert.equal(createSource.includes("prepareDirectAdMediaUploadAction"), true);
+  assert.equal(createSource.includes("createPartnerAdFromUploadedMediaAction"), true);
+  assert.equal(createSource.includes("X-Bz-Content-Sha1"), true);
+  assert.equal(createSource.includes("uploaded_image_url"), true);
   assert.equal(createSource.includes("maxVideoSeconds"), true);
   assert.equal(createSource.includes('accept=".heic,.heif,.jpg,.jpeg,.mov,.mp4,.png,.webp,image/heic,image/heif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime"'), true);
   assert.equal(createSource.includes('name="contact_email"'), true);
@@ -40,7 +44,10 @@ test("/ads is a public business ad submission page and does not expose the inter
   assert.equal(actionsSource.includes("isActive: false"), true);
   assert.equal(actionsSource.includes("sendAdSubmissionConfirmation"), true);
   assert.equal(actionsSource.includes("sendPawjaiAdSubmissionNotification"), true);
-  assert.equal(submissionSource.includes("media_type: optimizedMedia.mediaType"), true);
+  assert.equal(actionsSource.includes("createBackblazeUploadTarget"), true);
+  assert.equal(actionsSource.includes("prepareDirectAdMediaUploadAction"), true);
+  assert.equal(submissionSource.includes("media_type: fields.mediaType"), true);
+  assert.equal(submissionSource.includes("createAdFromUploadedMedia"), true);
   assert.equal(submissionSource.includes("optimizeAdMedia"), true);
   assert.equal(submissionSource.includes("maxUploadMb"), true);
   assert.equal(adEmailSource.includes("New PawJai ad submission"), true);
