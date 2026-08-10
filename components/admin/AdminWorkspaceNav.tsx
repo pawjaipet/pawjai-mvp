@@ -1,13 +1,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Banknote, CalendarDays, FileText, Megaphone, PawPrint, ShieldCheck, Users } from "lucide-react";
+import { Banknote, BarChart3, CalendarDays, FileText, Megaphone, PawPrint, ShieldCheck, Users } from "lucide-react";
 
 type AdminWorkspaceBasePath = "/admin" | "/admindraft";
-type AdminWorkspaceNavItem = "home" | "dogs" | "bookings" | "donations" | "ads" | "about" | "accounts" | "audit";
+type AdminWorkspaceNavItem = "home" | "dogs" | "bookings" | "donations" | "ads" | "about" | "accounts" | "audit" | "analytics";
 
 const labels: Record<AdminWorkspaceNavItem, string> = {
   accounts: "Accounts",
   ads: "Ads",
+  analytics: "User analytics",
   audit: "Audit",
   about: "About content",
   bookings: "Bookings",
@@ -44,6 +45,8 @@ function navHref(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) 
         return "/admindraft/accounts";
       case "audit":
         return "/admindraft/audit";
+      case "analytics":
+        return "/admindraft/analytics";
     }
   }
 
@@ -64,6 +67,8 @@ function navHref(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) 
       return "/admin/accounts";
     case "audit":
       return "/admin/audit";
+    case "analytics":
+      return "/admindraft/analytics";
   }
 }
 
@@ -78,6 +83,7 @@ function navClass(active: boolean) {
 const icons: Record<AdminWorkspaceNavItem, ReactNode> = {
   accounts: <Users className="mr-2 h-4 w-4" />,
   ads: <Megaphone className="mr-2 h-4 w-4" />,
+  analytics: <BarChart3 className="mr-2 h-4 w-4" />,
   audit: <ShieldCheck className="mr-2 h-4 w-4" />,
   about: <FileText className="mr-2 h-4 w-4" />,
   bookings: <CalendarDays className="mr-2 h-4 w-4" />,
@@ -108,8 +114,7 @@ export function AdminWorkspaceNav({
           : (["home", "dogs", "bookings"] as AdminWorkspaceNavItem[]))
       : []),
     ...(showAds ? (["ads"] as AdminWorkspaceNavItem[]) : []),
-    ...(showGlobalOnly ? (["about", "accounts"] as AdminWorkspaceNavItem[]) : []),
-    "audit",
+    ...(showGlobalOnly ? (["about", "accounts", "audit", "analytics"] as AdminWorkspaceNavItem[]) : (["audit"] as AdminWorkspaceNavItem[])),
   ];
 
   return (

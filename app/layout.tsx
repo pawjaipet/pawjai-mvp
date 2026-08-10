@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import ProductAnalyticsTracker from "@/components/analytics/ProductAnalyticsTracker";
 import BottomNavBar from "@/components/BottomNavBar";
 import { LanguageProvider } from "@/components/i18n/LanguageProvider";
 import { SITE_URL } from "@/utils/seo";
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-[#f5f0e8] text-[#65584f] antialiased font-[family-name:var(--font-montserrat)]">
         <LanguageProvider>
           <AuthProvider>
+            <ProductAnalyticsTracker />
             <main className="min-h-screen pb-[70px]">{children}</main>
             <BottomNavBar />
           </AuthProvider>

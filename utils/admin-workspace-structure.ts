@@ -101,6 +101,13 @@ const pawjaiHqDraft: AdminWorkspaceDraft = {
       path: "/admindraft/audit",
       status: "current",
     },
+    {
+      description: "Launch traffic, adopter accounts, dog profile interest, verification, and booking funnel health.",
+      globalOnly: true,
+      label: "User analytics",
+      path: "/admindraft/analytics",
+      status: "new",
+    },
   ],
 };
 

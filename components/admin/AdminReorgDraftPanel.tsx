@@ -8,6 +8,7 @@ import AdCard from "@/components/AdCard";
 import {
   Bone,
   Banknote,
+  BarChart3,
   Building2,
   CalendarDays,
   CheckCircle2,
@@ -3079,6 +3080,13 @@ export default function AdminReorgDraftPanel({
             >
               <ShieldCheck className="mr-2 inline h-4 w-4" />
               Audit
+            </Link>
+            <Link
+              className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
+              href="/admindraft/analytics"
+            >
+              <BarChart3 className="mr-2 inline h-4 w-4" />
+              User analytics
             </Link>
             <div className="ml-auto flex items-center gap-2 rounded-full bg-[#d6c8ad] px-4 py-2 text-xs font-semibold text-[#65584f]">
               <ShieldCheck className="h-4 w-4" />

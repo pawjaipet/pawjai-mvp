@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adopter";
@@ -14,6 +15,10 @@ import {
 } from "@/utils/booking";
 import { sendBookingNotificationForAppointment } from "@/utils/booking-email";
 import { normalizeAppointmentTime } from "@/utils/appointments-model";
+import {
+  ANALYTICS_VISITOR_COOKIE,
+  recordProductAnalyticsEvent,
+} from "@/utils/product-analytics";
 import { assertRateLimit } from "@/utils/rate-limit";
 import { getShelterDaySlots } from "@/utils/shelter-availability";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -25,6 +30,31 @@ async function getAdopter() {
   if (!user) return null;
   const adopter = await ensureAdopterForUser(supabase, user);
   return { adopter, supabase, user };
+}
+
+async function recordBookingOutcome({
+  appointmentId,
+  dogId,
+  eventName,
+  reason,
+  userId,
+}: {
+  appointmentId?: string;
+  dogId: string;
+  eventName: "booking_failed" | "booking_succeeded";
+  reason?: string;
+  userId?: string | null;
+}) {
+  const cookieStore = await cookies();
+  await recordProductAnalyticsEvent({
+    appointmentId: appointmentId ?? null,
+    dogId,
+    eventName,
+    metadata: reason ? { reason } : {},
+    path: "/schedule",
+    userId: userId ?? null,
+    visitorId: cookieStore.get(ANALYTICS_VISITOR_COOKIE)?.value ?? null,
+  });
 }
 
 export async function toggleWishlist(formData: FormData) {
@@ -64,6 +94,7 @@ export async function bookAppointment(formData: FormData) {
   const ctx = await getAdopter();
 
   if (!ctx) {
+    await recordBookingOutcome({ dogId, eventName: "booking_failed", reason: "signed_out" });
     redirect(`/auth?message=${encodeURIComponent("Sign in to book a shelter visit.")}`);
   }
 
@@ -76,6 +107,7 @@ export async function bookAppointment(formData: FormData) {
       windowSeconds: 60 * 60,
     });
   } catch (error) {
+    await recordBookingOutcome({ dogId, eventName: "booking_failed", reason: "rate_limited", userId: user.id });
     redirect(`/dogs/${dogId}?message=${encodeURIComponent(error instanceof Error ? error.message : "Please wait before booking again.")}`);
   }
   const admin = createAdminClient();
@@ -87,14 +119,17 @@ export async function bookAppointment(formData: FormData) {
     .single();
 
   if (dogError || !dog) {
+    await recordBookingOutcome({ dogId, eventName: "booking_failed", reason: "dog_not_found", userId: user.id });
     redirect(`/dogs/${dogId}?message=${encodeURIComponent("Could not find that dog.")}`);
   }
 
   if (dog.adoption_status !== "available") {
+    await recordBookingOutcome({ dogId, eventName: "booking_failed", reason: "dog_unavailable", userId: user.id });
     redirect(`/dogs/${dogId}?message=${encodeURIComponent("This dog is no longer available for visit bookings.")}`);
   }
 
   if (!appointmentDate || !appointmentTime) {
+    await recordBookingOutcome({ dogId, eventName: "booking_failed", reason: "missing_date_or_time", userId: user.id });
     redirect(`/schedule?dogId=${encodeURIComponent(dogId)}&message=${encodeURIComponent("Choose a visit date and time first.")}`);
   }
 
@@ -106,6 +141,7 @@ export async function bookAppointment(formData: FormData) {
   });
 
   if (!availableSlots.includes(normalizedAppointmentTime)) {
+    await recordBookingOutcome({ dogId, eventName: "booking_failed", reason: "slot_unavailable", userId: user.id });
     redirect(`/schedule?dogId=${encodeURIComponent(dogId)}&message=${encodeURIComponent("That visit time is no longer available. Please choose another time.")}`);
   }
 
@@ -121,6 +157,7 @@ export async function bookAppointment(formData: FormData) {
     .maybeSingle();
 
   if (existingAppointment) {
+    await recordBookingOutcome({ dogId, eventName: "booking_failed", reason: "slot_taken", userId: user.id });
     redirect(`/dogs/${dogId}?message=${encodeURIComponent("That visit time was just booked. Please choose another time.")}`);
   }
 
@@ -155,6 +192,12 @@ export async function bookAppointment(formData: FormData) {
     const message = error.message.includes("appointments_active_slot_unique_idx")
       ? "That visit time was just booked. Please choose another time."
       : error.message;
+    await recordBookingOutcome({
+      dogId,
+      eventName: "booking_failed",
+      reason: error.message.includes("appointments_active_slot_unique_idx") ? "slot_taken" : "database_error",
+      userId: user.id,
+    });
     redirect(`/dogs/${dogId}?message=${encodeURIComponent(message)}`);
   }
 
@@ -162,6 +205,12 @@ export async function bookAppointment(formData: FormData) {
     admin,
     appointmentId,
     event: "booking_requested",
+  });
+  await recordBookingOutcome({
+    appointmentId,
+    dogId,
+    eventName: "booking_succeeded",
+    userId: user.id,
   });
   revalidatePath("/appointments");
   redirect(`/appointments/${appointmentId}`);

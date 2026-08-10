@@ -100,6 +100,7 @@ test("admin draft direct pages unlock back to their own route", () => {
   const accountsSource = readFileSync(new URL("../app/admindraft/accounts/page.tsx", import.meta.url), "utf8");
   const adsSource = readFileSync(new URL("../app/admindraft/ads/page.tsx", import.meta.url), "utf8");
   const auditSource = readFileSync(new URL("../app/admindraft/audit/page.tsx", import.meta.url), "utf8");
+  const analyticsSource = readFileSync(new URL("../app/admindraft/analytics/page.tsx", import.meta.url), "utf8");
   const mainSource = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
 
   assert.equal(aboutSource.includes('returnTo="/admindraft/aboutcontent"'), true);
@@ -109,6 +110,7 @@ test("admin draft direct pages unlock back to their own route", () => {
   assert.equal(adsSource.includes('basePath="/admindraft"'), true);
   assert.equal(adsSource.includes("getAdminAuthContext"), false);
   assert.equal(auditSource.includes('returnTo="/admindraft/audit"'), true);
+  assert.equal(analyticsSource.includes("/admindraft/analytics"), true);
   assert.equal(mainSource.includes("buildAdminDraftReturnTo"), true);
 });
 

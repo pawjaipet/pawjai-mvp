@@ -511,6 +511,34 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["pawjai_profile"]["Insert"]>
         Relationships: []
       }
+      product_analytics_events: {
+        Row: {
+          appointment_id: string | null
+          created_at: string
+          dog_id: string | null
+          event_name: "page_view" | "dog_profile_view" | "booking_started" | "booking_succeeded" | "booking_failed"
+          id: string
+          metadata: Json
+          path: string
+          session_id: string | null
+          user_id: string | null
+          visitor_id: string | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          created_at?: string
+          dog_id?: string | null
+          event_name: "page_view" | "dog_profile_view" | "booking_started" | "booking_succeeded" | "booking_failed"
+          id?: string
+          metadata?: Json
+          path: string
+          session_id?: string | null
+          user_id?: string | null
+          visitor_id?: string | null
+        }
+        Update: Partial<Database["public"]["Tables"]["product_analytics_events"]["Insert"]>
+        Relationships: []
+      }
       site_settings: {
         Row: {
           key: string
@@ -735,6 +763,7 @@ export type Dog = Database["public"]["Tables"]["dogs"]["Row"]
 export type DogPhoto = Database["public"]["Tables"]["dog_photos"]["Row"]
 export type DogTrait = Database["public"]["Tables"]["dog_traits"]["Row"]
 export type AdminAuditEvent = Database["public"]["Tables"]["admin_audit_events"]["Row"]
+export type ProductAnalyticsEvent = Database["public"]["Tables"]["product_analytics_events"]["Row"]
 export type PawjaiProfile = Database["public"]["Tables"]["pawjai_profile"]["Row"]
 export type Shelter = Database["public"]["Tables"]["shelters"]["Row"]
 export type ShelterUser = Database["public"]["Tables"]["shelter_users"]["Row"]
