@@ -12,7 +12,7 @@ import {
   UserCheck,
   UserPlus,
 } from "lucide-react";
-import { AdminWorkspaceNav } from "@/components/admin/AdminWorkspaceNav";
+import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
 import { getAdminAuthContext } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import type { ProductAnalyticsEvent } from "@/types/database";
@@ -270,15 +270,14 @@ export async function AdminUserAnalyticsPageContent({
     : "—";
 
   return (
-    <main className="min-h-screen bg-[#f5f1e8] px-4 py-8 text-[#65584f]">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6 flex flex-col gap-5 rounded-[28px] border border-[#d6c8ad] bg-white p-6 shadow-[0_16px_48px_rgba(101,88,79,0.08)]">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <PawjaiWorkspaceShell active="analytics">
+        <section className="mb-6 rounded-[28px] border border-[#d6c8ad] bg-white p-6 shadow-[0_14px_42px_rgba(101,88,79,0.07)]">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">User analytics</p>
+          <div className="mt-2 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">PawJai Admin</p>
-              <h1 className="mt-2 text-4xl font-semibold text-[#65584f]">User analytics</h1>
+              <h2 className="text-3xl font-semibold text-[#65584f]">Launch activity</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-[#65584f]/75">
-                Launch activity across visitor traffic, adopter accounts, dog profile interest, verification, and the booking funnel.
+                Visitor traffic, adopter accounts, dog profile interest, verification, and the booking funnel.
               </p>
             </div>
             <div className="flex flex-wrap gap-2" aria-label="Analytics date range">
@@ -293,8 +292,7 @@ export async function AdminUserAnalyticsPageContent({
               ))}
             </div>
           </div>
-          <AdminWorkspaceNav active="analytics" basePath="/admindraft" />
-        </header>
+        </section>
 
         <div className="mb-6 rounded-[22px] border border-[#d6c8ad] bg-[#fffaf5] px-5 py-4 text-sm leading-6 text-[#65584f]/75">
           Account, verification, and appointment history comes from existing Supabase records. Interaction tracking starts when this release is deployed and stores no IP address, user agent, or browser fingerprint.
@@ -432,7 +430,6 @@ export async function AdminUserAnalyticsPageContent({
             </div>
           )}
         </section>
-      </div>
-    </main>
+    </PawjaiWorkspaceShell>
   );
 }

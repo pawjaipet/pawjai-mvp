@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { AdminWorkspaceNav } from "@/components/admin/AdminWorkspaceNav";
+import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
 import { getAdminAuthContext, requireGlobalAdmin } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createAdminAccountAction, revokeAdminAccountAction } from "@/app/admin/accounts/actions";
@@ -57,22 +58,8 @@ export async function AdminAccountsPageContent({
   }
   const adminProfiles = (profiles ?? []) as AdminProfile[];
 
-  return (
-    <main className="min-h-screen bg-[#fffaf3] px-4 py-8">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#cd8188]">
-              PawJai Admin
-            </p>
-            <h1 className="mt-2 text-4xl font-semibold text-[#65584f]">Admin Accounts</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65584f]">
-              Create PawJai admin accounts or one shared shelter account per partner shelter.
-            </p>
-          </div>
-          <AdminWorkspaceNav active="accounts" basePath={basePath} />
-        </div>
-
+  const pageContent = (
+    <>
         {message ? (
           <div className="mb-6 rounded-2xl border border-[#d7e7c7] bg-[#f4fbec] px-4 py-3 text-sm text-[#46602e]">
             {message}
@@ -149,6 +136,40 @@ export async function AdminAccountsPageContent({
             </form>
           </aside>
         </div>
+    </>
+  );
+
+  if (basePath === "/admindraft") {
+    return (
+      <PawjaiWorkspaceShell active="accounts">
+        <section className="mb-6 rounded-[28px] border border-[#d6c8ad] bg-white p-6 shadow-[0_14px_42px_rgba(101,88,79,0.07)]">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">Accounts</p>
+          <h2 className="mt-2 text-3xl font-semibold text-[#65584f]">Admin accounts</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65584f]/75">
+            Create PawJai admin accounts or one shared shelter account per partner shelter.
+          </p>
+        </section>
+        {pageContent}
+      </PawjaiWorkspaceShell>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-[#fffaf3] px-4 py-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#cd8188]">
+              PawJai Admin
+            </p>
+            <h1 className="mt-2 text-4xl font-semibold text-[#65584f]">Admin Accounts</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65584f]">
+              Create PawJai admin accounts or one shared shelter account per partner shelter.
+            </p>
+          </div>
+          <AdminWorkspaceNav active="accounts" basePath={basePath} />
+        </div>
+        {pageContent}
       </div>
     </main>
   );

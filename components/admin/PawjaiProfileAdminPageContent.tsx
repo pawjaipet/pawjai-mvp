@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import AdminGateForm from "@/app/admin/dogs/new/AdminGateForm";
 import { AdminWorkspaceNav } from "@/components/admin/AdminWorkspaceNav";
+import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
 import { getAdminAuthContext, requireGlobalAdmin } from "@/utils/admin-auth";
 import {
   DEFAULT_PAWJAI_PROFILE_CONTENT,
@@ -94,31 +95,8 @@ export async function PawjaiProfileAdminPageContent({
   const message = resolvedSearchParams?.message?.trim() ?? "";
   const usedFallback = content === DEFAULT_PAWJAI_PROFILE_CONTENT;
 
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#cd8188]">
-            PawJai Admin
-          </p>
-          <p className="mt-2 text-sm text-[#65584f]">
-            Edit the public PawJai story shown on the About page.
-          </p>
-        </div>
-        <AdminWorkspaceNav active="about" basePath={basePath}>
-          {showLock ? (
-            <form action={lockAdminGateAction}>
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2 text-sm font-medium text-[#65584f] transition hover:bg-[#f5f1e8]"
-              >
-                Lock admin page
-              </button>
-            </form>
-          ) : null}
-        </AdminWorkspaceNav>
-      </div>
-
+  const pageContent = (
+    <>
       {message ? (
         <div className="mb-6 rounded-2xl border border-[#d7e7c7] bg-[#f4fbec] px-4 py-3 text-sm text-[#46602e]">
           {message}
@@ -264,6 +242,49 @@ export async function PawjaiProfileAdminPageContent({
           </Link>
         </div>
       </form>
+    </>
+  );
+
+  if (basePath === "/admindraft") {
+    return (
+      <PawjaiWorkspaceShell active="about">
+        <section className="mb-6 rounded-[28px] border border-[#d6c8ad] bg-white p-6 shadow-[0_14px_42px_rgba(101,88,79,0.07)]">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">About content</p>
+          <h2 className="mt-2 text-3xl font-semibold text-[#65584f]">PawJai profile content</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#65584f]/75">
+            Edit the public PawJai story shown on the About page.
+          </p>
+        </section>
+        {pageContent}
+      </PawjaiWorkspaceShell>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#cd8188]">
+            PawJai Admin
+          </p>
+          <p className="mt-2 text-sm text-[#65584f]">
+            Edit the public PawJai story shown on the About page.
+          </p>
+        </div>
+        <AdminWorkspaceNav active="about" basePath={basePath}>
+          {showLock ? (
+            <form action={lockAdminGateAction}>
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2 text-sm font-medium text-[#65584f] transition hover:bg-[#f5f1e8]"
+              >
+                Lock admin page
+              </button>
+            </form>
+          ) : null}
+        </AdminWorkspaceNav>
+      </div>
+      {pageContent}
     </div>
   );
 }

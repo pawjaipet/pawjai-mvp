@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AdminWorkspaceNav } from "@/components/admin/AdminWorkspaceNav";
+import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
 import { getAdminAuthContext } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import AdminGateForm from "@/app/admin/dogs/new/AdminGateForm";
@@ -110,27 +111,8 @@ export async function AdminAuditPageContent({
   const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile as ProfileSummary]));
   const shelterMap = new Map((shelters ?? []).map((shelter) => [shelter.id, shelter as ShelterSummary]));
 
-  return (
-    <main className="min-h-screen bg-[#fffaf3] px-4 py-8">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#cd8188]">
-              PawJai Admin
-            </p>
-            <h1 className="mt-2 text-4xl font-semibold text-[#65584f]">Audit Log</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65584f]">
-              Review privileged admin changes across bookings, listings, shelter settings, ads, and PawJai content.
-            </p>
-          </div>
-          <AdminWorkspaceNav
-            active="audit"
-            basePath={basePath}
-            showAds={adminContext.isGlobalAdmin}
-            showGlobalOnly={adminContext.isGlobalAdmin}
-          />
-        </div>
-
+  const pageContent = (
+    <>
         {unavailable ? (
           <div className="rounded-[28px] border border-[#f1d8b5] bg-[#fff7ec] p-6 text-sm leading-6 text-[#8a5a1f]">
             Apply the admin audit migration before this page can show activity.
@@ -174,6 +156,45 @@ export async function AdminAuditPageContent({
             </div>
           </section>
         )}
+    </>
+  );
+
+  if (basePath === "/admindraft" && adminContext.isGlobalAdmin) {
+    return (
+      <PawjaiWorkspaceShell active="audit">
+        <section className="mb-6 rounded-[28px] border border-[#d6c8ad] bg-white p-6 shadow-[0_14px_42px_rgba(101,88,79,0.07)]">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">Audit</p>
+          <h2 className="mt-2 text-3xl font-semibold text-[#65584f]">Audit log</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#65584f]/75">
+            Review privileged changes across bookings, listings, shelter settings, ads, and PawJai content.
+          </p>
+        </section>
+        {pageContent}
+      </PawjaiWorkspaceShell>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-[#fffaf3] px-4 py-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#cd8188]">
+              PawJai Admin
+            </p>
+            <h1 className="mt-2 text-4xl font-semibold text-[#65584f]">Audit Log</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65584f]">
+              Review privileged admin changes across bookings, listings, shelter settings, ads, and PawJai content.
+            </p>
+          </div>
+          <AdminWorkspaceNav
+            active="audit"
+            basePath={basePath}
+            showAds={adminContext.isGlobalAdmin}
+            showGlobalOnly={adminContext.isGlobalAdmin}
+          />
+        </div>
+        {pageContent}
       </div>
     </main>
   );

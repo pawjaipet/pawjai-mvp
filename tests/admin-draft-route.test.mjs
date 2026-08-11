@@ -105,10 +105,8 @@ test("admin draft direct pages unlock back to their own route", () => {
 
   assert.equal(aboutSource.includes('returnTo="/admindraft/aboutcontent"'), true);
   assert.equal(accountsSource.includes('returnTo="/admindraft/accounts"'), true);
-  assert.equal(adsSource.includes("isAdminDraftUnlocked"), true);
-  assert.equal(adsSource.includes('returnTo="/admindraft/ads"'), true);
-  assert.equal(adsSource.includes('basePath="/admindraft"'), true);
-  assert.equal(adsSource.includes("getAdminAuthContext"), false);
+  assert.equal(adsSource.includes('redirect("/admindraft?view=ads")'), true);
+  assert.equal(adsSource.includes("AdminAdsPage"), false);
   assert.equal(auditSource.includes('returnTo="/admindraft/audit"'), true);
   assert.equal(analyticsSource.includes("/admindraft/analytics"), true);
   assert.equal(mainSource.includes("buildAdminDraftReturnTo"), true);
@@ -141,22 +139,25 @@ test("admin draft panel renders real media, ad, and about data", () => {
 
   assert.equal(source.includes("coverUrl"), true);
   assert.equal(source.includes("photosCount"), true);
-  assert.equal(source.includes("AdsTab adClicks={adClicks} ads={ads}"), true);
+  assert.equal(source.includes("<AdsTab"), true);
+  assert.equal(source.includes("adClicks={adClicks}"), true);
+  assert.equal(source.includes("ads={ads}"), true);
   assert.equal(source.includes("AboutTab about={about}"), true);
 });
 
-test("admin draft ad tab uses real search and status filters", () => {
+test("admin draft ad tab uses clickable status sub-tabs", () => {
   const source = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
 
   assert.equal(source.includes("matchesAdFilters"), true);
   assert.equal(source.includes('id="admin-ad-search"'), true);
-  assert.equal(source.includes('id="admin-ad-status"'), true);
   assert.equal(source.includes('placeholder="Search ad code, advertiser, or URL"'), true);
-  assert.equal(source.includes('<option value="pending">Pending review</option>'), true);
-  assert.equal(source.includes('<option value="approved">Live</option>'), true);
-  assert.equal(source.includes('<option value="paused">Paused</option>'), true);
-  assert.equal(source.includes('<option value="denied">Denied</option>'), true);
-  assert.equal(source.includes('<option value="expired">Expired</option>'), true);
+  assert.equal(source.includes('id="admin-ad-status"'), false);
+  assert.equal(source.includes('{ label: "Pending review", value: "pending" }'), true);
+  assert.equal(source.includes('{ label: "Live", value: "approved" }'), true);
+  assert.equal(source.includes('{ label: "Paused", value: "paused" }'), true);
+  assert.equal(source.includes('{ label: "Denied", value: "denied" }'), true);
+  assert.equal(source.includes('{ label: "Expired", value: "expired" }'), true);
+  assert.equal(source.includes("AD_STATUS_TABS.map"), true);
   assert.equal(source.includes("No ads match these filters."), true);
   assert.equal(source.includes("Accept ad"), true);
   assert.equal(source.includes("Deny ad"), true);
@@ -169,6 +170,23 @@ test("admin draft ad tab uses real search and status filters", () => {
   assert.equal(source.includes('const ADS_DRAFT_RETURN_TO = "/admindraft?view=ads"'), true);
   assert.equal(source.includes("ADS_DRAFT_RETURN_TO"), true);
   assert.equal(source.includes('FieldGrid fields={["Advertiser", "Placement", "Image/video asset", "Destination URL", "Live status", "Start date", "End date"]}'), false);
+});
+
+test("PawJai-only draft pages share the admin workspace shell", () => {
+  const analyticsSource = readFileSync(new URL("../components/admin/AdminUserAnalyticsPageContent.tsx", import.meta.url), "utf8");
+  const accountsSource = readFileSync(new URL("../components/admin/AdminAccountsPageContent.tsx", import.meta.url), "utf8");
+  const auditSource = readFileSync(new URL("../components/admin/AdminAuditPageContent.tsx", import.meta.url), "utf8");
+  const aboutSource = readFileSync(new URL("../components/admin/PawjaiProfileAdminPageContent.tsx", import.meta.url), "utf8");
+  const shellSource = readFileSync(new URL("../components/admin/PawjaiWorkspaceShell.tsx", import.meta.url), "utf8");
+
+  for (const source of [analyticsSource, accountsSource, auditSource, aboutSource]) {
+    assert.equal(source.includes("PawjaiWorkspaceShell"), true);
+  }
+  assert.equal(shellSource.includes("Reorganized admin hierarchy"), true);
+  assert.equal(shellSource.includes("View as PawJai"), true);
+  assert.equal(shellSource.includes("View as shelter"), true);
+  assert.equal(shellSource.includes("AdminWorkspaceNav"), true);
+  assert.equal(analyticsSource.indexOf('active="analytics"') < analyticsSource.indexOf("RANGE_OPTIONS.map"), true);
 });
 
 test("admin draft supports shelter-specific filters and square shelter workspace tabs", () => {

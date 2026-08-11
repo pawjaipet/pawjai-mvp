@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Banknote, BarChart3, CalendarDays, FileText, Megaphone, PawPrint, ShieldCheck, Users } from "lucide-react";
 
 type AdminWorkspaceBasePath = "/admin" | "/admindraft";
-type AdminWorkspaceNavItem = "home" | "dogs" | "bookings" | "donations" | "ads" | "about" | "accounts" | "audit" | "analytics";
+export type AdminWorkspaceNavItem = "home" | "dogs" | "bookings" | "donations" | "ads" | "about" | "accounts" | "audit" | "analytics";
 
 const labels: Record<AdminWorkspaceNavItem, string> = {
   accounts: "Accounts",
@@ -19,7 +19,7 @@ const labels: Record<AdminWorkspaceNavItem, string> = {
 
 function navLabel(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) {
   if (basePath === "/admindraft") {
-    if (item === "home") return "Admin draft";
+    if (item === "home") return "Partner shelters";
     if (item === "dogs") return "All dog listings";
   }
 
@@ -38,7 +38,7 @@ function navHref(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) 
       case "donations":
         return "/admindraft?view=donations";
       case "ads":
-        return "/admindraft/ads";
+        return "/admindraft?view=ads";
       case "about":
         return "/admindraft/aboutcontent";
       case "accounts":

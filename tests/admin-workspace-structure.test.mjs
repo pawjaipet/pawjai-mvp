@@ -94,8 +94,9 @@ test("draft launches dog editing natively and leaves unfinished workflows on old
   assert.equal(source.includes("`${workspaceBaseHref}/dogs/${dog.id}/edit`"), true);
   assert.equal(source.includes("href={`/admin/bookings?shelter=${shelter.id}&view=messages`}"), false);
   assert.equal(source.includes('href="/admin/ads"'), false);
-  assert.equal(navSource.includes('return "/admindraft/ads"'), true);
-  assert.equal(adsRouteSource.includes("AdminAdsPage"), true);
+  assert.equal(navSource.includes('return "/admindraft?view=ads"'), true);
+  assert.equal(adsRouteSource.includes('redirect("/admindraft?view=ads")'), true);
+  assert.equal(adsRouteSource.includes("AdminAdsPage"), false);
   assert.equal(source.includes('href="/admindraft/aboutcontent"'), true);
   assert.equal(source.includes('href="/admindraft/accounts"'), true);
   assert.equal(source.includes('href="/admindraft/audit"'), true);

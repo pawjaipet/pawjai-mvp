@@ -87,6 +87,14 @@ const ADS_DRAFT_RETURN_TO = "/admindraft?view=ads";
 const MESSAGE_THREAD_REFRESH_INTERVAL_MS = 12_000;
 const MAIN_TABS: MainTab[] = ["shelters", "dogs", "bookings", "donations", "ads", "about"];
 const BOOKING_STATUS_OPTIONS = ["requested", "confirmed", "completed", "cancelled", "no_show"];
+const AD_STATUS_TABS: { label: string; value: AdStatusFilter }[] = [
+  { label: "All", value: "all" },
+  { label: "Pending review", value: "pending" },
+  { label: "Live", value: "approved" },
+  { label: "Paused", value: "paused" },
+  { label: "Denied", value: "denied" },
+  { label: "Expired", value: "expired" },
+];
 const VISIT_BUCKETS: { label: string; value: VisitBucket }[] = [
   { label: "Upcoming", value: "upcoming" },
   { label: "Needs follow-up", value: "needs_follow_up" },
@@ -2356,7 +2364,23 @@ function AdsTab({
   const [adMutationPendingId, setAdMutationPendingId] = useState<string | null>(null);
   const today = new Date().toISOString().slice(0, 10);
   const filteredAds = ads.filter((ad) => matchesAdFilters(ad, search, status, today));
-  const selectedAnalyticsAd = filteredAds.find((ad) => ad.id === selectedAnalyticsAdId) ?? filteredAds[0] ?? ads[0] ?? null;
+  const searchMatchedAds = ads.filter((ad) => matchesAdFilters(ad, search, "all", today));
+  const analyticsAds = searchMatchedAds;
+  const visibleAdCount = view === "review" ? filteredAds.length : analyticsAds.length;
+  const adStatusCounts = AD_STATUS_TABS.reduce<Record<AdStatusFilter, number>>((counts, tab) => {
+    counts[tab.value] = tab.value === "all"
+      ? searchMatchedAds.length
+      : searchMatchedAds.filter((ad) => matchesAdFilters(ad, "", tab.value, today)).length;
+    return counts;
+  }, {
+    all: 0,
+    approved: 0,
+    denied: 0,
+    expired: 0,
+    paused: 0,
+    pending: 0,
+  });
+  const selectedAnalyticsAd = analyticsAds.find((ad) => ad.id === selectedAnalyticsAdId) ?? analyticsAds[0] ?? ads[0] ?? null;
   const selectedAdClicks = selectedAnalyticsAd ? adClicks.filter((click) => click.adId === selectedAnalyticsAd.id) : [];
   const totalClicks = selectedAdClicks.length;
   const knownClickerIds = new Set(selectedAdClicks.map((click) => click.userId).filter(Boolean));
@@ -2469,7 +2493,7 @@ function AdsTab({
             Analytics
           </button>
         </div>
-        <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
+        <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
           <label className="sr-only" htmlFor="admin-ad-search">Search ads</label>
           <input
             className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
@@ -2479,23 +2503,9 @@ function AdsTab({
             type="search"
             value={search}
           />
-          <label className="sr-only" htmlFor="admin-ad-status">Filter ads by status</label>
-          <select
-            className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
-            id="admin-ad-status"
-            onChange={(event) => setStatus(event.target.value as AdStatusFilter)}
-            value={status}
-          >
-            <option value="all">All statuses</option>
-            <option value="pending">Pending review</option>
-            <option value="approved">Live</option>
-            <option value="paused">Paused</option>
-            <option value="denied">Denied</option>
-            <option value="expired">Expired</option>
-          </select>
           <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white" type="button">
             <Search className="h-4 w-4" />
-            {filteredAds.length} ads
+            {visibleAdCount} ads
           </button>
           <button
             className="rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f]"
@@ -2508,12 +2518,38 @@ function AdsTab({
             Reset
           </button>
         </div>
+        {view === "review" ? (
+          <div className="mt-4 flex flex-wrap gap-2 rounded-[22px] border border-[#eadfce] bg-[#fffaf5] p-2">
+            {AD_STATUS_TABS.map((tab) => {
+              const active = status === tab.value;
+              return (
+                <button
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    active
+                      ? "bg-[#cd8188] text-white shadow-[0_10px_22px_rgba(205,129,136,0.20)]"
+                      : "bg-white text-[#65584f] hover:bg-[#f5f1e8]"
+                  }`}
+                  key={tab.value}
+                  onClick={() => setStatus(tab.value)}
+                  type="button"
+                >
+                  <span>{tab.label}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                    active ? "bg-white/20 text-white" : "bg-[#f7ecda] text-[#65584f]"
+                  }`}>
+                    {adStatusCounts[tab.value]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
         {view === "analytics" ? (
           <div className="mt-6 grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
             <div className="rounded-[28px] border border-[#d6c8ad] bg-[#fffaf5] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Ads</p>
               <div className="mt-4 grid gap-2">
-                {filteredAds.map((ad) => {
+                {analyticsAds.map((ad) => {
                   const adClickCount = adClicks.filter((click) => click.adId === ad.id).length;
                   const active = selectedAnalyticsAd?.id === ad.id;
 
@@ -2538,7 +2574,7 @@ function AdsTab({
                     </button>
                   );
                 })}
-                {filteredAds.length === 0 ? (
+                {analyticsAds.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-white p-4 text-sm text-[#65584f]">
                     No ads match these filters.
                   </div>
