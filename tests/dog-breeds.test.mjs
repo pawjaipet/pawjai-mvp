@@ -71,3 +71,14 @@ test("breed selections canonicalize aliases before saving filters", () => {
     ["Mixed Breed", "Corgi", "Schnauzer"],
   );
 });
+
+test("legacy live dog breed labels canonicalize for display", () => {
+  const { canonicalizeBreedLabel } = loadDogBreeds();
+
+  assert.equal(canonicalizeBreedLabel("Thai Mix"), "Mixed Breed");
+  assert.equal(canonicalizeBreedLabel("Poodle Terrier Mix"), "Mixed Breed");
+  assert.equal(canonicalizeBreedLabel("Corgi Ridgeback Mixed"), "Mixed Breed");
+  assert.equal(canonicalizeBreedLabel("German Shepard Mixed"), "Mixed Breed");
+  assert.equal(canonicalizeBreedLabel("Ridgeback"), "Thai Ridgeback");
+  assert.equal(canonicalizeBreedLabel("Rodge Back"), "Thai Ridgeback");
+});

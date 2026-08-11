@@ -15,6 +15,11 @@ import { shuffleFeedDogs } from "@/utils/swipe-feed-model";
 import type { Database } from "@/types/database";
 import { hasSupabaseAuthCookies } from "@/utils/supabase/auth-cookies";
 
+type DogFeedResult = {
+  dogs: SwipeDog[];
+  showingAllBecauseNoMatches: boolean;
+};
+
 function hasUploadedPhoto(dog: SwipeDog) {
   const urls = [
     ...dog.photos.map((photo) => photo.public_url),
@@ -32,7 +37,7 @@ function hasUploadedPhoto(dog: SwipeDog) {
   });
 }
 
-async function getDogs(preference: PreferenceForDogFilter | null): Promise<SwipeDog[]> {
+async function getMatchingDogs(preference: PreferenceForDogFilter | null): Promise<SwipeDog[]> {
   const supabase = await createClient();
 
   let dogQuery = supabase
@@ -144,6 +149,19 @@ async function getDogs(preference: PreferenceForDogFilter | null): Promise<Swipe
   ];
 }
 
+async function getDogFeed(preference: PreferenceForDogFilter | null): Promise<DogFeedResult> {
+  const dogs = await getMatchingDogs(preference);
+  if (!hasActiveDogPreference(preference) || dogs.length > 0) {
+    return { dogs, showingAllBecauseNoMatches: false };
+  }
+
+  const allDogs = await getMatchingDogs(null);
+  return {
+    dogs: allDogs,
+    showingAllBecauseNoMatches: allDogs.length > 0,
+  };
+}
+
 export default async function DogFeedPage() {
   let preference: PreferenceForDogFilter | null = null;
   let savedIds: string[] = [];
@@ -156,9 +174,17 @@ export default async function DogFeedPage() {
 
     isLoggedIn = Boolean(user);
     if (!user) {
-      const [dogs, ads] = await Promise.all([getDogs(null), fetchActiveAds()]);
+      const [{ dogs, showingAllBecauseNoMatches }, ads] = await Promise.all([getDogFeed(null), fetchActiveAds()]);
 
-      return <SwipeFeed dogs={dogs} savedIds={savedIds} isLoggedIn={false} ads={ads} />;
+      return (
+        <SwipeFeed
+          dogs={dogs}
+          savedIds={savedIds}
+          isLoggedIn={false}
+          ads={ads}
+          showNoFilterResultsNotice={showingAllBecauseNoMatches}
+        />
+      );
     }
 
     const adopter = await ensureAdopterForUser(supabase, user);
@@ -180,7 +206,15 @@ export default async function DogFeedPage() {
       : null;
   }
 
-  const [dogs, ads] = await Promise.all([getDogs(preference), fetchActiveAds()]);
+  const [{ dogs, showingAllBecauseNoMatches }, ads] = await Promise.all([getDogFeed(preference), fetchActiveAds()]);
 
-  return <SwipeFeed dogs={dogs} savedIds={savedIds} isLoggedIn={isLoggedIn} ads={ads} />;
+  return (
+    <SwipeFeed
+      dogs={dogs}
+      savedIds={savedIds}
+      isLoggedIn={isLoggedIn}
+      ads={ads}
+      showNoFilterResultsNotice={showingAllBecauseNoMatches}
+    />
+  );
 }

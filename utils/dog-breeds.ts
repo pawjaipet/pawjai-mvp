@@ -59,6 +59,7 @@ const DOG_BREED_ALIASES = new Map<string, DogBreedOption>([
   ["thai street dog", "Thai Dog"],
   ["street dog", "Thai Dog"],
   ["ridgeback", "Thai Ridgeback"],
+  ["rodge back", "Thai Ridgeback"],
   ["thai ridgeback dog", "Thai Ridgeback"],
   ["husky", "Siberian Husky"],
   ["welsh corgi", "Corgi"],

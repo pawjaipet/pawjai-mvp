@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import ProductAnalyticsTracker from "@/components/analytics/ProductAnalyticsTracker";
 import BottomNavBar from "@/components/BottomNavBar";
+import NavigationFeedback from "@/components/NavigationFeedback";
 import { LanguageProvider } from "@/components/i18n/LanguageProvider";
 import { SITE_URL } from "@/utils/seo";
 
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LanguageProvider>
           <AuthProvider>
             <ProductAnalyticsTracker />
+            <NavigationFeedback />
             <main className="min-h-screen pb-[70px]">{children}</main>
             <BottomNavBar />
           </AuthProvider>

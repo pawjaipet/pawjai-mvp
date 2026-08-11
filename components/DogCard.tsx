@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ImageWithFallback from "./ImageWithFallback";
 import type { DogWithCover } from "@/types/database";
+import { canonicalizeBreedLabel } from "@/utils/dog-breeds";
 import { normalizeDogMediaUrl } from "@/utils/dog-media";
 
 function ageLabel(months: number | null): string {
@@ -13,6 +14,7 @@ function ageLabel(months: number | null): string {
 
 export default function DogCard({ dog }: { dog: DogWithCover }) {
   const coverPhoto = normalizeDogMediaUrl(dog.cover_photo);
+  const breedLabel = canonicalizeBreedLabel(dog.breed);
 
   return (
     <Link
@@ -48,7 +50,7 @@ export default function DogCard({ dog }: { dog: DogWithCover }) {
           className="text-[12px] text-[#65584f]/60 mt-[2px] truncate"
           style={{ fontFamily: "Montserrat, sans-serif" }}
         >
-          {dog.breed ?? "Mixed breed"}
+          {breedLabel || "Breed not set"}
         </p>
 
         {/* Tags row */}

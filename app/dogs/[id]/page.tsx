@@ -10,6 +10,7 @@ import DogPhotoGallery from "@/components/dogs/DogPhotoGallery";
 import TreatButton from "@/components/donations/TreatButton";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import type { DogPhoto, DogTrait } from "@/types/database";
+import { canonicalizeBreedLabel } from "@/utils/dog-breeds";
 import { buildDogMediaItems, normalizeDogMediaUrl } from "@/utils/dog-media";
 import { NOINDEX_ROBOTS, canonicalUrl } from "@/utils/seo";
 import { toggleWishlist } from "./actions";
@@ -72,10 +73,11 @@ export async function generateMetadata({
     }
 
     const isAvailable = dog.adoption_status === "available";
+    const breedLabel = canonicalizeBreedLabel(dog.breed);
     const title = isAvailable ? `Adopt ${dog.name}` : `${dog.name} profile`;
     const description =
       dog.background?.trim().slice(0, 155) ||
-      `${dog.name}${dog.breed ? `, a ${dog.breed}` : ""}, is listed on PawJai.`;
+      `${dog.name}${breedLabel ? `, a ${breedLabel}` : ""}, is listed on PawJai.`;
 
     return {
       title,
@@ -117,6 +119,7 @@ export default async function DogProfilePage({
 
   const { data: dog } = await supabase.from("dogs").select("*").eq("id", id).single();
   if (!dog) notFound();
+  const breedLabel = canonicalizeBreedLabel(dog.breed);
 
   const [{ data: photosData }, { data: traitsData }, { data: shelter }] = await Promise.all([
     supabase.from("dog_photos").select("*").eq("dog_id", id).order("sort_order"),
@@ -287,12 +290,12 @@ export default async function DogProfilePage({
         >
           {dog.name}
         </h1>
-        {dog.breed && (
+        {breedLabel && (
           <p
             className="text-[16px] text-[#65584f]/55 mt-[2px]"
             style={{ fontFamily: M }}
           >
-            {dog.breed}
+            {breedLabel}
           </p>
         )}
 

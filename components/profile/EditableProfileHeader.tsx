@@ -1,13 +1,29 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Camera, Check, X, Pencil, Award, Gift, Star } from "lucide-react";
+import { Award, Camera, Check, Gift, Pencil, Star, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { updateProfile } from "@/app/profile/actions";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 const M = "Montserrat, sans-serif";
+const PROFILE_NAME_MAX_LENGTH = 10;
+
+function normalizeProfileNameInput(value: string) {
+  return value.replace(/\s+/g, " ").replace(/^\s+/, "").slice(0, PROFILE_NAME_MAX_LENGTH);
+}
+
+function normalizeProfileNameForSave(value: string) {
+  return normalizeProfileNameInput(value).trim();
+}
+
+function profileNameFontSize(value: string) {
+  const length = value.trim().length;
+  if (length >= 9) return 27;
+  if (length >= 7) return 30;
+  return 33;
+}
 
 type BadgeId = "first_adopter" | "top_donater" | "premium_user";
 
@@ -33,7 +49,7 @@ export default function EditableProfileHeader({
   badges,
 }: Props) {
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(initialFullName);
+  const [name, setName] = useState(() => normalizeProfileNameInput(initialFullName));
   const [avatarPreview, setAvatarPreview] = useState<string | null>(initialAvatarUrl);
   const [coverPreview, setCoverPreview] = useState<string | null>(initialCoverUrl);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -60,7 +76,7 @@ export default function EditableProfileHeader({
 
   function handleCancel() {
     setEditing(false);
-    setName(initialFullName);
+    setName(normalizeProfileNameInput(initialFullName));
     setAvatarPreview(initialAvatarUrl);
     setCoverPreview(initialCoverUrl);
     setAvatarFile(null);
@@ -70,24 +86,26 @@ export default function EditableProfileHeader({
   }
 
   function handleSave() {
+    const savedName = normalizeProfileNameForSave(name);
     const fd = new FormData();
-    fd.append("fullName", name);
+    fd.append("fullName", savedName);
     if (avatarFile) fd.append("avatar", avatarFile);
     if (coverFile) fd.append("cover", coverFile);
     startTransition(async () => {
       await updateProfile(fd);
+      setName(savedName);
       setEditing(false);
       setAvatarFile(null);
       setCoverFile(null);
     });
   }
 
-  const displayNickname = name.trim() ? name.trim().split(" ")[0] : initialNickname;
-  const AVATAR_SIZE = 150;
+  const displayNickname = normalizeProfileNameForSave(name) || normalizeProfileNameForSave(initialNickname);
+  const displayNameFontSize = profileNameFontSize(displayNickname);
+  const avatarSize = 106;
 
   return (
     <>
-      {/* Hidden file inputs */}
       <input
         ref={coverInputRef}
         type="file"
@@ -103,27 +121,21 @@ export default function EditableProfileHeader({
         className="hidden"
       />
 
-      {/* ── Banner — full bleed ── */}
       <div
-        className="w-full relative overflow-hidden"
+        className="relative w-full overflow-hidden"
         style={{
-          height: 300,
+          height: 196,
           background: coverPreview
             ? undefined
-            : "linear-gradient(135deg, #e8dfd0 0%, #d6c8ad 50%, #c9b99e 100%)",
+            : "linear-gradient(135deg, #f5eadb 0%, #eadcc7 48%, #d6c8ad 100%)",
         }}
       >
-        {coverPreview && (
+        {coverPreview ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={coverPreview}
-            alt="Cover"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        )}
-        {!coverPreview && (
-          <div className="absolute right-[-20px] bottom-[40px] opacity-[0.10]">
-            <svg width="220" height="220" viewBox="0 0 100 100" fill="#65584f">
+          <img src={coverPreview} alt="Cover" className="absolute inset-0 h-full w-full object-cover" />
+        ) : (
+          <div className="absolute bottom-[-18px] right-[-18px] opacity-[0.08]">
+            <svg width="210" height="210" viewBox="0 0 100 100" fill="#65584f">
               <ellipse cx="50" cy="75" rx="22" ry="18" />
               <ellipse cx="20" cy="55" rx="10" ry="13" />
               <ellipse cx="80" cy="55" rx="10" ry="13" />
@@ -133,62 +145,42 @@ export default function EditableProfileHeader({
           </div>
         )}
 
-        {/* PawJai logo — top-left, larger */}
-        {!editing && (
-          <div
-            className="absolute top-[16px] left-[14px] z-20 pointer-events-none"
-            style={{
-              width: 80,
-              height: 80,
-              filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.20))",
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/pawjai-logo.png"
-              alt="PawJai"
-              className="w-full h-full object-contain object-left"
-            />
-          </div>
-        )}
-
-        {/* Floating Edit pencil — top-right of banner (hidden when editing) */}
-        {!editing && (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="absolute top-[14px] right-[14px] w-[40px] h-[40px] rounded-full flex items-center justify-center transition-all active:scale-90 z-20"
-            style={{
-              background: "rgba(255,255,255,0.92)",
-              boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
-              backdropFilter: "blur(8px)",
-            }}
-            aria-label="Edit profile"
-          >
-            <Pencil size={16} stroke="#65584f" strokeWidth={2.2} />
-          </button>
-        )}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-[76px]"
+          style={{ background: "linear-gradient(to bottom, rgba(245,241,232,0), rgba(245,241,232,0.76))" }}
+        />
 
         {!editing && (
-          <LanguageSwitcher className="absolute right-[62px] top-[14px] z-20" compact />
+          <>
+            <div
+              className="pointer-events-none absolute left-[18px] top-[18px] z-20"
+              style={{
+                width: 112,
+                height: 58,
+                filter: "drop-shadow(0 2px 6px rgba(255,255,255,0.72))",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
+            </div>
+            <div className="absolute right-[18px] top-[28px] z-30">
+              <LanguageSwitcher compact />
+            </div>
+          </>
         )}
 
-        {/* Cover change overlay — only in edit mode */}
         {editing && (
           <button
             type="button"
             onClick={() => coverInputRef.current?.click()}
-            className="absolute inset-0 flex items-center justify-center transition-all z-10"
-            style={{ background: "rgba(0,0,0,0.35)" }}
+            className="absolute inset-0 z-10 flex items-center justify-center transition-all"
+            style={{ background: "rgba(0,0,0,0.32)" }}
           >
             <div className="flex flex-col items-center gap-2">
-              <div
-                className="w-14 h-14 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(255,255,255,0.95)" }}
-              >
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95">
                 <Camera size={26} stroke="#65584f" strokeWidth={2} />
               </div>
-              <span className="text-white text-[13px] font-semibold" style={{ fontFamily: M }}>
+              <span className="text-[13px] font-semibold text-white" style={{ fontFamily: M }}>
                 {t("Change cover photo")}
               </span>
             </div>
@@ -196,23 +188,49 @@ export default function EditableProfileHeader({
         )}
       </div>
 
-      {/* ── Centered avatar + name + badges ── */}
-      <div className="relative flex flex-col items-center px-[20px]" style={{ marginTop: -(AVATAR_SIZE / 2) }}>
-        {/* Avatar */}
         <div
-          className="relative rounded-full border-[5px] border-white overflow-hidden flex items-center justify-center"
+          className="relative mx-[14px] rounded-[28px] bg-white px-[18px] pb-[20px] pt-[16px]"
+        style={{
+          marginTop: -52,
+          boxShadow: "0 14px 34px rgba(101,88,79,0.10)",
+          zIndex: 10,
+        }}
+      >
+        <div className="flex items-start justify-between gap-[14px]">
+          <div style={{ width: avatarSize - 2 }} />
+          {!editing && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="inline-flex items-center gap-[7px] rounded-full px-[16px] py-[9px] text-[13px] font-semibold transition-all active:scale-95"
+              style={{
+                background: "rgba(205,129,136,0.12)",
+                color: "#cd8188",
+                fontFamily: M,
+              }}
+            >
+              <Pencil size={14} strokeWidth={2.2} />
+              Edit Profile
+            </button>
+          )}
+        </div>
+
+        <div
+          className="absolute flex items-center justify-center overflow-hidden rounded-full border-[5px] border-white"
           style={{
-            width: AVATAR_SIZE,
-            height: AVATAR_SIZE,
+            top: -54,
+            left: 20,
+            width: avatarSize,
+            height: avatarSize,
             background: "linear-gradient(135deg, #d6c8ad 0%, #c4b49a 100%)",
-            boxShadow: "0 6px 20px rgba(101,88,79,0.20)",
+            boxShadow: "0 8px 22px rgba(101,88,79,0.18)",
           }}
         >
           {avatarPreview ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarPreview} alt={displayNickname} className="w-full h-full object-cover" />
+            <img src={avatarPreview} alt={displayNickname} className="h-full w-full object-cover" />
           ) : (
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
               <path
                 d="M12 12C14.76 12 17 9.76 17 7C17 4.24 14.76 2 12 2C9.24 2 7 4.24 7 7C7 9.76 9.24 12 12 12ZM12 14C8.67 14 2 15.68 2 19V21H22V19C22 15.68 15.33 14 12 14Z"
                 fill="rgba(101,88,79,0.4)"
@@ -228,48 +246,48 @@ export default function EditableProfileHeader({
               style={{ background: "rgba(0,0,0,0.55)" }}
               aria-label={t("Change profile photo")}
             >
-              <Camera size={28} stroke="white" strokeWidth={2.2} />
-              <span className="text-white text-[10px] font-semibold leading-none" style={{ fontFamily: M }}>
+              <Camera size={26} stroke="white" strokeWidth={2.2} />
+              <span className="text-[10px] font-semibold leading-none text-white" style={{ fontFamily: M }}>
                 {t("Change")}
               </span>
             </button>
           )}
         </div>
 
-        {/* Edit-mode hint — clarifies both upload zones */}
-        {editing && (
-          <p className="mt-[10px] text-[12px] text-[#65584f]/65 text-center" style={{ fontFamily: M }}>
-            {t("Tap photo or banner to upload")}
-          </p>
-        )}
-
-        {/* Name */}
         {editing ? (
           <input
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => setName(normalizeProfileNameInput(e.target.value))}
             placeholder={t("Your name")}
-            maxLength={60}
-            className="mt-[18px] w-full max-w-[300px] text-center text-[34px] font-bold leading-tight outline-none rounded-[10px] px-[12px] py-[6px]"
+            maxLength={PROFILE_NAME_MAX_LENGTH}
+            aria-label={t("Profile display name")}
+            className="mt-[12px] w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-[14px] px-[12px] py-[8px] font-bold leading-tight outline-none"
             style={{
               color: "#65584f",
               fontFamily: M,
-              background: "rgba(255,255,255,0.85)",
-              border: "1.5px solid rgba(205,129,136,0.4)",
+              fontSize: displayNameFontSize,
+              background: "rgba(245,241,232,0.64)",
+              border: "1.5px solid rgba(205,129,136,0.34)",
             }}
           />
         ) : (
           <h1
-            className="mt-[18px] text-[40px] font-bold leading-none text-center"
-            style={{ color: "#65584f", fontFamily: M }}
+            className="mt-[10px] max-w-full overflow-hidden text-ellipsis whitespace-nowrap font-bold leading-tight"
+            style={{ color: "#65584f", fontFamily: M, fontSize: displayNameFontSize }}
+            title={displayNickname}
           >
             {displayNickname}
           </h1>
         )}
 
-        {/* Badges — centered, blank space if none */}
-        <div className="flex flex-wrap gap-[10px] justify-center mt-[18px]" style={{ minHeight: 40 }}>
+        {editing && (
+          <p className="mt-[8px] text-[12px] text-[#65584f]/60" style={{ fontFamily: M }}>
+            {t("Tap the banner or profile photo to upload.")}
+          </p>
+        )}
+
+        <div className="mt-[12px] flex flex-wrap gap-[8px]" style={{ minHeight: badges.length > 0 ? 34 : 8 }}>
           {badges.map((id) => {
             const cfg = BADGE_CONFIG[id];
             if (!cfg) return null;
@@ -278,32 +296,29 @@ export default function EditableProfileHeader({
             return (
               <div
                 key={id}
-                className="inline-flex items-center gap-[8px] rounded-full px-[16px] py-[8px]"
+                className="inline-flex items-center gap-[7px] rounded-full px-[13px] py-[7px]"
                 style={{
-                  background: isFilled ? "#cd8188" : "white",
-                  border: isFilled ? "none" : "1.5px solid rgba(101,88,79,0.18)",
+                  background: isFilled ? "#cd8188" : "rgba(245,241,232,0.86)",
+                  border: isFilled ? "none" : "1.5px solid rgba(101,88,79,0.10)",
                   color: isFilled ? "white" : "#65584f",
-                  boxShadow: isFilled
-                    ? "0 4px 14px rgba(205,129,136,0.30)"
-                    : "0 2px 8px rgba(101,88,79,0.06)",
+                  boxShadow: isFilled ? "0 4px 14px rgba(205,129,136,0.30)" : "none",
                   fontFamily: M,
                 }}
               >
                 <Icon size={16} stroke={isFilled ? "white" : "#cd8188"} strokeWidth={2.2} />
-                <span className="text-[14px] font-semibold whitespace-nowrap">{t(label)}</span>
+                <span className="whitespace-nowrap text-[13px] font-semibold">{t(label)}</span>
               </div>
             );
           })}
         </div>
 
-        {/* Save / Cancel — only in edit mode */}
         {editing && (
-          <div className="flex gap-[10px] mt-[18px] w-full max-w-[300px]">
+          <div className="mt-[16px] flex w-full gap-[10px]">
             <button
               type="button"
               onClick={handleCancel}
               disabled={pending}
-              className="flex-1 rounded-[12px] py-[12px] text-[14px] font-semibold flex items-center justify-center gap-[6px] transition-all active:scale-[0.98] disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-[6px] rounded-[14px] py-[12px] text-[14px] font-semibold transition-all active:scale-[0.98] disabled:opacity-50"
               style={{
                 background: "white",
                 border: "1.5px solid rgba(101,88,79,0.2)",
@@ -317,7 +332,7 @@ export default function EditableProfileHeader({
               type="button"
               onClick={handleSave}
               disabled={pending}
-              className="flex-1 rounded-[12px] py-[12px] text-[14px] font-semibold text-white flex items-center justify-center gap-[6px] transition-all active:scale-[0.98] disabled:opacity-60"
+              className="flex flex-1 items-center justify-center gap-[6px] rounded-[14px] py-[12px] text-[14px] font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-60"
               style={{ background: "#cd8188", fontFamily: M }}
             >
               <Check size={15} /> {pending ? t("Saving...") : t("Save")}

@@ -2,13 +2,14 @@
 
 import { useRef, useState, useTransition, useLayoutEffect } from "react";
 import Link from "next/link";
-import { Share2, CalendarDays, Bookmark } from "lucide-react";
+import { CalendarDays, Bookmark } from "lucide-react";
 import { toggleWishlistAction } from "@/app/actions/wishlist";
 import { useAuthModal } from "@/components/auth/AuthProvider";
 import TreatButton from "@/components/donations/TreatButton";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { translateAgeLabel, translateDogValue } from "@/components/i18n/translations";
 import type { Dog, DogPhoto, DogTrait } from "@/types/database";
+import { canonicalizeBreedLabel } from "@/utils/dog-breeds";
 import { normalizeDogMediaUrl, type DogMediaItem } from "@/utils/dog-media";
 
 export type SwipeDog = Dog & {
@@ -30,6 +31,27 @@ function ageLabel(months: number | null) {
 // Subtle shadow so beige tags stay visible on placeholder beige background
 const TAG_BEIGE = "bg-[#d6c8ad] text-black shadow-[0_1px_4px_rgba(0,0,0,0.18)]";
 const TAG_ROSE  = "bg-[#cd8188] text-white shadow-[0_1px_4px_rgba(0,0,0,0.18)]";
+
+function CurvedShareArrow() {
+  return (
+    <svg
+      aria-hidden="true"
+      width="31"
+      height="31"
+      viewBox="0 0 64 64"
+      fill="none"
+      className="translate-x-[1px]"
+    >
+      <path
+        d="M10 50C12 33 24 22 38 21V10L56 28L38 46V35C26 35 16 39 10 50Z"
+        stroke="white"
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 interface Props {
   dog: SwipeDog;
@@ -96,6 +118,8 @@ export default function SwipeDogCard({
       ?.filter((trait) => trait.trait_type === "personality")
       .map((trait) => trait.trait_value)
       .slice(0, 4) ?? [];
+  const breedLabel = canonicalizeBreedLabel(dog.breed);
+  const breedDisplay = breedLabel || "Breed not set";
 
   useLayoutEffect(() => {
     const row = collapsedRowRef.current;
@@ -144,14 +168,14 @@ export default function SwipeDogCard({
 
   // Collapsed tags
   const collapsedTags: string[] = [
-    dog.breed ?? "Mixed",
+    breedDisplay,
     ageLabel(dog.age_months) ?? "",
     dog.gender === "unknown" ? "Unknown" : dog.gender === "male" ? "Male" : "Female",
   ].filter(Boolean);
 
   // Expanded rows
   const row1: string[] = [
-    dog.breed ?? "Mixed",
+    breedDisplay,
     ageLabel(dog.age_months) ?? "",
     ...personalityTags.slice(0, 2),
     dog.energy_level ? `${dog.energy_level.charAt(0).toUpperCase() + dog.energy_level.slice(1)} energy` : "",
@@ -224,14 +248,12 @@ export default function SwipeDogCard({
         >
           {dog.name}
         </p>
-        {dog.breed && (
-          <p
-            className="font-black text-[18px] leading-[1.1] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] break-words mt-[6px]"
-            style={{ fontFamily: "Montserrat, sans-serif" }}
-          >
-            {translateDogValue(dog.breed, language)}
-          </p>
-        )}
+        <p
+          className="font-black text-[18px] leading-[1.1] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] break-words mt-[6px]"
+          style={{ fontFamily: "Montserrat, sans-serif" }}
+        >
+          {translateDogValue(breedDisplay, language)}
+        </p>
       </div>
 
       {/* Image dots */}
@@ -299,7 +321,7 @@ export default function SwipeDogCard({
           className="bg-[#cd8188] w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
           aria-label={t("Share")}
         >
-          <Share2 size={24} stroke="white" strokeWidth={2} />
+          <CurvedShareArrow />
         </button>
         <Link
           href={`/schedule/${dog.id}`}

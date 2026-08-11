@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { submitVerificationDocuments } from "@/app/documents/actions";
 import {
@@ -87,10 +87,17 @@ function ChoiceBtn({ selected, onClick, children }: { selected: boolean; onClick
   );
 }
 
-function Block({ question, children }: { question: string; children: React.ReactNode }) {
+function Block({ question, hint, children }: { question: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="mb-[28px]">
-      <QuestionLabel>{question}</QuestionLabel>
+      <QuestionLabel>
+        {question}
+        {hint && (
+          <span className="ml-[6px] text-[13px] font-semibold text-[#65584f]/45">
+            ({hint})
+          </span>
+        )}
+      </QuestionLabel>
       {children}
     </div>
   );
@@ -281,11 +288,7 @@ function statusCopy(status: string) {
 }
 
 export default function DocumentsPageClient({ initialData }: { initialData: DocumentsInitialData }) {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  // Sanitize next param to allow only same-origin paths
-  const rawNext = searchParams.get("next") ?? "";
-  const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "";
   const formRef = useRef<HTMLFormElement>(null);
   const [section, setSection] = useState<Section>("A");
   const [state, formAction, isPending] = useActionState<DocumentSubmissionState, FormData>(
@@ -335,8 +338,15 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
   useEffect(() => {
     if (state.status === "success" && state.completed) {
       setSection("done");
+      scrollFormToTop();
+      const redirectTimer = window.setTimeout(() => {
+        router.replace("/profile");
+      }, 900);
+
+      return () => window.clearTimeout(redirectTimer);
     }
-  }, [state.completed, state.status]);
+    return undefined;
+  }, [router, state.completed, state.status]);
 
   const sectionIdx = section === "done" ? 4 : SECTIONS.indexOf(section);
   const meta = section !== "done" ? SECTION_META[section] : null;
@@ -371,9 +381,16 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
     });
   }
 
+  function scrollFormToTop() {
+    window.requestAnimationFrame(() => {
+      formRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
   function saveAndContinue(nextSection: Section) {
     submitCurrentForm("draft");
     setSection(nextSection);
+    scrollFormToTop();
   }
 
   function saveAndExit() {
@@ -617,7 +634,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
             name="homePhotos"
             onChange={(files) => setC({ ...c, homePhotos: files })}
           />
-          <Block question="Are there other pets in your home?">
+          <Block question="Are there other pets in your home?" hint="select all that apply">
             <div className="space-y-[10px]">
               {["None", "Dog(s)", "Cat(s)", "Other animals"].map((opt) => {
                 const selected = c.otherPets.includes(opt);
@@ -654,7 +671,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
           <input type="hidden" name="behaviorResponse" value={d.behaviorResponse} />
           <input type="hidden" name="traumaResponse" value={d.traumaResponse} />
           <input type="hidden" name="agreementAccepted" value={String(d.agreement)} />
-          <Block question="How do you plan to bond with your new dog?">
+          <Block question="How do you plan to bond with your new dog?" hint="select all that apply">
             <div className="space-y-[10px]">
               {["Regular walks and playtime", "Training and learning together", "Spending quality time at home"].map((opt) => {
                 const selected = d.bondingPlan.includes(opt);
@@ -753,11 +770,11 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
               {state.message ?? "Your verification details were saved successfully. You can update them later whenever something changes."}
             </p>
             <Link
-              href={nextPath || "/appointments"}
+              href="/profile"
               className="block w-full rounded-full py-[15px] text-center text-[16px] font-bold text-white transition-all active:scale-[0.98]"
               style={{ background: "#cd8188", fontFamily: M }}
             >
-              {nextPath.startsWith("/schedule") ? "Continue booking" : "View Appointments"}
+              Back to Profile
             </Link>
             <Link href="/" className="mt-[14px] text-[14px] font-semibold text-[#65584f]/50" style={{ fontFamily: M }}>
               Back to browsing
@@ -783,7 +800,10 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
             type="button"
             onClick={() => {
               const prev = PREV[section];
-              if (prev) setSection(prev);
+              if (prev) {
+                setSection(prev);
+                scrollFormToTop();
+              }
             }}
             disabled={!PREV[section] || isSubmitting}
             aria-label="Go back to previous verification section"
