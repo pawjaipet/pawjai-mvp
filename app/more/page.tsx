@@ -1,8 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { signOut } from "@/app/auth/actions";
-import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import AdopterPageHeader from "@/components/AdopterPageHeader";
 
 const M = "Montserrat, sans-serif";
 
@@ -41,13 +40,7 @@ export default async function MorePage() {
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
-      {/* ── Inline header with logo ── */}
-      <div className="flex items-start justify-between px-[8px] pt-[7px] pb-[12px]">
-        <Link href="/" className="block h-[80px] w-[80px] relative active:scale-95 transition-transform" aria-label="PawJai home">
-          <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain object-left" priority />
-        </Link>
-        <LanguageSwitcher className="mt-[12px] mr-[8px]" />
-      </div>
+      <AdopterPageHeader />
 
       {/* User profile card removed — email/edit moved to Profile tab + Settings */}
       {!user && (

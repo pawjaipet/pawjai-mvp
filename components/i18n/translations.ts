@@ -243,6 +243,7 @@ const THAI_TEXT: Record<string, string> = {
   "PawJai v0.1 · Made with ❤️ for Thai dogs": "PawJai v0.1 · ทำด้วยใจเพื่อสุนัขไทย",
   "PawJai · v0.1": "PawJai · v0.1",
   "Edit Profile": "แก้ไขโปรไฟล์",
+  "Edit profile": "แก้ไขโปรไฟล์",
   "Change cover photo": "เปลี่ยนรูปหน้าปก",
   "Change profile photo": "เปลี่ยนรูปโปรไฟล์",
   Change: "เปลี่ยน",

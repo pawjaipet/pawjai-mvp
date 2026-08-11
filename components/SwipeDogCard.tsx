@@ -240,8 +240,28 @@ export default function SwipeDogCard({
         ))}
       </div>
 
+      {orderedMedia.length > 1 && (
+        <div className="pointer-events-none absolute left-4 right-4 top-[12px] z-20 flex gap-[5px]">
+          {orderedMedia.map((item, i) => (
+            <div
+              key={item.id}
+              className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/45"
+              style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.12)" }}
+            >
+              <div
+                className="h-full rounded-full transition-all duration-200"
+                style={{
+                  width: i === imgIdx ? "100%" : "0%",
+                  background: "#cd8188",
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Dog name + breed overlay */}
-      <div className="absolute top-4 left-4 right-20 pointer-events-none z-10">
+      <div className={`absolute left-4 right-20 pointer-events-none z-10 ${orderedMedia.length > 1 ? "top-[30px]" : "top-4"}`}>
         <p
           className="font-black text-[36px] leading-[1.0] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] break-words"
           style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -255,20 +275,6 @@ export default function SwipeDogCard({
           {translateDogValue(breedDisplay, language)}
         </p>
       </div>
-
-      {/* Image dots */}
-      {orderedMedia.length > 1 && (
-        <div className="absolute bottom-[90px] left-0 right-0 flex justify-center pointer-events-none z-10">
-          <div className="bg-[rgba(214,200,173,0.5)] px-[12px] py-[6px] rounded-[12px] flex gap-[8px]">
-            {orderedMedia.map((_, i) => (
-              <div
-                key={i}
-                className={`h-2 w-2 rounded-full transition-colors ${i === imgIdx ? "bg-[#cd8188]" : "bg-[rgba(101,88,79,0.3)]"}`}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Tags overlay */}
       <div className="absolute bottom-4 left-4 right-4 z-10">

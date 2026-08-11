@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { CreditCard, HelpCircle, Mail } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import AdopterPageHeader from "@/components/AdopterPageHeader";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
-import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { createClient } from "@/utils/supabase/server";
 
 const M = "Montserrat, sans-serif";
@@ -64,23 +64,7 @@ export default async function SettingsPage() {
         fontFamily: M,
       }}
     >
-      {/* Header — logo top-left as home link */}
-      <div
-        className="sticky top-0 z-10 flex items-center justify-between px-[14px] h-[64px]"
-        style={{ background: "rgba(245,241,232,0.95)", backdropFilter: "blur(8px)" }}
-      >
-        <Link
-          href="/"
-          className="block h-[56px] w-[56px] active:scale-95 transition-transform"
-          aria-label="PawJai home"
-        >
-          <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
-        </Link>
-        <div className="flex items-center gap-[10px]">
-          <h1 className="text-[18px] font-bold" style={{ color: "#65584f" }}>Settings</h1>
-          <LanguageSwitcher compact />
-        </div>
-      </div>
+      <AdopterPageHeader title="Settings" />
 
       {/* Account email */}
       <div className="mx-[16px] mt-[16px] rounded-[16px] px-[16px] py-[14px]" style={{ background: "white", boxShadow: "0 2px 12px rgba(101,88,79,0.07)" }}>

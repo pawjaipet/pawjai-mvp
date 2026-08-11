@@ -188,38 +188,36 @@ export default function EditableProfileHeader({
         )}
       </div>
 
-        <div
-          className="relative mx-[14px] rounded-[28px] bg-white px-[18px] pb-[20px] pt-[16px]"
+      <div
+        className="relative mx-[14px] rounded-[28px] bg-white px-[18px] pb-[20px] pt-[66px]"
         style={{
           marginTop: -52,
           boxShadow: "0 14px 34px rgba(101,88,79,0.10)",
           zIndex: 10,
         }}
       >
-        <div className="flex items-start justify-between gap-[14px]">
-          <div style={{ width: avatarSize - 2 }} />
-          {!editing && (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="inline-flex items-center gap-[7px] rounded-full px-[16px] py-[9px] text-[13px] font-semibold transition-all active:scale-95"
-              style={{
-                background: "rgba(205,129,136,0.12)",
-                color: "#cd8188",
-                fontFamily: M,
-              }}
-            >
-              <Pencil size={14} strokeWidth={2.2} />
-              Edit Profile
-            </button>
-          )}
-        </div>
+        {!editing && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="absolute right-[16px] top-[16px] flex h-[40px] w-[40px] items-center justify-center rounded-full transition-all active:scale-95"
+            style={{
+              background: "rgba(205,129,136,0.12)",
+              color: "#cd8188",
+              fontFamily: M,
+            }}
+            aria-label={t("Edit profile")}
+          >
+            <Pencil size={18} strokeWidth={2.2} />
+          </button>
+        )}
 
         <div
           className="absolute flex items-center justify-center overflow-hidden rounded-full border-[5px] border-white"
           style={{
-            top: -54,
-            left: 20,
+            top: -55,
+            left: "50%",
+            transform: "translateX(-50%)",
             width: avatarSize,
             height: avatarSize,
             background: "linear-gradient(135deg, #d6c8ad 0%, #c4b49a 100%)",
@@ -262,7 +260,7 @@ export default function EditableProfileHeader({
             placeholder={t("Your name")}
             maxLength={PROFILE_NAME_MAX_LENGTH}
             aria-label={t("Profile display name")}
-            className="mt-[12px] w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-[14px] px-[12px] py-[8px] font-bold leading-tight outline-none"
+            className="mt-[4px] w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-[14px] px-[12px] py-[8px] text-center font-bold leading-tight outline-none"
             style={{
               color: "#65584f",
               fontFamily: M,
@@ -273,7 +271,7 @@ export default function EditableProfileHeader({
           />
         ) : (
           <h1
-            className="mt-[10px] max-w-full overflow-hidden text-ellipsis whitespace-nowrap font-bold leading-tight"
+            className="mt-[4px] max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-center font-bold leading-tight"
             style={{ color: "#65584f", fontFamily: M, fontSize: displayNameFontSize }}
             title={displayNickname}
           >
@@ -287,7 +285,7 @@ export default function EditableProfileHeader({
           </p>
         )}
 
-        <div className="mt-[12px] flex flex-wrap gap-[8px]" style={{ minHeight: badges.length > 0 ? 34 : 8 }}>
+        <div className="mt-[14px] flex flex-wrap justify-center gap-[8px]" style={{ minHeight: badges.length > 0 ? 34 : 8 }}>
           {badges.map((id) => {
             const cfg = BADGE_CONFIG[id];
             if (!cfg) return null;
