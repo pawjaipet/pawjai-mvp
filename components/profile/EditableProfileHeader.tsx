@@ -191,7 +191,7 @@ export default function EditableProfileHeader({
       <div
         className="relative mx-[14px] rounded-[28px] bg-white px-[18px] pb-[20px] pt-[66px]"
         style={{
-          marginTop: -52,
+          marginTop: -40,
           boxShadow: "0 14px 34px rgba(101,88,79,0.10)",
           zIndex: 10,
         }}
@@ -215,7 +215,7 @@ export default function EditableProfileHeader({
         <div
           className="absolute flex items-center justify-center overflow-hidden rounded-full border-[5px] border-white"
           style={{
-            top: -55,
+            top: -49,
             left: "50%",
             transform: "translateX(-50%)",
             width: avatarSize,

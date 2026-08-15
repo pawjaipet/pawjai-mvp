@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import SwipeDogCard, { type SwipeDog } from "./SwipeDogCard";
 import AdCard from "./AdCard";
+import SwipeFeedTutorial from "@/components/SwipeFeedTutorial";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import type { Ad } from "@/utils/ads";
@@ -69,10 +70,12 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNo
             className="h-full w-full object-contain object-left"
           />
         </Link>
-        <div className="absolute right-[16px] top-[45px]">
+        <div className="absolute right-[16px] top-[41px]">
           <LanguageSwitcher />
         </div>
       </div>
+
+      <SwipeFeedTutorial enabled={feed.length > 0} />
 
       {showFallbackNotice && (
         <div className="absolute left-[16px] right-[16px] top-[88px] z-30">

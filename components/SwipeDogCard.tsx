@@ -241,11 +241,11 @@ export default function SwipeDogCard({
       </div>
 
       {orderedMedia.length > 1 && (
-        <div className="pointer-events-none absolute left-4 right-4 top-[12px] z-20 flex gap-[5px]">
+        <div className="pointer-events-none absolute left-4 right-4 top-[10px] z-20 flex gap-[5px]">
           {orderedMedia.map((item, i) => (
             <div
               key={item.id}
-              className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/45"
+              className="h-[5px] flex-1 overflow-hidden rounded-full bg-white/45"
               style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.12)" }}
             >
               <div
@@ -261,7 +261,7 @@ export default function SwipeDogCard({
       )}
 
       {/* Dog name + breed overlay */}
-      <div className={`absolute left-4 right-20 pointer-events-none z-10 ${orderedMedia.length > 1 ? "top-[30px]" : "top-4"}`}>
+      <div className={`absolute left-4 right-20 pointer-events-none z-10 ${orderedMedia.length > 1 ? "top-[34px]" : "top-4"}`}>
         <p
           className="font-black text-[36px] leading-[1.0] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] break-words"
           style={{ fontFamily: "Montserrat, sans-serif" }}
