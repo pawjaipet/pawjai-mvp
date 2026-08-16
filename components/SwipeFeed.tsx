@@ -75,7 +75,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNo
         </div>
       </div>
 
-      <SwipeFeedTutorial enabled={feed.length > 0} />
+      <SwipeFeedTutorial enabled={feed.length > 0} isLoggedIn={isLoggedIn} />
 
       {showFallbackNotice && (
         <div className="absolute left-[16px] right-[16px] top-[88px] z-30">
