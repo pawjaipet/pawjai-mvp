@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
 import { getAdminAuthContext } from "@/utils/admin-auth";
 import { mergePersonalityTags } from "@/utils/personality-tags";
 import { getShelterByPortalSlug, getShelterPortalTarget } from "@/utils/shelter-portal";
@@ -44,56 +46,49 @@ export default async function ShelterNewDogPage({
 
   if (shelterOptions.length === 0) {
     return (
-      <main className="min-h-screen bg-[#f5efe6] px-4 py-8 text-[#4f4338]">
-        <div className="mx-auto max-w-3xl rounded-[32px] border border-[#eadfce] bg-white p-8 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">
-            PawJai Shelter Portal
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold">Add a shelter before creating dog listings.</h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-[#7a6d61]">
+      <PawjaiWorkspaceShell eyebrow="My Shelter Workspace powered by PawJai" homeHref={cancelHref} maxWidth="max-w-5xl" title="Create dog listing">
+        <section className="rounded-[28px] border border-[#d6c8ad] bg-white/90 p-8 shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
+          <h2 className="text-2xl font-semibold text-[#65584f]">Add a shelter before creating dog listings.</h2>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-[#65584f]/75">
             Each dog listing belongs to a shelter, so the draft create flow needs at least one shelter record first.
           </p>
-          <Link className="mt-6 inline-flex rounded-full bg-[#d38a2c] px-6 py-3 text-sm font-semibold text-white" href={cancelHref}>
+          <Link className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white hover:bg-[#b87179]" href={cancelHref}>
+            <ArrowLeft className="h-4 w-4" />
             Back to shelter workspace
           </Link>
-        </div>
-      </main>
+        </section>
+      </PawjaiWorkspaceShell>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#f5efe6] px-4 py-8 text-[#4f4338]">
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-6 flex flex-col gap-4 rounded-[28px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)] md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">
-              PawJai Shelter Portal
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold">Create dog listing</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#74685d]">
-              Add the dog profile, matching answers, tags, and photos. This saves to the same live PawJai dog database.
-            </p>
-          </div>
+    <PawjaiWorkspaceShell
+      actions={(
           <Link
-            className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]"
             href={cancelHref}
           >
+            <ArrowLeft className="h-4 w-4" />
             Exit
           </Link>
-        </header>
-
-        <DogListingForm
-          cancelLabel="Exit"
-          cancelHref={cancelHref}
-          personalityTags={personalityTags}
-          returnTo={`/shelter/${slug}/dogs/new`}
-          selectedShelterId={selectedShelterId}
-          shelters={shelterOptions}
-          showIntro={false}
-          submitLabel="Save Draft"
-          successListingsHref={cancelHref}
-        />
-      </div>
-    </main>
+      )}
+      description="Add the dog profile, matching answers, tags, and photos. This saves to the same live PawJai dog database."
+      eyebrow="My Shelter Workspace powered by PawJai"
+      homeHref={cancelHref}
+      maxWidth="max-w-5xl"
+      title="Create dog listing"
+    >
+      <DogListingForm
+        cancelLabel="Exit"
+        cancelHref={cancelHref}
+        personalityTags={personalityTags}
+        returnTo={`/shelter/${slug}/dogs/new`}
+        selectedShelterId={selectedShelterId}
+        shelters={shelterOptions}
+        showIntro={false}
+        submitLabel="Save Draft"
+        successListingsHref={cancelHref}
+      />
+    </PawjaiWorkspaceShell>
   );
 }

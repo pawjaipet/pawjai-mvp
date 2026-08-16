@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
+import { Save } from "lucide-react";
 import DogBreedPicker from "@/components/dogs/DogBreedPicker";
 import PersonalityTagPicker from "@/components/dogs/PersonalityTagPicker";
 import { createDogListingAction } from "./actions";
@@ -123,10 +124,10 @@ function Section({
   title: string;
 }) {
   return (
-    <section className="rounded-[28px] border border-[#eadfce] bg-white/90 p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+    <section className="rounded-[28px] border border-[#d6c8ad] bg-white/90 p-6 shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
       <div className="mb-5">
-        <h2 className="text-xl font-semibold text-[#4f4338]">{title}</h2>
-        <p className="mt-1 text-sm leading-6 text-[#7a6d61]">{description}</p>
+        <h2 className="text-xl font-semibold text-[#65584f]">{title}</h2>
+        <p className="mt-1 text-sm leading-6 text-[#65584f]">{description}</p>
       </div>
       {children}
     </section>
@@ -146,7 +147,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-[#5b4d40]">{label}</span>
+      <span className="mb-2 block text-sm font-medium text-[#65584f]">{label}</span>
       {children}
       {hint ? <span className="mt-2 block text-xs text-[#8c7d70]">{hint}</span> : null}
       {error ? <span className="mt-2 block text-xs font-medium text-[#b42318]">{error}</span> : null}
@@ -155,14 +156,14 @@ function Field({
 }
 
 function inputClass(error?: string) {
-  return `w-full rounded-2xl border px-4 py-3 text-sm text-[#4f4338] outline-none transition focus:border-[#d69546] focus:ring-4 focus:ring-[#f6d7ad]/50 ${
-    error ? "border-[#d94b41] bg-[#fff4f2]" : "border-[#e7dbc8] bg-[#fffdfa]"
+  return `w-full rounded-2xl border px-4 py-3 text-sm text-[#65584f] outline-none transition focus:border-[#cd8188] focus:ring-4 focus:ring-[#f3cbd0]/50 ${
+    error ? "border-[#d94b41] bg-[#fff4f2]" : "border-[#d6c8ad] bg-[#fffaf5]"
   }`;
 }
 
-function fileInputClass(error?: string, accent = "file:bg-[#d38a2c]") {
-  return `w-full rounded-2xl border px-4 py-3 text-sm text-[#4f4338] file:mr-4 file:rounded-full file:border-0 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white ${
-    error ? "border-[#d94b41] bg-[#fff4f2]" : "border-[#e7dbc8] bg-[#fffdfa]"
+function fileInputClass(error?: string, accent = "file:bg-[#cd8188]") {
+  return `w-full rounded-2xl border px-4 py-3 text-sm text-[#65584f] file:mr-4 file:rounded-full file:border-0 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white ${
+    error ? "border-[#d94b41] bg-[#fff4f2]" : "border-[#d6c8ad] bg-[#fffaf5]"
   } ${accent}`;
 }
 
@@ -242,7 +243,7 @@ function ChoiceCards({
               type="radio"
               value={option.value}
             />
-            <span className="block h-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#5b4d40] transition peer-checked:border-[#cd8188] peer-checked:bg-[#cd8188] peer-checked:text-white peer-focus-visible:ring-4 peer-focus-visible:ring-[#f3cbd0]">
+            <span className="block h-full rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] transition peer-checked:border-[#cd8188] peer-checked:bg-[#cd8188] peer-checked:text-white peer-focus-visible:ring-4 peer-focus-visible:ring-[#f3cbd0]">
               <span className="block font-semibold">{option.label}</span>
               {option.description ? (
                 <span id={descriptionId} className="mt-1 block text-xs opacity-75">
@@ -400,26 +401,26 @@ export default function DogListingForm({
     <form action={formAction} aria-busy={pending || mediaPreparing} className="space-y-6">
       {returnTo ? <input name="returnTo" type="hidden" value={returnTo} /> : null}
       {showIntro ? (
-        <div className="rounded-[32px] bg-gradient-to-br from-[#fff6e8] via-[#fff1df] to-[#f9e4c0] p-7 shadow-[0_24px_60px_rgba(176,120,42,0.16)]">
+        <div className="rounded-[32px] border border-[#f3cbd0] bg-[#f8e8ea] p-7 shadow-[0_24px_60px_rgba(101,88,79,0.12)]">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">
                 Internal Dog Onboarding
               </p>
-              <h1 className="mt-3 text-4xl font-semibold leading-tight text-[#4f4338]">
+              <h1 className="mt-3 text-4xl font-semibold leading-tight text-[#65584f]">
                 Create a new PawJai listing like a marketplace post.
               </h1>
-              <p className="mt-3 text-sm leading-6 text-[#6f6256]">
+              <p className="mt-3 text-sm leading-6 text-[#65584f]">
                 Start with the essentials, choose the photo order yourself, and save the listing
                 when it is ready for the public browse flow.
               </p>
             </div>
-            <div className="rounded-3xl border border-white/70 bg-white/80 p-5 text-sm text-[#6f6256]">
-              <p className="font-medium text-[#4f4338]">Workflow tip</p>
+            <div className="rounded-3xl border border-white/70 bg-white/80 p-5 text-sm text-[#65584f]">
+              <p className="font-medium text-[#65584f]">Workflow tip</p>
               <p className="mt-2 leading-6">
-                Save new dogs as <span className="font-semibold text-[#b77624]">draft</span> until
+                Save new dogs as <span className="font-semibold text-[#cd8188]">draft</span> until
                 photos and copy feel right, then publish them by switching the adoption status to
-                <span className="font-semibold text-[#b77624]"> available</span>.
+                <span className="font-semibold text-[#cd8188]"> available</span>.
               </p>
             </div>
           </div>
@@ -439,10 +440,10 @@ export default function DogListingForm({
               },
             ].map((item) => (
               <div key={item.label}>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b77624]">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#cd8188]">
                   {item.label}
                 </p>
-                <p className="mt-2 text-sm text-[#5f5348]">{item.value}</p>
+                <p className="mt-2 text-sm text-[#65584f]">{item.value}</p>
               </div>
             ))}
           </div>
@@ -495,7 +496,7 @@ export default function DogListingForm({
           </Field>
 
           <div className="md:col-span-2">
-            <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Size</p>
+            <p className="mb-3 text-sm font-semibold text-[#65584f]">Size</p>
             <ChoiceCards
               name="size"
               options={[
@@ -557,7 +558,7 @@ export default function DogListingForm({
       >
         <div className="space-y-8">
           <div>
-            <p className="mb-3 text-sm font-semibold text-[#5b4d40]">How active is this dog?</p>
+            <p className="mb-3 text-sm font-semibold text-[#65584f]">How active is this dog?</p>
             <ChoiceCards
               name="energy_level"
               options={[
@@ -569,7 +570,7 @@ export default function DogListingForm({
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Protectiveness</p>
+            <p className="mb-3 text-sm font-semibold text-[#65584f]">Protectiveness</p>
             <ChoiceCards
               name="protectiveness"
               options={[
@@ -581,7 +582,7 @@ export default function DogListingForm({
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Affection style</p>
+            <p className="mb-3 text-sm font-semibold text-[#65584f]">Affection style</p>
             <ChoiceCards
               name="affection_style"
               options={[
@@ -593,7 +594,7 @@ export default function DogListingForm({
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Training status</p>
+            <p className="mb-3 text-sm font-semibold text-[#65584f]">Training status</p>
             <ChoiceCards
               name="training_preference_match"
               options={[
@@ -605,7 +606,7 @@ export default function DogListingForm({
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-semibold text-[#5b4d40]">People friendliness</p>
+            <p className="mb-3 text-sm font-semibold text-[#65584f]">People friendliness</p>
             <ChoiceCards
               name="people_friendliness"
               options={[
@@ -617,7 +618,7 @@ export default function DogListingForm({
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Friendliness to other dogs</p>
+            <p className="mb-3 text-sm font-semibold text-[#65584f]">Friendliness to other dogs</p>
             <ChoiceCards
               name="dog_social_style"
               options={[
@@ -663,16 +664,16 @@ export default function DogListingForm({
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Public personality and description tags</p>
-            <p className="mb-4 text-sm leading-6 text-[#7a6d61]">
+            <p className="mb-3 text-sm font-semibold text-[#65584f]">Public personality and description tags</p>
+            <p className="mb-4 text-sm leading-6 text-[#65584f]">
               These become the playful beige bubbles on the swipe card and dog profile. Pick the words that actually fit the dog.
             </p>
             <PersonalityTagPicker options={personalityTags} />
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Care and medical tags</p>
-            <p className="mb-4 text-sm leading-6 text-[#7a6d61]">
+            <p className="mb-3 text-sm font-semibold text-[#65584f]">Care and medical tags</p>
+            <p className="mb-4 text-sm leading-6 text-[#65584f]">
               These help fill the medical needs area without making the team write everything from scratch.
             </p>
             <ChipCheckboxGroup name="care_tag" options={careTags} />
@@ -684,8 +685,8 @@ export default function DogListingForm({
               ["leash_trained", "Leash trained"],
               ["animal_friendly", "Animal friendly"],
             ].map(([name, label]) => (
-              <label key={name} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#f0e6d7] bg-white px-4 py-3 text-sm text-[#5b4d40]">
-                <input type="checkbox" name={name} className="h-4 w-4 rounded border-[#d4c1a5] text-[#d69546] focus:ring-[#f6d7ad]" />
+              <label key={name} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#f0e6d7] bg-white px-4 py-3 text-sm text-[#65584f]">
+                <input type="checkbox" name={name} className="h-4 w-4 rounded border-[#d6c8ad] text-[#cd8188] focus:ring-[#f3cbd0]" />
                 <span>{label}</span>
               </label>
             ))}
@@ -727,10 +728,10 @@ export default function DogListingForm({
           </Field>
 
           {mediaItems.length > 0 ? (
-            <div className="rounded-[24px] border border-[#eadfce] bg-[#fffdfa] p-4">
+            <div className="rounded-[24px] border border-[#d6c8ad] bg-[#fffaf5] p-4">
               <div className="mb-3">
-                <p className="text-sm font-semibold text-[#4f4338]">Cover and display order</p>
-                <p className="mt-1 text-xs leading-5 text-[#7a6d61]">
+                <p className="text-sm font-semibold text-[#65584f]">Cover and display order</p>
+                <p className="mt-1 text-xs leading-5 text-[#65584f]">
                   The cover item appears first on swipe cards and dog profiles. Only the active dog
                   video auto-loads on the public swipe page.
                 </p>
@@ -745,7 +746,7 @@ export default function DogListingForm({
                 {mediaItems.map((item, index) => (
                   <div
                     key={item.key}
-                    className="flex flex-col gap-3 rounded-2xl border border-[#eee2d2] bg-white p-3 sm:flex-row sm:items-center"
+                    className="flex flex-col gap-3 rounded-2xl border border-[#d6c8ad] bg-white p-3 sm:flex-row sm:items-center"
                   >
                     <label className="flex flex-1 cursor-pointer items-center gap-3">
                       <input
@@ -753,10 +754,10 @@ export default function DogListingForm({
                         name="cover_media_choice"
                         checked={coverMediaKey === item.key}
                         onChange={() => setCoverMediaKey(item.key)}
-                        className="h-4 w-4 border-[#d4c1a5] text-[#cd8188] focus:ring-[#f3cbd0]"
+                        className="h-4 w-4 border-[#d6c8ad] text-[#cd8188] focus:ring-[#f3cbd0]"
                       />
                       <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold text-[#4f4338]">
+                        <span className="block truncate text-sm font-semibold text-[#65584f]">
                           {index + 1}. {item.name}
                         </span>
                         <span className="mt-1 block text-xs uppercase tracking-[0.16em] text-[#9a6b2a]">
@@ -773,7 +774,7 @@ export default function DogListingForm({
                         type="button"
                         disabled={index === 0}
                         onClick={() => moveMediaItem(index, -1)}
-                        className="rounded-full border border-[#eadfce] px-3 py-2 text-xs font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec] disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-full border border-[#d6c8ad] px-3 py-2 text-xs font-semibold text-[#65584f] transition hover:bg-[#f5f1e8] disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Up
                       </button>
@@ -781,7 +782,7 @@ export default function DogListingForm({
                         type="button"
                         disabled={index === mediaItems.length - 1}
                         onClick={() => moveMediaItem(index, 1)}
-                        className="rounded-full border border-[#eadfce] px-3 py-2 text-xs font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec] disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-full border border-[#d6c8ad] px-3 py-2 text-xs font-semibold text-[#65584f] transition hover:bg-[#f5f1e8] disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Down
                       </button>
@@ -816,7 +817,7 @@ export default function DogListingForm({
             <button
               type="button"
               onClick={() => setPhotoRows((rows) => [...rows, ""])}
-              className="rounded-full border border-[#d8b27f] px-4 py-2 text-sm font-medium text-[#9b5f1c] transition hover:bg-[#fff0db]"
+              className="rounded-full border border-[#cd8188] px-4 py-2 text-sm font-medium text-[#65584f] transition hover:bg-[#f8e8ea]"
             >
               Add photo slot
             </button>
@@ -824,7 +825,7 @@ export default function DogListingForm({
               <button
                 type="button"
                 onClick={() => setPhotoRows((rows) => rows.slice(0, -1))}
-                className="rounded-full border border-[#eadfce] px-4 py-2 text-sm font-medium text-[#7a6d61] transition hover:bg-[#f8f2ea]"
+                className="rounded-full border border-[#d6c8ad] px-4 py-2 text-sm font-medium text-[#65584f] transition hover:bg-[#f8f2ea]"
               >
                 Remove last slot
               </button>
@@ -858,18 +859,18 @@ export default function DogListingForm({
         </div>
       ) : null}
 
-      <div className="sticky bottom-4 z-10 rounded-[28px] border border-[#eadfce] bg-white/95 p-4 shadow-[0_18px_42px_rgba(97,70,33,0.16)] backdrop-blur">
+      <div className="sticky bottom-4 z-10 rounded-[28px] border border-[#d6c8ad] bg-white/95 p-4 shadow-[0_18px_42px_rgba(101,88,79,0.16)] backdrop-blur">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-semibold text-[#4f4338]">Ready to create this listing?</p>
-            <p className="text-sm text-[#7a6d61]">
+            <p className="text-sm font-semibold text-[#65584f]">Ready to create this listing?</p>
+            <p className="text-sm text-[#65584f]">
               Save as draft while details are incomplete, or choose available when the profile and cover image are ready.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {cancelHref ? (
               <Link
-                className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-7 py-3 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+                className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-7 py-3 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
                 href={cancelHref}
               >
                 {cancelLabel}
@@ -879,13 +880,14 @@ export default function DogListingForm({
               type="submit"
               disabled={pending || mediaPreparing || Boolean(mediaError)}
               aria-describedby="create-dog-submit-status"
-              className="inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cd8188] px-7 py-3 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(205,129,136,0.22)] transition hover:bg-[#b87179] disabled:cursor-not-allowed disabled:opacity-60"
             >
+              <Save aria-hidden="true" className="h-4 w-4" />
               {mediaPreparing ? "Preparing media..." : pending ? "Creating listing..." : submitLabel}
             </button>
           </div>
         </div>
-        <p id="create-dog-submit-status" className="mt-3 text-xs leading-5 text-[#7a6d61]" aria-live="polite">
+        <p id="create-dog-submit-status" className="mt-3 text-xs leading-5 text-[#65584f]" aria-live="polite">
           {mediaPreparing
             ? "Preparing selected files before upload."
             : pending

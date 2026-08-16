@@ -13,17 +13,27 @@ const TABS = [
   { href: "/more", label: "More", Icon: MoreHorizontal },
 ] as const;
 
+const HIDDEN_BOTTOM_NAV_PREFIXES = [
+  "/admin",
+  "/admindraft",
+  "/ads",
+  "/booking",
+  "/doglistings",
+  "/onboarding",
+  "/shelter",
+] as const;
+
+function hidesAdopterNavigation(pathname: string) {
+  return HIDDEN_BOTTOM_NAV_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 export default function BottomNavBar() {
   const pathname = usePathname();
   const { t } = useLanguage();
 
-  if (
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/ads") ||
-    pathname.startsWith("/shelter") ||
-    pathname.startsWith("/doglistings") ||
-    pathname.startsWith("/onboarding")
-  ) {
+  if (hidesAdopterNavigation(pathname)) {
     return null;
   }
 

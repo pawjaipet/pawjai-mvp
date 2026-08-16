@@ -79,7 +79,8 @@ test("/shelter supports real shelter account login and scoped shelter mode", () 
   assert.equal(shelterActionSource.includes("Sign out"), false);
   assert.equal(portalSource.includes("shelter_portal_accounts"), true);
   assert.equal(migrationSource.includes("create table if not exists public.shelter_portal_accounts"), true);
-  assert.equal(bottomNavSource.includes('pathname.startsWith("/shelter")'), true);
+  assert.equal(bottomNavSource.includes('"/shelter"'), true);
+  assert.equal(bottomNavSource.includes("hidesAdopterNavigation(pathname)"), true);
   assert.equal(portalSource.includes("slugifyShelterName"), true);
   assert.equal(panelSource.includes("lockRoleView"), true);
   assert.equal(panelSource.includes("Account settings"), true);
@@ -230,6 +231,7 @@ test("admin draft has a focused create-dog route that reuses the real dog listin
   const draftCreateSource = readFileSync(new URL("../app/admindraft/dogs/new/page.tsx", import.meta.url), "utf8");
   const draftCreateAliasSource = readFileSync(new URL("../app/admindraft/dog-creation/page.tsx", import.meta.url), "utf8");
   const shelterCreateSource = readFileSync(new URL("../app/shelter/[slug]/dogs/new/page.tsx", import.meta.url), "utf8");
+  const legacyAdminCreateSource = readFileSync(new URL("../app/admin/dogs/new/page.tsx", import.meta.url), "utf8");
   const formSource = readFileSync(new URL("../app/admin/dogs/new/DogListingForm.tsx", import.meta.url), "utf8");
 
   assert.equal(panelSource.includes("`/admindraft/dog-creation?shelter=${selectedShelter.id}`"), true);
@@ -238,18 +240,25 @@ test("admin draft has a focused create-dog route that reuses the real dog listin
   assert.equal(panelSource.includes('params.set("role", "shelter")'), true);
   assert.equal(draftCreateAliasSource.includes("../dogs/new/page"), true);
   assert.equal(draftCreateSource.includes("DogListingForm"), true);
+  assert.equal(draftCreateSource.includes("PawjaiWorkspaceShell"), true);
   assert.equal(draftCreateSource.includes("isAdminDraftUnlocked"), true);
   assert.equal(draftCreateSource.includes("Exit"), true);
   assert.equal(draftCreateSource.includes('cancelLabel="Exit"'), true);
   assert.equal(draftCreateSource.includes('submitLabel="Save Draft"'), true);
-  assert.equal(draftCreateSource.includes('if (resolvedSearchParams?.role === "shelter") listingsParams.set("role", "shelter")'), true);
+  assert.equal(draftCreateSource.includes('listingsParams.set("role", "shelter")'), true);
   assert.equal(draftCreateSource.includes("returnTo={cancelHref}"), true);
   assert.equal(formSource.includes("showIntro = true"), true);
   assert.equal(formSource.includes('cancelLabel = "Cancel"'), true);
   assert.equal(formSource.includes("successListingsHref"), true);
   assert.equal(formSource.includes("submitLabel"), true);
+  assert.equal(formSource.includes('import { Save } from "lucide-react"'), true);
+  assert.equal(formSource.includes("bg-[#cd8188]"), true);
+  assert.equal(formSource.includes("bg-[#d38a2c]"), false);
+  assert.equal(legacyAdminCreateSource.includes("bg-[#cd8188]"), true);
+  assert.equal(legacyAdminCreateSource.includes("bg-[#d38a2c]"), false);
   assert.equal(shelterCreateSource.includes("getAdminAuthContext({ includePhraseGate: false })"), true);
   assert.equal(shelterCreateSource.includes("getShelterByPortalSlug"), true);
+  assert.equal(shelterCreateSource.includes("PawjaiWorkspaceShell"), true);
   assert.equal(shelterCreateSource.includes("successListingsHref={cancelHref}"), true);
   assert.equal(shelterCreateSource.includes("returnTo={`/shelter/${slug}/dogs/new`}"), true);
 });

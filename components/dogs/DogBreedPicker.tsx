@@ -128,13 +128,13 @@ export default function DogBreedPicker({
         type="button"
         className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition ${
           isSelected
-            ? "bg-[#f9ead2] font-semibold text-[#8c5616]"
-            : "text-[#5f5348] hover:bg-[#fbf4ea]"
+            ? "bg-[#f8e8ea] font-semibold text-[#65584f]"
+            : "text-[#65584f] hover:bg-[#f5f1e8]"
         }`}
         onClick={() => chooseBreed(breed)}
       >
         <span>{breed}</span>
-        {isSelected ? <Check className="h-4 w-4 shrink-0 text-[#d38a2c]" aria-hidden="true" /> : null}
+        {isSelected ? <Check className="h-4 w-4 shrink-0 text-[#cd8188]" aria-hidden="true" /> : null}
       </button>
     );
   };
@@ -159,12 +159,12 @@ export default function DogBreedPicker({
       </button>
 
       {isOpen ? (
-        <div className="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-[#e7dbc8] bg-white shadow-[0_18px_48px_rgba(79,67,56,0.16)]">
+        <div className="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-[#d6c8ad] bg-white shadow-[0_18px_48px_rgba(79,67,56,0.16)]">
           <div className="flex items-center gap-2 border-b border-[#efe4d5] px-3 py-2">
-            <Search className="h-4 w-4 shrink-0 text-[#b38142]" aria-hidden="true" />
+            <Search className="h-4 w-4 shrink-0 text-[#cd8188]" aria-hidden="true" />
             <input
               ref={searchInputRef}
-              className="min-w-0 flex-1 bg-transparent py-2 text-sm text-[#4f4338] outline-none placeholder:text-[#b4a89e]"
+              className="min-w-0 flex-1 bg-transparent py-2 text-sm text-[#65584f] outline-none placeholder:text-[#b4a89e]"
               placeholder="Search breeds"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
@@ -177,7 +177,7 @@ export default function DogBreedPicker({
           <div className="max-h-72 overflow-y-auto p-2" role="listbox">
             {recentOptions.length > 0 ? (
               <div className="mb-2">
-                <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b77624]">
+                <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#cd8188]">
                   Recent
                 </p>
                 <div className="space-y-1">{recentOptions.map(optionButton)}</div>
@@ -194,7 +194,7 @@ export default function DogBreedPicker({
             ) : null}
 
             {filteredOptions.length === 0 ? (
-              <p className="px-3 py-5 text-sm text-[#7a6d61]">
+              <p className="px-3 py-5 text-sm text-[#65584f]">
                 No breed match yet. Choose the closest category, usually Mixed Breed or Thai Dog.
               </p>
             ) : null}
