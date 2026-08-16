@@ -4,8 +4,8 @@ values (
   '{
     "width": 370,
     "height": 560,
-    "maxVideoSeconds": 30,
-    "maxUploadMb": 100
+    "maxVideoSeconds": 10,
+    "maxUploadMb": 50
   }'::jsonb
 )
 on conflict (key) do update

@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { createAdFromFormData, createAdFromUploadedMedia } from "@/utils/ad-submissions";
 import { fetchAdCreativeSettings } from "@/utils/ad-creative-settings";
 import { createBackblazeUploadTarget } from "@/utils/backblaze";
+import { assertRateLimit, getRequestIdentifier } from "@/utils/rate-limit";
 import {
   sendAdSubmissionConfirmation,
   sendPawjaiAdSubmissionNotification,
@@ -37,6 +38,26 @@ export type PartnerAdUploadTargetState = {
   uploadUrl?: string;
 };
 
+const ONE_DAY_SECONDS = 24 * 60 * 60;
+
+const AD_SUBMISSION_RATE_LIMIT = {
+  action: "public_ads_submit",
+  limit: 3,
+  windowSeconds: ONE_DAY_SECONDS,
+};
+
+const AD_VIDEO_UPLOAD_RATE_LIMIT = {
+  action: "public_ads_video_upload",
+  limit: 5,
+  windowSeconds: ONE_DAY_SECONDS,
+};
+
+type PublicAdRateLimit = {
+  action: string;
+  limit: number;
+  windowSeconds: number;
+};
+
 function extensionFromFileName(name: string) {
   return name.split(".").pop()?.toLowerCase() ?? "";
 }
@@ -46,6 +67,24 @@ function normalizeVideoContentType(contentType: string, extension: string) {
   if (type === "video/mp4" || extension === "mp4") return "video/mp4";
   if (type === "video/quicktime" || extension === "mov") return "video/quicktime";
   return "";
+}
+
+function rateLimitErrorState(error: unknown) {
+  return {
+    error: error instanceof Error
+      ? error.message
+      : "Too many ad submissions. Please wait a bit and try again.",
+  };
+}
+
+async function enforcePublicAdRateLimit(limit: PublicAdRateLimit) {
+  const identifier = await getRequestIdentifier("public-ads");
+  await assertRateLimit({
+    action: limit.action,
+    identifier,
+    limit: limit.limit,
+    windowSeconds: limit.windowSeconds,
+  });
 }
 
 async function sendPartnerAdEmails(result: Awaited<ReturnType<typeof createAdFromFormData>>) {
@@ -113,7 +152,13 @@ function toPartnerAdState(result: Awaited<ReturnType<typeof createAdFromFormData
 export async function createPartnerAdAction(
   _prevState: PartnerAdCreateState | undefined,
   formData: FormData,
-) {
+): Promise<PartnerAdCreateState> {
+  try {
+    await enforcePublicAdRateLimit(AD_SUBMISSION_RATE_LIMIT);
+  } catch (error) {
+    return rateLimitErrorState(error);
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const creativeSettings = await fetchAdCreativeSettings();
   const result = await createAdFromFormData(formData, {
@@ -140,6 +185,12 @@ export async function prepareDirectAdMediaUploadAction(input: {
   mediaType: "image" | "video";
   size: number;
 }): Promise<PartnerAdUploadTargetState> {
+  try {
+    await enforcePublicAdRateLimit(AD_VIDEO_UPLOAD_RATE_LIMIT);
+  } catch (error) {
+    return rateLimitErrorState(error);
+  }
+
   const creativeSettings = await fetchAdCreativeSettings();
   const extension = extensionFromFileName(input.fileName);
   const maxBytes = creativeSettings.maxUploadMb * 1024 * 1024;
@@ -174,7 +225,13 @@ export async function prepareDirectAdMediaUploadAction(input: {
 export async function createPartnerAdFromUploadedMediaAction(
   _prevState: PartnerAdCreateState | undefined,
   formData: FormData,
-) {
+): Promise<PartnerAdCreateState> {
+  try {
+    await enforcePublicAdRateLimit(AD_SUBMISSION_RATE_LIMIT);
+  } catch (error) {
+    return rateLimitErrorState(error);
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const result = await createAdFromUploadedMedia(formData, {
     isActive: false,

@@ -14,8 +14,8 @@ export const AD_CREATIVE_SETTINGS_KEY = "ads_creative_specs";
 
 export const DEFAULT_AD_CREATIVE_SETTINGS: AdCreativeSettings = {
   height: 560,
-  maxUploadMb: 100,
-  maxVideoSeconds: 30,
+  maxUploadMb: 50,
+  maxVideoSeconds: 10,
   width: 370,
 };
 
@@ -36,8 +36,8 @@ export function normalizeAdCreativeSettings(value: unknown): AdCreativeSettings 
 
   return {
     height: clampInteger(source.height, DEFAULT_AD_CREATIVE_SETTINGS.height, 320, 1200),
-    maxUploadMb: clampInteger(source.maxUploadMb, DEFAULT_AD_CREATIVE_SETTINGS.maxUploadMb, 10, 200),
-    maxVideoSeconds: clampInteger(source.maxVideoSeconds, DEFAULT_AD_CREATIVE_SETTINGS.maxVideoSeconds, 5, 30),
+    maxUploadMb: clampInteger(source.maxUploadMb, DEFAULT_AD_CREATIVE_SETTINGS.maxUploadMb, 10, 50),
+    maxVideoSeconds: clampInteger(source.maxVideoSeconds, DEFAULT_AD_CREATIVE_SETTINGS.maxVideoSeconds, 5, 10),
     width: clampInteger(source.width, DEFAULT_AD_CREATIVE_SETTINGS.width, 240, 900),
   };
 }

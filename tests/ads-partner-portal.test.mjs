@@ -7,6 +7,7 @@ test("/ads is a public business ad submission page and does not expose the inter
   const createSource = readFileSync(new URL("../app/ads/PartnerAdCreatePage.tsx", import.meta.url), "utf8");
   const actionsSource = readFileSync(new URL("../app/ads/actions.ts", import.meta.url), "utf8");
   const submissionSource = readFileSync(new URL("../utils/ad-submissions.ts", import.meta.url), "utf8");
+  const settingsSource = readFileSync(new URL("../utils/ad-creative-settings.ts", import.meta.url), "utf8");
   const adEmailSource = readFileSync(new URL("../utils/ad-email.ts", import.meta.url), "utf8");
 
   assert.equal(pageSource.includes("AdminAdsPage"), false);
@@ -46,10 +47,17 @@ test("/ads is a public business ad submission page and does not expose the inter
   assert.equal(actionsSource.includes("sendPawjaiAdSubmissionNotification"), true);
   assert.equal(actionsSource.includes("createBackblazeUploadTarget"), true);
   assert.equal(actionsSource.includes("prepareDirectAdMediaUploadAction"), true);
+  assert.equal(actionsSource.includes("assertRateLimit"), true);
+  assert.equal(actionsSource.includes("public_ads_submit"), true);
+  assert.equal(actionsSource.includes("public_ads_video_upload"), true);
   assert.equal(submissionSource.includes("media_type: fields.mediaType"), true);
   assert.equal(submissionSource.includes("createAdFromUploadedMedia"), true);
   assert.equal(submissionSource.includes("optimizeAdMedia"), true);
   assert.equal(submissionSource.includes("maxUploadMb"), true);
+  assert.equal(settingsSource.includes("maxUploadMb: 50"), true);
+  assert.equal(settingsSource.includes("maxVideoSeconds: 10"), true);
+  assert.equal(settingsSource.includes("DEFAULT_AD_CREATIVE_SETTINGS.maxUploadMb, 10, 50"), true);
+  assert.equal(settingsSource.includes("DEFAULT_AD_CREATIVE_SETTINGS.maxVideoSeconds, 5, 10"), true);
   assert.equal(adEmailSource.includes("New PawJai ad submission"), true);
 });
 
