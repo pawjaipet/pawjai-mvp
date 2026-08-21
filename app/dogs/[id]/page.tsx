@@ -207,7 +207,7 @@ export default async function DogProfilePage({
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
-      {/* Hero photo + thumbnails */}
+      {/* Hero photo carousel */}
       <div className="relative">
         <DogPhotoGallery
           photos={orderedPhotos.map((p) => ({ id: p.id, public_url: p.public_url }))}
@@ -227,8 +227,8 @@ export default async function DogProfilePage({
           <ArrowLeft size={22} stroke="white" strokeWidth={2.2} />
         </Link>
 
-        {/* Treat button — floating left, below the back arrow */}
-        <div className="absolute left-[14px] top-[74px] z-10">
+        {/* Treat button — floating bottom-right of the hero image */}
+        <div className="absolute right-[14px] bottom-[14px] z-20">
           <TreatButton
             variant="floating"
             size="sm"
@@ -240,21 +240,6 @@ export default async function DogProfilePage({
             isLoggedIn={Boolean(user)}
           />
         </div>
-
-        {/* PawJai watermark — non-interactive branding bottom-right of hero */}
-        <img
-          src="/pawjai-logo.png"
-          alt=""
-          aria-hidden="true"
-          className="absolute pointer-events-none select-none z-10"
-          style={{
-            right: "10px",
-            bottom: "70px",
-            height: "44px",
-            width: "auto",
-            filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.35))",
-          }}
-        />
 
         {/* Wishlist save (bookmark) — floating top-right, matches swipe card */}
         {user && (

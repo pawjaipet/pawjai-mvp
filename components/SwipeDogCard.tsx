@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState, useTransition, useLayoutEffect } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { CalendarDays, Bookmark } from "lucide-react";
+import { CalendarDays, Bookmark, Info } from "lucide-react";
 import { toggleWishlistAction } from "@/app/actions/wishlist";
 import { useAuthModal } from "@/components/auth/AuthProvider";
 import TreatButton from "@/components/donations/TreatButton";
@@ -73,9 +73,6 @@ export default function SwipeDogCard({
 }: Props) {
   const carouselRef = useRef<HTMLDivElement>(null);
   const [imgIdx, setImgIdx]     = useState(0);
-  const [tagsOpen, setTagsOpen] = useState(false);
-  const [visibleTagCount, setVisibleTagCount] = useState(10);
-  const collapsedRowRef = useRef<HTMLDivElement>(null);
   const [saved, setSaved]       = useState(initialSaved);
   const [pending, startTransition] = useTransition();
   const { openAuthModal } = useAuthModal();
@@ -113,30 +110,8 @@ export default function SwipeDogCard({
           ...photoMedia.map((photo, index) => ({ ...photo, isCover: false, sortOrder: index })),
         ]
       : photoMedia;
-  const personalityTags =
-    dog.traits
-      ?.filter((trait) => trait.trait_type === "personality")
-      .map((trait) => trait.trait_value)
-      .slice(0, 4) ?? [];
   const breedLabel = canonicalizeBreedLabel(dog.breed);
   const breedDisplay = breedLabel || "Breed not set";
-
-  useLayoutEffect(() => {
-    const row = collapsedRowRef.current;
-    if (!row) return;
-    const GAP = 6; // gap-1.5 = 6px
-    const PLUS_W = 48; // "+" pill approximate width
-    const available = row.offsetWidth - PLUS_W - GAP;
-    const spans = Array.from(row.querySelectorAll<HTMLElement>("[data-tag]"));
-    let used = 0, count = 0;
-    for (const span of spans) {
-      const add = (count > 0 ? GAP : 0) + span.offsetWidth;
-      if (used + add > available) break;
-      used += add;
-      count++;
-    }
-    setVisibleTagCount(Math.max(1, count));
-  }, []);
 
   function onCarouselScroll() {
     if (!carouselRef.current) return;
@@ -166,31 +141,10 @@ export default function SwipeDogCard({
     });
   }
 
-  // Collapsed tags
-  const collapsedTags: string[] = [
+  const primaryTags: string[] = [
     breedDisplay,
     ageLabel(dog.age_months) ?? "",
     dog.gender === "unknown" ? "Unknown" : dog.gender === "male" ? "Male" : "Female",
-  ].filter(Boolean);
-
-  // Expanded rows
-  const row1: string[] = [
-    breedDisplay,
-    ageLabel(dog.age_months) ?? "",
-    ...personalityTags.slice(0, 2),
-    dog.energy_level ? `${dog.energy_level.charAt(0).toUpperCase() + dog.energy_level.slice(1)} energy` : "",
-    dog.sterilized ? "Sterilized" : "",
-  ].filter(Boolean);
-
-  const row2: string[] = [
-    dog.gender === "unknown" ? "Unknown" : dog.gender === "male" ? "Male" : "Female",
-    ...personalityTags.slice(2),
-    dog.size ? dog.size.replace("_", " ") : "",
-    dog.weight_kg ? `${dog.weight_kg}kg` : "",
-    dog.good_with_kids ? "Good w/ kids" : "",
-    dog.good_with_dogs ? "Good w/ dogs" : "",
-    dog.good_with_cats ? "Good w/ cats" : "",
-    dog.house_trained ? "House trained" : "",
   ].filter(Boolean);
 
   return (
@@ -278,46 +232,23 @@ export default function SwipeDogCard({
 
       {/* Tags overlay */}
       <div className="absolute bottom-4 left-4 right-4 z-10">
-        {!tagsOpen ? (
-          <div ref={collapsedRowRef} className="flex gap-1.5 items-center overflow-hidden">
-            {collapsedTags.map((t, i) => (
-              <span
-                key={t}
-                data-tag
-                className={`${TAG_BEIGE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] whitespace-nowrap shrink-0${i >= visibleTagCount ? " hidden" : ""}`}
-              >{translateDogValue(translateAgeLabel(t, language), language)}</span>
-            ))}
-            <button
-              onClick={() => setTagsOpen(true)}
-              className={`${TAG_ROSE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] shrink-0 active:scale-95 transition-transform`}
+        <div className="flex items-center gap-1.5 overflow-hidden">
+          {primaryTags.map((tag, i) => (
+            <span
+              key={`${tag}-${i}`}
+              className={`${TAG_BEIGE} min-w-0 truncate rounded-[22px] px-[12px] py-[7px] text-[13px] font-semibold leading-none ${i === 0 ? "max-w-[44%]" : "max-w-[25%]"} shrink`}
             >
-              +
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-            <div className="flex gap-1.5 w-max">
-              {row1.map((t) => (
-                <span key={t} className={`${TAG_BEIGE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] whitespace-nowrap`}>
-                  {translateDogValue(translateAgeLabel(t, language), language)}
-                </span>
-              ))}
-              <button
-                onClick={() => setTagsOpen(false)}
-                className={`${TAG_ROSE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] active:scale-95 transition-transform`}
-              >
-                −
-              </button>
-            </div>
-            <div className="flex gap-1.5 w-max">
-              {row2.map((t) => (
-                <span key={t} className={`${TAG_BEIGE} text-[14px] font-semibold px-[14px] py-[7px] rounded-[22px] whitespace-nowrap`}>
-                  {translateDogValue(translateAgeLabel(t, language), language)}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+              {translateDogValue(translateAgeLabel(tag, language), language)}
+            </span>
+          ))}
+          <Link
+            href={`/dogs/${dog.id}`}
+            className={`${TAG_ROSE} flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full active:scale-95 transition-transform`}
+            aria-label={t("View dog details")}
+          >
+            <Info size={17} strokeWidth={2.6} />
+          </Link>
+        </div>
       </div>
 
       {/* Action buttons */}

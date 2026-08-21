@@ -61,7 +61,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNo
       >
         <Link
           href="/"
-          className="absolute left-[14px] top-[5px] block h-[120px] w-[160px]"
+          className="absolute left-[16px] top-[12px] block h-[84px] w-[164px]"
           style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.06))" }}
         >
           <img
@@ -70,7 +70,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNo
             className="h-full w-full object-contain object-left"
           />
         </Link>
-        <div className="absolute right-[16px] top-[41px]">
+        <div className="absolute right-[16px] top-[34px]">
           <LanguageSwitcher />
         </div>
       </div>
