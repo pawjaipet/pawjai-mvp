@@ -5,50 +5,8 @@ import Link from "next/link";
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { completeAdminGoogleLogin } from "@/app/admin/login/actions";
+import type { GoogleCredentialResponse } from "@/types/google-identity";
 import { createClient } from "@/utils/supabase/client";
-
-type GoogleCredentialResponse = {
-  credential?: string;
-};
-
-type GoogleAccounts = {
-  id: {
-    cancel: () => void;
-    initialize: (config: {
-      callback: (response: GoogleCredentialResponse) => void;
-      client_id: string;
-      nonce?: string;
-      use_fedcm_for_prompt?: boolean;
-    }) => void;
-    renderButton: (
-      parent: HTMLElement,
-      options: {
-        logo_alignment?: "left" | "center";
-        shape?: "pill" | "rectangular" | "circle" | "square";
-        size?: "large" | "medium" | "small";
-        text?: "signin_with" | "signup_with" | "continue_with" | "signin";
-        theme?: "outline" | "filled_blue" | "filled_black";
-        type?: "standard" | "icon";
-        width?: string | number;
-      },
-    ) => void;
-    prompt: (momentListener?: (notification: {
-      getNotDisplayedReason?: () => string;
-      getSkippedReason?: () => string;
-      isDismissedMoment?: () => boolean;
-      isNotDisplayed?: () => boolean;
-      isSkippedMoment?: () => boolean;
-    }) => void) => void;
-  };
-};
-
-declare global {
-  interface Window {
-    google?: {
-      accounts: GoogleAccounts;
-    };
-  }
-}
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
