@@ -141,6 +141,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
 
     applyDomTranslations(document.body, language);
+    const animationFrame = window.requestAnimationFrame(() => {
+      applyDomTranslations(document.body, language);
+    });
+    const settledRenderTimer = window.setTimeout(() => {
+      applyDomTranslations(document.body, language);
+    }, 120);
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         for (const node of Array.from(mutation.addedNodes)) {
@@ -167,7 +173,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       characterData: true,
     });
 
-    return () => observer.disconnect();
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.clearTimeout(settledRenderTimer);
+      observer.disconnect();
+    };
   }, [language, skipTranslation, pathname]);
 
   const value = useMemo<LanguageContextValue>(

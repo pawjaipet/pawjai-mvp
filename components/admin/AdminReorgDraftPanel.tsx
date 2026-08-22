@@ -83,7 +83,7 @@ import type {
 type RoleView = "pawjai" | "shelter";
 type MainTab = "shelters" | "dogs" | "bookings" | "donations" | "ads" | "about";
 type ShelterTab = "profile" | "dogs" | "bookings" | "donations" | "messages";
-type DogRecordView = "current" | "past" | "all";
+type DogRecordView = "current" | "adopted" | "all";
 type BookingWorkspaceView = "visits" | "calendar";
 type VisitBucket = "upcoming" | "needs_follow_up" | "past" | "all";
 type MessageFilter = "all" | "unread" | "upcoming" | "needs_reply";
@@ -738,7 +738,7 @@ function ShelterWorkspaceTabButton({
   );
 
   return href ? (
-    <Link className={className} href={href}>
+    <Link className={className} href={href} onClick={onClick}>
       {content}
     </Link>
   ) : (
@@ -1095,17 +1095,17 @@ function ShelterDogsTab({
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [recordView, setRecordView] = useState<DogRecordView>("current");
-  const currentStatuses = new Set(["available", "draft", "reserved"]);
-  const pastStatuses = new Set(["adopted", "unavailable"]);
+  const currentStatuses = new Set(["available", "draft", "reserved", "unavailable"]);
+  const adoptedStatuses = new Set(["adopted"]);
   const viewCounts = {
     all: dogs.length,
     current: dogs.filter((dog) => currentStatuses.has(dog.status)).length,
-    past: dogs.filter((dog) => pastStatuses.has(dog.status)).length,
+    adopted: dogs.filter((dog) => adoptedStatuses.has(dog.status)).length,
   };
   const filteredDogs = dogs.filter((dog) => (
     matchesDogFilters(dog, search, status)
     && (recordView === "all"
-      || (recordView === "current" ? currentStatuses.has(dog.status) : pastStatuses.has(dog.status)))
+      || (recordView === "current" ? currentStatuses.has(dog.status) : adoptedStatuses.has(dog.status)))
   ));
 
   return (
@@ -1119,7 +1119,7 @@ function ShelterDogsTab({
         <div className="mt-5 grid gap-2 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-2 sm:grid-cols-3">
           {([
             ["current", "Current dogs"],
-            ["past", "Past dogs"],
+            ["adopted", "Adopted dogs"],
             ["all", "All records"],
           ] as const).map(([value, label]) => (
             <button
@@ -1914,7 +1914,11 @@ function ShelterMessagesTab({
                   ) : null}
                 </div>
                 <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#65584f]">
-                  {thread.latestMessage?.body ?? "No messages yet. Conversation opens after a booked visit."}
+                  {thread.latestMessage?.body ? (
+                    <span data-i18n-ignore>{thread.latestMessage.body}</span>
+                  ) : (
+                    "No messages yet. Conversation opens after a booked visit."
+                  )}
                 </p>
                 <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9a8b7b]">
                   {formatMessageTime(thread.latestMessage?.created_at ?? `${thread.appointmentDate}T${thread.appointmentTime}`)}
@@ -1988,7 +1992,7 @@ function ShelterMessagesTab({
                             <a href={message.attachment_url} rel="noreferrer" target="_blank">View attachment</a>
                           </video>
                         ) : null}
-                        <p className="mt-1 whitespace-pre-wrap">{message.body}</p>
+                        <p className="mt-1 whitespace-pre-wrap" data-i18n-ignore>{message.body}</p>
                         {message.attachment_url && (adminMode || (!previewImage && !previewVideo)) ? (
                           <a
                             className={`mt-2 inline-flex text-xs font-semibold underline ${isShelter ? "text-white" : "text-[#65584f]"}`}
@@ -3039,6 +3043,12 @@ export default function AdminReorgDraftPanel({
       : shelters[0]?.id ?? "",
   );
   const [shelterTab, setShelterTab] = useState<ShelterTab>(isShelterTab(initialShelterTab) ? initialShelterTab : "profile");
+
+  useEffect(() => {
+    if (isShelterTab(initialShelterTab)) {
+      setShelterTab(initialShelterTab);
+    }
+  }, [initialShelterTab]);
 
   const isPawjai = role === "pawjai";
   const selectedShelter = shelters.find((shelter) => shelter.id === selectedShelterId) ?? shelters[0] ?? fallbackShelters[0];

@@ -52,6 +52,7 @@ const DOG_ADOPTION_STATUSES = new Set<Database["public"]["Enums"]["dog_adoption_
 ]);
 
 const EDITABLE_TRAIT_TYPES = [
+  "localized_name_th",
   "protectiveness",
   "affection_style",
   "training_preference_match",
@@ -365,6 +366,7 @@ async function uploadPhotoBuffer({
 
 function normalizeStructuredTraits(formData: FormData) {
   const traits = [
+    ["localized_name_th", getOptionalString(formData, "name_th")],
     ["protectiveness", getOptionalString(formData, "protectiveness")],
     ["affection_style", getOptionalString(formData, "affection_style")],
     ["training_preference_match", getOptionalString(formData, "training_preference_match")],

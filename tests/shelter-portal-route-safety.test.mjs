@@ -55,6 +55,45 @@ test("shelter portal pages and deep dog routes use real scoped auth only", () =>
   assert.match(portalPage, /workspaceBaseHref=\{`\/shelter\/\$\{slug\}`\}/);
 });
 
+test("shelter query tabs keep URL and rendered workspace state synchronized", () => {
+  const panel = source("../components/admin/AdminReorgDraftPanel.tsx");
+
+  assert.match(panel, /<Link className=\{className\} href=\{href\} onClick=\{onClick\}>/);
+  assert.match(panel, /if \(isShelterTab\(initialShelterTab\)\)/);
+  assert.match(panel, /setShelterTab\(initialShelterTab\)/);
+});
+
+test("shelter password changes verify the current password and confirmation", () => {
+  const settings = source("../app/shelter/[slug]/settings/page.tsx");
+  const actions = source("../app/shelter/actions.ts");
+
+  assert.match(settings, /name="currentPassword"/);
+  assert.match(settings, /name="newPassword"/);
+  assert.match(settings, /name="confirmNewPassword"/);
+  assert.match(settings, /bg-\[#cd8188\]/);
+  assert.match(actions, /newPassword !== confirmNewPassword/);
+  assert.match(actions, /passwordClient\.auth\.signInWithPassword/);
+  assert.match(actions, /persistSession: false/);
+  assert.match(actions, /passwordCheck\.user\?\.id !== context\.userId/);
+});
+
+test("shelter create and edit flows store an optional Thai dog name on the shared dog record", () => {
+  const createForm = source("../app/admin/dogs/new/DogListingForm.tsx");
+  const createAction = source("../app/admin/dogs/new/actions.ts");
+  const editForm = source("../app/admin/dogs/[id]/edit/DogEditForm.tsx");
+  const editAction = source("../app/admin/dogs/[id]/edit/actions.ts");
+
+  for (const form of [createForm, editForm]) {
+    assert.match(form, /Dog name \(English\)/);
+    assert.match(form, /Dog name \(Thai\)/);
+    assert.match(form, /name="name_th"/);
+  }
+  for (const action of [createAction, editAction]) {
+    assert.match(action, /"localized_name_th", getOptionalString\(formData, "name_th"\)/);
+  }
+  assert.match(editAction, /"localized_name_th"/);
+});
+
 test("shelter booking routes remain under the portal for detail, visitor, and QR flows", () => {
   const routeHelper = source("../utils/booking-workspace-routes.ts");
   const sharedDetail = source("../app/booking/[id]/page.tsx");

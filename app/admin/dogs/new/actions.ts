@@ -312,6 +312,7 @@ function normalizeTraitPairs(formData: FormData) {
 
 function normalizeStructuredTraits(formData: FormData) {
   const traits = [
+    ["localized_name_th", getOptionalString(formData, "name_th")],
     ["protectiveness", getOptionalString(formData, "protectiveness")],
     ["affection_style", getOptionalString(formData, "affection_style")],
     ["training_preference_match", getOptionalString(formData, "training_preference_match")],

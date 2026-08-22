@@ -456,8 +456,12 @@ export default function DogListingForm({
       >
         <ErrorSummary errors={state.fieldErrors} />
         <div className="grid gap-5 md:grid-cols-2">
-          <Field label="Dog name" error={state.fieldErrors?.name}>
+          <Field label="Dog name (English)" error={state.fieldErrors?.name}>
             <input name="name" className={inputClass(state.fieldErrors?.name)} placeholder="Mali" />
+          </Field>
+
+          <Field label="Dog name (Thai)">
+            <input name="name_th" className={inputClass()} placeholder="มะลิ" />
           </Field>
 
           <Field label="Shelter" error={state.fieldErrors?.shelter_id}>

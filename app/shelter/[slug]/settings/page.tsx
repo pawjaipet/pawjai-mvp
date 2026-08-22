@@ -21,6 +21,12 @@ function accountMessage(code?: string) {
       return { tone: "error", text: "Enter a valid email address." };
     case "weak-password":
       return { tone: "error", text: "Use a password with at least 6 characters." };
+    case "password-mismatch":
+      return { tone: "error", text: "The new passwords do not match." };
+    case "current-password-required":
+      return { tone: "error", text: "Enter the current password before choosing a new one." };
+    case "current-password-invalid":
+      return { tone: "error", text: "The current password is incorrect." };
     case "username-taken":
       return { tone: "error", text: "That username is already taken." };
     case "auth-error":
@@ -56,13 +62,13 @@ export default async function ShelterAccountSettingsPage({
   const returnTo = `/shelter/${slug}/settings`;
 
   return (
-    <main className="min-h-screen bg-[#f5efe6] px-4 py-8 text-[#4f4338]">
+    <main className="min-h-screen bg-[#f5f1e8] px-4 py-8 text-[#65584f]">
       <div className="mx-auto max-w-3xl">
         <header className="rounded-[28px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
           <div className="mb-4 flex justify-end">
             <LanguageSwitcher />
           </div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">
             PawJai Shelter Portal
           </p>
           <h1 className="mt-2 text-3xl font-semibold">Account settings</h1>
@@ -96,7 +102,7 @@ export default async function ShelterAccountSettingsPage({
               </span>
               <input
                 autoComplete="username"
-                className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#cd8188]"
                 defaultValue={account.username}
                 name="username"
                 required
@@ -109,7 +115,7 @@ export default async function ShelterAccountSettingsPage({
               </span>
               <input
                 autoComplete="email"
-                className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                className="w-full rounded-2xl border border-[#eadfce] bg-[#fffdfa] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#cd8188]"
                 defaultValue={account.email}
                 name="email"
                 required
@@ -119,11 +125,24 @@ export default async function ShelterAccountSettingsPage({
 
             <label>
               <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
+                Current password
+              </span>
+              <input
+                autoComplete="current-password"
+                className="w-full rounded-2xl border border-[#eadfce] bg-[#eef4ff] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#cd8188]"
+                name="currentPassword"
+                placeholder="Required when changing your password"
+                type="password"
+              />
+            </label>
+
+            <label>
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
                 New password
               </span>
               <input
                 autoComplete="new-password"
-                className="w-full rounded-2xl border border-[#eadfce] bg-[#eef4ff] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d88c24]"
+                className="w-full rounded-2xl border border-[#eadfce] bg-[#eef4ff] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#cd8188]"
                 minLength={6}
                 name="newPassword"
                 placeholder="Leave blank to keep the current password"
@@ -131,8 +150,22 @@ export default async function ShelterAccountSettingsPage({
               />
             </label>
 
+            <label>
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
+                Confirm new password
+              </span>
+              <input
+                autoComplete="new-password"
+                className="w-full rounded-2xl border border-[#eadfce] bg-[#eef4ff] px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#cd8188]"
+                minLength={6}
+                name="confirmNewPassword"
+                placeholder="Enter the new password again"
+                type="password"
+              />
+            </label>
+
             <button
-              className="inline-flex items-center justify-center rounded-full bg-[#d88c24] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f]"
+              className="inline-flex items-center justify-center rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(205,129,136,0.22)] transition hover:bg-[#b87179]"
               type="submit"
             >
               Save account settings

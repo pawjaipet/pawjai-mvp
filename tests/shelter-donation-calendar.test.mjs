@@ -53,11 +53,12 @@ test("profile and donation settings are separate shelter mutations", () => {
   assert.equal(actions.includes('action: "shelter.donation_details.update"'), true);
 });
 
-test("adopted and unavailable dogs remain accessible as past records", () => {
+test("adopted dogs have a dedicated archive while unavailable records stay manageable", () => {
   const panel = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
 
-  assert.equal(panel.includes('const pastStatuses = new Set(["adopted", "unavailable"])'), true);
-  assert.equal(panel.includes('["past", "Past dogs"]'), true);
+  assert.equal(panel.includes('const currentStatuses = new Set(["available", "draft", "reserved", "unavailable"])'), true);
+  assert.equal(panel.includes('const adoptedStatuses = new Set(["adopted"])'), true);
+  assert.equal(panel.includes('["adopted", "Adopted dogs"]'), true);
   assert.equal(panel.includes('["all", "All records"]'), true);
   assert.equal(panel.includes('<option value="adopted">Adopted</option>'), true);
   assert.equal(panel.includes('<option value="unavailable">Unavailable</option>'), true);
@@ -75,6 +76,10 @@ test("shelter lane enables English and Thai without translating admin lanes", ()
   assert.equal(translations.includes('"Thai Ridgeback": "ไทยหลังอาน"'), true);
   assert.equal(translations.includes('Requested: "รอการตอบรับ"'), true);
   assert.equal(translations.includes('"Pending Reschedule": "รอเปลี่ยนวันเวลา"'), true);
+  assert.equal(translations.includes('"Adopted dogs": "สุนัขที่ได้รับการรับเลี้ยงแล้ว"'), true);
+  assert.equal(translations.includes('"Dog name (Thai)": "ชื่อสุนัข (ภาษาไทย)"'), true);
+  assert.equal(provider.includes("requestAnimationFrame"), true);
+  assert.equal(provider.includes("settledRenderTimer"), true);
 });
 
 test("donation slips use private storage and shelter-scoped review", () => {

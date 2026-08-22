@@ -1,5 +1,6 @@
 "use server";
 
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAdminAuthContext } from "@/utils/admin-auth";
@@ -21,6 +22,7 @@ import {
 } from "@/utils/shelter-portal";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
+import type { Database } from "@/types/database";
 
 function shelterLoginRedirect(message: string): never {
   const params = new URLSearchParams();
@@ -83,7 +85,9 @@ export async function updateShelterPortalAccountAction(formData: FormData) {
 
   const username = normalizeShelterPortalUsername(getString(formData, "username"));
   const email = getString(formData, "email").toLowerCase();
+  const currentPassword = getString(formData, "currentPassword");
   const newPassword = getString(formData, "newPassword");
+  const confirmNewPassword = getString(formData, "confirmNewPassword");
   const returnTo = getString(formData, "returnTo");
   const portalTarget = await getShelterPortalTarget(context);
   const safeReturnTo = returnTo.startsWith("/shelter/") ? returnTo : portalTarget ?? "/shelter";
@@ -96,11 +100,72 @@ export async function updateShelterPortalAccountAction(formData: FormData) {
     redirect(`${safeReturnTo}?account=invalid-email`);
   }
 
-  if (newPassword && newPassword.length < 6) {
+  if ((newPassword || confirmNewPassword) && newPassword.length < 6) {
     redirect(`${safeReturnTo}?account=weak-password`);
   }
 
+  if (newPassword !== confirmNewPassword) {
+    redirect(`${safeReturnTo}?account=password-mismatch`);
+  }
+
+  if (newPassword && !currentPassword) {
+    redirect(`${safeReturnTo}?account=current-password-required`);
+  }
+
   const admin = createAdminClient();
+  const { data: usernameOwner, error: usernameLookupError } = await (admin as any)
+    .from("shelter_portal_accounts")
+    .select("profile_id")
+    .eq("username", username)
+    .neq("profile_id", context.userId)
+    .maybeSingle();
+
+  if (usernameLookupError) {
+    redirect(`${safeReturnTo}?account=account-error`);
+  }
+
+  if (usernameOwner) {
+    redirect(`${safeReturnTo}?account=username-taken`);
+  }
+
+  if (newPassword) {
+    if (!context.userEmail) {
+      redirect(`${safeReturnTo}?account=account-error`);
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) {
+      redirect(`${safeReturnTo}?account=account-error`);
+    }
+
+    const passwordClient = createSupabaseClient<Database>(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: false,
+      },
+    });
+    const { data: passwordCheck, error: passwordCheckError } = await passwordClient.auth.signInWithPassword({
+      email: context.userEmail,
+      password: currentPassword,
+    });
+
+    if (passwordCheckError || passwordCheck.user?.id !== context.userId) {
+      redirect(`${safeReturnTo}?account=current-password-invalid`);
+    }
+  }
+
+  const { error: authError } = await admin.auth.admin.updateUserById(context.userId, {
+    email,
+    email_confirm: true,
+    ...(newPassword ? { password: newPassword } : {}),
+  });
+
+  if (authError) {
+    redirect(`${safeReturnTo}?account=auth-error`);
+  }
+
   const { error: usernameError } = await (admin as any)
     .from("shelter_portal_accounts")
     .upsert({
@@ -113,16 +178,6 @@ export async function updateShelterPortalAccountAction(formData: FormData) {
       ? "username-taken"
       : "account-error";
     redirect(`${safeReturnTo}?account=${message}`);
-  }
-
-  const { error: authError } = await admin.auth.admin.updateUserById(context.userId, {
-    email,
-    email_confirm: true,
-    ...(newPassword ? { password: newPassword } : {}),
-  });
-
-  if (authError) {
-    redirect(`${safeReturnTo}?account=auth-error`);
   }
 
   await logAdminAuditEvent({

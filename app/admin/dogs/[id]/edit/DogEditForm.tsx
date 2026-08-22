@@ -40,6 +40,7 @@ const careTags = [
 ];
 
 const structuredTraitTypes = [
+  "localized_name_th",
   "protectiveness",
   "affection_style",
   "training_preference_match",
@@ -487,6 +488,7 @@ export default function DogEditForm({
   const personalityTraitValues = traits
     .filter((trait) => trait.trait_type === "personality")
     .map((trait) => trait.trait_value);
+  const thaiName = getTraitValue(traits, "localized_name_th") ?? "";
   const selectedCareTags = new Set(
     traits.filter((trait) => trait.trait_type === "medical_needs").map((trait) => trait.trait_value),
   );
@@ -532,12 +534,21 @@ export default function DogEditForm({
         >
           <ErrorSummary errors={state.fieldErrors} />
           <div className="grid gap-5 md:grid-cols-2">
-            <Field label="Dog name" error={state.fieldErrors?.name}>
+            <Field label="Dog name (English)" error={state.fieldErrors?.name}>
               <input
                 name="name"
                 className={inputClass(state.fieldErrors?.name)}
                 defaultValue={dog.name}
                 placeholder="Mali"
+              />
+            </Field>
+
+            <Field label="Dog name (Thai)">
+              <input
+                name="name_th"
+                className={inputClass()}
+                defaultValue={thaiName}
+                placeholder="มะลิ"
               />
             </Field>
 
