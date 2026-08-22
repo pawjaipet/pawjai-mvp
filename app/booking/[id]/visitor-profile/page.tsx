@@ -65,7 +65,7 @@ async function requireBookingAccess(shelterId: string) {
     if (context.role === "shelter_admin") {
       redirect(await getShelterPortalTarget(context) ?? "/shelter");
     }
-    redirect("/admindraft");
+    redirect("/admin");
   }
 
   return context;
@@ -73,7 +73,7 @@ async function requireBookingAccess(shelterId: string) {
 
 function defaultBookingListHref(context: AdminAuthContext, shelter: Shelter | null, shelterId: string) {
   if (context.isGlobalAdmin) {
-    return `/admindraft?shelter=${shelterId}&view=bookings`;
+    return `/admin?shelter=${shelterId}&view=bookings`;
   }
 
   return shelter?.name
@@ -100,10 +100,10 @@ function safeBookingReturnTo({
   }
 
   if (requested.startsWith("/admindraft")) {
-    return context.isGlobalAdmin ? requested : fallback;
+    return context.isGlobalAdmin ? requested.replace(/^\/admindraft/, "/admin") : fallback;
   }
 
-  if (requested.startsWith("/admin/bookings")) {
+  if (requested === "/admin" || requested.startsWith("/admin?") || requested.startsWith("/admin/bookings")) {
     return context.isGlobalAdmin ? requested : fallback;
   }
 

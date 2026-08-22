@@ -151,7 +151,7 @@ export async function AdminAuditPageContent({
     </>
   );
 
-  if (basePath === "/admindraft" && adminContext.isGlobalAdmin) {
+  if ((basePath === "/admin" || basePath === "/admindraft") && adminContext.isGlobalAdmin) {
     return (
       <PawjaiWorkspaceShell active="audit">
         <section className="mb-6 rounded-[28px] border border-[#d6c8ad] bg-white p-6 shadow-[0_14px_42px_rgba(101,88,79,0.07)]">

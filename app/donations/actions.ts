@@ -187,7 +187,7 @@ export async function submitDonationSlipAction(
   }
 
   revalidatePath(`/dogs/${intent.dog_id}/donate`);
-  revalidatePath("/admindraft");
+  revalidatePath("/admin");
   revalidatePath("/shelter");
 
   return { message: "Transfer slip sent to the shelter.", status: "success" };

@@ -298,7 +298,7 @@ export async function sendShelterAppointmentMessageAction(formData: FormData) {
 
   revalidatePath("/messages");
   revalidatePath(`/appointments/${appointment.id}`);
-  revalidatePath("/admindraft");
+  revalidatePath("/admin");
   revalidatePath(safeReturnTo);
   redirect(safeReturnTo);
 }

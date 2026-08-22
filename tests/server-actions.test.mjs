@@ -21,7 +21,7 @@ test("shelter message action is shelter scoped and writes shelter messages", () 
   assert.equal(source.includes('sender_role: "shelter"'), true);
   assert.equal(source.includes("read_by_shelter_at"), true);
   assert.equal(source.includes('revalidatePath("/messages")'), true);
-  assert.equal(source.includes('revalidatePath("/admindraft")'), true);
+  assert.equal(source.includes('revalidatePath("/admin")'), true);
   assert.equal(source.includes('revalidatePath(safeReturnTo)'), true);
 });
 

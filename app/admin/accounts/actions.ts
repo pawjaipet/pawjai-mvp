@@ -14,11 +14,12 @@ function getString(formData: FormData, name: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-const ACCOUNT_PATHS = new Set(["/admin/accounts", "/admindraft/accounts"]);
+const ACCOUNT_PATHS = new Set(["/admin/accounts"]);
 
 function getAccountsReturnPath(formData: FormData) {
   const requested = getString(formData, "returnTo");
-  return ACCOUNT_PATHS.has(requested) ? requested : "/admin/accounts";
+  const canonical = requested.replace(/^\/admindraft/, "/admin");
+  return ACCOUNT_PATHS.has(canonical) ? canonical : "/admin/accounts";
 }
 
 function accountsRedirect(message: string, returnTo = "/admin/accounts"): never {
@@ -105,7 +106,6 @@ export async function createAdminAccountAction(formData: FormData) {
   });
 
   revalidatePath("/admin/accounts");
-  revalidatePath("/admindraft/accounts");
   accountsRedirect(role === "shelter_admin" ? "Shelter admin account created and linked." : "PawJai admin account created.", returnTo);
 }
 
@@ -144,6 +144,5 @@ export async function revokeAdminAccountAction(formData: FormData) {
   });
 
   revalidatePath("/admin/accounts");
-  revalidatePath("/admindraft/accounts");
   accountsRedirect("Admin access revoked.", returnTo);
 }

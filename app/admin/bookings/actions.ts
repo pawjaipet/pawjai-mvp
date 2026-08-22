@@ -30,10 +30,10 @@ function cleanText(value: FormDataEntryValue | null) {
 }
 
 function bookingsRedirect(shelterId: string, message: string) {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ view: "bookings" });
   if (shelterId) params.set("shelter", shelterId);
   if (message) params.set("message", message);
-  redirect(`/admin/bookings?${params.toString()}`);
+  redirect(`/admin?${params.toString()}`);
 }
 
 function shelterViewRedirect(shelterId: string, view: string, message: string): never {
@@ -41,7 +41,7 @@ function shelterViewRedirect(shelterId: string, view: string, message: string): 
   if (shelterId) params.set("shelter", shelterId);
   if (view) params.set("view", view);
   if (message) params.set("message", message);
-  redirect(`/admin/bookings?${params.toString()}`);
+  redirect(`/admin?${params.toString()}`);
 }
 
 async function redirectAfterShelterMutation(
@@ -64,9 +64,10 @@ async function redirectAfterShelterMutation(
     redirect(`${url.pathname}${url.search}`);
   }
 
-  if (returnTo.startsWith("/admindraft")) {
-    const url = new URL(returnTo, "https://pawjai.local");
-    if (url.pathname === "/admindraft") {
+  if (returnTo.startsWith("/admin") || returnTo.startsWith("/admindraft")) {
+    const canonicalReturnTo = returnTo.replace(/^\/admindraft/, "/admin");
+    const url = new URL(canonicalReturnTo, "https://pawjai.local");
+    if (url.pathname === "/admin") {
       if (shelterId && !url.searchParams.has("shelter")) url.searchParams.set("shelter", shelterId);
       if (view && !url.searchParams.has("view")) url.searchParams.set("view", view);
     }
@@ -98,7 +99,7 @@ async function safeBookingMutationReturnTo({ appointmentId, context, requestedRe
   const requested = requestedReturnTo.trim();
   const portalTarget = context.isGlobalAdmin ? null : await getShelterPortalTarget(context);
   const fallbackListHref = context.isGlobalAdmin
-    ? `/admindraft?shelter=${shelterId}&view=bookings`
+    ? `/admin?shelter=${shelterId}&view=bookings`
     : `${portalTarget ?? "/shelter"}?view=bookings`;
   const fallbackDetailHref = bookingWorkspaceDetailHref({ appointmentId, bookingListHref: fallbackListHref });
 
@@ -107,11 +108,13 @@ async function safeBookingMutationReturnTo({ appointmentId, context, requestedRe
   }
 
   if (context.isGlobalAdmin) {
-    const allowed = requested.startsWith("/admindraft")
-      || requested.startsWith("/admin/bookings")
+    const canonicalRequested = requested.replace(/^\/admindraft/, "/admin");
+    const allowed = canonicalRequested === "/admin"
+      || canonicalRequested.startsWith("/admin?")
+      || canonicalRequested.startsWith("/admin/bookings")
       || requested.startsWith(`/booking/${appointmentId}`);
     return allowed
-      ? { detailHref: fallbackDetailHref, returnTo: requested }
+      ? { detailHref: fallbackDetailHref, returnTo: canonicalRequested }
       : { detailHref: fallbackDetailHref, returnTo: fallbackListHref };
   }
 
@@ -485,10 +488,9 @@ export async function decideBookingAction(formData: FormData) {
       .in("status", ["requested", "confirmed"]);
   }
 
-  revalidatePath("/admin/bookings");
-  revalidatePath("/admindraft");
-  revalidatePath(`/admindraft/bookings/${appointmentId}`);
-  revalidatePath(`/admindraft/bookings/${appointmentId}/visitor-profile`);
+  revalidatePath("/admin");
+  revalidatePath(`/admin/bookings/${appointmentId}`);
+  revalidatePath(`/admin/bookings/${appointmentId}/visitor-profile`);
   revalidatePath(`/booking/${appointmentId}`);
   revalidatePath(`/booking/${appointmentId}/visitor-profile`);
   revalidatePath("/appointments");
@@ -554,7 +556,7 @@ export async function sendShelterMessageAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
   revalidatePath("/messages");
   revalidatePath(`/appointments/${appointment.id}`);
   shelterViewRedirect(
@@ -639,8 +641,7 @@ export async function updateShelterProfileAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/admin/bookings");
-  revalidatePath("/admindraft");
+  revalidatePath("/admin");
   revalidatePath("/shelter");
   revalidatePath("/appointments");
   const message = isMissingSchemaError(extendedError)
@@ -713,8 +714,7 @@ export async function updateShelterDonationDetailsAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/admin/bookings");
-  revalidatePath("/admindraft");
+  revalidatePath("/admin");
   revalidatePath("/shelter");
   revalidatePath("/donations");
   await redirectAfterShelterMutation(
@@ -783,8 +783,7 @@ export async function updateShelterOperatingDaysAction(formData: FormData) {
     ? await saveWeeklyClosuresAsBlockouts({ admin, closedDays, shelterId })
     : null;
 
-  revalidatePath("/admin/bookings");
-  revalidatePath("/admindraft");
+  revalidatePath("/admin");
   revalidatePath("/appointments");
   if (!error && !fallbackError) {
     await logAdminAuditEvent({
@@ -879,8 +878,7 @@ export async function createShelterBlockoutAction(formData: FormData) {
     .select("id")
     .single();
 
-  revalidatePath("/admin/bookings");
-  revalidatePath("/admindraft");
+  revalidatePath("/admin");
   revalidatePath("/appointments");
   if (!error) {
     await logAdminAuditEvent({
@@ -951,8 +949,7 @@ export async function toggleShelterBlockoutDateAction(formData: FormData) {
     }
   }
 
-  revalidatePath("/admin/bookings");
-  revalidatePath("/admindraft");
+  revalidatePath("/admin");
   revalidatePath("/appointments");
   if (!error) {
     await logAdminAuditEvent({
@@ -986,8 +983,7 @@ export async function deleteShelterAvailabilityAction(formData: FormData) {
     .eq("id", availabilityId)
     .eq("shelter_id", shelterId);
 
-  revalidatePath("/admin/bookings");
-  revalidatePath("/admindraft");
+  revalidatePath("/admin");
   revalidatePath("/appointments");
   if (!error) {
     await logAdminAuditEvent({
@@ -1041,7 +1037,7 @@ export async function reviewDonationAction(formData: FormData) {
     .eq("id", donation.id)
     .eq("shelter_id", shelterId);
 
-  revalidatePath("/admindraft");
+  revalidatePath("/admin");
   revalidatePath("/shelter/[slug]", "page");
   revalidatePath(`/dogs/${donation.dog_id}/donate`);
 
@@ -1128,10 +1124,9 @@ export async function checkInBookingAction(formData: FormData) {
       .eq("id", appointment.id);
   }
 
-  revalidatePath("/admin/bookings");
-  revalidatePath("/admindraft");
-  revalidatePath(`/admindraft/bookings/${appointment.id}`);
-  revalidatePath(`/admindraft/bookings/${appointment.id}/visitor-profile`);
+  revalidatePath("/admin");
+  revalidatePath(`/admin/bookings/${appointment.id}`);
+  revalidatePath(`/admin/bookings/${appointment.id}/visitor-profile`);
   revalidatePath(`/booking/${appointment.id}`);
   revalidatePath(`/booking/${appointment.id}/visitor-profile`);
   revalidatePath("/appointments");

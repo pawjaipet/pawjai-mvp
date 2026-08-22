@@ -65,7 +65,7 @@ export async function PawjaiProfileAdminPageContent({
 }: {
   basePath?: "/admin" | "/admindraft";
   lockedFallback?: ReactNode;
-  routePath?: "/admin/pawjaiprofile" | "/admindraft/aboutcontent" | "/admindraft/pawjaiprofile";
+  routePath?: "/admin/aboutcontent" | "/admin/pawjaiprofile" | "/admindraft/aboutcontent" | "/admindraft/pawjaiprofile";
   searchParams?: Promise<{ message?: string }>;
   showLock?: boolean;
 }) {
@@ -240,7 +240,7 @@ export async function PawjaiProfileAdminPageContent({
     </>
   );
 
-  if (basePath === "/admindraft") {
+  if (basePath === "/admin" || basePath === "/admindraft") {
     return (
       <PawjaiWorkspaceShell active="about">
         <section className="mb-6 rounded-[28px] border border-[#d6c8ad] bg-white p-6 shadow-[0_14px_42px_rgba(101,88,79,0.07)]">

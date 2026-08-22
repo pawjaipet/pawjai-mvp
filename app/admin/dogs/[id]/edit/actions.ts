@@ -666,8 +666,8 @@ export async function updateDogProfileAction(
     };
   }
 
-  const accessRedirectPath = returnTo.startsWith("/shelter/") || returnTo.startsWith("/admindraft")
-    ? returnTo
+  const accessRedirectPath = returnTo.startsWith("/shelter/") || returnTo.startsWith("/admin") || returnTo.startsWith("/admindraft")
+    ? returnTo.replace(/^\/admindraft/, "/admin")
     : `/admin/dogs/${dogId}/edit`;
   const adminContext = await requireShelterAccess(shelterId, accessRedirectPath);
   const supabase = createAdminClient();
@@ -897,8 +897,8 @@ export async function deleteDogProfileAction(formData: FormData) {
     redirect(safePortalReturn ? returnTo : portalTarget ? `${portalTarget}?view=dogs` : "/shelter");
   }
 
-  if (returnTo.startsWith("/admindraft")) {
-    redirect(returnTo);
+  if (returnTo.startsWith("/admin") || returnTo.startsWith("/admindraft")) {
+    redirect(returnTo.replace(/^\/admindraft/, "/admin"));
   }
-  redirect("/admin/listings");
+  redirect("/admin?view=dogs");
 }

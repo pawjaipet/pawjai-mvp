@@ -115,7 +115,7 @@ export function buildPawjaiAdSubmissionNotificationEmail(details: AdSubmissionEm
     `Ad format: ${formatMediaType(details.mediaType)}`,
     `Requested dates: ${formatDateRange(details.startDate, details.endDate)}`,
     `Destination URL: ${details.clickUrl}`,
-    "Review in PawJai admin draft > Ads.",
+    "Review in PawJai admin > Ads.",
   ];
 
   const htmlLines = lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("");

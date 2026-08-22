@@ -23,7 +23,7 @@ export async function GET() {
   }
 
   return NextResponse.json(
-    { lane: "admin", target: "/admindraft" },
+    { lane: "admin", target: "/admin" },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

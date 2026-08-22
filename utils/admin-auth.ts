@@ -34,7 +34,7 @@ export function getPawjaiAdminGoogleEmail() {
 }
 
 export function sanitizeAdminNextPath(value: string | null | undefined) {
-  const fallback = "/admindraft";
+  const fallback = "/admin";
   const candidate = String(value ?? "").trim();
 
   if (!candidate || !candidate.startsWith("/") || candidate.startsWith("//")) {
@@ -45,21 +45,22 @@ export function sanitizeAdminNextPath(value: string | null | undefined) {
     const parsed = new URL(candidate, "http://pawjai.local");
     if (parsed.origin !== "http://pawjai.local") return fallback;
 
-    const allowed = [
-      "/admin",
-      "/admindraft",
-      "/booking",
-    ].some((prefix) => parsed.pathname === prefix || parsed.pathname.startsWith(`${prefix}/`));
+    const pathname = parsed.pathname === "/admindraft" || parsed.pathname.startsWith("/admindraft/")
+      ? parsed.pathname.replace(/^\/admindraft/, "/admin")
+      : parsed.pathname;
+    const allowed = ["/admin", "/booking"].some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
 
-    if (!allowed || parsed.pathname === "/admin/login") return fallback;
+    if (!allowed || pathname === "/admin/login") return fallback;
 
-    return `${parsed.pathname}${parsed.search}` || fallback;
+    return `${pathname}${parsed.search}` || fallback;
   } catch {
     return fallback;
   }
 }
 
-export function buildAdminLoginPath(nextPath = "/admindraft") {
+export function buildAdminLoginPath(nextPath = "/admin") {
   const params = new URLSearchParams();
   params.set("next", sanitizeAdminNextPath(nextPath));
   return `/admin/login?${params.toString()}`;

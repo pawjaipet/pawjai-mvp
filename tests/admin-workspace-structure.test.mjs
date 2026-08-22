@@ -32,7 +32,7 @@ test("global admins see the PawJai HQ umbrella first", () => {
   const draft = getAdminWorkspaceDraft("admin");
 
   assert.equal(draft.title, "PawJai HQ");
-  assert.equal(draft.defaultPath, "/admindraft");
+  assert.equal(draft.defaultPath, "/admin");
   assertArrayValues(
     draft.primarySections.map((section) => section.label),
     ["Overview", "Shelters", "Dogs", "Bookings", "Donations", "Ads", "About content", "Accounts", "Audit", "User analytics"],
@@ -85,20 +85,20 @@ test("dog draft workflow includes current admin upload steps, filters, media con
   assert.ok(adminDogDraftWorkflow.bookingActions.includes("Ask to change date/time"));
 });
 
-test("draft launches dog editing natively and leaves unfinished workflows on old admin routes", () => {
+test("canonical admin launches completed workflows on native admin routes", () => {
   const source = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
   const navSource = readFileSync(new URL("../components/admin/AdminWorkspaceNav.tsx", import.meta.url), "utf8");
-  const adsRouteSource = readFileSync(new URL("../app/admindraft/ads/page.tsx", import.meta.url), "utf8");
+  const adsRouteSource = readFileSync(new URL("../app/admin/ads/page.tsx", import.meta.url), "utf8");
 
-  assert.equal(source.includes("`/admindraft/dogs/${dog.id}/edit`"), true);
+  assert.equal(source.includes("`/admin/dogs/${dog.id}/edit`"), true);
   assert.equal(source.includes("`${workspaceBaseHref}/dogs/${dog.id}/edit`"), true);
   assert.equal(source.includes("href={`/admin/bookings?shelter=${shelter.id}&view=messages`}"), false);
   assert.equal(source.includes('href="/admin/ads"'), false);
-  assert.equal(navSource.includes('return "/admindraft?view=ads"'), true);
-  assert.equal(adsRouteSource.includes('redirect("/admindraft?view=ads")'), true);
+  assert.equal(navSource.includes('return "/admin?view=ads"'), true);
+  assert.equal(adsRouteSource.includes('redirect("/admin?view=ads")'), true);
   assert.equal(adsRouteSource.includes("AdminAdsPage"), false);
-  assert.equal(source.includes('href="/admindraft/aboutcontent"'), true);
-  assert.equal(source.includes('href="/admindraft/accounts"'), true);
-  assert.equal(source.includes('href="/admindraft/audit"'), true);
-  assert.equal(source.includes('href="/admindraft/analytics"'), true);
+  assert.equal(source.includes('href="/admin/aboutcontent"'), true);
+  assert.equal(source.includes('href="/admin/accounts"'), true);
+  assert.equal(source.includes('href="/admin/audit"'), true);
+  assert.equal(source.includes('href="/admin/analytics"'), true);
 });

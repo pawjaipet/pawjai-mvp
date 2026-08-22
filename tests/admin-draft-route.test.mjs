@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("/admindraft is the canonical Supabase-backed draft route", () => {
-  const source = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
+test("/admin is the canonical Supabase-backed PawJai workspace", () => {
+  const source = readFileSync(new URL("../app/admin/AdminWorkspacePage.tsx", import.meta.url), "utf8");
 
   assert.equal(source.includes("loadAdminDraftData"), true);
   assert.equal(source.includes("initialShelterId={resolvedSearchParams?.shelter}"), true);
@@ -12,22 +12,17 @@ test("/admindraft is the canonical Supabase-backed draft route", () => {
   assert.equal(source.includes('dynamic = "force-dynamic"'), true);
 });
 
-test("/admindraft requires the PawJai Google admin session before loading data", () => {
-  const pageSource = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
-  const actionSource = readFileSync(new URL("../app/admindraft/actions.ts", import.meta.url), "utf8");
-  const unlockRouteSource = readFileSync(new URL("../app/admindraft/unlock/route.ts", import.meta.url), "utf8");
+test("/admin requires the PawJai Google admin session before loading data", () => {
+  const pageSource = readFileSync(new URL("../app/admin/AdminWorkspacePage.tsx", import.meta.url), "utf8");
+  const layoutSource = readFileSync(new URL("../app/admin/layout.tsx", import.meta.url), "utf8");
   const authSource = readFileSync(new URL("../utils/admin-auth.ts", import.meta.url), "utf8");
   const loginSource = readFileSync(new URL("../components/admin/AdminGoogleLogin.tsx", import.meta.url), "utf8");
 
   assert.equal(pageSource.includes("requireGlobalAdmin"), true);
   assert.equal(pageSource.includes("<AdminDraftGate"), false);
   assert.equal(pageSource.includes("loadAdminDraftData"), true);
-  assert.equal(actionSource.includes("pawjaiadmin!"), false);
-  assert.equal(actionSource.includes("getAdminDraftReturnPath"), true);
-  assert.equal(actionSource.includes("buildAdminLoginPath(returnTo)"), true);
-  assert.equal(unlockRouteSource.includes("NextResponse.redirect"), true);
-  assert.equal(unlockRouteSource.includes("Set-Cookie"), false);
-  assert.equal(unlockRouteSource.includes("buildAdminLoginPath(returnTo)"), true);
+  assert.equal(layoutSource.includes("AdminLaneGuard"), true);
+  assert.equal(layoutSource.includes('context?.role === "shelter_admin"'), true);
   assert.equal(authSource.includes("DEFAULT_PAWJAI_ADMIN_GOOGLE_EMAIL"), true);
   assert.equal(authSource.includes("isPawjaiGoogleAdminUser"), true);
   assert.equal(loginSource.includes("completeAdminGoogleLogin"), true);
@@ -35,7 +30,7 @@ test("/admindraft requires the PawJai Google admin session before loading data",
 });
 
 test("/shelter supports real shelter account login and scoped shelter mode", () => {
-  const pageSource = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
+  const pageSource = readFileSync(new URL("../app/admin/AdminWorkspacePage.tsx", import.meta.url), "utf8");
   const oldLoginPageSource = readFileSync(new URL("../app/admindraft/login/page.tsx", import.meta.url), "utf8");
   const shelterLoginPageSource = readFileSync(new URL("../app/shelter/page.tsx", import.meta.url), "utf8");
   const shelterPortalPageSource = readFileSync(new URL("../app/shelter/[slug]/page.tsx", import.meta.url), "utf8");
@@ -80,19 +75,19 @@ test("/shelter supports real shelter account login and scoped shelter mode", () 
   assert.equal(dataSource.includes("returnedShelterIds.has"), true);
 });
 
-test("legacy admin reorg draft route aliases /admindraft", () => {
+test("legacy admin reorg draft route redirects to /admin", () => {
   const source = readFileSync(new URL("../app/admin/reorg-draft/page.tsx", import.meta.url), "utf8");
 
-  assert.equal(source.includes("@/app/admindraft/page"), true);
+  assert.equal(source.includes('redirect("/admin")'), true);
 });
 
-test("admin draft direct pages route through the shared Google admin guard", () => {
-  const aboutSource = readFileSync(new URL("../app/admindraft/aboutcontent/page.tsx", import.meta.url), "utf8");
-  const accountsSource = readFileSync(new URL("../app/admindraft/accounts/page.tsx", import.meta.url), "utf8");
-  const adsSource = readFileSync(new URL("../app/admindraft/ads/page.tsx", import.meta.url), "utf8");
-  const auditSource = readFileSync(new URL("../app/admindraft/audit/page.tsx", import.meta.url), "utf8");
-  const analyticsSource = readFileSync(new URL("../app/admindraft/analytics/page.tsx", import.meta.url), "utf8");
-  const mainSource = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
+test("admin direct pages route through the shared Google admin guard", () => {
+  const aboutSource = readFileSync(new URL("../app/admin/aboutcontent/page.tsx", import.meta.url), "utf8");
+  const accountsSource = readFileSync(new URL("../app/admin/accounts/page.tsx", import.meta.url), "utf8");
+  const adsSource = readFileSync(new URL("../app/admin/ads/page.tsx", import.meta.url), "utf8");
+  const auditSource = readFileSync(new URL("../app/admin/audit/page.tsx", import.meta.url), "utf8");
+  const analyticsSource = readFileSync(new URL("../app/admin/analytics/page.tsx", import.meta.url), "utf8");
+  const mainSource = readFileSync(new URL("../app/admin/AdminWorkspacePage.tsx", import.meta.url), "utf8");
   const accountsContentSource = readFileSync(new URL("../components/admin/AdminAccountsPageContent.tsx", import.meta.url), "utf8");
   const auditContentSource = readFileSync(new URL("../components/admin/AdminAuditPageContent.tsx", import.meta.url), "utf8");
   const analyticsContentSource = readFileSync(new URL("../components/admin/AdminUserAnalyticsPageContent.tsx", import.meta.url), "utf8");
@@ -100,7 +95,7 @@ test("admin draft direct pages route through the shared Google admin guard", () 
 
   assert.equal(aboutSource.includes("lockedFallback"), false);
   assert.equal(accountsSource.includes("lockedFallback"), false);
-  assert.equal(adsSource.includes('redirect("/admindraft?view=ads")'), true);
+  assert.equal(adsSource.includes('redirect("/admin?view=ads")'), true);
   assert.equal(adsSource.includes("AdminAdsPage"), false);
   assert.equal(auditSource.includes("lockedFallback"), false);
   assert.equal(analyticsSource.includes("lockedFallback"), false);
@@ -108,7 +103,7 @@ test("admin draft direct pages route through the shared Google admin guard", () 
     assert.equal(source.includes("buildAdminLoginPath"), true);
   }
   assert.equal(accountsContentSource.includes("requireGlobalAdmin"), true);
-  assert.equal(mainSource.includes("buildAdminDraftReturnTo"), true);
+  assert.equal(mainSource.includes("buildAdminReturnTo"), true);
 });
 
 test("admin draft data loader includes booking workspace fields for inline decisions", () => {
@@ -144,7 +139,7 @@ test("admin draft panel renders real media, ad, and about data", () => {
   assert.equal(source.includes("AboutTab about={about}"), true);
 });
 
-test("admin draft ad tab uses clickable status sub-tabs", () => {
+test("admin ad tab uses clickable status sub-tabs", () => {
   const source = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
 
   assert.equal(source.includes("matchesAdFilters"), true);
@@ -166,12 +161,12 @@ test("admin draft ad tab uses clickable status sub-tabs", () => {
   assert.equal(source.includes("Clicks over last 14 days"), true);
   assert.equal(source.includes("Recent clickers"), true);
   assert.equal(source.includes("Review ads"), true);
-  assert.equal(source.includes('const ADS_DRAFT_RETURN_TO = "/admindraft?view=ads"'), true);
-  assert.equal(source.includes("ADS_DRAFT_RETURN_TO"), true);
+  assert.equal(source.includes('const ADMIN_ADS_RETURN_TO = "/admin?view=ads"'), true);
+  assert.equal(source.includes("ADMIN_ADS_RETURN_TO"), true);
   assert.equal(source.includes('FieldGrid fields={["Advertiser", "Placement", "Image/video asset", "Destination URL", "Live status", "Start date", "End date"]}'), false);
 });
 
-test("PawJai-only draft pages share the admin workspace shell", () => {
+test("PawJai-only pages share the admin workspace shell", () => {
   const analyticsSource = readFileSync(new URL("../components/admin/AdminUserAnalyticsPageContent.tsx", import.meta.url), "utf8");
   const accountsSource = readFileSync(new URL("../components/admin/AdminAccountsPageContent.tsx", import.meta.url), "utf8");
   const auditSource = readFileSync(new URL("../components/admin/AdminAuditPageContent.tsx", import.meta.url), "utf8");
@@ -181,7 +176,7 @@ test("PawJai-only draft pages share the admin workspace shell", () => {
   for (const source of [analyticsSource, accountsSource, auditSource, aboutSource]) {
     assert.equal(source.includes("PawjaiWorkspaceShell"), true);
   }
-  assert.equal(shellSource.includes("Reorganized admin hierarchy"), true);
+  assert.equal(shellSource.includes("PawJai management workspace"), true);
   assert.equal(shellSource.includes("View as PawJai"), true);
   assert.equal(shellSource.includes("View as shelter"), true);
   assert.equal(shellSource.includes("AdminWorkspaceNav"), true);
@@ -197,7 +192,7 @@ test("admin draft supports shelter-specific filters and square shelter workspace
   assert.equal(source.includes("aspect-square"), true);
 });
 
-test("admin draft shelter profile reuses live shelter edit actions in place", () => {
+test("admin shelter profile reuses live shelter edit actions in place", () => {
   const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
   const dataSource = readFileSync(new URL("../utils/admin-draft-data.ts", import.meta.url), "utf8");
   const actionSource = readFileSync(new URL("../app/admin/bookings/actions.ts", import.meta.url), "utf8");
@@ -206,14 +201,14 @@ test("admin draft shelter profile reuses live shelter edit actions in place", ()
   assert.equal(panelSource.includes("updateShelterOperatingDaysAction"), true);
   assert.equal(panelSource.includes("createShelterBlockoutAction"), true);
   assert.equal(panelSource.includes("deleteShelterAvailabilityAction"), true);
-  assert.equal(panelSource.includes('const DRAFT_RETURN_TO = "/admindraft"'), true);
+  assert.equal(panelSource.includes('const ADMIN_RETURN_TO = "/admin"'), true);
   assert.equal(panelSource.includes('name="returnTo"'), true);
   assert.equal(panelSource.includes("Save shelter profile"), true);
   assert.equal(panelSource.includes("Save weekly schedule"), true);
   assert.equal(dataSource.includes('.from("shelter_availability")'), true);
   assert.equal(dataSource.includes('.from("shelter_regular_hours")'), true);
   assert.equal(actionSource.includes("redirectAfterShelterMutation"), true);
-  assert.equal(actionSource.includes('returnTo.startsWith("/admindraft")'), true);
+  assert.equal(actionSource.includes('returnTo.startsWith("/admin")'), true);
   assert.equal(actionSource.includes('returnTo.startsWith("/shelter/")'), true);
 });
 
@@ -226,27 +221,24 @@ test("legacy admin draft cookies are cleared but no longer accepted as admin aut
   assert.equal(authSource.includes("await closeAdminGate();"), true);
 });
 
-test("admin draft has a focused create-dog route that reuses the real dog listing form", () => {
+test("canonical admin has a focused create-dog route that reuses the real dog listing form", () => {
   const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
-  const draftCreateSource = readFileSync(new URL("../app/admindraft/dogs/new/page.tsx", import.meta.url), "utf8");
-  const draftCreateAliasSource = readFileSync(new URL("../app/admindraft/dog-creation/page.tsx", import.meta.url), "utf8");
+  const adminCreateSource = readFileSync(new URL("../app/admin/dogs/new/page.tsx", import.meta.url), "utf8");
   const shelterCreateSource = readFileSync(new URL("../app/shelter/[slug]/dogs/new/page.tsx", import.meta.url), "utf8");
-  const legacyAdminCreateSource = readFileSync(new URL("../app/admin/dogs/new/page.tsx", import.meta.url), "utf8");
   const formSource = readFileSync(new URL("../app/admin/dogs/new/DogListingForm.tsx", import.meta.url), "utf8");
 
-  assert.equal(panelSource.includes("`/admindraft/dog-creation?shelter=${selectedShelter.id}`"), true);
+  assert.equal(panelSource.includes("`/admin/dogs/new?shelter=${selectedShelter.id}`"), true);
   assert.equal(panelSource.includes("`${workspaceBaseHref}/dogs/new`"), true);
   assert.equal(panelSource.includes("adminDraftShelterCreateDogHref"), true);
   assert.equal(panelSource.includes('params.set("role", "shelter")'), true);
-  assert.equal(draftCreateAliasSource.includes("../dogs/new/page"), true);
-  assert.equal(draftCreateSource.includes("DogListingForm"), true);
-  assert.equal(draftCreateSource.includes("PawjaiWorkspaceShell"), true);
-  assert.equal(draftCreateSource.includes("requireGlobalAdmin"), true);
-  assert.equal(draftCreateSource.includes("Exit"), true);
-  assert.equal(draftCreateSource.includes('cancelLabel="Exit"'), true);
-  assert.equal(draftCreateSource.includes('submitLabel="Save Draft"'), true);
-  assert.equal(draftCreateSource.includes('listingsParams.set("role", "shelter")'), true);
-  assert.equal(draftCreateSource.includes("returnTo={cancelHref}"), true);
+  assert.equal(adminCreateSource.includes("DogListingForm"), true);
+  assert.equal(adminCreateSource.includes("PawjaiWorkspaceShell"), true);
+  assert.equal(adminCreateSource.includes("requireGlobalAdmin"), true);
+  assert.equal(adminCreateSource.includes("Exit"), true);
+  assert.equal(adminCreateSource.includes('cancelLabel="Exit"'), true);
+  assert.equal(adminCreateSource.includes('submitLabel="Save Draft"'), true);
+  assert.equal(adminCreateSource.includes('listingsParams.set("role", "shelter")'), true);
+  assert.equal(adminCreateSource.includes("returnTo={cancelHref}"), true);
   assert.equal(formSource.includes("showIntro = true"), true);
   assert.equal(formSource.includes('cancelLabel = "Cancel"'), true);
   assert.equal(formSource.includes("successListingsHref"), true);
@@ -254,8 +246,8 @@ test("admin draft has a focused create-dog route that reuses the real dog listin
   assert.equal(formSource.includes('import { Save } from "lucide-react"'), true);
   assert.equal(formSource.includes("bg-[#cd8188]"), true);
   assert.equal(formSource.includes("bg-[#d38a2c]"), false);
-  assert.equal(legacyAdminCreateSource.includes("bg-[#cd8188]"), true);
-  assert.equal(legacyAdminCreateSource.includes("bg-[#d38a2c]"), false);
+  assert.equal(adminCreateSource.includes("bg-[#cd8188]"), true);
+  assert.equal(adminCreateSource.includes("bg-[#d38a2c]"), false);
   assert.equal(shelterCreateSource.includes("getAdminAuthContext({ includePhraseGate: false })"), true);
   assert.equal(shelterCreateSource.includes("getShelterByPortalSlug"), true);
   assert.equal(shelterCreateSource.includes("PawjaiWorkspaceShell"), true);
@@ -276,27 +268,23 @@ test("admin draft dog listings remove the inline field map and expose creation a
   assert.equal(panelSource.includes("md:grid-cols-6"), true);
 });
 
-test("admin draft dog cards edit through a draft-native dog edit route", () => {
+test("canonical admin dog cards edit through an admin-native dog edit route", () => {
   const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
-  const draftEditSource = readFileSync(new URL("../app/admindraft/dogs/[id]/edit/page.tsx", import.meta.url), "utf8");
   const shelterEditSource = readFileSync(new URL("../app/shelter/[slug]/dogs/[id]/edit/page.tsx", import.meta.url), "utf8");
   const adminEditSource = readFileSync(new URL("../app/admin/dogs/[id]/edit/page.tsx", import.meta.url), "utf8");
 
-  assert.equal(panelSource.includes("`/admindraft/dogs/${dog.id}/edit`"), true);
+  assert.equal(panelSource.includes("`/admin/dogs/${dog.id}/edit`"), true);
   assert.equal(panelSource.includes("`${workspaceBaseHref}/dogs/${dog.id}/edit`"), true);
-  assert.equal(panelSource.includes("`/admin/dogs/${dog.id}/edit`"), false);
-  assert.equal(draftEditSource.includes("DogEditForm"), true);
-  assert.equal(draftEditSource.includes("requireGlobalAdmin"), true);
-  assert.equal(draftEditSource.includes("AdminDraftGate"), false);
-  assert.equal(draftEditSource.includes("Back to dog listings"), true);
-  assert.equal(draftEditSource.includes('if (resolvedSearchParams?.role === "shelter") listingsParams.set("role", "shelter")'), true);
-  assert.equal(draftEditSource.includes("returnTo={draftEditHref}"), true);
-  assert.equal(draftEditSource.includes("PawJai Admin Draft"), true);
+  assert.equal(adminEditSource.includes("DogEditForm"), true);
+  assert.equal(adminEditSource.includes("requireGlobalAdmin"), true);
+  assert.equal(adminEditSource.includes("AdminDraftGate"), false);
+  assert.equal(adminEditSource.includes("Back to dog listings"), true);
+  assert.equal(adminEditSource.includes("returnTo={editHref}"), true);
+  assert.equal(adminEditSource.includes("PawJai Admin"), true);
   assert.equal(shelterEditSource.includes("getAdminAuthContext({ includePhraseGate: false })"), true);
   assert.equal(shelterEditSource.includes("getShelterByPortalSlug"), true);
   assert.equal(shelterEditSource.includes("dog.shelter_id !== shelter.id"), true);
   assert.equal(shelterEditSource.includes("returnTo={`/shelter/${slug}/dogs/${dog.id}/edit`}"), true);
-  assert.equal(adminEditSource.includes("DogEditForm"), true);
 });
 
 test("admin draft and shelter portal open booking detail and visitor profile through shared guarded routes", () => {
@@ -315,7 +303,7 @@ test("admin draft and shelter portal open booking detail and visitor profile thr
   assert.equal(panelSource.includes("bookingWorkspaceCheckInHref"), true);
   assert.equal(panelSource.includes("bookingListHref"), true);
   assert.equal(routeSource.includes("`${shelterBase}/bookings/${appointmentId}`"), true);
-  assert.equal(routeSource.includes("`/booking/${appointmentId}`"), true);
+  assert.equal(routeSource.includes("`/admin/bookings/${appointmentId}`"), true);
   assert.equal(bookingDetailSource.includes("decideBookingAction"), true);
   assert.equal(bookingDetailSource.includes("getAdminAuthContext"), true);
   assert.equal(bookingDetailSource.includes("safeBookingReturnTo"), true);
@@ -351,26 +339,25 @@ test("admin draft and shelter portal open booking detail and visitor profile thr
 
 test("admin and adopter navigation cannot leak a shelter session into PawJai admin", () => {
   const adminLayoutSource = readFileSync(new URL("../app/admin/layout.tsx", import.meta.url), "utf8");
-  const draftLayoutSource = readFileSync(new URL("../app/admindraft/layout.tsx", import.meta.url), "utf8");
   const authSource = readFileSync(new URL("../utils/admin-auth.ts", import.meta.url), "utf8");
   const bottomNavSource = readFileSync(new URL("../components/BottomNavBar.tsx", import.meta.url), "utf8");
   const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
   const adminDogPageSource = readFileSync(new URL("../app/admin/dogs/new/page.tsx", import.meta.url), "utf8");
   const adminBookingsPageSource = readFileSync(new URL("../app/admin/bookings/page.tsx", import.meta.url), "utf8");
 
-  assert.equal(adminLayoutSource.includes('context?.role === "shelter_admin"'), false);
-  assert.equal(draftLayoutSource.includes('context?.role === "shelter_admin"'), true);
-  assert.equal(draftLayoutSource.includes("getShelterPortalTarget"), true);
+  assert.equal(adminLayoutSource.includes('context?.role === "shelter_admin"'), true);
+  assert.equal(adminLayoutSource.includes("getShelterPortalTarget"), true);
+  assert.equal(adminLayoutSource.includes("AdminLaneGuard"), true);
   assert.equal(adminDogPageSource.includes("requireGlobalAdmin"), true);
-  assert.equal(adminBookingsPageSource.includes("requireGlobalAdmin"), true);
+  assert.equal(adminBookingsPageSource.includes('redirect("/admin?view=bookings")'), true);
   assert.equal(authSource.includes("adminGateOpen || adminDraftOpen"), false);
   assert.equal(authSource.includes("isPawjaiGoogleAdminUser(user)"), true);
   for (const routePrefix of ["/admin", "/admindraft", "/ads", "/booking", "/doglistings", "/shelter"]) {
     assert.equal(bottomNavSource.includes(`"${routePrefix}"`), true);
   }
   assert.equal(bottomNavSource.includes("hidesAdopterNavigation(pathname)"), true);
-  assert.equal(panelSource.includes('href={isShelterPortal ? workspaceBaseHref : "/admindraft"}'), true);
-  assert.equal(panelSource.includes('isShelterPortal ? "PawJai Shelter Portal" : "PawJai Admin Draft"'), true);
+  assert.equal(panelSource.includes('href={isShelterPortal ? workspaceBaseHref : "/admin"}'), true);
+  assert.equal(panelSource.includes('isShelterPortal ? "PawJai Shelter Portal" : "PawJai Admin"'), true);
   assert.equal(panelSource.includes("This workspace is limited to your shelter account and its linked records."), true);
 });
 

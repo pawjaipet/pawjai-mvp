@@ -198,7 +198,7 @@ function buildAppointmentMessageUrl(details: AppointmentMessageNotificationDetai
   const shelterSlug = details.shelter.name ? slugifyNotificationShelterName(details.shelter.name) : "";
   return shelterSlug
     ? `${origin}/shelter/${shelterSlug}?view=messages`
-    : `${origin}/admindraft?view=messages`;
+    : `${origin}/admin?view=messages`;
 }
 
 function buildNotificationLines(details: BookingEmailDetails, audience: BookingNotificationAudience) {

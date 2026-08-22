@@ -117,7 +117,7 @@ test("builds and sends the internal PawJai ad submission notification", async ()
   assert.equal(email.subject, "New PawJai ad submission: AD-ABC12345");
   assert.match(email.text, /Contact email: brand@pawjai.pet/);
   assert.match(email.text, /Contact phone: \+66970000000/);
-  assert.match(email.text, /Review in PawJai admin draft > Ads/);
+  assert.match(email.text, /Review in PawJai admin > Ads/);
 
   const result = await sendPawjaiAdSubmissionNotification(details);
   assert.equal(result.sent, true);

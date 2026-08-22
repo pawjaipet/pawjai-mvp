@@ -91,8 +91,8 @@ type AdStatusFilter = "all" | AdDisplayStatus;
 type AdWorkspaceView = "review" | "analytics";
 type AdminDraftMessageThread = AdminDraftData["messageThreads"][number];
 
-const DRAFT_RETURN_TO = "/admindraft";
-const ADS_DRAFT_RETURN_TO = "/admindraft?view=ads";
+const ADMIN_RETURN_TO = "/admin";
+const ADMIN_ADS_RETURN_TO = "/admin?view=ads";
 const MESSAGE_THREAD_REFRESH_INTERVAL_MS = 12_000;
 const MAIN_TABS: MainTab[] = ["shelters", "dogs", "bookings", "donations", "ads", "about"];
 const BOOKING_STATUS_OPTIONS = ["requested", "confirmed", "completed", "cancelled", "no_show"];
@@ -128,20 +128,20 @@ function withReturnTo(path: string, returnTo: string) {
 function adminDraftShelterWorkspaceHref(shelterId: string, view: ShelterTab, roleView?: RoleView) {
   const params = new URLSearchParams({ shelter: shelterId, view });
   if (roleView === "shelter") params.set("role", "shelter");
-  return `/admindraft?${params.toString()}`;
+  return `/admin?${params.toString()}`;
 }
 
 function adminDraftShelterCreateDogHref(shelterId: string, roleView?: RoleView) {
   const params = new URLSearchParams({ shelter: shelterId });
   if (roleView === "shelter") params.set("role", "shelter");
-  return `/admindraft/dog-creation?${params.toString()}`;
+  return `/admin/dogs/new?${params.toString()}`;
 }
 
 function adminDraftDogEditHref(dogId: string, roleView?: RoleView) {
   const params = new URLSearchParams();
   if (roleView === "shelter") params.set("role", "shelter");
   const query = params.toString();
-  return query ? `/admindraft/dogs/${dogId}/edit?${query}` : `/admindraft/dogs/${dogId}/edit`;
+  return query ? `/admin/dogs/${dogId}/edit?${query}` : `/admin/dogs/${dogId}/edit`;
 }
 
 function isMainTab(value: string | undefined): value is MainTab {
@@ -637,7 +637,7 @@ function isoDate(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function DraftReturnFields({ returnTo = DRAFT_RETURN_TO, shelterId }: { returnTo?: string; shelterId: string }) {
+function AdminReturnFields({ returnTo = ADMIN_RETURN_TO, shelterId }: { returnTo?: string; shelterId: string }) {
   return (
     <>
       <input name="returnTo" type="hidden" value={returnTo} />
@@ -877,7 +877,7 @@ function ShelterProfileTab({ returnTo, shelter }: { returnTo: string; shelter: A
           </div>
 
           <form action={updateShelterProfileAction} className="grid gap-3">
-            <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
+            <AdminReturnFields returnTo={returnTo} shelterId={shelter.id} />
             <div className="grid gap-3 md:grid-cols-2">
               <label>
                 <span className={labelClass}>Shelter name</span>
@@ -994,7 +994,7 @@ function ShelterCalendar({ returnTo, shelter }: { returnTo: string; shelter: Adm
             Close one date, a date range, or the same weekday every week. These closures immediately remove booking slots from the adopter calendar.
           </p>
           <form action={updateShelterOperatingDaysAction} className="mt-5 rounded-2xl bg-[#fffaf5] p-4">
-            <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
+            <AdminReturnFields returnTo={returnTo} shelterId={shelter.id} />
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Weekly closed days</p>
             <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7">
               {WEEKDAYS.map((day) => (
@@ -1036,7 +1036,7 @@ function ShelterCalendar({ returnTo, shelter }: { returnTo: string; shelter: Adm
                 const isClosed = recurringClosed || Boolean(blockout);
                 return (
                   <form action={toggleShelterBlockoutDateAction} key={dateKey}>
-                    <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
+                    <AdminReturnFields returnTo={returnTo} shelterId={shelter.id} />
                     <input name="date" type="hidden" value={dateKey} />
                     <input name="availabilityId" type="hidden" value={blockout?.id ?? ""} />
                     <button className={`flex aspect-square w-full items-center justify-center rounded-xl border text-sm font-semibold transition ${isClosed ? "border-[#65584f] bg-[#65584f] text-white" : "border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]"} ${inMonth ? "" : "opacity-35"} ${recurringClosed ? "cursor-not-allowed" : ""}`} disabled={recurringClosed} title={recurringClosed ? "Recurring closed day" : blockout ? "Click to reopen this date" : "Click to block this date"} type="submit">
@@ -1053,7 +1053,7 @@ function ShelterCalendar({ returnTo, shelter }: { returnTo: string; shelter: Adm
           </div>
 
           <form action={createShelterBlockoutAction} className="mt-4 grid gap-3 rounded-2xl bg-[#fffaf5] p-4 md:grid-cols-[1fr_1fr_minmax(0,1.3fr)_auto] md:items-end">
-            <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
+            <AdminReturnFields returnTo={returnTo} shelterId={shelter.id} />
             <label><span className={labelClass}>From</span><input className={inputClass} name="startDate" required type="date" /></label>
             <label><span className={labelClass}>To</span><input className={inputClass} name="endDate" type="date" /></label>
             <label><span className={labelClass}>Reason</span><input className={inputClass} maxLength={180} name="note" placeholder="Holiday, staff training, fully booked" required /></label>
@@ -1068,7 +1068,7 @@ function ShelterCalendar({ returnTo, shelter }: { returnTo: string; shelter: Adm
                   <p className="mt-1 text-xs leading-5 text-[#65584f]">{range.note?.startsWith("Recurring weekly closure:") ? "Weekly closure" : range.note || "Unavailable"}</p>
                 </div>
                 <form action={deleteShelterAvailabilityAction}>
-                  <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
+                  <AdminReturnFields returnTo={returnTo} shelterId={shelter.id} />
                   <input name="availabilityId" type="hidden" value={range.id} />
                   <button className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-4 py-2 text-xs font-semibold text-[#9a3129] hover:bg-[#fff6f4]" type="submit"><Trash2 size={14} />Remove</button>
                 </form>
@@ -1194,7 +1194,7 @@ function ShelterDonationSettings({ returnTo, shelter }: { returnTo: string; shel
         Add the shelter PromptPay or bank details shown to donors. Donation records and uploaded transfer slips stay in the ledger below.
       </p>
       <form action={updateShelterDonationDetailsAction} className="mt-5">
-        <DraftReturnFields returnTo={returnTo} shelterId={shelter.id} />
+        <AdminReturnFields returnTo={returnTo} shelterId={shelter.id} />
         <DonationDetailsFields
           bankAccountName={shelter.bankAccountName ?? null}
           bankAccountNumber={shelter.bankAccountNumber ?? null}
@@ -2203,7 +2203,7 @@ function ShelterWorkspace({
           adminMode={adminMode}
           messageThreads={messageThreads}
           messagesUnavailable={messagesUnavailable}
-          returnTo={adminMode ? `/admindraft?shelter=${shelter.id}&view=messages` : profileReturnTo.replace("view=profile", "view=messages")}
+          returnTo={adminMode ? `/admin?shelter=${shelter.id}&view=messages` : profileReturnTo.replace("view=profile", "view=messages")}
           shelter={shelter}
         />
       ) : null}
@@ -2283,19 +2283,19 @@ function PartnerSheltersTab({
       </Section>
       <ShelterWorkspace
         adminMode
-        bookingListHref={`/admindraft?shelter=${selectedShelter.id}&view=bookings`}
+        bookingListHref={`/admin?shelter=${selectedShelter.id}&view=bookings`}
         bookings={bookings}
-        calendarReturnTo={`/admindraft?shelter=${selectedShelter.id}&view=bookings&bookingView=calendar`}
-        checkInHref={withReturnTo("/booking/check-in", `/admindraft?shelter=${selectedShelter.id}&view=bookings`)}
-        createDogHref={`/admindraft/dog-creation?shelter=${selectedShelter.id}`}
-        dogEditHref={(dog) => `/admindraft/dogs/${dog.id}/edit`}
+        calendarReturnTo={`/admin?shelter=${selectedShelter.id}&view=bookings&bookingView=calendar`}
+        checkInHref={withReturnTo("/admin/bookings/check-in", `/admin?shelter=${selectedShelter.id}&view=bookings`)}
+        createDogHref={`/admin/dogs/new?shelter=${selectedShelter.id}`}
+        dogEditHref={(dog) => `/admin/dogs/${dog.id}/edit`}
         dogs={dogs}
-        donationReturnTo={`/admindraft?shelter=${selectedShelter.id}&view=donations`}
+        donationReturnTo={`/admin?shelter=${selectedShelter.id}&view=donations`}
         donations={donations}
         initialBookingView={initialBookingView}
         messageThreads={messageThreads}
         messagesUnavailable={messagesUnavailable}
-        profileReturnTo={`/admindraft?shelter=${selectedShelter.id}&view=profile`}
+        profileReturnTo={`/admin?shelter=${selectedShelter.id}&view=profile`}
         shelter={selectedShelter}
         tab={shelterTab}
         setTab={setShelterTab}
@@ -2369,7 +2369,7 @@ function AllDogsTab({ dogs, shelters }: { dogs: AdminDraftDog[]; shelters: Admin
       </div>
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {filteredDogs.map((dog) => (
-          <DogCard dog={dog} editHref={`/admindraft/dogs/${dog.id}/edit`} key={dog.id} />
+          <DogCard dog={dog} editHref={`/admin/dogs/${dog.id}/edit`} key={dog.id} />
         ))}
         {filteredDogs.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] p-6 text-sm text-[#65584f]">
@@ -2384,7 +2384,7 @@ function AllDogsTab({ dogs, shelters }: { dogs: AdminDraftDog[]; shelters: Admin
 function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking[]; shelters: AdminDraftShelter[] }) {
   const [shelterId, setShelterId] = useState("all");
   const filteredBookings = bookings.filter((booking) => shelterId === "all" || booking.shelterId === shelterId);
-  const bookingListHref = shelterId === "all" ? "/admindraft?view=bookings" : `/admindraft?shelter=${shelterId}&view=bookings`;
+  const bookingListHref = shelterId === "all" ? "/admin?view=bookings" : `/admin?shelter=${shelterId}&view=bookings`;
 
   return (
     <Section eyebrow="Bookings" title="All shelter visits">
@@ -2414,7 +2414,7 @@ function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking
       <ShelterBookingVisitList
         bookingListHref={bookingListHref}
         bookings={filteredBookings}
-        checkInHref={withReturnTo("/booking/check-in", bookingListHref)}
+        checkInHref={withReturnTo("/admin/bookings/check-in", bookingListHref)}
       />
     </Section>
   );
@@ -2478,7 +2478,7 @@ function AdsTab({
           Partner submissions from /ads land in the same ads table. PawJai reviews, pauses, and date-edits records internally. Connected ads: {ads.length}.
         </p>
         <form
-          action={updateAdCreativeSettingsFromFormAction.bind(null, ADS_DRAFT_RETURN_TO)}
+          action={updateAdCreativeSettingsFromFormAction.bind(null, ADMIN_ADS_RETURN_TO)}
           className="mt-5 rounded-[24px] border border-[#d6c8ad] bg-[#fffaf5] p-4"
         >
           <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
@@ -2830,7 +2830,7 @@ function AdsTab({
                       <summary className="cursor-pointer text-sm font-semibold text-[#65584f]">
                         Edit ad dates
                       </summary>
-                      <form action={updateAdDatesFromFormAction.bind(null, ad.id, ADS_DRAFT_RETURN_TO)} className="mt-3 grid gap-2">
+                      <form action={updateAdDatesFromFormAction.bind(null, ad.id, ADMIN_ADS_RETURN_TO)} className="mt-3 grid gap-2">
                         <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#fffaf3] p-3">
                           <label className="block">
                             <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#65584f]">Start date</span>
@@ -2864,7 +2864,7 @@ function AdsTab({
                         <button
                           className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d] disabled:opacity-60"
                           disabled={adMutationPendingId === ad.id}
-                          onClick={() => runAdMutation(ad.id, () => updateAdReviewStatusAction(ad.id, "approved", ADS_DRAFT_RETURN_TO))}
+                          onClick={() => runAdMutation(ad.id, () => updateAdReviewStatusAction(ad.id, "approved", ADMIN_ADS_RETURN_TO))}
                           type="button"
                         >
                           {adMutationPendingId === ad.id ? "Accepting..." : "Accept ad"}
@@ -2874,7 +2874,7 @@ function AdsTab({
                         <button
                           className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64] disabled:opacity-60"
                           disabled={adMutationPendingId === ad.id}
-                          onClick={() => runAdMutation(ad.id, () => updateAdReviewStatusAction(ad.id, "denied", ADS_DRAFT_RETURN_TO))}
+                          onClick={() => runAdMutation(ad.id, () => updateAdReviewStatusAction(ad.id, "denied", ADMIN_ADS_RETURN_TO))}
                           type="button"
                         >
                           {adMutationPendingId === ad.id ? "Denying..." : "Deny ad"}
@@ -2884,7 +2884,7 @@ function AdsTab({
                         <button
                           className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8] disabled:opacity-60"
                           disabled={adMutationPendingId === ad.id}
-                          onClick={() => runAdMutation(ad.id, () => toggleAdAction(ad.id, !ad.isActive, ADS_DRAFT_RETURN_TO))}
+                          onClick={() => runAdMutation(ad.id, () => toggleAdAction(ad.id, !ad.isActive, ADMIN_ADS_RETURN_TO))}
                           type="button"
                         >
                           {adMutationPendingId === ad.id ? "Saving..." : ad.isActive ? "Pause ad" : "Resume ad"}
@@ -2981,7 +2981,7 @@ function AboutTab({ about }: { about: AdminDraftAboutContent | null }) {
       <FieldGrid fields={["Mission title", "Mission body", "Partner shelters", "Hero copy", "Impact numbers", "Save About content"]} />
       <Link
         className="mt-5 inline-flex rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white"
-        href="/admindraft/aboutcontent"
+        href="/admin/aboutcontent"
       >
         Edit live About content
       </Link>
@@ -3007,7 +3007,7 @@ export default function AdminReorgDraftPanel({
   initialShelterId,
   initialShelterTab,
   lockRoleView = false,
-  workspaceBaseHref = DRAFT_RETURN_TO,
+  workspaceBaseHref = ADMIN_RETURN_TO,
 }: {
   accountSettingsHref?: string;
   data?: AdminDraftData;
@@ -3091,7 +3091,7 @@ export default function AdminReorgDraftPanel({
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <Link
               className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[24px] bg-[#f5f1e8] shadow-[inset_0_0_0_1px_rgba(214,200,173,0.8)]"
-              href={isShelterPortal ? workspaceBaseHref : "/admindraft"}
+              href={isShelterPortal ? workspaceBaseHref : "/admin"}
             >
               <Image
                 alt="PawJai"
@@ -3104,15 +3104,15 @@ export default function AdminReorgDraftPanel({
             </Link>
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">
-                {isShelterPortal ? "PawJai Shelter Portal" : "PawJai Admin Draft"}
+                {isShelterPortal ? "PawJai Shelter Portal" : "PawJai Admin"}
               </p>
               <h1 className="mt-2 text-4xl font-semibold text-[#65584f]">
-                {isShelterPortal ? "My shelter workspace" : "Reorganized admin hierarchy"}
+                {isShelterPortal ? "My shelter workspace" : "PawJai management workspace"}
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-[#65584f]/75">
                 {isShelterPortal
                   ? `${selectedShelter.name} can manage its own profile, dogs, bookings, donations, and messages here.`
-                  : "This draft keeps PawJai HQ, partner shelters, dogs, bookings, donations, ads, and content in one branded workspace without changing the adopter app."}
+                  : "Manage PawJai HQ, partner shelters, dogs, bookings, donations, ads, content, and platform activity from one workspace."}
               </p>
               <div className={`mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold ${
                 connected ? "bg-[#eaf6df] text-[#3f6f24]" : "bg-[#f8e8ea] text-[#65584f]"
@@ -3120,7 +3120,7 @@ export default function AdminReorgDraftPanel({
                 <PawPrint className="h-4 w-4" />
                 {connected
                   ? `Connected to Supabase: ${shelters.length} shelters, ${dogs.length} dogs, ${bookings.length} bookings, ${donations.length} donations`
-                  : `Using fallback draft data${data?.error ? `: ${data.error}` : ""}`}
+                  : `Using fallback workspace data${data?.error ? `: ${data.error}` : ""}`}
               </div>
             </div>
           </div>
@@ -3183,28 +3183,28 @@ export default function AdminReorgDraftPanel({
             </PillButton>
             <Link
               className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
-              href="/admindraft/aboutcontent"
+              href="/admin/aboutcontent"
             >
               <FileText className="mr-2 inline h-4 w-4" />
               About content
             </Link>
             <Link
               className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
-              href="/admindraft/accounts"
+              href="/admin/accounts"
             >
               <Users className="mr-2 inline h-4 w-4" />
               Accounts
             </Link>
             <Link
               className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
-              href="/admindraft/audit"
+              href="/admin/audit"
             >
               <ShieldCheck className="mr-2 inline h-4 w-4" />
               Audit
             </Link>
             <Link
               className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
-              href="/admindraft/analytics"
+              href="/admin/analytics"
             >
               <BarChart3 className="mr-2 inline h-4 w-4" />
               User analytics
@@ -3234,7 +3234,7 @@ export default function AdminReorgDraftPanel({
         ) : null}
         {isPawjai && mainTab === "dogs" ? <AllDogsTab dogs={dogs} shelters={shelters} /> : null}
         {isPawjai && mainTab === "bookings" ? <GlobalBookingsTab bookings={bookings} shelters={shelters} /> : null}
-        {isPawjai && mainTab === "donations" ? <DonationLedger donations={donations} returnTo="/admindraft?view=donations" shelters={shelters} showShelterFilter /> : null}
+        {isPawjai && mainTab === "donations" ? <DonationLedger donations={donations} returnTo="/admin?view=donations" shelters={shelters} showShelterFilter /> : null}
         {isPawjai && mainTab === "ads" ? (
           <AdsTab
             adClicks={adClicks}

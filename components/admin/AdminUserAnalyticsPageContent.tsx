@@ -185,9 +185,9 @@ export async function AdminUserAnalyticsPageContent({
   if (!adminContext) {
     if (lockedFallback) return lockedFallback;
     const range = (await searchParams)?.range;
-    redirect(buildAdminLoginPath(`/admindraft/analytics${range ? `?range=${encodeURIComponent(range)}` : ""}`));
+    redirect(buildAdminLoginPath(`/admin/analytics${range ? `?range=${encodeURIComponent(range)}` : ""}`));
   }
-  if (!adminContext.isGlobalAdmin) redirect("/admindraft");
+  if (!adminContext.isGlobalAdmin) redirect("/admin");
 
   const selectedRange = parseRange((await searchParams)?.range);
   const start = rangeStart(selectedRange);
@@ -288,7 +288,7 @@ export async function AdminUserAnalyticsPageContent({
               {RANGE_OPTIONS.map((option) => (
                 <Link
                   className={`rounded-full px-4 py-2 text-xs font-semibold transition ${selectedRange === option.value ? "bg-[#cd8188] text-white" : "border border-[#d6c8ad] bg-[#fffaf5] text-[#65584f] hover:bg-[#f8e8ea]"}`}
-                  href={`/admindraft/analytics?range=${option.value}`}
+                  href={`/admin/analytics?range=${option.value}`}
                   key={option.value}
                 >
                   {option.label}

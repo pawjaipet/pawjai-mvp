@@ -18,7 +18,7 @@ const labels: Record<AdminWorkspaceNavItem, string> = {
 };
 
 function navLabel(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) {
-  if (basePath === "/admindraft") {
+  if (basePath === "/admin" || basePath === "/admindraft") {
     if (item === "home") return "Partner shelters";
     if (item === "dogs") return "All dog listings";
   }
@@ -27,26 +27,26 @@ function navLabel(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem)
 }
 
 function navHref(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) {
-  if (basePath === "/admindraft") {
+  if (basePath === "/admin" || basePath === "/admindraft") {
     switch (item) {
       case "home":
-        return "/admindraft";
+        return "/admin";
       case "dogs":
-        return "/admindraft?view=dogs";
+        return "/admin?view=dogs";
       case "bookings":
-        return "/admindraft?view=bookings";
+        return "/admin?view=bookings";
       case "donations":
-        return "/admindraft?view=donations";
+        return "/admin?view=donations";
       case "ads":
-        return "/admindraft?view=ads";
+        return "/admin?view=ads";
       case "about":
-        return "/admindraft/aboutcontent";
+        return "/admin/aboutcontent";
       case "accounts":
-        return "/admindraft/accounts";
+        return "/admin/accounts";
       case "audit":
-        return "/admindraft/audit";
+        return "/admin/audit";
       case "analytics":
-        return "/admindraft/analytics";
+        return "/admin/analytics";
     }
   }
 
@@ -68,7 +68,7 @@ function navHref(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) 
     case "audit":
       return "/admin/audit";
     case "analytics":
-      return "/admindraft/analytics";
+      return "/admin/analytics";
   }
 }
 
@@ -109,7 +109,7 @@ export function AdminWorkspaceNav({
 }) {
   const items: AdminWorkspaceNavItem[] = [
     ...(includePrimary
-      ? (basePath === "/admindraft"
+      ? ((basePath === "/admin" || basePath === "/admindraft")
           ? (["home", "dogs", "bookings", "donations"] as AdminWorkspaceNavItem[])
           : (["home", "dogs", "bookings"] as AdminWorkspaceNavItem[]))
       : []),

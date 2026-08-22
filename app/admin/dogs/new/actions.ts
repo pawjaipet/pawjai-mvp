@@ -726,8 +726,8 @@ export async function createDogListingAction(
   const shelterId = getString(formData, "shelter_id");
   const breed = canonicalizeBreedLabel(getOptionalString(formData, "breed"));
   const returnTo = getString(formData, "returnTo");
-  const accessRedirectPath = returnTo.startsWith("/admindraft") || returnTo.startsWith("/shelter/")
-    ? returnTo
+  const accessRedirectPath = returnTo.startsWith("/admin") || returnTo.startsWith("/admindraft") || returnTo.startsWith("/shelter/")
+    ? returnTo.replace(/^\/admindraft/, "/admin")
     : "/admin";
   const ageMonths = getOptionalNumber(formData, "age_months");
   const weightKg = getOptionalNumber(formData, "weight_kg");
@@ -1301,8 +1301,6 @@ export async function createDogListingAction(
   revalidatePath("/admin");
   revalidatePath("/admin/listings");
   revalidatePath("/admin/dogs/new");
-  revalidatePath("/admindraft");
-  revalidatePath("/admindraft/dogs/new");
   revalidatePath(`/dogs/${insertedDog.id}`);
 
   return {

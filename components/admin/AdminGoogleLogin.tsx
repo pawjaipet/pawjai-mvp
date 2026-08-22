@@ -64,7 +64,7 @@ export default function AdminGoogleLogin({
       return;
     }
 
-    window.location.assign(result.redirectTo ?? "/admindraft");
+    window.location.assign(result.redirectTo ?? "/admin");
   }, [nextPath]);
 
   useEffect(() => {

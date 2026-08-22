@@ -13,16 +13,15 @@ import { logAdminAuditEvent } from "@/utils/admin-audit";
 import { createAdFromFormData } from "@/utils/ad-submissions";
 import type { AdReviewStatus } from "@/utils/ad-workflow";
 
-const ADMIN_ADS_PATH = "/admin/ads";
-const ADMIN_DRAFT_ADS_PATH = "/admindraft/ads";
-const ADMIN_DRAFT_PATH = "/admindraft";
+const ADMIN_PATH = "/admin";
+const ADMIN_ADS_PATH = "/admin?view=ads";
 
 function getAdsReturnPath(value: FormDataEntryValue | string | null | undefined) {
   const requested = String(value ?? "").trim();
+  const canonical = requested.replace(/^\/admindraft/, "/admin");
 
-  if (requested === ADMIN_DRAFT_PATH || requested.startsWith(`${ADMIN_DRAFT_PATH}?`)) return requested;
-  if (requested === ADMIN_DRAFT_ADS_PATH || requested.startsWith(`${ADMIN_DRAFT_ADS_PATH}?`)) return requested;
-  if (requested === ADMIN_ADS_PATH || requested.startsWith(`${ADMIN_ADS_PATH}?`)) return requested;
+  if (canonical === "/admin/ads" || canonical.startsWith("/admin/ads?")) return ADMIN_ADS_PATH;
+  if (canonical === ADMIN_PATH || canonical.startsWith(`${ADMIN_PATH}?`)) return canonical;
   return ADMIN_ADS_PATH;
 }
 
@@ -34,12 +33,10 @@ function redirectAfterAdMutation(returnPath: string, message: string) {
 }
 
 function revalidateAdSurfaces(returnPath: string) {
-  revalidatePath(ADMIN_ADS_PATH);
-  revalidatePath(ADMIN_DRAFT_ADS_PATH);
-  revalidatePath("/admindraft");
+  revalidatePath(ADMIN_PATH);
   revalidatePath("/ads");
   revalidatePath("/");
-  if (returnPath !== ADMIN_ADS_PATH && returnPath !== ADMIN_DRAFT_ADS_PATH) {
+  if (returnPath !== ADMIN_ADS_PATH) {
     revalidatePath(returnPath);
   }
 }

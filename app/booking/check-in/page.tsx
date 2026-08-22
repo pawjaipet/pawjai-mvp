@@ -67,10 +67,15 @@ export async function renderBookingCheckInPage({
     redirect(`${portalTarget}/bookings/check-in${canonicalQuery ? `?${canonicalQuery}` : ""}`);
   }
 
-  const requestedReturnTo = (resolvedSearchParams?.returnTo?.startsWith("/admindraft")
-    || resolvedSearchParams?.returnTo?.startsWith("/admin/bookings")
-    || resolvedSearchParams?.returnTo?.startsWith("/shelter/"))
-    ? resolvedSearchParams.returnTo
+  const rawReturnTo = resolvedSearchParams?.returnTo ?? "";
+  const canonicalReturnTo = rawReturnTo.startsWith("/admindraft")
+    ? rawReturnTo.replace(/^\/admindraft/, "/admin")
+    : rawReturnTo;
+  const requestedReturnTo = (canonicalReturnTo === "/admin"
+    || canonicalReturnTo.startsWith("/admin?")
+    || canonicalReturnTo.startsWith("/admin/bookings")
+    || canonicalReturnTo.startsWith("/shelter/"))
+    ? canonicalReturnTo
     : "/shelter";
 
   if (!token || resolvedSearchParams?.invalid === "1") {
@@ -106,7 +111,7 @@ export async function renderBookingCheckInPage({
       redirect(portalTarget ?? "/shelter?message=This booking is not linked to your shelter.");
     }
 
-    redirect("/admindraft");
+    redirect("/admin");
   }
 
   const detailHref = bookingWorkspaceDetailHref({

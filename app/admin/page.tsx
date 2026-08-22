@@ -1,5 +1,3 @@
-import { AdminDogManagementPage } from "@/app/admin/dogs/new/page";
+export const dynamic = "force-dynamic";
 
-export default function AdminPage() {
-  return <AdminDogManagementPage activeTabOverride="create" />;
-}
+export { default } from "./AdminWorkspacePage";

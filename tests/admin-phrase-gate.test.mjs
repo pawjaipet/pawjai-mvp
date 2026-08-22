@@ -42,7 +42,8 @@ test("admin access uses the PawJai Google account instead of a phrase gate", () 
 test("admin login page is the Google-only entrypoint", () => {
   const loginSource = readFileSync(new URL("../app/admin/login/page.tsx", import.meta.url), "utf8");
   const authSource = readFileSync(new URL("../utils/admin-auth.ts", import.meta.url), "utf8");
-  const draftSource = readFileSync(new URL("../app/admindraft/page.tsx", import.meta.url), "utf8");
+  const adminSource = readFileSync(new URL("../app/admin/AdminWorkspacePage.tsx", import.meta.url), "utf8");
+  const redirectsSource = readFileSync(new URL("../next.config.ts", import.meta.url), "utf8");
 
   assert.equal(loginSource.includes("AdminGoogleLogin"), true);
   assert.equal(loginSource.includes("sanitizeAdminNextPath"), true);
@@ -51,6 +52,9 @@ test("admin login page is the Google-only entrypoint", () => {
   assert.equal(authSource.includes("/admin/login"), true);
   assert.equal(authSource.includes("buildAdminLoginPath"), true);
   assert.equal(authSource.includes("/admindraft"), true);
-  assert.equal(draftSource.includes("requireGlobalAdmin"), true);
-  assert.equal(draftSource.includes("initialMainTab={resolvedSearchParams?.view}"), true);
+  assert.equal(authSource.includes('replace(/^\\/admindraft/, "/admin")'), true);
+  assert.equal(adminSource.includes("requireGlobalAdmin"), true);
+  assert.equal(adminSource.includes("initialMainTab={resolvedSearchParams?.view}"), true);
+  assert.equal(redirectsSource.includes('source: "/admindraft/:path*"'), true);
+  assert.equal(redirectsSource.includes('destination: "/admin/:path*"'), true);
 });

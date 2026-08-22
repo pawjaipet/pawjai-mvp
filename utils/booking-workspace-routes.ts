@@ -16,7 +16,7 @@ export function bookingWorkspaceDetailHref({
   const shelterBase = shelterWorkspaceBaseFromBookingListHref(bookingListHref);
   return shelterBase
     ? `${shelterBase}/bookings/${appointmentId}`
-    : `/booking/${appointmentId}`;
+    : `/admin/bookings/${appointmentId}`;
 }
 
 export function bookingWorkspaceVisitorHref({
@@ -31,5 +31,5 @@ export function bookingWorkspaceVisitorHref({
 
 export function bookingWorkspaceCheckInHref(bookingListHref: string) {
   const shelterBase = shelterWorkspaceBaseFromBookingListHref(bookingListHref);
-  return shelterBase ? `${shelterBase}/bookings/check-in` : "/booking/check-in";
+  return shelterBase ? `${shelterBase}/bookings/check-in` : "/admin/bookings/check-in";
 }

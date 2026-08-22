@@ -24,7 +24,7 @@ export default async function ShelterPortalPage({
   }
 
   if (context.isGlobalAdmin) {
-    redirect("/admindraft");
+    redirect("/admin");
   }
 
   const shelter = await getShelterByPortalSlug(slug, context.shelterIds);

@@ -121,7 +121,7 @@ async function sendPartnerAdEmails(result: Awaited<ReturnType<typeof createAdFro
 function revalidatePartnerAdSurfaces() {
   revalidatePath("/ads");
   revalidatePath("/admin/ads");
-  revalidatePath("/admindraft");
+  revalidatePath("/admin");
   revalidatePath("/");
 }
 

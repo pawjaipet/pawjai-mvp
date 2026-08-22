@@ -19,17 +19,17 @@ test("real staff sessions are used and legacy phrase cookies are ignored", () =>
 });
 
 test("admin trees reject shelter accounts on fresh requests and browser-history restores", () => {
-  const draftLayout = source("../app/admindraft/layout.tsx");
+  const adminLayout = source("../app/admin/layout.tsx");
   const adminDogPage = source("../app/admin/dogs/new/page.tsx");
   const adminBookingsPage = source("../app/admin/bookings/page.tsx");
   const clientGuard = source("../components/admin/AdminLaneGuard.tsx");
   const laneRoute = source("../app/api/workspace-lane/route.ts");
 
-  assert.match(draftLayout, /context\?\.role === "shelter_admin"/);
-  assert.match(draftLayout, /getShelterPortalTarget/);
-  assert.match(draftLayout, /<AdminLaneGuard \/>/);
+  assert.match(adminLayout, /context\?\.role === "shelter_admin"/);
+  assert.match(adminLayout, /getShelterPortalTarget/);
+  assert.match(adminLayout, /<AdminLaneGuard \/>/);
   assert.match(adminDogPage, /requireGlobalAdmin/);
-  assert.match(adminBookingsPage, /requireGlobalAdmin/);
+  assert.match(adminBookingsPage, /redirect\("\/admin\?view=bookings"\)/);
 
   assert.match(clientGuard, /window\.addEventListener\("pageshow"/);
   assert.match(clientGuard, /window\.addEventListener\("popstate"/);
@@ -115,7 +115,7 @@ test("shelter booking routes remain under the portal for detail, visitor, and QR
   }
 });
 
-test("shelter form mutations cannot honor an admindraft return destination", () => {
+test("shelter form mutations cannot honor an admin return destination", () => {
   const bookingActions = source("../app/admin/bookings/actions.ts");
   const dogEditActions = source("../app/admin/dogs/[id]/edit/actions.ts");
 

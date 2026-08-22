@@ -255,6 +255,6 @@ export async function submitReturnInquiryAction(formData: FormData) {
 
   revalidatePath("/messages");
   revalidatePath(`/appointments/${appointment.id}`);
-  revalidatePath("/admindraft");
+  revalidatePath("/admin");
   redirect(`/appointments/${appointment.id}?tab=messages`);
 }

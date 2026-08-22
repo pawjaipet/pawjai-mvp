@@ -139,7 +139,7 @@ export async function AdminAccountsPageContent({
     </>
   );
 
-  if (basePath === "/admindraft") {
+  if (basePath === "/admin" || basePath === "/admindraft") {
     return (
       <PawjaiWorkspaceShell active="accounts">
         <section className="mb-6 rounded-[28px] border border-[#d6c8ad] bg-white p-6 shadow-[0_14px_42px_rgba(101,88,79,0.07)]">

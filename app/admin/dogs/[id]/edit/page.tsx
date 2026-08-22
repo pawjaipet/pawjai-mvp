@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, ExternalLink } from "lucide-react";
+import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
 import { requireGlobalAdmin, requireShelterAccess } from "@/utils/admin-auth";
 import { mergePersonalityTags } from "@/utils/personality-tags";
 import { createAdminClient } from "@/utils/supabase/admin";
 import DogEditForm from "./DogEditForm";
+
+export const dynamic = "force-dynamic";
 
 export default async function EditAdminDogPage({
   params,
@@ -11,7 +15,7 @@ export default async function EditAdminDogPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const adminContext = await requireGlobalAdmin(`/admin/dogs/${id}/edit`);
+  await requireGlobalAdmin(`/admin/dogs/${id}/edit`);
 
   const supabase = createAdminClient();
   const [{ data: dog }, { data: shelters }, { data: photos }, { data: traits }, { data: personalityTraitRows }] = await Promise.all([
@@ -29,42 +33,46 @@ export default async function EditAdminDogPage({
   if (!dog) notFound();
   await requireShelterAccess(dog.shelter_id, `/admin/dogs/${id}/edit`);
 
+  const listingsParams = new URLSearchParams({ shelter: dog.shelter_id, view: "dogs" });
+  const listingsHref = `/admin?${listingsParams.toString()}`;
+  const editHref = `/admin/dogs/${dog.id}/edit`;
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#b77624]">
-            PawJai Admin
-          </p>
-          <p className="mt-2 text-sm text-[#7a6d61]">
-            Editing keeps the database record intact, even when a dog is hidden from public browsing.
-          </p>
-        </div>
+    <PawjaiWorkspaceShell
+      actions={(
         <div className="flex flex-wrap gap-3">
           <Link
-            href="/admin/listings"
-            className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-medium text-[#5b4d40] transition hover:bg-[#faf4ec]"
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]"
+            href={listingsHref}
           >
+            <ArrowLeft className="h-4 w-4" />
             Back to dog listings
           </Link>
           <Link
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]"
             href={`/dogs/${dog.id}`}
-            className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-medium text-[#5b4d40] transition hover:bg-[#faf4ec]"
           >
+            <ExternalLink className="h-4 w-4" />
             View public profile
           </Link>
         </div>
-      </div>
-
+      )}
+      description="Update the live PawJai dog record while staying inside the PawJai admin workspace."
+      eyebrow="PawJai Admin"
+      homeHref={listingsHref}
+      title={`Edit ${dog.name}`}
+    >
       <DogEditForm
+        deleteReturnTo={listingsHref}
         dog={dog}
         personalityTags={mergePersonalityTags(
           (personalityTraitRows ?? []).map((trait) => trait.trait_value),
         )}
         photos={photos ?? []}
+        returnTo={editHref}
         shelters={shelters ?? []}
         traits={traits ?? []}
       />
-    </div>
+    </PawjaiWorkspaceShell>
   );
 }

@@ -61,7 +61,7 @@ test("/ads is a public business ad submission page and does not expose the inter
   assert.equal(adEmailSource.includes("New PawJai ad submission"), true);
 });
 
-test("admin draft remains the internal ad review surface", () => {
+test("canonical admin remains the internal ad review surface", () => {
   const draftSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
   const dataSource = readFileSync(new URL("../utils/admin-draft-data.ts", import.meta.url), "utf8");
   const adminAdsSource = readFileSync(new URL("../app/admin/ads/AdminAdsPage.tsx", import.meta.url), "utf8");
@@ -105,6 +105,6 @@ test("admin draft remains the internal ad review surface", () => {
   assert.equal(adminActionsSource.includes("updateAdReviewStatusAction"), true);
   assert.equal(adminActionsSource.includes("updateAdReviewStatusFromFormAction"), true);
   assert.equal(adminActionsSource.includes("redirectAfterAdMutation"), true);
-  assert.equal(adminActionsSource.includes('requested.startsWith(`${ADMIN_DRAFT_PATH}?`)'), true);
+  assert.equal(adminActionsSource.includes('canonical.startsWith(`${ADMIN_PATH}?`)'), true);
   assert.equal(activeAdsSource.includes('.eq("ad_status", "approved")'), true);
 });

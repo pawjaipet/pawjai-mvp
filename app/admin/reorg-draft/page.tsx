@@ -1,5 +1,5 @@
-import AdminDraftPage from "@/app/admindraft/page";
+import { redirect } from "next/navigation";
 
-export default function AdminReorgDraftPage() {
-  return <AdminDraftPage />;
+export default function LegacyAdminReorgDraftPage() {
+  redirect("/admin");
 }

@@ -13,17 +13,17 @@ import type { PawjaiContactItem, PawjaiContactItemType, PawjaiPartnerShelter } f
 import type { PawjaiAdminGateState } from "./form-state";
 
 const PROFILE_PATHS = new Set([
+  "/admin/aboutcontent",
   "/admin/pawjaiprofile",
-  "/admindraft/aboutcontent",
-  "/admindraft/pawjaiprofile",
 ]);
 
 function getProfileReturnPath(formData: FormData) {
   const requested = getString(formData, "returnTo");
-  return PROFILE_PATHS.has(requested) ? requested : "/admin/pawjaiprofile";
+  const canonical = requested.replace(/^\/admindraft/, "/admin");
+  return PROFILE_PATHS.has(canonical) ? canonical : "/admin/aboutcontent";
 }
 
-function profileRedirect(message: string, returnTo = "/admin/pawjaiprofile") {
+function profileRedirect(message: string, returnTo = "/admin/aboutcontent") {
   redirect(`${returnTo}?message=${encodeURIComponent(message)}`);
 }
 
@@ -144,8 +144,7 @@ export async function savePawjaiProfileAction(formData: FormData) {
   revalidatePath("/about");
   revalidatePath("/more");
   revalidatePath("/admin/pawjaiprofile");
-  revalidatePath("/admindraft");
-  revalidatePath("/admindraft/aboutcontent");
-  revalidatePath("/admindraft/pawjaiprofile");
+  revalidatePath("/admin");
+  revalidatePath("/admin/aboutcontent");
   profileRedirect("PawJai profile updated.", returnTo);
 }
