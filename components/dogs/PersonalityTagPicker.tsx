@@ -90,7 +90,7 @@ export default function PersonalityTagPicker({
 
       {normalizedQuery && exactMatch ? (
         <p className="text-xs font-medium text-[#8c6a45]">
-          “{normalizedQuery}” already exists as “{exactMatch}”. Selecting it will reuse the existing tag.
+          {`“${normalizedQuery}” already exists as “${exactMatch}”. Selecting it will reuse the existing tag.`}
         </p>
       ) : null}
 
@@ -118,7 +118,7 @@ export default function PersonalityTagPicker({
 
       {normalizedQuery && visibleOptions.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f]">
-          No existing tag matches. Press Enter or Add to create “{normalizedQuery}”.
+          {`No existing tag matches. Press Enter or Add to create “${normalizedQuery}”.`}
         </p>
       ) : null}
     </div>

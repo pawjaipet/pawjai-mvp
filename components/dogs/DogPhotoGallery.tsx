@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import DogVideoFrame from "@/components/dogs/DogVideoFrame";
 import { normalizeDogMediaUrl, type DogMediaItem } from "@/utils/dog-media";
 
 interface Photo {
@@ -78,15 +79,12 @@ export default function DogPhotoGallery({ photos, dogName, media, videoUrl, vide
         {galleryItems.map((item, i) => (
           <div key={item.id} className="h-full w-full shrink-0 snap-center">
             {item.type === "video" && item.publicUrl ? (
-              <video
-                src={item.publicUrl}
-                poster={item.posterUrl ?? undefined}
+              <DogVideoFrame
+                active={i === activeIdx}
+                alt={dogName}
                 className="h-full w-full object-cover"
-                muted
-                loop
-                playsInline
-                autoPlay={i === activeIdx}
-                preload="metadata"
+                posterUrl={item.posterUrl}
+                videoUrl={item.publicUrl}
               />
             ) : item.publicUrl ? (
               // eslint-disable-next-line @next/next/no-img-element

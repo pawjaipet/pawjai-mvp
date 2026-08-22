@@ -106,11 +106,11 @@ export default async function ProfilePage() {
         badges={badges}
       />
 
-      <div className="mt-[20px] px-[16px]">
+      <div className="mt-[18px] px-[16px]">
         <Link
           href="/documents"
-          className="block rounded-[20px] px-[18px] py-[16px]"
-          style={{ background: "white", boxShadow: "0 2px 12px rgba(101,88,79,0.07)" }}
+          className="block rounded-[24px] px-[18px] py-[16px] transition-transform active:scale-[0.98]"
+          style={{ background: "white", boxShadow: "0 8px 24px rgba(101,88,79,0.08)" }}
         >
           <p className="text-[12px] uppercase tracking-[0.16em] text-[#65584f]/45" style={{ fontFamily: M }}>
             Verification
@@ -124,7 +124,10 @@ export default async function ProfilePage() {
                 Status: {verification.status.replace("_", " ")}
               </p>
             </div>
-            <span className="text-[13px] font-semibold text-[#cd8188]" style={{ fontFamily: M }}>
+            <span
+              className="shrink-0 rounded-full px-[13px] py-[7px] text-[13px] font-semibold"
+              style={{ background: "rgba(205,129,136,0.12)", color: "#cd8188", fontFamily: M }}
+            >
               Manage →
             </span>
           </div>
@@ -132,15 +135,15 @@ export default async function ProfilePage() {
       </div>
 
       {/* ── Wishlist section — horizontal scroll, Figma style ── */}
-      <div className="mt-[28px]">
+      <div className="mt-[30px]">
         <div className="flex items-center justify-between mb-[14px] px-[16px]">
-          <h2 className="text-[22px] font-bold" style={{ color: "#65584f", fontFamily: M }}>
+          <h2 className="text-[20px] font-bold" style={{ color: "#65584f", fontFamily: M }}>
             Wishlist
           </h2>
           {savedDogs.length > 0 && (
             <span
-              className="rounded-full px-[14px] py-[5px] text-[13px] font-semibold"
-              style={{ background: "rgba(214,200,173,0.45)", color: "#65584f", fontFamily: M }}
+              className="rounded-full px-[13px] py-[5px] text-[12px] font-semibold"
+              style={{ background: "rgba(205,129,136,0.12)", color: "#cd8188", fontFamily: M }}
             >
               {savedDogs.length} {savedDogs.length === 1 ? "dog" : "dogs"}
             </span>
@@ -156,12 +159,12 @@ export default async function ProfilePage() {
               <Link
                 key={dog.id}
                 href={`/dogs/${dog.id}`}
-                className="block rounded-[18px] overflow-hidden active:scale-[0.97] transition-transform flex-shrink-0"
+                className="block rounded-[22px] overflow-hidden active:scale-[0.97] transition-transform flex-shrink-0"
                 style={{
-                  width: 175,
-                  height: 175,
+                  width: 154,
+                  height: 164,
                   background: "white",
-                  boxShadow: "0 4px 14px rgba(101,88,79,0.10)",
+                  boxShadow: "0 8px 22px rgba(101,88,79,0.10)",
                   position: "relative",
                 }}
               >
@@ -177,7 +180,7 @@ export default async function ProfilePage() {
                 {/* Heart badge top-right */}
                 <div
                   className="absolute top-[10px] right-[10px] w-[34px] h-[34px] rounded-full flex items-center justify-center"
-                  style={{ background: "white", boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }}
+                  style={{ background: "rgba(255,255,255,0.94)", boxShadow: "0 3px 10px rgba(101,88,79,0.14)" }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="#cd8188">
                     <path d="M12 21s-7-4.35-9.5-9.5C.5 7 4 3 8 3c2 0 3.5 1 4 2 .5-1 2-2 4-2 4 0 7.5 4 5.5 8.5C19 16.65 12 21 12 21z" />

@@ -2,6 +2,7 @@
 
 import { Check, ChevronDown, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 import {
   buildBreedPickerOptions,
   normalizeBreedLabel,
@@ -50,6 +51,7 @@ export default function DogBreedPicker({
   name?: string;
   placeholder?: string;
 }) {
+  const { t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -105,7 +107,9 @@ export default function DogBreedPicker({
     [recentBreeds],
   );
   const selectedKey = selectedBreed.toLocaleLowerCase();
-  const filteredOptions = options.filter((option) => includesSearch(option, searchTerm));
+  const filteredOptions = options.filter((option) => (
+    includesSearch(option, searchTerm) || includesSearch(t(option), searchTerm)
+  ));
   const recentOptions = filteredOptions.filter((option) => recentKeys.has(option.toLocaleLowerCase()));
   const remainingOptions = filteredOptions.filter((option) => !recentKeys.has(option.toLocaleLowerCase()));
 
@@ -133,7 +137,7 @@ export default function DogBreedPicker({
         }`}
         onClick={() => chooseBreed(breed)}
       >
-        <span>{breed}</span>
+        <span>{t(breed)}</span>
         {isSelected ? <Check className="h-4 w-4 shrink-0 text-[#cd8188]" aria-hidden="true" /> : null}
       </button>
     );
@@ -150,7 +154,7 @@ export default function DogBreedPicker({
         onClick={() => setIsOpen((value) => !value)}
       >
         <span className={selectedBreed ? "truncate" : "truncate text-[#a79a8e]"}>
-          {selectedBreed || placeholder}
+          {selectedBreed ? t(selectedBreed) : t(placeholder)}
         </span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-[#9a8b7d] transition ${isOpen ? "rotate-180" : ""}`}

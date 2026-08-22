@@ -18,7 +18,8 @@ type LanguageContextValue = {
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 const textNodeOriginals = new WeakMap<Text, string>();
 const ATTRIBUTE_NAMES = ["aria-label", "title", "placeholder", "alt"] as const;
-const SKIP_SELECTOR = "script, style, textarea, input, select, option, [data-i18n-ignore]";
+const TEXT_SKIP_SELECTOR = "script, style, textarea, input, [data-i18n-ignore]";
+const ATTRIBUTE_SKIP_SELECTOR = "script, style, [data-i18n-ignore]";
 
 function shouldSkipPath(pathname: string | null) {
   if (!pathname) return false;
@@ -27,7 +28,6 @@ function shouldSkipPath(pathname: string | null) {
     pathname.startsWith("/admindraft") ||
     pathname.startsWith("/ads") ||
     pathname.startsWith("/booking") ||
-    pathname.startsWith("/shelter") ||
     pathname.startsWith("/doglistings") ||
     pathname.startsWith("/onboarding")
   );
@@ -42,7 +42,7 @@ function restoreTextNode(node: Text) {
 
 function translateTextNode(node: Text, language: Language) {
   const parent = node.parentElement;
-  if (!parent || parent.closest(SKIP_SELECTOR)) return;
+  if (!parent || parent.closest(TEXT_SKIP_SELECTOR)) return;
 
   if (language === "en") {
     restoreTextNode(node);
@@ -106,7 +106,7 @@ function applyDomTranslations(root: ParentNode, language: Language) {
 
   const elements = root instanceof Element ? [root, ...Array.from(root.querySelectorAll("*"))] : Array.from(root.querySelectorAll("*"));
   for (const element of elements) {
-    if (element.closest(SKIP_SELECTOR)) continue;
+    if (element.closest(ATTRIBUTE_SKIP_SELECTOR)) continue;
     translateAttributes(element, language);
   }
 }
@@ -154,7 +154,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         if (mutation.type === "characterData" && mutation.target.nodeType === Node.TEXT_NODE) {
           if (language === "en") {
             restoreTextNode(mutation.target as Text);
-          } else if (!textNodeOriginals.has(mutation.target as Text)) {
+          } else {
             translateTextNode(mutation.target as Text, language);
           }
         }

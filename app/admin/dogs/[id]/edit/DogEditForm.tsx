@@ -137,10 +137,10 @@ function Section({
   title: string;
 }) {
   return (
-    <section className="rounded-[28px] border border-[#eadfce] bg-white/90 p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+    <section className="rounded-[28px] border border-[#d6c8ad] bg-white/90 p-6 shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
       <div className="mb-5">
-        <h2 className="text-xl font-semibold text-[#4f4338]">{title}</h2>
-        <p className="mt-1 text-sm leading-6 text-[#7a6d61]">{description}</p>
+        <h2 className="text-xl font-semibold text-[#65584f]">{title}</h2>
+        <p className="mt-1 text-sm leading-6 text-[#65584f]">{description}</p>
       </div>
       {children}
     </section>
@@ -160,7 +160,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-[#5b4d40]">{label}</span>
+      <span className="mb-2 block text-sm font-medium text-[#65584f]">{label}</span>
       {children}
       {hint ? <span className="mt-2 block text-xs text-[#8c7d70]">{hint}</span> : null}
       {error ? <span className="mt-2 block text-xs font-medium text-[#b42318]">{error}</span> : null}
@@ -169,8 +169,8 @@ function Field({
 }
 
 function inputClass(error?: string) {
-  return `w-full rounded-2xl border px-4 py-3 text-sm text-[#4f4338] outline-none transition focus:border-[#d69546] focus:ring-4 focus:ring-[#f6d7ad]/50 ${
-    error ? "border-[#d94b41] bg-[#fff4f2]" : "border-[#e7dbc8] bg-[#fffdfa]"
+  return `w-full rounded-2xl border px-4 py-3 text-sm text-[#65584f] outline-none transition focus:border-[#cd8188] focus:ring-4 focus:ring-[#f3cbd0]/50 ${
+    error ? "border-[#d94b41] bg-[#fff4f2]" : "border-[#d6c8ad] bg-[#fffaf5]"
   }`;
 }
 
@@ -226,7 +226,7 @@ function ChoiceCards({
             type="radio"
             value={option.value}
           />
-          <span className="block h-full rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#5b4d40] transition peer-checked:border-[#cd8188] peer-checked:bg-[#cd8188] peer-checked:text-white peer-focus-visible:ring-4 peer-focus-visible:ring-[#f3cbd0]">
+          <span className="block h-full rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] transition peer-checked:border-[#cd8188] peer-checked:bg-[#cd8188] peer-checked:text-white peer-focus-visible:ring-4 peer-focus-visible:ring-[#f3cbd0]">
             <span className="block font-semibold">{option.label}</span>
             {option.description ? (
               <span className="mt-1 block text-xs opacity-75">{option.description}</span>
@@ -312,7 +312,7 @@ function MediaOrderEditor({ dogName, items }: { dogName: string; items: DogMedia
   }
 
   if (mediaItems.length === 0) {
-    return <p className="text-sm leading-6 text-[#74685d]">No photos or videos are attached yet.</p>;
+    return <p className="text-sm leading-6 text-[#65584f]">No photos or videos are attached yet.</p>;
   }
 
   return (
@@ -330,8 +330,8 @@ function MediaOrderEditor({ dogName, items }: { dogName: string; items: DogMedia
           return (
             <div
               key={item.id}
-              className={`overflow-hidden rounded-2xl border bg-[#fffdfa] transition ${
-                isCover ? "border-[#cd8188] shadow-[0_12px_30px_rgba(205,129,136,0.22)]" : "border-[#eadfce]"
+              className={`overflow-hidden rounded-2xl border bg-[#fffaf5] transition ${
+                isCover ? "border-[#cd8188] shadow-[0_12px_30px_rgba(205,129,136,0.22)]" : "border-[#d6c8ad]"
               }`}
             >
               <div className="relative h-40 bg-[#e3d6bb]">
@@ -354,18 +354,18 @@ function MediaOrderEditor({ dogName, items }: { dogName: string; items: DogMedia
                 ) : null}
               </div>
 
-              <div className="space-y-3 p-3 text-xs text-[#74685d]">
-                <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-[#5b4d40]">
+              <div className="space-y-3 p-3 text-xs text-[#65584f]">
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-[#65584f]">
                   <input
                     type="radio"
                     name="cover_media_choice"
                     checked={isCover}
                     onChange={() => setCoverMediaId(item.id)}
-                    className="h-4 w-4 border-[#d4c1a5] text-[#cd8188] focus:ring-[#f3cbd0]"
+                    className="h-4 w-4 border-[#d6c8ad] text-[#cd8188] focus:ring-[#f3cbd0]"
                   />
                   <span>
                     {item.type === "video" ? "Video" : "Photo"} {index + 1}
-                    {isCover ? <span className="ml-2 text-[#b77624]">Cover</span> : null}
+                    {isCover ? <span className="ml-2 text-[#cd8188]">Cover</span> : null}
                   </span>
                 </label>
 
@@ -374,7 +374,7 @@ function MediaOrderEditor({ dogName, items }: { dogName: string; items: DogMedia
                     type="button"
                     disabled={index === 0}
                     onClick={() => moveMediaItem(index, -1)}
-                    className="rounded-full border border-[#eadfce] px-3 py-2 font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded-full border border-[#d6c8ad] px-3 py-2 font-semibold text-[#65584f] transition hover:bg-[#f5f1e8] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Up
                   </button>
@@ -382,7 +382,7 @@ function MediaOrderEditor({ dogName, items }: { dogName: string; items: DogMedia
                     type="button"
                     disabled={index === mediaItems.length - 1}
                     onClick={() => moveMediaItem(index, 1)}
-                    className="rounded-full border border-[#eadfce] px-3 py-2 font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded-full border border-[#d6c8ad] px-3 py-2 font-semibold text-[#65584f] transition hover:bg-[#f5f1e8] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Down
                   </button>
@@ -500,23 +500,23 @@ export default function DogEditForm({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-[32px] bg-gradient-to-br from-[#fff6e8] via-[#fff1df] to-[#f9e4c0] p-7 shadow-[0_24px_60px_rgba(176,120,42,0.16)]">
+      <div className="rounded-[32px] border border-[#f3cbd0] bg-[#f8e8ea] p-7 shadow-[0_24px_60px_rgba(101,88,79,0.12)]">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">
               Manage Dog Profile
             </p>
-            <h1 className="mt-3 text-4xl font-semibold leading-tight text-[#4f4338]">
+            <h1 className="mt-3 text-4xl font-semibold leading-tight text-[#65584f]">
               Edit {dog.name} without losing the profile history.
             </h1>
-            <p className="mt-3 text-sm leading-6 text-[#6f6256]">
+            <p className="mt-3 text-sm leading-6 text-[#65584f]">
               Update public details, refresh tags after care changes, or hide a listing from PawJai
               while keeping the dog record in Supabase.
             </p>
           </div>
-          <div className="rounded-3xl border border-white/70 bg-white/80 p-5 text-sm text-[#6f6256]">
-            <p className="font-medium text-[#4f4338]">Current status</p>
-            <p className="mt-2 text-2xl font-semibold capitalize text-[#b77624]">{dog.adoption_status}</p>
+          <div className="rounded-3xl border border-white/70 bg-white/80 p-5 text-sm text-[#65584f]">
+            <p className="font-medium text-[#65584f]">Current status</p>
+            <p className="mt-2 text-2xl font-semibold capitalize text-[#cd8188]">{dog.adoption_status}</p>
             <p className="mt-1 leading-6">{statusCopy(dog.adoption_status)}</p>
           </div>
         </div>
@@ -608,7 +608,7 @@ export default function DogEditForm({
             </Field>
 
             <div className="md:col-span-2">
-              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Size</p>
+              <p className="mb-3 text-sm font-semibold text-[#65584f]">Size</p>
               <ChoiceCards
                 defaultValue={dog.size}
                 name="size"
@@ -652,7 +652,7 @@ export default function DogEditForm({
         >
           <div className="space-y-8">
             <div>
-              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">How active is this dog?</p>
+              <p className="mb-3 text-sm font-semibold text-[#65584f]">How active is this dog?</p>
               <ChoiceCards
                 defaultValue={dog.energy_level}
                 name="energy_level"
@@ -665,7 +665,7 @@ export default function DogEditForm({
             </div>
 
             <div>
-              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Training status</p>
+              <p className="mb-3 text-sm font-semibold text-[#65584f]">Training status</p>
               <ChoiceCards
                 defaultValue={getTraitValue(traits, "training_preference_match")}
                 name="training_preference_match"
@@ -678,7 +678,7 @@ export default function DogEditForm({
             </div>
 
             <div>
-              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Protectiveness</p>
+              <p className="mb-3 text-sm font-semibold text-[#65584f]">Protectiveness</p>
               <ChoiceCards
                 defaultValue={getTraitValue(traits, "protectiveness")}
                 name="protectiveness"
@@ -691,7 +691,7 @@ export default function DogEditForm({
             </div>
 
             <div>
-              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Affection style</p>
+              <p className="mb-3 text-sm font-semibold text-[#65584f]">Affection style</p>
               <ChoiceCards
                 defaultValue={getTraitValue(traits, "affection_style")}
                 name="affection_style"
@@ -704,7 +704,7 @@ export default function DogEditForm({
             </div>
 
             <div>
-              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">People friendliness</p>
+              <p className="mb-3 text-sm font-semibold text-[#65584f]">People friendliness</p>
               <ChoiceCards
                 defaultValue={getTraitValue(traits, "people_friendliness")}
                 name="people_friendliness"
@@ -717,7 +717,7 @@ export default function DogEditForm({
             </div>
 
             <div>
-              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Friendliness to other dogs</p>
+              <p className="mb-3 text-sm font-semibold text-[#65584f]">Friendliness to other dogs</p>
               <ChoiceCards
                 defaultValue={getTraitValue(traits, "dog_social_style")}
                 name="dog_social_style"
@@ -764,15 +764,15 @@ export default function DogEditForm({
             </div>
 
             <div>
-              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Public personality and description tags</p>
-              <p className="mb-4 text-sm leading-6 text-[#7a6d61]">
+              <p className="mb-3 text-sm font-semibold text-[#65584f]">Public personality and description tags</p>
+              <p className="mb-4 text-sm leading-6 text-[#65584f]">
                 Pick the words users should see. Use Other when the dog needs a more specific word.
               </p>
               <PersonalityTagPicker options={personalityTags} selected={personalityTraitValues} />
             </div>
 
             <div>
-              <p className="mb-3 text-sm font-semibold text-[#5b4d40]">Care and medical tags</p>
+              <p className="mb-3 text-sm font-semibold text-[#65584f]">Care and medical tags</p>
               <ChipCheckboxGroup name="care_tag" options={careTags} selected={selectedCareTags} />
             </div>
 
@@ -784,13 +784,13 @@ export default function DogEditForm({
               ].map(([name, label, checked]) => (
                 <label
                   key={name as string}
-                  className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#f0e6d7] bg-white px-4 py-3 text-sm text-[#5b4d40]"
+                  className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#f0e6d7] bg-white px-4 py-3 text-sm text-[#65584f]"
                 >
                   <input
                     type="checkbox"
                     name={name as string}
                     defaultChecked={Boolean(checked)}
-                    className="h-4 w-4 rounded border-[#d4c1a5] text-[#d69546] focus:ring-[#f6d7ad]"
+                    className="h-4 w-4 rounded border-[#d6c8ad] text-[#cd8188] focus:ring-[#f3cbd0]"
                   />
                   <span>{label}</span>
                 </label>
@@ -806,7 +806,7 @@ export default function DogEditForm({
           <div className="space-y-6">
             <MediaOrderEditor dogName={dog.name} items={mediaItems} />
 
-            <div className="rounded-3xl border border-dashed border-[#d8c8ad] bg-[#fffdfa] p-5">
+            <div className="rounded-3xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] p-5">
               <Field
                 label="Add new photos"
                 error={state.fieldErrors?.new_photo_0 ?? newPhotoUploadError}
@@ -820,16 +820,16 @@ export default function DogEditForm({
                   onChange={(event) => {
                     void handleNewPhotoFilesChange(event);
                   }}
-                  className="block w-full rounded-2xl border border-[#e7dbc8] bg-white px-4 py-3 text-sm text-[#5b4d40] file:mr-4 file:rounded-full file:border-0 file:bg-[#d38a2c] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#bf781f]"
+                  className="block w-full rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] file:mr-4 file:rounded-full file:border-0 file:bg-[#cd8188] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#b87179]"
                 />
               </Field>
               {newPhotosPreparing ? (
-                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#b77624]">
+                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#cd8188]">
                   Preparing photos...
                 </p>
               ) : null}
               {newPhotoItems.length > 0 ? (
-                <div className="mt-4 space-y-2 rounded-2xl border border-[#eadfce] bg-white p-3">
+                <div className="mt-4 space-y-2 rounded-2xl border border-[#d6c8ad] bg-white p-3">
                   {newPhotoItems.map((item) => (
                     <p key={`${item.name}-${item.size}`} className="text-xs uppercase tracking-[0.14em] text-[#9a6b2a]">
                       {item.name} · {formatFileSize(item.size)}
@@ -857,18 +857,18 @@ export default function DogEditForm({
           </div>
         ) : null}
 
-        <div className="sticky bottom-4 z-10 rounded-[28px] border border-[#eadfce] bg-white/95 p-4 shadow-[0_18px_42px_rgba(97,70,33,0.16)] backdrop-blur">
+        <div className="sticky bottom-4 z-10 rounded-[28px] border border-[#d6c8ad] bg-white/95 p-4 shadow-[0_18px_42px_rgba(101,88,79,0.16)] backdrop-blur">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[#4f4338]">Save profile changes?</p>
-              <p className="text-sm text-[#7a6d61]">
+              <p className="text-sm font-semibold text-[#65584f]">Save profile changes?</p>
+              <p className="text-sm text-[#65584f]">
                 This updates Supabase and refreshes the public dog profile.
               </p>
             </div>
             <button
               type="submit"
               disabled={pending || newPhotosPreparing || Boolean(newPhotoUploadError)}
-              className="inline-flex items-center justify-center rounded-full bg-[#d38a2c] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#bf781f] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-full bg-[#cd8188] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#b87179] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {pending ? "Saving changes..." : newPhotosPreparing ? "Preparing photos..." : "Save changes"}
             </button>
@@ -877,7 +877,7 @@ export default function DogEditForm({
       </form>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <section className="rounded-[28px] border border-[#f1c4c0] bg-[#fff7f5] p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+        <section className="rounded-[28px] border border-[#f1c4c0] bg-[#fff7f5] p-6 shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
           <h2 className="text-xl font-semibold text-[#6d2a23]">Delete Dog Profile</h2>
           <p className="mt-2 text-sm leading-6 text-[#7a4b45]">
             Use this only for accidental duplicates or test profiles. It permanently deletes this
@@ -897,8 +897,8 @@ export default function DogEditForm({
       </div>
 
       {hiddenTraits.length > 0 ? (
-        <section className="rounded-[28px] border border-[#eadfce] bg-white/90 p-6 text-sm leading-6 text-[#74685d]">
-          <h2 className="text-xl font-semibold text-[#4f4338]">Protected Metadata</h2>
+        <section className="rounded-[28px] border border-[#d6c8ad] bg-white/90 p-6 text-sm leading-6 text-[#65584f]">
+          <h2 className="text-xl font-semibold text-[#65584f]">Protected Metadata</h2>
           <p className="mt-2">
             Video metadata and other system traits are kept intact when this form updates profile tags.
           </p>

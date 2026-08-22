@@ -39,3 +39,12 @@ test("personality tag catalog keeps one canonical option", () => {
   assert.equal(tags.includes("New tag"), true);
   assert.equal(tags.includes("new tag"), false);
 });
+
+test("personality picker reuses existing tags and never submits its controls", () => {
+  const picker = readFileSync(new URL("../components/dogs/PersonalityTagPicker.tsx", import.meta.url), "utf8");
+
+  assert.match(picker, /const canonicalTag = exactMatch \?\? normalizedQuery/);
+  assert.match(picker, /setSelectedTags\(\(current\) => dedupePersonalityTags/);
+  assert.match(picker, /event\.preventDefault\(\)/);
+  assert.match(picker, /type="button"/);
+});

@@ -14,6 +14,7 @@ import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { canonicalizeBreedLabel, isCanonicalDogBreed } from "@/utils/dog-breeds";
 import { buildDogMediaItems, parseDogMediaManifest } from "@/utils/dog-media";
 import { dedupePersonalityTags, personalityTagKey } from "@/utils/personality-tags";
+import { getShelterPortalTarget } from "@/utils/shelter-portal";
 import { slugify } from "@/utils/slug";
 import { createAdminClient } from "@/utils/supabase/admin";
 import type { EditDogProfileState } from "./form-state";
@@ -887,7 +888,14 @@ export async function deleteDogProfileAction(formData: FormData) {
   });
 
   revalidateDogManagementPaths(dogId);
-  if (returnTo.startsWith("/shelter/") || returnTo.startsWith("/admindraft")) {
+  if (!adminContext.isGlobalAdmin) {
+    const portalTarget = await getShelterPortalTarget(adminContext);
+    const safePortalReturn = portalTarget
+      && (returnTo === portalTarget || returnTo.startsWith(`${portalTarget}?`) || returnTo.startsWith(`${portalTarget}/`));
+    redirect(safePortalReturn ? returnTo : portalTarget ? `${portalTarget}?view=dogs` : "/shelter");
+  }
+
+  if (returnTo.startsWith("/admindraft")) {
     redirect(returnTo);
   }
   redirect("/admin/listings");

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarDays, Bookmark, Info } from "lucide-react";
 import { toggleWishlistAction } from "@/app/actions/wishlist";
 import { useAuthModal } from "@/components/auth/AuthProvider";
+import DogVideoFrame from "@/components/dogs/DogVideoFrame";
 import TreatButton from "@/components/donations/TreatButton";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { translateAgeLabel, translateDogValue } from "@/components/i18n/translations";
@@ -159,24 +160,13 @@ export default function SwipeDogCard({
         {orderedMedia.map((item, i) => (
           <Link key={item.id} href={`/dogs/${dog.id}`} className="snap-center block flex-shrink-0" style={{ width: cardWidth }}>
             <div className="rounded-[22px] overflow-hidden bg-[#d6c8ad]" style={{ height: cardHeight, width: cardWidth }}>
-              {item.type === "video" && item.publicUrl && isActive && i === imgIdx ? (
-                <video
-                  src={item.publicUrl}
-                  poster={item.posterUrl ?? undefined}
-                  className="h-full w-full object-cover"
-                  muted
-                  loop
-                  playsInline
-                  autoPlay
-                  preload="metadata"
-                />
-              ) : item.type === "video" && item.posterUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.posterUrl}
+              {item.type === "video" && item.publicUrl ? (
+                <DogVideoFrame
+                  active={isActive && i === imgIdx}
                   alt={dog.name}
                   className="w-full h-full object-cover"
-                  draggable={false}
+                  posterUrl={item.posterUrl}
+                  videoUrl={item.publicUrl}
                 />
               ) : item.type === "photo" && item.publicUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element

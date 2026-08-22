@@ -8,6 +8,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import AuthPromptButton from "@/components/auth/AuthPromptButton";
 import DogPhotoGallery from "@/components/dogs/DogPhotoGallery";
 import TreatButton from "@/components/donations/TreatButton";
+import MachineTranslatedText from "@/components/i18n/MachineTranslatedText";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import type { DogPhoto, DogTrait } from "@/types/database";
 import { canonicalizeBreedLabel } from "@/utils/dog-breeds";
@@ -36,13 +37,13 @@ function StatCard({ label, value }: { label: string; value: string }) {
         className="text-[11px] uppercase tracking-[0.12em] text-[#65584f]/55 font-semibold"
         style={{ fontFamily: M }}
       >
-        {label}
+        <MachineTranslatedText text={label} />
       </p>
       <p
         className="mt-[4px] text-[18px] font-bold text-[#65584f] capitalize"
         style={{ fontFamily: M }}
       >
-        {value}
+        <MachineTranslatedText text={value} />
       </p>
     </div>
   );
@@ -270,6 +271,7 @@ export default async function DogProfilePage({
       <div className="px-[20px] pt-[20px]">
         {/* Name + breed */}
         <h1
+          data-i18n-ignore
           className="text-[32px] font-bold leading-tight text-[#65584f]"
           style={{ fontFamily: M }}
         >
@@ -280,7 +282,7 @@ export default async function DogProfilePage({
             className="text-[16px] text-[#65584f]/55 mt-[2px]"
             style={{ fontFamily: M }}
           >
-            {breedLabel}
+            <MachineTranslatedText text={breedLabel} />
           </p>
         )}
 
@@ -299,14 +301,14 @@ export default async function DogProfilePage({
               className="text-[20px] font-bold text-[#65584f] mb-[10px]"
               style={{ fontFamily: M }}
             >
-              About {dog.name}
+              <MachineTranslatedText text="About" /> <span data-i18n-ignore>{dog.name}</span>
             </h2>
-            <p
+            <MachineTranslatedText
+              as="p"
+              text={dog.background}
               className="text-[14px] text-[#65584f]/75 leading-relaxed whitespace-pre-wrap"
               style={{ fontFamily: M }}
-            >
-              {dog.background}
-            </p>
+            />
           </div>
         )}
 
@@ -318,7 +320,7 @@ export default async function DogProfilePage({
               className="rounded-full px-[18px] py-[8px] text-[13px] font-semibold text-white"
               style={{ background: "#65584f", fontFamily: M }}
             >
-              {trait}
+              <MachineTranslatedText text={trait} />
             </span>
           ))}
         </div>
@@ -332,13 +334,13 @@ export default async function DogProfilePage({
             className="text-[13px] font-semibold text-[#cd8188]"
             style={{ fontFamily: M }}
           >
-            Special needs
+            <MachineTranslatedText text="Special needs" />
           </p>
           <p
             className="text-[15px] text-[#65584f] mt-[4px]"
             style={{ fontFamily: M }}
           >
-            {dog.special_needs?.trim() || "None"}
+            <MachineTranslatedText text={dog.special_needs?.trim() || "None"} />
           </p>
         </div>
 
@@ -360,9 +362,10 @@ export default async function DogProfilePage({
                 className="text-[12px] uppercase tracking-[0.14em] text-[#65584f]/55 font-semibold"
                 style={{ fontFamily: M }}
               >
-                Shelter
+                <MachineTranslatedText text="Shelter" />
               </p>
               <p
+                data-i18n-ignore
                 className="text-[16px] font-bold text-[#65584f] truncate"
                 style={{ fontFamily: M }}
               >
@@ -374,7 +377,7 @@ export default async function DogProfilePage({
                   className="text-[12px] font-semibold text-[#cd8188]"
                   style={{ fontFamily: M }}
                 >
-                  Verified Shelter
+                  <MachineTranslatedText text="Verified Shelter" />
                 </span>
               </div>
             </div>
@@ -391,7 +394,7 @@ export default async function DogProfilePage({
                 style={{ background: "#cd8188", fontFamily: M, boxShadow: "0 6px 18px rgba(205,129,136,0.35)" }}
               >
                 <Calendar size={20} stroke="white" strokeWidth={2.2} />
-                Make an Appointment
+                <MachineTranslatedText text="Make an Appointment" />
               </Link>
             ) : (
               <div className="space-y-[10px]">
@@ -400,13 +403,13 @@ export default async function DogProfilePage({
                   className="block w-full rounded-full py-[16px] text-center text-white font-bold text-[16px] transition-all active:scale-[0.98]"
                   style={{ background: "#cd8188", fontFamily: M, boxShadow: "0 6px 18px rgba(205,129,136,0.35)" }}
                 >
-                  Verify to book →
+                  <MachineTranslatedText text="Verify to book →" />
                 </Link>
                 <p
                   className="text-[13px] text-center font-bold"
                   style={{ fontFamily: M, color: "#cd8188" }}
                 >
-                  Complete one-time verification, then book any visit instantly.
+                  <MachineTranslatedText text="Complete one-time verification, then book any visit instantly." />
                 </p>
               </div>
             )
@@ -417,7 +420,7 @@ export default async function DogProfilePage({
               className="block w-full text-center rounded-full py-[16px] text-white font-bold text-[16px] transition-all active:scale-[0.98]"
               style={{ background: "#cd8188", fontFamily: M, boxShadow: "0 6px 18px rgba(205,129,136,0.35)" }}
             >
-              Sign in to book a visit
+              <MachineTranslatedText text="Sign in to book a visit" />
             </AuthPromptButton>
           )}
         </div>
