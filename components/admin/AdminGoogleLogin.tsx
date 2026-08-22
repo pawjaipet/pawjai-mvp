@@ -104,6 +104,7 @@ export default function AdminGoogleLogin({
     if (!GOOGLE_CLIENT_ID || !scriptReady || !buttonRef.current) return;
 
     let cancelled = false;
+    const googleClientId = GOOGLE_CLIENT_ID;
 
     async function initializeButton() {
       const google = window.google;
@@ -116,7 +117,7 @@ export default function AdminGoogleLogin({
       buttonRef.current.innerHTML = "";
       google.accounts.id.initialize({
         callback: handleCredential,
-        client_id: GOOGLE_CLIENT_ID,
+        client_id: googleClientId,
         nonce: hashedNonce,
         use_fedcm_for_prompt: true,
       });
