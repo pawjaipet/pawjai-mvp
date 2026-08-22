@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import AdminGateForm from "@/app/admin/dogs/new/AdminGateForm";
-import { unlockAdminGateAction } from "@/app/admin/dogs/new/actions";
-import { initialAdminGateState } from "@/app/admin/dogs/new/form-state";
-import { getAdminAuthContext, requireShelterAccess } from "@/utils/admin-auth";
+import { requireGlobalAdmin, requireShelterAccess } from "@/utils/admin-auth";
 import { mergePersonalityTags } from "@/utils/personality-tags";
 import { createAdminClient } from "@/utils/supabase/admin";
 import DogEditForm from "./DogEditForm";
@@ -14,18 +11,7 @@ export default async function EditAdminDogPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const adminContext = await getAdminAuthContext();
-
-  if (!adminContext) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <AdminGateForm
-          action={unlockAdminGateAction}
-          initialState={initialAdminGateState}
-        />
-      </div>
-    );
-  }
+  const adminContext = await requireGlobalAdmin(`/admin/dogs/${id}/edit`);
 
   const supabase = createAdminClient();
   const [{ data: dog }, { data: shelters }, { data: photos }, { data: traits }, { data: personalityTraitRows }] = await Promise.all([

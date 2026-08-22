@@ -13,29 +13,36 @@ declare global {
   }
 }
 
-function resolveScanTarget(rawValue: string) {
+function resolveScanTarget(rawValue: string, checkInHref: string) {
   const value = rawValue.trim();
   if (!value) return null;
 
-  const checkInPath = "/booking/check-in";
-  const returnTo = "/admin/bookings";
+  const buildTarget = (token: string) => {
+    const target = new URL(checkInHref, window.location.origin);
+    target.searchParams.set("token", token);
+    return `${target.pathname}${target.search}`;
+  };
 
   try {
     const url = new URL(value, window.location.origin);
     const token = url.searchParams.get("token");
     if (token) {
-      return `${checkInPath}?token=${encodeURIComponent(token)}&returnTo=${encodeURIComponent(returnTo)}`;
+      return buildTarget(token);
     }
   } catch {}
 
   if (value.includes(".") && !value.includes("/") && !value.includes("?")) {
-    return `${checkInPath}?token=${encodeURIComponent(value)}&returnTo=${encodeURIComponent(returnTo)}`;
+    return buildTarget(value);
   }
 
   return null;
 }
 
-export default function BookingQrScanner() {
+export default function BookingQrScanner({
+  checkInHref = "/booking/check-in?returnTo=%2Fadmin%2Fbookings",
+}: {
+  checkInHref?: string;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [manualValue, setManualValue] = useState("");
   const [open, setOpen] = useState(false);
@@ -55,14 +62,14 @@ export default function BookingQrScanner() {
   }, []);
 
   const goToScan = useCallback((rawValue: string) => {
-    const target = resolveScanTarget(rawValue);
+    const target = resolveScanTarget(rawValue, checkInHref);
     if (!target) {
       setError("This QR code does not look like a PawJai booking QR.");
       return;
     }
     stopScanner();
     window.location.assign(target);
-  }, [stopScanner]);
+  }, [checkInHref, stopScanner]);
 
   const startScanner = useCallback(async () => {
     setError(null);
@@ -122,7 +129,7 @@ export default function BookingQrScanner() {
   useEffect(() => stopScanner, [stopScanner]);
 
   return (
-    <div className="rounded-[24px] border border-[#eadfce] bg-white p-4 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+    <div className="rounded-[24px] border border-[#d6c8ad] bg-white p-4 shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-[#4f4338]">QR check-in scanner</p>
@@ -131,7 +138,7 @@ export default function BookingQrScanner() {
           </p>
         </div>
         <button
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d38a2c] px-5 py-3 text-sm font-semibold text-white hover:bg-[#bf781f]"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white hover:bg-[#b87179]"
           onClick={() => {
             setOpen(true);
             void startScanner();
@@ -145,7 +152,7 @@ export default function BookingQrScanner() {
 
       {open ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#201a15]/70 px-4 py-6">
-          <div className="w-full max-w-xl rounded-[28px] bg-[#fffaf3] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
+          <div className="w-full max-w-xl rounded-[28px] bg-[#fffaf5] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-lg font-semibold text-[#4f4338]">Scan booking QR</p>
@@ -193,12 +200,12 @@ export default function BookingQrScanner() {
               }}
             >
               <input
-                className="min-w-0 flex-1 rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#d38a2c]"
+                className="min-w-0 flex-1 rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm text-[#4f4338] outline-none focus:border-[#cd8188]"
                 onChange={(event) => setManualValue(event.target.value)}
                 placeholder="Paste QR link or token"
                 value={manualValue}
               />
-              <button className="rounded-full bg-[#d38a2c] px-5 py-3 text-sm font-semibold text-white" type="submit">
+              <button className="rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white" type="submit">
                 Open booking
               </button>
             </form>

@@ -2,15 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ShieldAlert } from "lucide-react";
-import AdminDraftGate from "@/components/admin/AdminDraftGate";
 import {
   getCheckInTokenSecret,
   hashCheckInToken,
   verifySignedCheckInToken,
 } from "@/utils/booking";
-import { requireShelterAccess } from "@/utils/admin-auth";
+import { requireGlobalAdmin, requireShelterAccess } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { isAdminDraftUnlocked } from "@/app/admindraft/actions";
 
 function InvalidQrCard({ retry }: { retry?: boolean }) {
   return (
@@ -39,7 +37,6 @@ export default async function AdminDraftBookingCheckInPage({
 }: {
   searchParams?: Promise<{ invalid?: string; token?: string; unlock?: string }>;
 }) {
-  const unlocked = await isAdminDraftUnlocked();
   const resolvedSearchParams = await searchParams;
   const token = resolvedSearchParams?.token ?? "";
   const gateParams = new URLSearchParams();
@@ -47,10 +44,7 @@ export default async function AdminDraftBookingCheckInPage({
   const gateReturnTo = gateParams.toString()
     ? `/admindraft/bookings/check-in?${gateParams.toString()}`
     : "/admindraft/bookings/check-in";
-
-  if (!unlocked) {
-    return <AdminDraftGate returnTo={gateReturnTo} showError={resolvedSearchParams?.unlock === "failed"} />;
-  }
+  await requireGlobalAdmin(gateReturnTo);
 
   if (!token || resolvedSearchParams?.invalid === "1") {
     return <InvalidQrCard />;

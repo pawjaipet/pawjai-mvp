@@ -4,11 +4,8 @@ import { CheckCircle2, ExternalLink, QrCode, ShieldCheck } from "lucide-react";
 import type { Database } from "@/types/database";
 import { APPOINTMENT_TIME_SLOTS, normalizeAppointmentTime } from "@/utils/appointments-model";
 import { formatBookingCode } from "@/utils/booking";
-import { getAdminAuthContext, requireShelterAccess } from "@/utils/admin-auth";
+import { requireGlobalAdmin, requireShelterAccess } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
-import AdminGateForm from "../../dogs/new/AdminGateForm";
-import { unlockAdminGateAction } from "../../dogs/new/actions";
-import { initialAdminGateState } from "../../dogs/new/form-state";
 import { checkInBookingAction, decideBookingAction } from "../actions";
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
@@ -91,21 +88,10 @@ export default async function AdminBookingDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ checkedIn?: string; token?: string }>;
 }) {
-  const adminContext = await getAdminAuthContext();
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   const token = resolvedSearchParams?.token ?? "";
-
-  if (!adminContext) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <AdminGateForm
-          action={unlockAdminGateAction}
-          initialState={initialAdminGateState}
-        />
-      </div>
-    );
-  }
+  const adminContext = await requireGlobalAdmin(`/admin/bookings/${id}${token ? `?token=${encodeURIComponent(token)}` : ""}`);
 
   const admin = createAdminClient();
   const { data: appointment } = await admin

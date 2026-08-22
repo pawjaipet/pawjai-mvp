@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import AdminDraftGate from "@/components/admin/AdminDraftGate";
 import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
-import { getAdminAuthContext } from "@/utils/admin-auth";
+import { requireGlobalAdmin } from "@/utils/admin-auth";
 import { mergePersonalityTags } from "@/utils/personality-tags";
 import { createAdminClient } from "@/utils/supabase/admin";
 import DogListingForm from "@/app/admin/dogs/new/DogListingForm";
-import { isAdminDraftUnlocked } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +14,6 @@ export default async function AdminDraftNewDogPage({
   searchParams?: Promise<{ role?: string; shelter?: string; unlock?: string }>;
 }) {
   const resolvedSearchParams = await searchParams;
-  const unlocked = await isAdminDraftUnlocked();
   const gateParams = new URLSearchParams();
   if (resolvedSearchParams?.shelter)
     gateParams.set("shelter", resolvedSearchParams.shelter);
@@ -26,21 +23,7 @@ export default async function AdminDraftNewDogPage({
   const gateReturnTo = gateQuery
     ? `/admindraft/dogs/new?${gateQuery}`
     : "/admindraft/dogs/new";
-
-  if (!unlocked) {
-    return (
-      <AdminDraftGate
-        returnTo={gateReturnTo}
-        showError={resolvedSearchParams?.unlock === "failed"}
-      />
-    );
-  }
-
-  const adminContext = await getAdminAuthContext();
-
-  if (!adminContext) {
-    return <AdminDraftGate returnTo={gateReturnTo} />;
-  }
+  const adminContext = await requireGlobalAdmin(gateReturnTo);
 
   const supabase = createAdminClient();
   const scopedShelterIds = adminContext.isGlobalAdmin

@@ -11,9 +11,11 @@ import {
 import { logAdminAuditEvent } from "@/utils/admin-audit";
 import { buildLegacyRescheduleNote, isAppointmentTimeSlot, normalizeAppointmentTime } from "@/utils/appointments-model";
 import { sendBookingNotificationForAppointment } from "@/utils/booking-email";
-import { buildAdminBookingDetailPath, getCheckInTokenSecret, hashCheckInToken, verifySignedCheckInToken } from "@/utils/booking";
+import { getCheckInTokenSecret, hashCheckInToken, verifySignedCheckInToken } from "@/utils/booking";
 import { parseShelterDonationDetails } from "@/utils/donations";
-import { requireAdminWorkspace, requireShelterAccess } from "@/utils/admin-auth";
+import { requireAdminWorkspace, requireShelterAccess, type AdminAuthContext } from "@/utils/admin-auth";
+import { bookingWorkspaceDetailHref } from "@/utils/booking-workspace-routes";
+import { getShelterPortalTarget } from "@/utils/shelter-portal";
 import { createAdminClient } from "@/utils/supabase/admin";
 
 type AppointmentStatus = Database["public"]["Enums"]["appointment_status"];
@@ -42,8 +44,25 @@ function shelterViewRedirect(shelterId: string, view: string, message: string): 
   redirect(`/admin/bookings?${params.toString()}`);
 }
 
-function redirectAfterShelterMutation(formData: FormData, shelterId: string, view: string, message: string): never {
+async function redirectAfterShelterMutation(
+  formData: FormData,
+  context: AdminAuthContext,
+  shelterId: string,
+  view: string,
+  message: string,
+): Promise<never> {
   const returnTo = String(formData.get("returnTo") ?? "");
+
+  if (!context.isGlobalAdmin) {
+    const portalTarget = await getShelterPortalTarget(context);
+    const fallback = portalTarget ? `${portalTarget}?view=${view}` : "/shelter";
+    const allowedPortalReturn = portalTarget
+      ? returnTo === portalTarget || returnTo.startsWith(`${portalTarget}?`) || returnTo.startsWith(`${portalTarget}/`)
+      : returnTo === "/shelter" || returnTo.startsWith("/shelter?");
+    const url = new URL(allowedPortalReturn ? returnTo : fallback, "https://pawjai.local");
+    if (message) url.searchParams.set("message", message);
+    redirect(`${url.pathname}${url.search}`);
+  }
 
   if (returnTo.startsWith("/admindraft")) {
     const url = new URL(returnTo, "https://pawjai.local");
@@ -64,29 +83,75 @@ function redirectAfterShelterMutation(formData: FormData, shelterId: string, vie
   shelterViewRedirect(shelterId, view, message);
 }
 
-function redirectAfterBookingDecision(formData: FormData, message: string) {
-  const returnTo = String(formData.get("returnTo") ?? "");
-
-  if (returnTo.startsWith("/admindraft") || returnTo.startsWith("/booking/") || returnTo.startsWith("/shelter/")) {
-    const params = new URLSearchParams();
-    if (message) params.set("message", message);
-    const separator = returnTo.includes("?") ? "&" : "?";
-    redirect(`${returnTo}${params.toString() ? `${separator}${params.toString()}` : ""}`);
-  }
+function addBookingRedirectMessage(path: string, message: string) {
+  const url = new URL(path, "https://pawjai.local");
+  if (message) url.searchParams.set("message", message);
+  return `${url.pathname}${url.search}`;
 }
 
-function redirectAfterCheckIn(formData: FormData, appointmentId: string, token: string) {
-  const returnTo = String(formData.get("returnTo") ?? "");
+async function safeBookingMutationReturnTo({ appointmentId, context, requestedReturnTo, shelterId }: {
+  appointmentId: string;
+  context: AdminAuthContext;
+  requestedReturnTo: string;
+  shelterId: string;
+}) {
+  const requested = requestedReturnTo.trim();
+  const portalTarget = context.isGlobalAdmin ? null : await getShelterPortalTarget(context);
+  const fallbackListHref = context.isGlobalAdmin
+    ? `/admindraft?shelter=${shelterId}&view=bookings`
+    : `${portalTarget ?? "/shelter"}?view=bookings`;
+  const fallbackDetailHref = bookingWorkspaceDetailHref({ appointmentId, bookingListHref: fallbackListHref });
 
-  if (returnTo.startsWith("/admindraft/bookings/") || returnTo.startsWith("/booking/")) {
-    const params = new URLSearchParams();
-    if (token) params.set("token", token);
-    params.set("checkedIn", "1");
-    const separator = returnTo.includes("?") ? "&" : "?";
-    redirect(`${returnTo}${separator}${params.toString()}`);
+  if (!requested.startsWith("/") || requested.startsWith("//")) {
+    return { detailHref: fallbackDetailHref, returnTo: fallbackListHref };
   }
 
-  redirect(`${buildAdminBookingDetailPath({ appointmentId, token })}&checkedIn=1`);
+  if (context.isGlobalAdmin) {
+    const allowed = requested.startsWith("/admindraft")
+      || requested.startsWith("/admin/bookings")
+      || requested.startsWith(`/booking/${appointmentId}`);
+    return allowed
+      ? { detailHref: fallbackDetailHref, returnTo: requested }
+      : { detailHref: fallbackDetailHref, returnTo: fallbackListHref };
+  }
+
+  const allowedShelterPath = portalTarget
+    ? requested === portalTarget || requested.startsWith(`${portalTarget}?`) || requested.startsWith(`${portalTarget}/`)
+    : requested === "/shelter" || requested.startsWith("/shelter?");
+  return allowedShelterPath
+    ? { detailHref: fallbackDetailHref, returnTo: requested }
+    : { detailHref: fallbackDetailHref, returnTo: fallbackListHref };
+}
+
+async function redirectAfterBookingDecision(
+  formData: FormData,
+  message: string,
+  context: AdminAuthContext,
+  appointmentId: string,
+  shelterId: string,
+) {
+  const returnTo = String(formData.get("returnTo") ?? "");
+  const safeTarget = await safeBookingMutationReturnTo({ appointmentId, context, requestedReturnTo: returnTo, shelterId });
+  redirect(addBookingRedirectMessage(safeTarget.returnTo, message));
+}
+
+async function redirectAfterCheckIn(
+  formData: FormData,
+  appointmentId: string,
+  token: string,
+  context: AdminAuthContext,
+  shelterId: string,
+) {
+  const returnTo = String(formData.get("returnTo") ?? "");
+  const safeTarget = await safeBookingMutationReturnTo({ appointmentId, context, requestedReturnTo: returnTo, shelterId });
+  const target = safeTarget.returnTo.includes(`/booking/${appointmentId}`)
+    || safeTarget.returnTo.includes(`/bookings/${appointmentId}`)
+    ? safeTarget.returnTo
+    : safeTarget.detailHref;
+  const url = new URL(target, "https://pawjai.local");
+  if (token) url.searchParams.set("token", token);
+  url.searchParams.set("checkedIn", "1");
+  redirect(`${url.pathname}${url.search}`);
 }
 
 function isMissingSchemaError(error: { message?: string } | null | undefined) {
@@ -428,9 +493,12 @@ export async function decideBookingAction(formData: FormData) {
   revalidatePath(`/booking/${appointmentId}/visitor-profile`);
   revalidatePath("/appointments");
   revalidatePath(`/appointments/${appointmentId}`);
-  redirectAfterBookingDecision(
+  await redirectAfterBookingDecision(
     formData,
     updateError ? "Booking decision could not be saved." : "Booking decision saved.",
+    adminContext,
+    appointmentId,
+    appointment.shelter_id,
   );
 }
 
@@ -513,7 +581,6 @@ export async function updateShelterProfileAction(formData: FormData) {
   const admin = createAdminClient();
   const basePayload = {
     address_line: cleanText(formData.get("addressLine")),
-    description: cleanText(formData.get("description")),
     district: cleanText(formData.get("district")),
     email: cleanText(formData.get("email")),
     facebook_url: cleanText(formData.get("facebookUrl")),
@@ -540,21 +607,7 @@ export async function updateShelterProfileAction(formData: FormData) {
       message: baseError.message,
       shelterId,
     });
-    redirectAfterShelterMutation(formData, shelterId, "profile", describeShelterProfileSaveError(baseError));
-  }
-
-  let donationDetails: ReturnType<typeof parseShelterDonationDetails> | null = null;
-  let donationWarning: string | null = null;
-  try {
-    donationDetails = parseShelterDonationDetails({
-      bankAccountName: formData.get("bankAccountName"),
-      bankAccountNumber: formData.get("bankAccountNumber"),
-      bankName: formData.get("bankName"),
-      otherBankName: formData.get("otherBankName"),
-      promptpayId: formData.get("promptpayId"),
-    });
-  } catch (error) {
-    donationWarning = error instanceof Error ? error.message : "Donation details could not be saved.";
+    await redirectAfterShelterMutation(formData, adminContext, shelterId, "profile", describeShelterProfileSaveError(baseError));
   }
 
   let logoUrl = cleanText(formData.get("logoUrl"));
@@ -570,7 +623,6 @@ export async function updateShelterProfileAction(formData: FormData) {
     google_maps_url: cleanText(formData.get("googleMapsUrl")),
     logo_url: logoUrl,
     meeting_instructions: cleanText(formData.get("meetingInstructions")),
-    ...(donationDetails ?? {}),
   };
 
   const { error: extendedError } = await admin
@@ -591,10 +643,8 @@ export async function updateShelterProfileAction(formData: FormData) {
   revalidatePath("/admindraft");
   revalidatePath("/shelter");
   revalidatePath("/appointments");
-  const message = donationWarning
-    ? `Basic shelter profile saved, but ${donationWarning}`
-    : isMissingSchemaError(extendedError)
-      ? "Basic shelter profile saved. Logo, Maps URL, meeting instructions, and donation details need the Supabase migration before they can persist."
+  const message = isMissingSchemaError(extendedError)
+      ? "Basic shelter profile saved. Logo, Maps URL, and meeting instructions need the Supabase migration before they can persist."
       : extendedError
         ? `Basic shelter profile saved, but ${describeShelterProfileSaveError(extendedError)}`
         : uploadWarning
@@ -604,7 +654,6 @@ export async function updateShelterProfileAction(formData: FormData) {
     action: "shelter.update",
     context: adminContext,
     metadata: {
-      changedDonationDetails: Boolean(donationDetails?.bank_account_number || donationDetails?.promptpay_id),
       optionalProfileError: extendedError?.message ?? null,
       uploadedLogo: Boolean(logoFile instanceof File && logoFile.size > 0 && !uploadWarning),
     },
@@ -612,12 +661,76 @@ export async function updateShelterProfileAction(formData: FormData) {
     targetId: shelterId,
     targetTable: "shelters",
   });
-  redirectAfterShelterMutation(formData, shelterId, "profile", message);
+  await redirectAfterShelterMutation(formData, adminContext, shelterId, "profile", message);
+}
+
+export async function updateShelterDonationDetailsAction(formData: FormData) {
+  const shelterId = String(formData.get("shelterId") ?? "").trim();
+
+  if (!shelterId) return;
+
+  const adminContext = await requireShelterAccess(shelterId, "/admin/bookings");
+  let donationDetails: ReturnType<typeof parseShelterDonationDetails>;
+
+  try {
+    donationDetails = parseShelterDonationDetails({
+      bankAccountName: formData.get("bankAccountName"),
+      bankAccountNumber: formData.get("bankAccountNumber"),
+      bankName: formData.get("bankName"),
+      otherBankName: formData.get("otherBankName"),
+      promptpayId: formData.get("promptpayId"),
+    });
+  } catch (error) {
+    return redirectAfterShelterMutation(
+      formData,
+      adminContext,
+      shelterId,
+      "donations",
+      error instanceof Error ? error.message : "Donation details could not be saved.",
+    );
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("shelters")
+    .update({
+      ...donationDetails,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", shelterId);
+
+  if (!error) {
+    await logAdminAuditEvent({
+      action: "shelter.donation_details.update",
+      context: adminContext,
+      metadata: {
+        bankConfigured: Boolean(donationDetails.bank_account_number),
+        promptpayConfigured: Boolean(donationDetails.promptpay_id),
+      },
+      shelterId,
+      targetId: shelterId,
+      targetTable: "shelters",
+    });
+  }
+
+  revalidatePath("/admin/bookings");
+  revalidatePath("/admindraft");
+  revalidatePath("/shelter");
+  revalidatePath("/donations");
+  await redirectAfterShelterMutation(
+    formData,
+    adminContext,
+    shelterId,
+    "donations",
+    error
+      ? `Donation payment details could not be saved: ${error.message}`
+      : "Donation payment details saved.",
+  );
 }
 
 export async function updateShelterOperatingDaysAction(formData: FormData) {
   const shelterId = String(formData.get("shelterId") ?? "");
-  const opensAt = String(formData.get("opensAt") || "09:00");
+  const opensAt = String(formData.get("opensAt") || "10:00");
   const closesAt = String(formData.get("closesAt") || "17:00");
   const slotDuration = Number(formData.get("slotDuration") || 60);
   const closedDays = new Set(
@@ -627,11 +740,27 @@ export async function updateShelterOperatingDaysAction(formData: FormData) {
       .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6),
   );
 
-  if (!shelterId || !Number.isFinite(slotDuration) || slotDuration < 1) {
-    return;
-  }
+  if (!shelterId) return;
 
   const adminContext = await requireShelterAccess(shelterId, "/admin/bookings");
+
+  if (
+    !/^\d{2}:\d{2}$/.test(opensAt)
+    || !/^\d{2}:\d{2}$/.test(closesAt)
+    || opensAt >= closesAt
+    || !Number.isFinite(slotDuration)
+    || slotDuration < 15
+    || slotDuration > 240
+    || slotDuration % 15 !== 0
+  ) {
+    await redirectAfterShelterMutation(
+      formData,
+      adminContext,
+      shelterId,
+      "bookings",
+      "Choose valid opening and closing times. Opening must be before closing, and the slot length must be 15-240 minutes in 15-minute steps.",
+    );
+  }
 
   const rows = Array.from({ length: 7 }, (_, dayOfWeek) => {
     const isClosed = closedDays.has(dayOfWeek);
@@ -670,8 +799,9 @@ export async function updateShelterOperatingDaysAction(formData: FormData) {
       targetTable: "shelter_regular_hours",
     });
   }
-  redirectAfterShelterMutation(
+  await redirectAfterShelterMutation(
     formData,
+    adminContext,
     shelterId,
     "bookings",
     isMissingSchemaError(error)
@@ -698,19 +828,19 @@ export async function createShelterBlockoutAction(formData: FormData) {
   const adminContext = await requireShelterAccess(shelterId, "/admin/bookings");
 
   if (!isIsoDate(startDate)) {
-    redirectAfterShelterMutation(formData, shelterId, "bookings", "Choose a valid start date for the blockout.");
+    await redirectAfterShelterMutation(formData, adminContext, shelterId, "bookings", "Choose a valid start date for the blockout.");
   }
 
   if (!isIsoDate(endDate)) {
-    redirectAfterShelterMutation(formData, shelterId, "bookings", "Choose a valid end date for the blockout.");
+    await redirectAfterShelterMutation(formData, adminContext, shelterId, "bookings", "Choose a valid end date for the blockout.");
   }
 
   if (endDate < startDate) {
-    redirectAfterShelterMutation(formData, shelterId, "bookings", "The blockout end date must be on or after the start date.");
+    await redirectAfterShelterMutation(formData, adminContext, shelterId, "bookings", "The blockout end date must be on or after the start date.");
   }
 
   if (!note) {
-    redirectAfterShelterMutation(formData, shelterId, "bookings", "Add a reason for this blockout date.");
+    await redirectAfterShelterMutation(formData, adminContext, shelterId, "bookings", "Add a reason for this blockout date.");
   }
 
   const admin = createAdminClient() as any;
@@ -719,13 +849,14 @@ export async function createShelterBlockoutAction(formData: FormData) {
     .select("id")
     .eq("shelter_id", shelterId)
     .eq("availability_type", "unavailable")
-    .eq("start_date", startDate)
-    .eq("end_date", endDate)
+    .lte("start_date", endDate)
+    .gte("end_date", startDate)
     .limit(1);
 
   if (existingRangeError) {
-    redirectAfterShelterMutation(
+    await redirectAfterShelterMutation(
       formData,
+      adminContext,
       shelterId,
       "bookings",
       `Existing blockout dates could not be checked: ${existingRangeError.message}`,
@@ -733,7 +864,7 @@ export async function createShelterBlockoutAction(formData: FormData) {
   }
 
   if (existingRanges?.length) {
-    redirectAfterShelterMutation(formData, shelterId, "bookings", "That blockout date range already exists.");
+    await redirectAfterShelterMutation(formData, adminContext, shelterId, "bookings", "That blockout date range overlaps an existing closure.");
   }
 
   const { error } = await admin
@@ -763,8 +894,9 @@ export async function createShelterBlockoutAction(formData: FormData) {
       targetTable: "shelter_availability",
     });
   }
-  redirectAfterShelterMutation(
+  await redirectAfterShelterMutation(
     formData,
+    adminContext,
     shelterId,
     "bookings",
     error ? `Blockout date could not be added: ${error.message}` : "Blockout date added.",
@@ -783,13 +915,30 @@ export async function toggleShelterBlockoutDateAction(formData: FormData) {
   const adminContext = await requireShelterAccess(shelterId, "/admin/bookings");
 
   const admin = createAdminClient() as any;
-  const { error } = existingAvailabilityId
-    ? await admin
-        .from("shelter_availability")
-        .delete()
-        .eq("id", existingAvailabilityId)
-        .eq("shelter_id", shelterId)
-    : await admin
+  let error: { message?: string } | null = null;
+  if (existingAvailabilityId) {
+    const result = await admin
+      .from("shelter_availability")
+      .delete()
+      .eq("shelter_id", shelterId)
+      .eq("availability_type", "unavailable")
+      .lte("start_date", date)
+      .gte("end_date", date);
+    error = result.error;
+  } else {
+    const existingResult = await admin
+      .from("shelter_availability")
+      .select("id")
+      .eq("shelter_id", shelterId)
+      .eq("availability_type", "unavailable")
+      .lte("start_date", date)
+      .gte("end_date", date)
+      .limit(1);
+
+    if (existingResult.error) {
+      error = existingResult.error;
+    } else if (!existingResult.data?.length) {
+      const insertResult = await admin
         .from("shelter_availability")
         .insert({
           availability_type: "unavailable",
@@ -798,6 +947,9 @@ export async function toggleShelterBlockoutDateAction(formData: FormData) {
           shelter_id: shelterId,
           start_date: date,
         });
+      error = insertResult.error;
+    }
+  }
 
   revalidatePath("/admin/bookings");
   revalidatePath("/admindraft");
@@ -814,7 +966,7 @@ export async function toggleShelterBlockoutDateAction(formData: FormData) {
       targetTable: "shelter_availability",
     });
   }
-  redirectAfterShelterMutation(formData, shelterId, "bookings", error ? `Calendar date could not be updated: ${error.message}` : "Calendar date updated.");
+  await redirectAfterShelterMutation(formData, adminContext, shelterId, "bookings", error ? `Calendar date could not be updated: ${error.message}` : "Calendar date updated.");
 }
 
 export async function deleteShelterAvailabilityAction(formData: FormData) {
@@ -846,7 +998,7 @@ export async function deleteShelterAvailabilityAction(formData: FormData) {
       targetTable: "shelter_availability",
     });
   }
-  redirectAfterShelterMutation(formData, shelterId, "bookings", error ? `Blockout date could not be removed: ${error.message}` : "Blockout date removed.");
+  await redirectAfterShelterMutation(formData, adminContext, shelterId, "bookings", error ? `Blockout date could not be removed: ${error.message}` : "Blockout date removed.");
 }
 
 export async function reviewDonationAction(formData: FormData) {
@@ -869,11 +1021,11 @@ export async function reviewDonationAction(formData: FormData) {
     .maybeSingle();
 
   if (loadError || !donation) {
-    redirectAfterShelterMutation(formData, shelterId, "donations", "Donation could not be found for this shelter.");
+    return redirectAfterShelterMutation(formData, adminContext, shelterId, "donations", "Donation could not be found for this shelter.");
   }
 
   if (!donation.proof_storage_path) {
-    redirectAfterShelterMutation(formData, shelterId, "donations", "A transfer slip is required before this donation can be reviewed.");
+    return redirectAfterShelterMutation(formData, adminContext, shelterId, "donations", "A transfer slip is required before this donation can be reviewed.");
   }
 
   const reviewedAt = new Date().toISOString();
@@ -907,8 +1059,9 @@ export async function reviewDonationAction(formData: FormData) {
     });
   }
 
-  redirectAfterShelterMutation(
+  await redirectAfterShelterMutation(
     formData,
+    adminContext,
     shelterId,
     "donations",
     error
@@ -993,5 +1146,5 @@ export async function checkInBookingAction(formData: FormData) {
     targetId: appointment.id,
     targetTable: "appointments",
   });
-  redirectAfterCheckIn(formData, appointment.id, token);
+  await redirectAfterCheckIn(formData, appointment.id, token, adminContext, appointment.shelter_id);
 }

@@ -13,7 +13,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
-import { getAdminAuthContext } from "@/utils/admin-auth";
+import { buildAdminLoginPath, getAdminAuthContext } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import type { ProductAnalyticsEvent } from "@/types/database";
 
@@ -182,7 +182,11 @@ export async function AdminUserAnalyticsPageContent({
   searchParams?: Promise<{ range?: string }>;
 }) {
   const adminContext = await getAdminAuthContext();
-  if (!adminContext) return lockedFallback ?? null;
+  if (!adminContext) {
+    if (lockedFallback) return lockedFallback;
+    const range = (await searchParams)?.range;
+    redirect(buildAdminLoginPath(`/admindraft/analytics${range ? `?range=${encodeURIComponent(range)}` : ""}`));
+  }
   if (!adminContext.isGlobalAdmin) redirect("/admindraft");
 
   const selectedRange = parseRange((await searchParams)?.range);

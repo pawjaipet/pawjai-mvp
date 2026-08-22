@@ -2,13 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckCircle2, ExternalLink, QrCode, ShieldCheck } from "lucide-react";
-import AdminDraftGate from "@/components/admin/AdminDraftGate";
 import type { Database } from "@/types/database";
 import { APPOINTMENT_TIME_SLOTS, normalizeAppointmentTime } from "@/utils/appointments-model";
 import { formatBookingCode } from "@/utils/booking";
-import { requireShelterAccess } from "@/utils/admin-auth";
+import { requireGlobalAdmin, requireShelterAccess } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { isAdminDraftUnlocked } from "@/app/admindraft/actions";
 import { checkInBookingAction, decideBookingAction } from "@/app/admin/bookings/actions";
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
@@ -91,7 +89,6 @@ export default async function AdminBookingDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ checkedIn?: string; token?: string; unlock?: string }>;
 }) {
-  const unlocked = await isAdminDraftUnlocked();
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   const token = resolvedSearchParams?.token ?? "";
@@ -100,10 +97,7 @@ export default async function AdminBookingDetailPage({
   const gateReturnTo = gateParams.toString()
     ? `/admindraft/bookings/${id}?${gateParams.toString()}`
     : `/admindraft/bookings/${id}`;
-
-  if (!unlocked) {
-    return <AdminDraftGate returnTo={gateReturnTo} showError={resolvedSearchParams?.unlock === "failed"} />;
-  }
+  await requireGlobalAdmin(gateReturnTo);
 
   const admin = createAdminClient();
   const { data: appointment } = await admin

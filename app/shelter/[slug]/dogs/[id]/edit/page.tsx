@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft, ExternalLink } from "lucide-react";
+import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
 import { getAdminAuthContext } from "@/utils/admin-auth";
 import { mergePersonalityTags } from "@/utils/personality-tags";
 import { getShelterByPortalSlug, getShelterPortalTarget } from "@/utils/shelter-portal";
@@ -48,46 +50,41 @@ export default async function ShelterEditDogPage({
   const shelterListingsHref = `/shelter/${slug}?view=dogs`;
 
   return (
-    <main className="min-h-screen bg-[#f5efe6] px-4 py-8 text-[#4f4338]">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex flex-col gap-4 rounded-[28px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)] md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">
-              PawJai Shelter Portal
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold">Edit dog listing</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#74685d]">
-              Update the same live PawJai dog record while staying inside your shelter workspace.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
+    <PawjaiWorkspaceShell
+      actions={(
+        <div className="flex flex-wrap gap-3">
             <Link
-              className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]"
               href={shelterListingsHref}
             >
+              <ArrowLeft className="h-4 w-4" />
               Back to dog listings
             </Link>
             <Link
-              className="inline-flex items-center justify-center rounded-full border border-[#eadfce] bg-white px-5 py-3 text-sm font-semibold text-[#5b4d40] transition hover:bg-[#faf4ec]"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]"
               href={`/dogs/${dog.id}`}
             >
+              <ExternalLink className="h-4 w-4" />
               View public profile
             </Link>
-          </div>
-        </header>
-
-        <DogEditForm
-          deleteReturnTo={shelterListingsHref}
-          dog={dog}
-          personalityTags={mergePersonalityTags(
-            (personalityTraitRows ?? []).map((trait) => trait.trait_value),
-          )}
-          photos={photos ?? []}
-          returnTo={`/shelter/${slug}/dogs/${dog.id}/edit`}
-          shelters={shelters ?? []}
-          traits={traits ?? []}
-        />
-      </div>
-    </main>
+        </div>
+      )}
+      description="Update the same live PawJai dog record while staying inside your shelter workspace."
+      eyebrow="My Shelter Workspace powered by PawJai"
+      homeHref={shelterListingsHref}
+      title={`Edit ${dog.name}`}
+    >
+      <DogEditForm
+        deleteReturnTo={shelterListingsHref}
+        dog={dog}
+        personalityTags={mergePersonalityTags(
+          (personalityTraitRows ?? []).map((trait) => trait.trait_value),
+        )}
+        photos={photos ?? []}
+        returnTo={`/shelter/${slug}/dogs/${dog.id}/edit`}
+        shelters={shelters ?? []}
+        traits={traits ?? []}
+      />
+    </PawjaiWorkspaceShell>
   );
 }

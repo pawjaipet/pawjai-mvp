@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
-import AdminDraftGate from "@/components/admin/AdminDraftGate";
 import AdminReorgDraftPanel from "@/components/admin/AdminReorgDraftPanel";
+import { requireGlobalAdmin } from "@/utils/admin-auth";
 import { loadAdminDraftData } from "@/utils/admin-draft-data";
-import { isAdminDraftUnlocked } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -23,20 +22,11 @@ export default async function AdminDraftPage({
 }: {
   searchParams?: Promise<{ bookingView?: string; message?: string; role?: string; shelter?: string; unlock?: string; view?: string }>;
 }) {
-  const unlocked = await isAdminDraftUnlocked();
   const resolvedSearchParams = await searchParams;
+  await requireGlobalAdmin(buildAdminDraftReturnTo(resolvedSearchParams));
 
   if (resolvedSearchParams?.view === "about") {
     redirect("/admindraft/aboutcontent");
-  }
-
-  if (!unlocked) {
-    return (
-      <AdminDraftGate
-        returnTo={buildAdminDraftReturnTo(resolvedSearchParams)}
-        showError={resolvedSearchParams?.unlock === "failed"}
-      />
-    );
   }
 
   const data = await loadAdminDraftData();

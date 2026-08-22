@@ -1,11 +1,9 @@
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { AdminWorkspaceNav } from "@/components/admin/AdminWorkspaceNav";
 import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
-import { getAdminAuthContext } from "@/utils/admin-auth";
+import { buildAdminLoginPath, getAdminAuthContext } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
-import AdminGateForm from "@/app/admin/dogs/new/AdminGateForm";
-import { unlockAdminGateAction } from "@/app/admin/dogs/new/actions";
-import { initialAdminGateState } from "@/app/admin/dogs/new/form-state";
 import type { AdminAuditEvent } from "@/types/database";
 
 type ProfileSummary = {
@@ -64,14 +62,8 @@ export async function AdminAuditPageContent({
   const adminContext = await getAdminAuthContext();
 
   if (!adminContext) {
-    return lockedFallback ?? (
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <AdminGateForm
-          action={unlockAdminGateAction}
-          initialState={initialAdminGateState}
-        />
-      </div>
-    );
+    if (lockedFallback) return lockedFallback;
+    redirect(buildAdminLoginPath(`${basePath}/audit`));
   }
 
   const admin = createAdminClient();

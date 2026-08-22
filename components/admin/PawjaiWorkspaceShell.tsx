@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Bone, PawPrint, ShieldCheck } from "lucide-react";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import {
   AdminWorkspaceNav,
   type AdminWorkspaceNavItem,
@@ -29,12 +30,16 @@ export default function PawjaiWorkspaceShell({
   title?: string;
 }) {
   const isAdminDraftShell = Boolean(active);
-  const resolvedHomeHref = isAdminDraftShell ? "/admindraft" : homeHref ?? "/admindraft";
+  // Operational pages must fail closed into the shelter login lane. Admin-only
+  // pages opt in through `active`, while every deep workflow should pass its
+  // own explicit workspace return path.
+  const resolvedHomeHref = isAdminDraftShell ? "/admindraft" : homeHref ?? "/shelter";
   const resolvedEyebrow = isAdminDraftShell ? "PawJai Admin Draft" : eyebrow ?? "PawJai";
   const resolvedTitle = isAdminDraftShell ? "Reorganized admin hierarchy" : title ?? "Workspace";
   const resolvedDescription = isAdminDraftShell
     ? "This draft keeps PawJai HQ, partner shelters, dogs, bookings, donations, ads, and content in one branded workspace without changing the adopter app."
     : description;
+  const isShelterShell = resolvedHomeHref.startsWith("/shelter/");
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f5f1e8] px-4 py-8 text-[#65584f]">
@@ -102,8 +107,11 @@ export default function PawjaiWorkspaceShell({
                 View as shelter
               </Link>
             </div>
-          ) : actions ? (
-            <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>
+          ) : actions || isShelterShell ? (
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {isShelterShell ? <LanguageSwitcher /> : null}
+              {actions}
+            </div>
           ) : null}
           </div>
         </header>
@@ -122,7 +130,7 @@ export default function PawjaiWorkspaceShell({
 
         {active ? (
           <footer className="mt-6 rounded-[24px] border border-[#d6c8ad] bg-white p-4 text-sm leading-6 text-[#65584f]">
-            This draft is phrase-gated while we reorganize the admin hierarchy. Deep workflow links keep PawJai admin and shelter portal users in their own lanes.
+            This workspace is limited to the PawJai Google admin session. Deep workflow links keep PawJai admin and shelter portal users in their own lanes.
           </footer>
         ) : null}
       </div>

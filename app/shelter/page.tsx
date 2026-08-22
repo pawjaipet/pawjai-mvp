@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getAdminAuthContext } from "@/utils/admin-auth";
 import { getShelterPortalTarget } from "@/utils/shelter-portal";
 import { signInShelterPortalAction } from "./actions";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,9 @@ export default async function ShelterLoginPage({
     <main className="min-h-screen bg-[#f5efe6] px-4 py-16 text-[#4f4338]">
       <section className="mx-auto max-w-4xl rounded-[36px] bg-[#ffecc9] p-5 shadow-[0_24px_80px_rgba(130,88,34,0.12)] sm:p-10">
         <div className="rounded-[28px] bg-white/95 px-6 py-10 shadow-[inset_0_0_0_1px_rgba(234,223,206,0.75)] sm:px-12">
+          <div className="mb-6 flex justify-end">
+            <LanguageSwitcher />
+          </div>
           <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#b77624]">
             PawJai Shelter Portal
           </p>

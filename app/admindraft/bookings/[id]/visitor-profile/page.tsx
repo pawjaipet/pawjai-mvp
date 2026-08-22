@@ -2,12 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { FileText, ShieldCheck, UserRound } from "lucide-react";
-import AdminDraftGate from "@/components/admin/AdminDraftGate";
 import type { Database, Json } from "@/types/database";
 import { formatBookingCode } from "@/utils/booking";
-import { requireShelterAccess } from "@/utils/admin-auth";
+import { requireGlobalAdmin, requireShelterAccess } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { isAdminDraftUnlocked } from "@/app/admindraft/actions";
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 type Adopter = Database["public"]["Tables"]["adopters"]["Row"];
@@ -194,13 +192,9 @@ export default async function AdminVisitorProfilePage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ unlock?: string }>;
 }) {
-  const unlocked = await isAdminDraftUnlocked();
-  const [{ id }, resolvedSearchParams] = await Promise.all([params, searchParams]);
+  const { id } = await params;
   const gateReturnTo = `/admindraft/bookings/${id}/visitor-profile`;
-
-  if (!unlocked) {
-    return <AdminDraftGate returnTo={gateReturnTo} showError={resolvedSearchParams?.unlock === "failed"} />;
-  }
+  await requireGlobalAdmin(gateReturnTo);
 
   const admin = createAdminClient();
   const adminUntyped = admin as any;

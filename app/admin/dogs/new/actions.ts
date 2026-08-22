@@ -10,9 +10,7 @@ import type { Database } from "@/types/database";
 import { logAdminAuditEvent } from "@/utils/admin-audit";
 import {
   closeAdminGate,
-  openAdminGate,
   requireShelterAccess,
-  validateAdminPassphrase,
 } from "@/utils/admin-auth";
 import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { canonicalizeBreedLabel, isCanonicalDogBreed } from "@/utils/dog-breeds";
@@ -706,29 +704,11 @@ function contentTypeFromExtension(extension: string) {
 
 export async function unlockAdminGateAction(
   _prevState: AdminGateState,
-  formData: FormData,
+  _formData: FormData,
 ): Promise<AdminGateState> {
-  const phrase = getString(formData, "adminPhrase");
-
-  if (!phrase) {
-    return {
-      message: "Enter the admin phrase.",
-      status: "error",
-    };
-  }
-
-  if (!validateAdminPassphrase(phrase)) {
-    return {
-      message: "Admin phrase did not match.",
-      status: "error",
-    };
-  }
-
-  await openAdminGate();
-
   return {
-    message: "Admin page unlocked.",
-    status: "success",
+    message: "Admin access now requires the PawJai Google account.",
+    status: "error",
   };
 }
 

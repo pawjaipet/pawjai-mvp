@@ -1,9 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import AdminGateForm from "@/app/admin/dogs/new/AdminGateForm";
 import { AdminWorkspaceNav } from "@/components/admin/AdminWorkspaceNav";
 import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
-import { getAdminAuthContext, requireGlobalAdmin } from "@/utils/admin-auth";
+import { buildAdminLoginPath, getAdminAuthContext, requireGlobalAdmin } from "@/utils/admin-auth";
 import {
   DEFAULT_PAWJAI_PROFILE_CONTENT,
   loadPawjaiProfileContent,
@@ -14,9 +14,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import {
   lockAdminGateAction,
   savePawjaiProfileAction,
-  unlockAdminGateAction,
 } from "@/app/admin/pawjaiprofile/actions";
-import { initialPawjaiAdminGateState } from "@/app/admin/pawjaiprofile/form-state";
 
 function inputClass() {
   return "w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none transition focus:border-[#cd8188] focus:ring-4 focus:ring-[#f3cbd0]/50";
@@ -76,11 +74,8 @@ export async function PawjaiProfileAdminPageContent({
   const resolvedSearchParams = await searchParams;
 
   if (!adminContext) {
-    return lockedFallback ?? (
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <AdminGateForm action={unlockAdminGateAction} initialState={initialPawjaiAdminGateState} />
-      </div>
-    );
+    if (lockedFallback) return lockedFallback;
+    redirect(buildAdminLoginPath(currentRoutePath));
   }
 
   await requireGlobalAdmin(currentRoutePath);

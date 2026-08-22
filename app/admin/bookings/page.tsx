@@ -5,11 +5,8 @@ import { APPOINTMENT_TIME_SLOTS, appointmentFollowUpDue, isPastAppointmentByTime
 import type { AppointmentMessageRow } from "@/utils/appointment-messages";
 import { isAppointmentMessagesUnavailableError } from "@/utils/appointment-messages";
 import { formatBookingCode, normalizeBookingCodeSearch } from "@/utils/booking";
-import { getAdminAuthContext } from "@/utils/admin-auth";
+import { requireGlobalAdmin } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
-import AdminGateForm from "../dogs/new/AdminGateForm";
-import { unlockAdminGateAction } from "../dogs/new/actions";
-import { initialAdminGateState } from "../dogs/new/form-state";
 import { createShelterBlockoutAction, decideBookingAction, deleteShelterAvailabilityAction, sendShelterMessageAction, toggleShelterBlockoutDateAction, updateShelterOperatingDaysAction, updateShelterProfileAction } from "./actions";
 import BookingQrScanner from "./BookingQrScanner";
 import DonationDetailsFields from "./DonationDetailsFields";
@@ -225,19 +222,8 @@ export default async function AdminBookingsPage({
 }: {
   searchParams?: Promise<{ code?: string; date?: string; message?: string; month?: string; shelter?: string; status?: string; view?: string; visit?: string }>;
 }) {
-  const adminContext = await getAdminAuthContext();
   const resolvedSearchParams = await searchParams;
-
-  if (!adminContext) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <AdminGateForm
-          action={unlockAdminGateAction}
-          initialState={initialAdminGateState}
-        />
-      </div>
-    );
-  }
+  const adminContext = await requireGlobalAdmin("/admin/bookings");
 
   const selectedStatus = STATUS_OPTIONS.includes(resolvedSearchParams?.status as AppointmentStatus)
     ? (resolvedSearchParams?.status as AppointmentStatus)

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { updateShelterPortalAccountAction } from "@/app/shelter/actions";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { getAdminAuthContext } from "@/utils/admin-auth";
 import {
   getShelterByPortalSlug,
@@ -58,6 +59,9 @@ export default async function ShelterAccountSettingsPage({
     <main className="min-h-screen bg-[#f5efe6] px-4 py-8 text-[#4f4338]">
       <div className="mx-auto max-w-3xl">
         <header className="rounded-[28px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+          <div className="mb-4 flex justify-end">
+            <LanguageSwitcher />
+          </div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#b77624]">
             PawJai Shelter Portal
           </p>

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { FileText, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, CalendarDays, FileText, ShieldCheck, UserRound } from "lucide-react";
+import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
 import type { Database, Json } from "@/types/database";
 import { formatBookingCode } from "@/utils/booking";
+import { bookingWorkspaceDetailHref } from "@/utils/booking-workspace-routes";
 import { canAccessShelter } from "@/utils/admin-authorization";
 import { getAdminAuthContext, type AdminAuthContext } from "@/utils/admin-auth";
 import { getShelterPortalTarget, slugifyShelterName } from "@/utils/shelter-portal";
@@ -148,9 +150,9 @@ function FieldRow({ label, value }: { label: string; value: unknown }) {
   const rendered = formatValue(value);
   if (rendered === "Not provided") return null;
   return (
-    <div className="rounded-2xl bg-[#fffdfa] p-4">
+    <div className="rounded-2xl bg-[#fffaf5] p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">{label}</p>
-      <p className="mt-1 text-sm leading-6 text-[#4f4338]">{rendered}</p>
+      <p className="mt-1 text-sm leading-6 text-[#65584f]">{rendered}</p>
     </div>
   );
 }
@@ -171,7 +173,7 @@ function FilterAnswerRows({ snapshot }: { snapshot: FilterSnapshot | null }) {
   const ageLabel = ageRangeLabel(snapshot?.ageRange);
 
   if (!entries.length && !ageLabel) {
-    return <p className="text-sm text-[#74685d]">No saved filter preferences yet.</p>;
+    return <p className="text-sm text-[#65584f]">No saved filter preferences yet.</p>;
   }
 
   return (
@@ -198,10 +200,10 @@ function Panel({
   title: string;
 }) {
   return (
-    <section className="rounded-[32px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+    <section className="rounded-[32px] border border-[#d6c8ad] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
       <div className="mb-4 flex items-center gap-3 text-[#9a6b2a]">
         {icon}
-        <h2 className="text-lg font-semibold text-[#4f4338]">{title}</h2>
+        <h2 className="text-lg font-semibold text-[#65584f]">{title}</h2>
       </div>
       {children}
     </section>
@@ -222,7 +224,7 @@ function DocumentCard({
   const isImage = mimeType?.startsWith("image/");
   return (
     <a
-      className="overflow-hidden rounded-2xl border border-[#eadfce] bg-[#fffdfa] text-sm font-semibold text-[#4f4338] hover:bg-[#faf4ec]"
+      className="overflow-hidden rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
       href={signedUrl ?? "#"}
       rel="noreferrer"
       target="_blank"
@@ -231,13 +233,13 @@ function DocumentCard({
         // eslint-disable-next-line @next/next/no-img-element
         <img alt={fileName ?? documentType} className="h-44 w-full object-cover" src={signedUrl} />
       ) : (
-        <div className="flex h-24 items-center justify-center bg-[#f8f0e5] text-[#9a6b2a]">
+        <div className="flex h-24 items-center justify-center bg-[#f8e8ea] text-[#9a6b2a]">
           <FileText size={28} />
         </div>
       )}
       <div className="p-4">
         {documentType.replace("_", " ")}
-        {fileName ? <span className="block pt-1 text-xs font-normal text-[#74685d]">{fileName}</span> : null}
+        {fileName ? <span className="block pt-1 text-xs font-normal text-[#65584f]">{fileName}</span> : null}
       </div>
     </a>
   );
@@ -252,13 +254,20 @@ async function signedDocumentUrl(
   return data?.signedUrl ?? null;
 }
 
-export default async function AdminVisitorProfilePage({
-  params,
-  searchParams,
-}: {
+type VisitorProfilePageProps = {
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ returnTo?: string }>;
-}) {
+};
+
+type VisitorProfileRenderProps = VisitorProfilePageProps & {
+  shelterPortalSlug?: string;
+};
+
+export async function renderVisitorProfilePage({
+  params,
+  searchParams,
+  shelterPortalSlug,
+}: VisitorProfileRenderProps) {
   const [{ id }, resolvedSearchParams] = await Promise.all([params, searchParams]);
 
   const admin = createAdminClient();
@@ -294,6 +303,23 @@ export default async function AdminVisitorProfilePage({
   const typedAdopter = adopter as Adopter | null;
   const typedDog = dog as Dog | null;
   const typedShelter = shelter as Shelter | null;
+
+  if (!context.isGlobalAdmin && !shelterPortalSlug) {
+    const canonicalSlug = typedShelter?.name
+      ? slugifyShelterName(typedShelter.name)
+      : null;
+    const portalTarget = canonicalSlug
+      ? `/shelter/${canonicalSlug}`
+      : await getShelterPortalTarget(context);
+
+    if (!portalTarget) redirect("/shelter");
+
+    const bookingListHref = `${portalTarget}?view=bookings`;
+    redirect(withReturnTo(
+      `${portalTarget}/bookings/${typedAppointment.id}/visitor-profile`,
+      bookingListHref,
+    ));
+  }
 
   const [{ data: adopterProfile }, { data: adopterPreference }, { data: adopterDocuments }] = await Promise.all([
     admin.from("adopter_profiles").select("*").eq("adopter_id", typedAppointment.adopter_id).maybeSingle(),
@@ -344,32 +370,32 @@ export default async function AdminVisitorProfilePage({
     shelter: typedShelter,
     shelterId: typedAppointment.shelter_id,
   });
-  const bookingDetailHref = withReturnTo(`/booking/${typedAppointment.id}`, bookingListHref);
+  const bookingDetailHref = withReturnTo(
+    bookingWorkspaceDetailHref({ appointmentId: typedAppointment.id, bookingListHref }),
+    bookingListHref,
+  );
 
   return (
-    <div className="min-h-screen bg-[#fffaf3] px-4 py-8">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#b77624]">
-              Visitor Profile
-            </p>
-            <h1 className="mt-2 text-4xl font-semibold text-[#4f4338]">{fullName(typedAdopter)}</h1>
-            <p className="mt-2 text-sm text-[#74685d]">
-              {typedAdopter?.email ?? "No email"} · {typedAdopter?.phone_number ?? "No phone"}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href={bookingDetailHref}>
+    <PawjaiWorkspaceShell
+      actions={(
+        <div className="flex flex-wrap gap-2">
+            <Link className="inline-flex items-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]" href={bookingDetailHref}>
+              <ArrowLeft className="h-4 w-4" />
               Back to booking detail
             </Link>
-            <Link className="rounded-full border border-[#eadfce] bg-white px-5 py-2 text-sm font-semibold text-[#5b4d40] hover:bg-[#faf4ec]" href={bookingListHref}>
+            <Link className="inline-flex items-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]" href={bookingListHref}>
+              <CalendarDays className="h-4 w-4" />
               Back to booking list
             </Link>
-          </div>
         </div>
+      )}
+      description={`${typedAdopter?.email ?? "No email"} · ${typedAdopter?.phone_number ?? "No phone"}`}
+      eyebrow={context.isGlobalAdmin ? "PawJai Visitor Review" : "Shelter Visitor Review"}
+      homeHref={bookingListHref}
+      title={fullName(typedAdopter)}
+    >
 
-        <section className="mb-5 rounded-[32px] border border-[#eadfce] bg-white p-6 shadow-[0_16px_50px_rgba(128,92,46,0.08)]">
+        <section className="mb-5 rounded-[28px] border border-[#d6c8ad] bg-white/90 p-6 shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
           <div className="grid gap-4 md:grid-cols-4">
             <FieldRow label="Booking" value={typedAppointment.booking_code ?? formatBookingCode(typedAppointment.id)} />
             <FieldRow label="Visit" value={formatDateTime(typedAppointment.appointment_date, typedAppointment.appointment_time)} />
@@ -404,18 +430,18 @@ export default async function AdminVisitorProfilePage({
               <FieldRow label="Travel plan" value={profile?.travel_plan} />
               <FieldRow label="Financial preparedness" value={profile?.financial_preparedness} />
             </div>
-            <div className="mt-5 rounded-2xl bg-[#f8f0e5] p-4">
+            <div className="mt-5 rounded-2xl bg-[#f8e8ea] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Shelter questionnaire Q&A</p>
               {answers.length === 0 ? (
-                <p className="mt-2 text-sm leading-6 text-[#74685d]">No shelter questionnaire answers are attached to this booking yet.</p>
+                <p className="mt-2 text-sm leading-6 text-[#65584f]">No shelter questionnaire answers are attached to this booking yet.</p>
               ) : (
                 <div className="mt-3 grid gap-3">
                   {answers.map(({ answer, question }) => (
-                    <div className="rounded-2xl bg-[#fffdfa] p-4" key={answer.id}>
+                    <div className="rounded-2xl bg-[#fffaf5] p-4" key={answer.id}>
                       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">
                         {question?.question_text ?? "Question"}
                       </p>
-                      <p className="mt-1 text-sm leading-6 text-[#4f4338]">
+                      <p className="mt-1 text-sm leading-6 text-[#65584f]">
                         {answer.answer_text || jsonAnswer(answer.answer_json)}
                       </p>
                     </div>
@@ -440,7 +466,7 @@ export default async function AdminVisitorProfilePage({
               <FieldRow label="Experience with pets" value={detail?.experience_with_pets} />
               <FieldRow label="Saved preference summary" value={(preference as unknown as { filter_summary?: string | null })?.filter_summary} />
             </div>
-            <div className="mt-5 rounded-2xl bg-[#f8f0e5] p-4">
+            <div className="mt-5 rounded-2xl bg-[#f8e8ea] p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Full filter preferences</p>
               <FilterAnswerRows snapshot={filterSnapshot} />
             </div>
@@ -450,7 +476,7 @@ export default async function AdminVisitorProfilePage({
         <div className="mt-5 grid gap-5">
           <Panel icon={<FileText size={20} />} title="Verification documents">
             {docs.length === 0 ? (
-              <p className="text-sm text-[#74685d]">No adopter verification documents are attached yet.</p>
+              <p className="text-sm text-[#65584f]">No adopter verification documents are attached yet.</p>
             ) : (
               <div className="grid gap-3 md:grid-cols-2">
                 {docs.map((document) => (
@@ -466,7 +492,10 @@ export default async function AdminVisitorProfilePage({
             )}
           </Panel>
         </div>
-      </div>
-    </div>
+    </PawjaiWorkspaceShell>
   );
+}
+
+export default async function AdminVisitorProfilePage(props: VisitorProfilePageProps) {
+  return renderVisitorProfilePage(props);
 }

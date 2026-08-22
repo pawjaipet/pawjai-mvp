@@ -4,11 +4,8 @@ import type { ReactNode } from "react";
 import { FileText, ShieldCheck, UserRound } from "lucide-react";
 import type { Database, Json } from "@/types/database";
 import { formatBookingCode } from "@/utils/booking";
-import { getAdminAuthContext, requireShelterAccess } from "@/utils/admin-auth";
+import { requireGlobalAdmin, requireShelterAccess } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
-import AdminGateForm from "../../../dogs/new/AdminGateForm";
-import { unlockAdminGateAction } from "../../../dogs/new/actions";
-import { initialAdminGateState } from "../../../dogs/new/form-state";
 
 type Appointment = Database["public"]["Tables"]["appointments"]["Row"];
 type Adopter = Database["public"]["Tables"]["adopters"]["Row"];
@@ -193,19 +190,8 @@ export default async function AdminVisitorProfilePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const adminContext = await getAdminAuthContext();
   const { id } = await params;
-
-  if (!adminContext) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <AdminGateForm
-          action={unlockAdminGateAction}
-          initialState={initialAdminGateState}
-        />
-      </div>
-    );
-  }
+  const adminContext = await requireGlobalAdmin(`/admin/bookings/${id}/visitor-profile`);
 
   const admin = createAdminClient();
   const adminUntyped = admin as any;

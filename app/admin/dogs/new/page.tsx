@@ -1,14 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { getAdminAuthContext } from "@/utils/admin-auth";
+import { requireGlobalAdmin } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import {
   lockAdminGateAction,
-  unlockAdminGateAction,
 } from "./actions";
-import { initialAdminGateState } from "./form-state";
 import DogListingForm from "./DogListingForm";
-import AdminGateForm from "./AdminGateForm";
 import { mergePersonalityTags } from "@/utils/personality-tags";
 
 type AdminDog = {
@@ -132,20 +129,9 @@ export async function AdminDogManagementPage({
   activeTabOverride?: "create" | "listings";
   searchParams?: Promise<{ tab?: string }>;
 }) {
-  const adminContext = await getAdminAuthContext();
   const resolvedSearchParams = await searchParams;
   const activeTab = activeTabOverride ?? (resolvedSearchParams?.tab === "listings" ? "listings" : "create");
-
-  if (!adminContext) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <AdminGateForm
-          action={unlockAdminGateAction}
-          initialState={initialAdminGateState}
-        />
-      </div>
-    );
-  }
+  const adminContext = await requireGlobalAdmin(activeTab === "listings" ? "/admin/listings" : "/admin");
 
   const supabase = createAdminClient();
   const scopedShelterIds = adminContext.isGlobalAdmin ? null : adminContext.shelterIds;

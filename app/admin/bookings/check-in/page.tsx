@@ -7,11 +7,8 @@ import {
   hashCheckInToken,
   verifySignedCheckInToken,
 } from "@/utils/booking";
-import { getAdminAuthContext, requireShelterAccess } from "@/utils/admin-auth";
+import { requireGlobalAdmin, requireShelterAccess } from "@/utils/admin-auth";
 import { createAdminClient } from "@/utils/supabase/admin";
-import AdminGateForm from "../../dogs/new/AdminGateForm";
-import { unlockAdminGateAction } from "../../dogs/new/actions";
-import { initialAdminGateState } from "../../dogs/new/form-state";
 
 function InvalidQrCard({ retry }: { retry?: boolean }) {
   return (
@@ -37,20 +34,9 @@ export default async function AdminBookingCheckInPage({
 }: {
   searchParams?: Promise<{ invalid?: string; token?: string }>;
 }) {
-  const adminContext = await getAdminAuthContext();
   const resolvedSearchParams = await searchParams;
   const token = resolvedSearchParams?.token ?? "";
-
-  if (!adminContext) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <AdminGateForm
-          action={unlockAdminGateAction}
-          initialState={initialAdminGateState}
-        />
-      </div>
-    );
-  }
+  const adminContext = await requireGlobalAdmin(`/admin/bookings/check-in${token ? `?token=${encodeURIComponent(token)}` : ""}`);
 
   if (!token || resolvedSearchParams?.invalid === "1") {
     return <InvalidQrCard />;
