@@ -70,6 +70,8 @@ export async function ensureAdopterForUser(supabase: PawjaiClient, user: User) {
     }
   }
 
+  const { firstName, lastName } = splitName(fullName);
+
   const { data: existing, error: existingError } = await admin
     .from("adopters")
     .select("*")
@@ -80,9 +82,29 @@ export async function ensureAdopterForUser(supabase: PawjaiClient, user: User) {
     throw new Error(existingError.message);
   }
 
-  if (existing) return existing;
+  if (existing) {
+    const adopterUpdates: Database["public"]["Tables"]["adopters"]["Update"] = {};
+    if (user.email && existing.email !== user.email) adopterUpdates.email = user.email;
+    if (!existing.first_name && firstName) adopterUpdates.first_name = firstName;
+    if (!existing.last_name && lastName) adopterUpdates.last_name = lastName;
 
-  const { firstName, lastName } = splitName(fullName);
+    if (Object.keys(adopterUpdates).length) {
+      const { data: updatedAdopter, error: adopterUpdateError } = await admin
+        .from("adopters")
+        .update(adopterUpdates)
+        .eq("id", existing.id)
+        .select("*")
+        .single();
+
+      if (adopterUpdateError) {
+        throw new Error(adopterUpdateError.message);
+      }
+
+      return updatedAdopter;
+    }
+
+    return existing;
+  }
 
   const { data: adopter, error } = await admin
     .from("adopters")
