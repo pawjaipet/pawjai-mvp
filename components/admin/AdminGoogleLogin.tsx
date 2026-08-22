@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { completeAdminGoogleLogin } from "@/app/admin/login/actions";
@@ -31,6 +32,13 @@ type GoogleAccounts = {
         width?: string | number;
       },
     ) => void;
+    prompt: (momentListener?: (notification: {
+      getNotDisplayedReason?: () => string;
+      getSkippedReason?: () => string;
+      isDismissedMoment?: () => boolean;
+      isNotDisplayed?: () => boolean;
+      isSkippedMoment?: () => boolean;
+    }) => void) => void;
   };
 };
 
@@ -63,6 +71,7 @@ export default function AdminGoogleLogin({
   nextPath: string;
 }) {
   const [localMessage, setLocalMessage] = useState<string | null>(message ?? null);
+  const [googleReady, setGoogleReady] = useState(false);
   const [scriptReady, setScriptReady] = useState(false);
   const [pending, setPending] = useState(false);
   const buttonRef = useRef<HTMLDivElement | null>(null);
@@ -130,15 +139,49 @@ export default function AdminGoogleLogin({
         type: "standard",
         width: buttonRef.current.clientWidth || 320,
       });
+      setGoogleReady(true);
     }
 
     void initializeButton();
 
     return () => {
       cancelled = true;
+      setGoogleReady(false);
       window.google?.accounts.id.cancel();
     };
   }, [handleCredential, scriptReady]);
+
+  function promptGoogleLogin() {
+    setLocalMessage(null);
+
+    if (!GOOGLE_CLIENT_ID) {
+      setLocalMessage("Google admin login is missing the Google client ID.");
+      return;
+    }
+
+    if (!googleReady || !window.google) {
+      setLocalMessage("Google sign-in is still loading. Please try again in a moment.");
+      return;
+    }
+
+    window.google.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed?.()) {
+        const reason = notification.getNotDisplayedReason?.();
+        setLocalMessage(
+          reason
+            ? `Google sign-in could not open (${reason}). Try the Google button below.`
+            : "Google sign-in could not open. Try the Google button below.",
+        );
+      } else if (notification.isSkippedMoment?.()) {
+        const reason = notification.getSkippedReason?.();
+        setLocalMessage(
+          reason
+            ? `Google sign-in was skipped (${reason}). Try the Google button below.`
+            : "Google sign-in was skipped. Try the Google button below.",
+        );
+      }
+    });
+  }
 
   return (
     <main className="min-h-screen bg-[#f5f1e8] px-4 py-16 text-[#65584f]">
@@ -172,7 +215,14 @@ export default function AdminGoogleLogin({
             Sign in with the PawJai Google account.
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-[#65584f]">
-            Admin access is limited to pawjaipet@gmail.com. Shelter teams should continue using the shelter portal.
+            Admin access is limited to pawjaipet@gmail.com. Shelter teams should continue using the{" "}
+            <Link
+              className="font-semibold text-[#1d6fd4] underline underline-offset-4 hover:text-[#1557a8]"
+              href="/shelter"
+            >
+              Shelter Portal
+            </Link>
+            .
           </p>
 
           <div className="mt-10 max-w-md">
@@ -183,8 +233,18 @@ export default function AdminGoogleLogin({
             ) : null}
 
             {GOOGLE_CLIENT_ID ? (
-              <div className="min-h-[48px]">
-                <div className="w-full [&>div]:mx-0" ref={buttonRef} />
+              <div className="space-y-4">
+                <button
+                  className="inline-flex w-full items-center justify-center rounded-full bg-[#cd8188] px-6 py-4 text-base font-semibold text-white shadow-[0_14px_26px_rgba(205,129,136,0.22)] transition hover:bg-[#b87179] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={pending || !scriptReady}
+                  onClick={promptGoogleLogin}
+                  type="button"
+                >
+                  {scriptReady ? "Log in with Google" : "Loading Google sign-in..."}
+                </button>
+                <div className="min-h-[48px]">
+                  <div className="w-full [&>div]:mx-0" ref={buttonRef} />
+                </div>
               </div>
             ) : (
               <p className="rounded-2xl border border-[#f0c9c1] bg-[#fff1ef] px-4 py-3 text-sm font-semibold text-[#9a3f2f]">

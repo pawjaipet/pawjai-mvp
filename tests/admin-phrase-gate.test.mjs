@@ -13,6 +13,8 @@ test("admin access uses the PawJai Google account instead of a phrase gate", () 
   assert.equal(loginPageSource.includes("AdminGoogleLogin"), true);
   assert.equal(loginComponentSource.includes("signInWithIdToken"), true);
   assert.equal(loginComponentSource.includes("https://accounts.google.com/gsi/client"), true);
+  assert.equal(loginComponentSource.includes("Log in with Google"), true);
+  assert.equal(loginComponentSource.includes('href="/shelter"'), true);
   assert.equal(loginActionSource.includes("completeAdminGoogleLogin"), true);
   assert.equal(loginActionSource.includes("isPawjaiGoogleAdminUser"), true);
   assert.equal(actionSource.includes("Admin access now requires the PawJai Google account."), true);
