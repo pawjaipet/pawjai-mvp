@@ -34,9 +34,9 @@ export default function SwipeFeedTutorial({ enabled = true, isLoggedIn }: SwipeF
     <div
       className="fixed inset-0 z-[80] mx-auto h-[100dvh] w-full max-w-[402px] overflow-hidden"
       style={{
-        background: "rgba(101,88,79,0.12)",
-        backdropFilter: "blur(2.5px)",
-        WebkitBackdropFilter: "blur(2.5px)",
+        background: "rgba(101,88,79,0.72)",
+        backdropFilter: "blur(4px)",
+        WebkitBackdropFilter: "blur(4px)",
         fontFamily: M,
       }}
       role="dialog"
@@ -64,7 +64,7 @@ export default function SwipeFeedTutorial({ enabled = true, isLoggedIn }: SwipeF
       <button
         type="button"
         onClick={() => setVisible(false)}
-        className="absolute right-[18px] top-[18px] z-20 flex h-[36px] w-[36px] items-center justify-center rounded-full bg-white/88 text-[#65584f] shadow-[0_8px_24px_rgba(101,88,79,0.18)] backdrop-blur transition-transform active:scale-95"
+        className="absolute right-[18px] top-[18px] z-20 flex h-[36px] w-[36px] items-center justify-center rounded-full bg-white/94 text-[#65584f] shadow-[0_8px_24px_rgba(0,0,0,0.2)] backdrop-blur transition-transform active:scale-95"
         aria-label={t("Close tutorial")}
       >
         <X size={17} strokeWidth={2.4} />
@@ -73,7 +73,7 @@ export default function SwipeFeedTutorial({ enabled = true, isLoggedIn }: SwipeF
       <div className="absolute left-[24px] right-[24px] top-[126px] z-10 text-center">
         <p
           id="swipe-tutorial-title"
-          className="rounded-[26px] bg-white/86 px-[18px] py-[14px] text-[18px] font-extrabold leading-[1.28] text-[#65584f] shadow-[0_16px_38px_rgba(101,88,79,0.2)] backdrop-blur"
+          className="rounded-[26px] bg-white/94 px-[18px] py-[14px] text-[18px] font-extrabold leading-[1.28] text-[#65584f] shadow-[0_16px_38px_rgba(0,0,0,0.22)] backdrop-blur"
         >
           {t("Scroll up to view dogs. Swipe left or right to see more photos.")}
         </p>
