@@ -6,6 +6,29 @@ export const APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE =
 export type AppointmentMessageRow = Database["public"]["Tables"]["appointment_messages"]["Row"];
 export type AppointmentMessageSenderRole = AppointmentMessageRow["sender_role"];
 
+export const RETURN_INQUIRY_MESSAGE_PREFIX = "Return inquiry requested.";
+const RETURN_INQUIRY_REASON_LABEL = "Reason:";
+const DEFAULT_RETURN_INQUIRY_REASON = "No reason provided yet.";
+
+export type ReturnInquiryMessage = {
+  reason: string;
+};
+
+export function formatReturnInquiryMessageBody(reason: string) {
+  const cleanReason = reason.trim() || DEFAULT_RETURN_INQUIRY_REASON;
+  return `${RETURN_INQUIRY_MESSAGE_PREFIX}\n\n${RETURN_INQUIRY_REASON_LABEL} ${cleanReason}`;
+}
+
+export function parseReturnInquiryMessageBody(body: string): ReturnInquiryMessage | null {
+  const normalized = body.trim();
+  if (!normalized.startsWith(RETURN_INQUIRY_MESSAGE_PREFIX)) return null;
+
+  const reasonMatch = normalized.match(/(?:^|\n)Reason:\s*([\s\S]*)$/i);
+  return {
+    reason: reasonMatch?.[1]?.trim() || DEFAULT_RETURN_INQUIRY_REASON,
+  };
+}
+
 export function isAppointmentMessagesUnavailableError(
   error: { code?: string; message?: string } | null | undefined,
 ) {

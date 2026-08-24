@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { acceptRescheduleRequestAction, cancelAppointmentFromListAction } from "@/app/appointments/actions";
 import { cancelAppointmentAction, sendAppointmentMessageAction, submitReturnInquiryAction } from "@/app/appointments/[id]/actions";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import { parseReturnInquiryMessageBody } from "@/utils/appointment-messages";
 import { createClient as createBrowserSupabaseClient } from "@/utils/supabase/client";
 
 const M = "Montserrat, sans-serif";
@@ -87,6 +88,45 @@ export type AppointmentThreadMessage = {
   senderLabel: string | null;
   senderRole: "adopter" | "shelter" | "system";
 };
+
+function ReturnInquiryThreadCard({
+  createdAt,
+  fromMe,
+  reason,
+}: {
+  createdAt: string;
+  fromMe: boolean;
+  reason: string;
+}) {
+  return (
+    <div className={`flex ${fromMe ? "justify-end" : "justify-start"}`}>
+      <div className="max-w-[88%] rounded-[20px] border border-[#e7c6ca] bg-[#fff7f8] px-[16px] py-[14px] shadow-[0_10px_28px_rgba(101,88,79,0.10)]">
+        <div className="flex items-center justify-between gap-[10px]">
+          <span className="rounded-full bg-[#cd8188] px-[10px] py-[4px] text-[10px] font-extrabold uppercase tracking-[0.14em] text-white" style={{ fontFamily: M }}>
+            Return request
+          </span>
+          <span className="text-[11px] text-[#65584f]/50" style={{ fontFamily: M }}>
+            {new Date(createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+          </span>
+        </div>
+        <p className="mt-[10px] text-[15px] font-extrabold leading-[1.25] text-[#65584f]" style={{ fontFamily: M }}>
+          {fromMe ? "Return inquiry sent" : "Return inquiry received"}
+        </p>
+        <div className="mt-[10px] rounded-[16px] bg-white px-[12px] py-[10px]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#cd8188]" style={{ fontFamily: M }}>
+            Reason
+          </p>
+          <p className="mt-[4px] whitespace-pre-wrap text-[14px] leading-[1.45] text-[#65584f]" style={{ fontFamily: M }}>
+            {reason}
+          </p>
+        </div>
+        <p className="mt-[10px] text-[12px] leading-[1.45] text-[#65584f]/70" style={{ fontFamily: M }}>
+          The shelter can reply here, and PawJai support can review this request if help is needed.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function AppointmentDetailClient({
   appointmentId,
@@ -762,6 +802,17 @@ function MessagesTab({
         </p>
         {chatMessages.map((msg) => {
           const fromMe = msg.senderRole === "adopter";
+          const returnInquiry = parseReturnInquiryMessageBody(msg.body);
+          if (returnInquiry) {
+            return (
+              <ReturnInquiryThreadCard
+                createdAt={msg.createdAt}
+                fromMe={fromMe}
+                key={msg.id}
+                reason={returnInquiry.reason}
+              />
+            );
+          }
           return (
           <div key={msg.id} className={`flex ${fromMe ? "justify-end" : "justify-start"}`}>
             <div className="max-w-[78%]">
@@ -982,7 +1033,7 @@ function MessagesTab({
             )}
             <a
               className="mt-[10px] flex w-full items-center justify-center rounded-full border border-[#eadfce] bg-[#fffdfa] px-[14px] py-[13px] text-[14px] font-bold text-[#65584f] active:scale-95"
-              href="mailto:pawjaipet@gmail.com"
+              href="mailto:support@pawjaipet.com"
               style={{ fontFamily: M }}
             >
               Contact PawJai admin

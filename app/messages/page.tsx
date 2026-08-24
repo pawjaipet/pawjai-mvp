@@ -4,7 +4,7 @@ import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import type { AppointmentMessageRow } from "@/utils/appointment-messages";
-import { isAppointmentMessagesUnavailableError } from "@/utils/appointment-messages";
+import { isAppointmentMessagesUnavailableError, parseReturnInquiryMessageBody } from "@/utils/appointment-messages";
 import { loadAdopterMessageAppointments } from "@/utils/appointment-queries";
 import { formatBookingCode } from "@/utils/booking";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -18,6 +18,13 @@ function formatTime(value: string | null | undefined) {
     day: "numeric",
     month: "short",
   });
+}
+
+function formatMessagePreview(body: string | null | undefined) {
+  if (!body) return "";
+  const returnInquiry = parseReturnInquiryMessageBody(body);
+  if (returnInquiry) return `Return inquiry requested: ${returnInquiry.reason}`;
+  return body;
 }
 
 export default async function MessagesPage() {
@@ -125,7 +132,7 @@ export default async function MessagesPage() {
                     <p className="shrink-0 text-[11px] text-[#65584f]/60" style={{ fontFamily: M }}>{formatTime(latest?.created_at ?? appointment.appointment_date)}</p>
                   </div>
                   <p className="mb-[4px] truncate text-[14px] leading-[1.3] text-[#65584f]/80" style={{ fontFamily: M }}>
-                    {latest ? latest.body : `Booking ${appointment.booking_code ?? formatBookingCode(appointment.id)}${dog ? ` for ${dog.name}` : ""}`}
+                    {latest ? formatMessagePreview(latest.body) : `Booking ${appointment.booking_code ?? formatBookingCode(appointment.id)}${dog ? ` for ${dog.name}` : ""}`}
                   </p>
                   <p className="truncate text-[11px] text-[#65584f]/45" style={{ fontFamily: M }}>
                     {dog?.name ?? "Shelter visit"} · {appointment.status.replace("_", " ")}

@@ -62,6 +62,7 @@ import { sendShelterAppointmentMessageAction, signOutShelterPortalAction } from 
 import DonationDetailsFields from "@/app/admin/bookings/DonationDetailsFields";
 import BookingQrScanner from "@/app/admin/bookings/BookingQrScanner";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import { parseReturnInquiryMessageBody } from "@/utils/appointment-messages";
 import {
   adDisplayStatusLabel,
   getAdDisplayStatus,
@@ -88,6 +89,48 @@ type BookingWorkspaceView = "visits" | "calendar";
 type VisitBucket = "upcoming" | "needs_follow_up" | "past" | "all";
 type MessageFilter = "all" | "unread" | "upcoming" | "needs_reply";
 type AdStatusFilter = "all" | AdDisplayStatus;
+
+function ReturnInquiryAdminCard({
+  adopterName,
+  createdAt,
+  reason,
+}: {
+  adopterName: string;
+  createdAt: string;
+  reason: string;
+}) {
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[86%] rounded-2xl border border-[#e7c6ca] bg-[#fff7f8] p-4 text-sm text-[#65584f] shadow-[0_10px_28px_rgba(101,88,79,0.08)]">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-[#cd8188] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white">
+            Return inquiry
+          </span>
+          <span className="text-xs font-semibold text-[#8d7f72]">
+            {formatMessageTime(createdAt)}
+          </span>
+        </div>
+        <p className="mt-3 text-base font-semibold text-[#65584f]">
+          {adopterName} requested return support
+        </p>
+        <div className="mt-3 rounded-2xl bg-white p-3">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#cd8188]">Reason</p>
+          <p className="mt-1 whitespace-pre-wrap leading-6" data-i18n-ignore>{reason}</p>
+        </div>
+        <p className="mt-3 text-xs leading-5 text-[#8d7f72]">
+          Reply in this thread to coordinate next steps. PawJai admin can review the request if support is needed.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function formatAdminMessagePreview(body: string | null | undefined) {
+  if (!body) return "";
+  const returnInquiry = parseReturnInquiryMessageBody(body);
+  if (returnInquiry) return `Return inquiry requested: ${returnInquiry.reason}`;
+  return body;
+}
 type AdWorkspaceView = "review" | "analytics";
 type AdminDraftMessageThread = AdminDraftData["messageThreads"][number];
 
@@ -1915,7 +1958,7 @@ function ShelterMessagesTab({
                 </div>
                 <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#65584f]">
                   {thread.latestMessage?.body ? (
-                    <span data-i18n-ignore>{thread.latestMessage.body}</span>
+                    <span data-i18n-ignore>{formatAdminMessagePreview(thread.latestMessage.body)}</span>
                   ) : (
                     "No messages yet. Conversation opens after a booked visit."
                   )}
@@ -1963,8 +2006,20 @@ function ShelterMessagesTab({
               <div className="mt-4 max-h-[460px] space-y-3 overflow-y-auto pr-1">
                 {selectedThread.messages.length > 0 ? selectedThread.messages.map((message) => {
                   const isShelter = message.sender_role === "shelter";
+                  const returnInquiry = parseReturnInquiryMessageBody(message.body);
                   const previewImage = !adminMode && isPreviewableMessageImage(message.attachment_type);
                   const previewVideo = !adminMode && isPreviewableMessageVideo(message.attachment_type);
+
+                  if (returnInquiry) {
+                    return (
+                      <ReturnInquiryAdminCard
+                        adopterName={selectedThread.adopterName}
+                        createdAt={message.created_at}
+                        key={message.id}
+                        reason={returnInquiry.reason}
+                      />
+                    );
+                  }
 
                   return (
                     <div className={`flex ${isShelter ? "justify-end" : "justify-start"}`} key={message.id}>

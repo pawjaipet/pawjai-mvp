@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import {
   APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE,
+  formatReturnInquiryMessageBody,
   isAppointmentMessagesUnavailableError,
 } from "@/utils/appointment-messages";
 import {
@@ -233,7 +234,7 @@ export async function submitReturnInquiryAction(formData: FormData) {
   const { error: messageError } = await admin.from("appointment_messages").insert({
     adopter_id: adopter.id,
     appointment_id: appointment.id,
-    body: `Return inquiry requested.\n\nReason: ${returnReason}`,
+    body: formatReturnInquiryMessageBody(returnReason),
     sender_label: [adopter.first_name, adopter.last_name].filter(Boolean).join(" ") || user.email || "Visitor",
     sender_role: "adopter",
     shelter_id: appointment.shelter_id,
