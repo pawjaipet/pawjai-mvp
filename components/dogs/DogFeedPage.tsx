@@ -96,10 +96,12 @@ async function getMatchingDogs(preference: PreferenceForDogFilter | null): Promi
   const shelterIds = Array.from(new Set(dogs.map((d) => d.shelter_id).filter(Boolean)));
   const { data: shelters } = await supabase
     .from("shelters")
-    .select("id, name")
+    .select("id, name, logo_url")
     .in("id", shelterIds);
-  const shelterNameMap = new Map<string, string>();
-  for (const s of shelters ?? []) shelterNameMap.set(s.id, s.name);
+  const shelterMap = new Map<string, { logo_url: string | null; name: string }>();
+  for (const s of shelters ?? []) {
+    shelterMap.set(s.id, { logo_url: s.logo_url, name: s.name });
+  }
 
   const videoMap = new Map<string, { public_url: string; poster_url: string | null }>();
   for (const [dogId, dogTraits] of traitMap) {
@@ -124,7 +126,8 @@ async function getMatchingDogs(preference: PreferenceForDogFilter | null): Promi
   const enrichedDogs = matchingDogs
     .map((d) => ({
       ...d,
-      shelter_name: shelterNameMap.get(d.shelter_id) ?? null,
+      shelter_logo_url: shelterMap.get(d.shelter_id)?.logo_url ?? null,
+      shelter_name: shelterMap.get(d.shelter_id)?.name ?? null,
       photos: photoMap.get(d.id) ?? [],
       traits: traitMap.get(d.id) ?? [],
       media: buildDogMediaItems({

@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { CalendarDays, Bookmark, Info } from "lucide-react";
+import { CalendarDays, Bookmark, Info, PawPrint } from "lucide-react";
 import { toggleWishlistAction } from "@/app/actions/wishlist";
 import { useAuthModal } from "@/components/auth/AuthProvider";
 import DogVideoFrame from "@/components/dogs/DogVideoFrame";
@@ -18,6 +18,7 @@ export type SwipeDog = Dog & {
   traits?: Pick<DogTrait, "trait_type" | "trait_value">[];
   media?: DogMediaItem[];
   video?: { poster_url: string | null; public_url: string } | null;
+  shelter_logo_url?: string | null;
   shelter_name?: string | null;
 };
 
@@ -203,6 +204,21 @@ export default function SwipeDogCard({
           ))}
         </div>
       )}
+
+      {/* Shelter logo overlay */}
+      <div className={`pointer-events-none absolute left-4 z-20 flex h-[66px] min-w-[90px] max-w-[156px] items-center justify-center overflow-hidden rounded-[20px] border border-white/60 bg-white/92 px-[12px] shadow-[0_10px_26px_rgba(0,0,0,0.16)] backdrop-blur-sm ${orderedMedia.length > 1 ? "top-[30px]" : "top-4"}`}>
+        {dog.shelter_logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={dog.shelter_logo_url}
+            alt={`${dog.shelter_name ?? "Shelter"} logo`}
+            className="max-h-[52px] max-w-[132px] object-contain"
+            draggable={false}
+          />
+        ) : (
+          <PawPrint aria-hidden="true" size={25} stroke="#cd8188" strokeWidth={2.4} />
+        )}
+      </div>
 
       {/* Dog name, centered in the pocket between Treat and tags */}
       <div className="pointer-events-none absolute bottom-[52px] left-4 right-4 z-10 flex h-[108px] items-center">
