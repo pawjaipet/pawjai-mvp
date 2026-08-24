@@ -204,24 +204,14 @@ export default function SwipeDogCard({
         </div>
       )}
 
-      {/* Dog name + breed overlay */}
-      <div className={`absolute left-4 right-20 pointer-events-none z-10 ${orderedMedia.length > 1 ? "top-[34px]" : "top-4"}`}>
+      {/* Name + tags overlay */}
+      <div className="absolute bottom-4 left-4 right-4 z-10">
         <p
-          className="font-black text-[36px] leading-[1.0] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] break-words"
+          className="pointer-events-none mb-[10px] max-w-[calc(100%-70px)] break-words text-[35px] font-black leading-[0.96] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]"
           style={{ fontFamily: "Montserrat, sans-serif" }}
         >
           {dog.name}
         </p>
-        <p
-          className="font-black text-[18px] leading-[1.1] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)] break-words mt-[6px]"
-          style={{ fontFamily: "Montserrat, sans-serif" }}
-        >
-          {translateDogValue(breedDisplay, language)}
-        </p>
-      </div>
-
-      {/* Tags overlay */}
-      <div className="absolute bottom-4 left-4 right-4 z-10">
         <div className="flex items-center gap-1.5 overflow-hidden">
           {primaryTags.map((tag, i) => (
             <span
