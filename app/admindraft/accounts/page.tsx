@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminDraftAccountsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ message?: string }>;
+  searchParams?: Promise<{ message?: string; q?: string; tab?: string }>;
 }) {
   return (
     <AdminAccountsPageContent

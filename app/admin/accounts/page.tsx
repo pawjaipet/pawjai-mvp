@@ -3,7 +3,7 @@ import { AdminAccountsPageContent } from "@/components/admin/AdminAccountsPageCo
 export default function AdminAccountsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ message?: string }>;
+  searchParams?: Promise<{ message?: string; q?: string; tab?: string }>;
 }) {
   return <AdminAccountsPageContent basePath="/admin" searchParams={searchParams} />;
 }
