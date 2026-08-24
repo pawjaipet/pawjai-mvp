@@ -13,14 +13,70 @@ export type DonationSlipState = {
 };
 
 const DONATION_SLIPS_BUCKET = "donation-slips";
-const DONATION_SLIP_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
-const MAX_DONATION_SLIP_BYTES = 10 * 1024 * 1024;
+const DONATION_SLIP_IMAGE_EXTENSIONS = new Set(["heic", "heif", "jpeg", "jpg", "png", "webp"]);
+const DONATION_SLIP_IMAGE_MIME_TYPES = new Set(["image/heic", "image/heif", "image/jpeg", "image/png", "image/webp"]);
+const DONATION_SLIP_JPEG_QUALITY = 86;
+const MAX_DONATION_SLIP_BYTES = 6 * 1024 * 1024;
 
 function donationSlipExtension(file: File) {
-  if (file.type === "application/pdf") return "pdf";
-  if (file.type === "image/png") return "png";
-  if (file.type === "image/webp") return "webp";
-  return "jpg";
+  return file.name.split(".").pop()?.toLowerCase() ?? "";
+}
+
+function isDonationSlipImage(file: File) {
+  const mimeType = file.type.split(";")[0]?.trim().toLowerCase();
+  const extension = donationSlipExtension(file);
+  return DONATION_SLIP_IMAGE_MIME_TYPES.has(mimeType) || DONATION_SLIP_IMAGE_EXTENSIONS.has(extension);
+}
+
+function isHeicDonationSlip(file: File) {
+  const mimeType = file.type.split(";")[0]?.trim().toLowerCase();
+  const extension = donationSlipExtension(file);
+  return mimeType === "image/heic" || mimeType === "image/heif" || extension === "heic" || extension === "heif";
+}
+
+function storedDonationSlipFileName(file: File) {
+  const baseName = file.name.replace(/\.[^.]+$/, "").trim() || "transfer-slip";
+  return `${baseName}.jpg`;
+}
+
+async function convertHeicDonationSlipToJpeg(buffer: Buffer) {
+  try {
+    const heicConvert = (await import("heic-convert")).default;
+    const jpeg = await heicConvert({
+      buffer: buffer as unknown as ArrayBufferLike,
+      format: "JPEG",
+      quality: DONATION_SLIP_JPEG_QUALITY / 100,
+    });
+
+    return Buffer.from(jpeg);
+  } catch {
+    throw new Error("We couldn't convert that HEIC slip. Please export it as JPG or upload a different image.");
+  }
+}
+
+async function prepareDonationSlipUpload(file: File) {
+  const sourceBuffer = Buffer.from(await file.arrayBuffer());
+  const imageBuffer = isHeicDonationSlip(file)
+    ? await convertHeicDonationSlipToJpeg(sourceBuffer)
+    : sourceBuffer;
+
+  try {
+    const sharp = (await import("sharp")).default;
+    const buffer = await sharp(imageBuffer, { failOn: "none" })
+      .rotate()
+      .resize({ width: 1800, height: 2400, fit: "inside", withoutEnlargement: true })
+      .jpeg({ mozjpeg: true, quality: DONATION_SLIP_JPEG_QUALITY })
+      .toBuffer();
+
+    return {
+      body: buffer,
+      contentType: "image/jpeg",
+      extension: "jpg",
+      storedFileName: storedDonationSlipFileName(file),
+    };
+  } catch {
+    throw new Error("We couldn't process that slip image. Please upload a clear JPG, PNG, WEBP, HEIC, or HEIF image.");
+  }
 }
 
 export async function createDonationIntent(input: {
@@ -114,12 +170,12 @@ export async function submitDonationSlipAction(
     return { message: "Choose a transfer slip to upload.", status: "error" };
   }
 
-  if (!DONATION_SLIP_MIME_TYPES.has(slip.type)) {
-    return { message: "Upload a PNG, JPG, WEBP, or PDF transfer slip.", status: "error" };
+  if (!isDonationSlipImage(slip)) {
+    return { message: "Upload a PNG, JPG, WEBP, HEIC, or HEIF image. Videos and PDFs are not supported.", status: "error" };
   }
 
   if (slip.size > MAX_DONATION_SLIP_BYTES) {
-    return { message: "Transfer slip must be 10 MB or smaller.", status: "error" };
+    return { message: "Transfer slip image must be 6 MB or smaller.", status: "error" };
   }
 
   await assertRateLimit({
@@ -145,14 +201,23 @@ export async function submitDonationSlipAction(
     return { message: "This donation has already been verified by the shelter.", status: "error" };
   }
 
-  const body = Buffer.from(await slip.arrayBuffer());
-  const digest = createHash("sha256").update(body).digest("hex").slice(0, 16);
-  const storagePath = `${intent.shelter_id}/${user.id}/${intent.id}/${Date.now()}-${digest}.${donationSlipExtension(slip)}`;
+  let preparedSlip: Awaited<ReturnType<typeof prepareDonationSlipUpload>>;
+  try {
+    preparedSlip = await prepareDonationSlipUpload(slip);
+  } catch (error) {
+    return {
+      message: error instanceof Error ? error.message : "Transfer slip image could not be processed.",
+      status: "error",
+    };
+  }
+
+  const digest = createHash("sha256").update(preparedSlip.body).digest("hex").slice(0, 16);
+  const storagePath = `${intent.shelter_id}/${user.id}/${intent.id}/${Date.now()}-${digest}.${preparedSlip.extension}`;
   const { error: uploadError } = await admin.storage
     .from(DONATION_SLIPS_BUCKET)
-    .upload(storagePath, body, {
+    .upload(storagePath, preparedSlip.body, {
       cacheControl: "3600",
-      contentType: slip.type,
+      contentType: preparedSlip.contentType,
       upsert: false,
     });
 
@@ -165,8 +230,8 @@ export async function submitDonationSlipAction(
     .from("donation_intents")
     .update({
       proof_bucket_id: DONATION_SLIPS_BUCKET,
-      proof_mime_type: slip.type,
-      proof_original_file_name: slip.name,
+      proof_mime_type: preparedSlip.contentType,
+      proof_original_file_name: preparedSlip.storedFileName,
       proof_storage_path: storagePath,
       proof_submitted_at: submittedAt,
       reviewed_at: null,

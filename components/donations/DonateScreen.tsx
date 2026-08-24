@@ -306,7 +306,10 @@ export default function DonateScreen({
               <div className="min-w-0 flex-1">
                 <SectionLabel>Transfer slip</SectionLabel>
                 <p className="mt-[6px] text-[13px] leading-5 text-[#8d7f72]">
-                  After paying, attach the bank slip so {shelterName} can match and record your donation.
+                  After paying, attach the bank slip. The shelter can match and record your donation.
+                </p>
+                <p className="mt-[4px] text-[12px] leading-5 text-[#b49a86]">
+                  Upload one image only: JPG, PNG, WEBP, HEIC, or HEIF. Max 6 MB.
                 </p>
               </div>
             </div>
@@ -325,7 +328,7 @@ export default function DonateScreen({
               <form action={submitSlip} className="mt-[16px] space-y-[12px]">
                 <input name="intentId" type="hidden" value={intentId} />
                 <input
-                  accept="image/png,image/jpeg,image/webp,application/pdf"
+                  accept=".heic,.heif,.jpg,.jpeg,.png,.webp,image/heic,image/heif,image/jpeg,image/png,image/webp"
                   className="w-full rounded-[14px] border border-[#d8c7ad] bg-[#fffaf5] px-[12px] py-[10px] text-[12px] text-[#65584f] file:mr-[10px] file:rounded-full file:border-0 file:bg-[#efe3cf] file:px-[12px] file:py-[7px] file:text-[12px] file:font-semibold file:text-[#65584f]"
                   name="slip"
                   required

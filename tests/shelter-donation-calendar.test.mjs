@@ -86,10 +86,16 @@ test("donation slips use private storage and shelter-scoped review", () => {
   const donationActions = readFileSync(new URL("../app/donations/actions.ts", import.meta.url), "utf8");
   const bookingActions = readFileSync(new URL("../app/admin/bookings/actions.ts", import.meta.url), "utf8");
   const migration = readFileSync(new URL("../supabase/migrations/20260731074531_donation_proof_and_personality_dedupe.sql", import.meta.url), "utf8");
+  const imageOnlyMigration = readFileSync(new URL("../supabase/migrations/20260824053812_donation_slips_image_only.sql", import.meta.url), "utf8");
 
   assert.equal(donationActions.includes('const DONATION_SLIPS_BUCKET = "donation-slips"'), true);
   assert.equal(donationActions.includes('.eq("user_id", user.id)'), true);
   assert.equal(bookingActions.includes('.eq("shelter_id", shelterId)'), true);
   assert.equal(migration.includes("'donation-slips',\n  'donation-slips',\n  false"), true);
+  assert.equal(imageOnlyMigration.includes("donation_intents_proof_image_mime_type"), true);
+  assert.equal(imageOnlyMigration.includes("6291456"), true);
+  assert.equal(imageOnlyMigration.includes("'image/heic'"), true);
+  assert.equal(imageOnlyMigration.includes("'image/heif'"), true);
+  assert.equal(imageOnlyMigration.includes("'application/pdf'"), false);
   assert.equal(migration.includes("donation_intents_shelter_or_admin_select"), true);
 });
