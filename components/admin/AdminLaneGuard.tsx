@@ -25,7 +25,10 @@ export default function AdminLaneGuard() {
 
         const result = await response.json() as WorkspaceLaneResponse;
         if (result.lane === "shelter") {
-          window.location.replace(result.target?.startsWith("/shelter") ? result.target : "/shelter");
+          if (window.location.pathname === "/admin/login") return;
+
+          const nextPath = `${window.location.pathname}${window.location.search}`;
+          window.location.replace(`/admin/login?next=${encodeURIComponent(nextPath)}`);
         }
       } finally {
         requestInFlight = false;

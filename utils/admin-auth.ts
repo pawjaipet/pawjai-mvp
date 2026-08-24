@@ -158,8 +158,7 @@ export async function requireGlobalAdmin(nextPath = "/admin") {
   const context = await requireAdminWorkspace(nextPath);
 
   if (!context.isGlobalAdmin) {
-    const { getShelterPortalTarget } = await import("@/utils/shelter-portal");
-    redirect(await getShelterPortalTarget(context) ?? "/shelter");
+    redirect(buildAdminLoginPath(nextPath));
   }
 
   return context;

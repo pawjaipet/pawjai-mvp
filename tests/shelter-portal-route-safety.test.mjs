@@ -24,16 +24,18 @@ test("admin trees reject shelter accounts on fresh requests and browser-history 
   const adminBookingsPage = source("../app/admin/bookings/page.tsx");
   const clientGuard = source("../components/admin/AdminLaneGuard.tsx");
   const laneRoute = source("../app/api/workspace-lane/route.ts");
+  const auth = source("../utils/admin-auth.ts");
 
-  assert.match(adminLayout, /context\?\.role === "shelter_admin"/);
-  assert.match(adminLayout, /getShelterPortalTarget/);
   assert.match(adminLayout, /<AdminLaneGuard \/>/);
+  assert.doesNotMatch(adminLayout, /getShelterPortalTarget/);
   assert.match(adminDogPage, /requireGlobalAdmin/);
   assert.match(adminBookingsPage, /redirect\("\/admin\?view=bookings"\)/);
+  assert.match(auth, /redirect\(buildAdminLoginPath\(nextPath\)\)/);
 
   assert.match(clientGuard, /window\.addEventListener\("pageshow"/);
   assert.match(clientGuard, /window\.addEventListener\("popstate"/);
-  assert.match(clientGuard, /window\.location\.replace/);
+  assert.match(clientGuard, /window\.location\.pathname === "\/admin\/login"/);
+  assert.match(clientGuard, /\/admin\/login\?next=/);
   assert.match(laneRoute, /includePhraseGate: false/);
   assert.match(laneRoute, /lane: "shelter"/);
   assert.match(laneRoute, /"Cache-Control": "no-store"/);

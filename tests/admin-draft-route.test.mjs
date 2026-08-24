@@ -22,9 +22,10 @@ test("/admin requires the PawJai Google admin session before loading data", () =
   assert.equal(pageSource.includes("<AdminDraftGate"), false);
   assert.equal(pageSource.includes("loadAdminDraftData"), true);
   assert.equal(layoutSource.includes("AdminLaneGuard"), true);
-  assert.equal(layoutSource.includes('context?.role === "shelter_admin"'), true);
+  assert.equal(layoutSource.includes('redirect(await getShelterPortalTarget'), false);
   assert.equal(authSource.includes("DEFAULT_PAWJAI_ADMIN_GOOGLE_EMAIL"), true);
   assert.equal(authSource.includes("isPawjaiGoogleAdminUser"), true);
+  assert.equal(authSource.includes("redirect(buildAdminLoginPath(nextPath))"), true);
   assert.equal(loginSource.includes("completeAdminGoogleLogin"), true);
   assert.equal(loginSource.includes("signInWithIdToken"), true);
 });
@@ -293,6 +294,9 @@ test("admin draft and shelter portal open booking detail and visitor profile thr
   const bookingDetailSource = readFileSync(new URL("../app/booking/[id]/page.tsx", import.meta.url), "utf8");
   const visitorProfileSource = readFileSync(new URL("../app/booking/[id]/visitor-profile/page.tsx", import.meta.url), "utf8");
   const checkInSource = readFileSync(new URL("../app/booking/check-in/page.tsx", import.meta.url), "utf8");
+  const adminDetailSource = readFileSync(new URL("../app/admin/bookings/[id]/page.tsx", import.meta.url), "utf8");
+  const adminVisitorSource = readFileSync(new URL("../app/admin/bookings/[id]/visitor-profile/page.tsx", import.meta.url), "utf8");
+  const adminCheckInSource = readFileSync(new URL("../app/admin/bookings/check-in/page.tsx", import.meta.url), "utf8");
   const shelterDetailSource = readFileSync(new URL("../app/shelter/[slug]/bookings/[id]/page.tsx", import.meta.url), "utf8");
   const shelterVisitorSource = readFileSync(new URL("../app/shelter/[slug]/bookings/[id]/visitor-profile/page.tsx", import.meta.url), "utf8");
   const shelterCheckInSource = readFileSync(new URL("../app/shelter/[slug]/bookings/check-in/page.tsx", import.meta.url), "utf8");
@@ -324,6 +328,9 @@ test("admin draft and shelter portal open booking detail and visitor profile thr
   assert.equal(checkInSource.includes("bookingWorkspaceDetailHref"), true);
   assert.equal(checkInSource.includes("Back to booking list"), true);
   assert.equal(checkInSource.includes("!context.isGlobalAdmin && !shelterPortalSlug"), true);
+  for (const adminRouteSource of [adminDetailSource, adminVisitorSource, adminCheckInSource]) {
+    assert.equal(adminRouteSource.includes("requireGlobalAdmin"), true);
+  }
   for (const shelterRouteSource of [shelterDetailSource, shelterVisitorSource, shelterCheckInSource]) {
     assert.equal(shelterRouteSource.includes("getAdminAuthContext({ includePhraseGate: false })"), true);
     assert.equal(shelterRouteSource.includes("getShelterByPortalSlug"), true);
@@ -344,10 +351,12 @@ test("admin and adopter navigation cannot leak a shelter session into PawJai adm
   const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
   const adminDogPageSource = readFileSync(new URL("../app/admin/dogs/new/page.tsx", import.meta.url), "utf8");
   const adminBookingsPageSource = readFileSync(new URL("../app/admin/bookings/page.tsx", import.meta.url), "utf8");
+  const adminLaneGuardSource = readFileSync(new URL("../components/admin/AdminLaneGuard.tsx", import.meta.url), "utf8");
 
-  assert.equal(adminLayoutSource.includes('context?.role === "shelter_admin"'), true);
-  assert.equal(adminLayoutSource.includes("getShelterPortalTarget"), true);
+  assert.equal(adminLayoutSource.includes('redirect(await getShelterPortalTarget'), false);
   assert.equal(adminLayoutSource.includes("AdminLaneGuard"), true);
+  assert.equal(adminLaneGuardSource.includes('window.location.pathname === "/admin/login"'), true);
+  assert.equal(adminLaneGuardSource.includes('`/admin/login?next=${encodeURIComponent(nextPath)}`'), true);
   assert.equal(adminDogPageSource.includes("requireGlobalAdmin"), true);
   assert.equal(adminBookingsPageSource.includes('redirect("/admin?view=bookings")'), true);
   assert.equal(authSource.includes("adminGateOpen || adminDraftOpen"), false);
