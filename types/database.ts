@@ -320,6 +320,7 @@ export type Database = {
           adopter_id: string
           appointment_id: string
           attachment_name: string | null
+          attachment_storage_path: string | null
           attachment_type: string | null
           attachment_url: string | null
           body: string
@@ -335,6 +336,7 @@ export type Database = {
           adopter_id: string
           appointment_id: string
           attachment_name?: string | null
+          attachment_storage_path?: string | null
           attachment_type?: string | null
           attachment_url?: string | null
           body: string

@@ -48,3 +48,23 @@ export function isAppointmentMessagesUnavailableError(
     )
   );
 }
+
+export function isReturnInquiriesUnavailableError(
+  error: { code?: string; message?: string } | null | undefined,
+) {
+  const code = error?.code ?? "";
+  const message = (error?.message ?? "").toLowerCase();
+
+  return (
+    code === "PGRST205"
+    || (
+      message.includes("return_inquiries")
+      && (
+        message.includes("schema cache")
+        || message.includes("could not find")
+        || message.includes("does not exist")
+        || message.includes("relation")
+      )
+    )
+  );
+}

@@ -1,4 +1,5 @@
 import type { AppointmentMessageRow } from "@/utils/appointment-messages";
+import { signAppointmentMessageAttachments } from "@/utils/appointment-message-attachments";
 import {
   APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE,
   isAppointmentMessagesUnavailableError,
@@ -274,6 +275,11 @@ export async function loadAppointmentMessageThreads({
     };
   }
 
+  const signedMessages = await signAppointmentMessageAttachments(
+    admin,
+    (messagesResult.data ?? []) as AppointmentMessageRow[],
+  );
+
   return {
     error: null,
     messagesUnavailable: false,
@@ -281,7 +287,7 @@ export async function loadAppointmentMessageThreads({
       adopters: (adoptersResult.data ?? []) as AdopterSummary[],
       appointments,
       dogs: (dogsResult.data ?? []) as DogSummary[],
-      messages: (messagesResult.data ?? []) as AppointmentMessageRow[],
+      messages: signedMessages,
       shelterIds,
       shelters: (sheltersResult.data ?? []) as ShelterSummary[],
     }),

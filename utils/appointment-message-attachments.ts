@@ -2,6 +2,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 
 export const APPOINTMENT_MESSAGE_ATTACHMENTS_BUCKET = "appointment-message-attachments";
 export const APPOINTMENT_MESSAGE_ATTACHMENT_MAX_BYTES = 200 * 1024 * 1024;
+export const APPOINTMENT_MESSAGE_ATTACHMENT_SIGNED_URL_SECONDS = 60 * 60;
 export const APPOINTMENT_MESSAGE_ATTACHMENT_ACCEPT = [
   ".pdf",
   ".jpg",
@@ -113,7 +114,63 @@ export async function uploadAppointmentMessageAttachment({
 
   return {
     name: file.name,
+    storagePath,
     type: policy.type,
     url: data.publicUrl,
   };
+}
+
+type AppointmentMessageAttachmentFields = {
+  attachment_storage_path?: string | null;
+  attachment_url: string | null;
+};
+
+type SupabaseStorageLikeClient = {
+  storage: {
+    from: (bucket: string) => {
+      createSignedUrl: (
+        path: string,
+        expiresIn: number,
+      ) => Promise<{ data: { signedUrl?: string | null } | null; error: { message?: string } | null }>;
+    };
+  };
+};
+
+export async function signAppointmentMessageAttachments<
+  T extends AppointmentMessageAttachmentFields,
+>(
+  admin: SupabaseStorageLikeClient,
+  messages: T[],
+): Promise<T[]> {
+  const storagePaths = [
+    ...new Set(messages
+      .map((message) => message.attachment_storage_path)
+      .filter((path): path is string => Boolean(path))),
+  ];
+
+  if (storagePaths.length === 0) return messages;
+
+  const signedUrls = new Map<string, string>();
+  await Promise.all(storagePaths.map(async (path) => {
+    const { data, error } = await admin.storage
+      .from(APPOINTMENT_MESSAGE_ATTACHMENTS_BUCKET)
+      .createSignedUrl(path, APPOINTMENT_MESSAGE_ATTACHMENT_SIGNED_URL_SECONDS);
+
+    if (error) {
+      console.error("Appointment attachment signed URL failed", { path, error });
+      return;
+    }
+
+    if (data?.signedUrl) signedUrls.set(path, data.signedUrl);
+  }));
+
+  return messages.map((message) => {
+    const storagePath = message.attachment_storage_path;
+    if (!storagePath) return message;
+
+    return {
+      ...message,
+      attachment_url: signedUrls.get(storagePath) ?? null,
+    };
+  });
 }

@@ -12,7 +12,7 @@ test("adopter message composer keeps help and return actions under the message b
   assert.equal(source.includes("SOS I need help"), true);
   assert.equal(source.includes("Return inquiry"), true);
   assert.equal(source.includes("Contact PawJai admin"), true);
-  assert.equal(source.includes("mailto:pawjaipet@gmail.com"), true);
+  assert.equal(source.includes("mailto:support@pawjaipet.com"), true);
   assert.equal(source.includes("Call shelter employee"), true);
   assert.equal(source.includes("submitReturnInquiryAction"), true);
   assert.equal(source.includes('name="returnReason"'), true);

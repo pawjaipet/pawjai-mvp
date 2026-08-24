@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import AppointmentDetailClient from "@/components/appointments/AppointmentDetailClient";
 import { ensureAdopterForUser } from "@/utils/adopter";
+import { signAppointmentMessageAttachments } from "@/utils/appointment-message-attachments";
 import type { AppointmentMessageRow } from "@/utils/appointment-messages";
 import { isAppointmentMessagesUnavailableError } from "@/utils/appointment-messages";
 import { parseLegacyRescheduleNote } from "@/utils/appointments-model";
@@ -80,7 +81,7 @@ export default async function AppointmentDetailPage({
     : null;
   const { data: messageRows, error: messageRowsError } = await admin
     .from("appointment_messages")
-    .select("id, sender_role, sender_label, body, attachment_url, attachment_name, attachment_type, created_at")
+    .select("*")
     .eq("appointment_id", appt.id)
     .order("created_at", { ascending: true });
   const messagesUnavailable = Boolean(messageRowsError);
@@ -154,7 +155,11 @@ export default async function AppointmentDetailPage({
   const slotStart = new Date(`${appt.appointment_date}T${appt.appointment_time}`);
   const isPast = slotStart.getTime() + 60 * 60 * 1000 <= Date.now();
   const legacyReschedule = parseLegacyRescheduleNote(appt.shelter_note);
-  const initialMessages = ((messageRows ?? []) as Pick<
+  const signedMessageRows = await signAppointmentMessageAttachments(
+    admin,
+    (messageRows ?? []) as AppointmentMessageRow[],
+  );
+  const initialMessages = (signedMessageRows as Pick<
     AppointmentMessageRow,
     "attachment_name" | "attachment_type" | "attachment_url" | "body" | "created_at" | "id" | "sender_label" | "sender_role"
   >[]).map((message) => ({

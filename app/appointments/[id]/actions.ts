@@ -7,6 +7,7 @@ import {
   APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE,
   formatReturnInquiryMessageBody,
   isAppointmentMessagesUnavailableError,
+  isReturnInquiriesUnavailableError,
 } from "@/utils/appointment-messages";
 import {
   sendAppointmentMessageNotificationForAppointment,
@@ -16,6 +17,7 @@ import {
   getAppointmentMessageAttachmentFile,
   uploadAppointmentMessageAttachment,
 } from "@/utils/appointment-message-attachments";
+import { isMissingAppointmentColumnError } from "@/utils/appointment-queries";
 import { assertRateLimit } from "@/utils/rate-limit";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
@@ -118,17 +120,30 @@ export async function sendAppointmentMessageAction(formData: FormData) {
   }
 
   const senderLabel = [adopter.first_name, adopter.last_name].filter(Boolean).join(" ") || user.email || "Visitor";
-  const { error } = await admin.from("appointment_messages").insert({
+  const messagePayload = {
     adopter_id: adopter.id,
     appointment_id: appointment.id,
     attachment_name: attachment?.name ?? null,
+    attachment_storage_path: attachment?.storagePath ?? null,
     attachment_type: attachment?.type ?? null,
-    attachment_url: attachment?.url ?? null,
+    attachment_url: null,
     body: body || (attachment ? `Attachment: ${attachment.name}` : body),
     sender_label: senderLabel,
-    sender_role: "adopter",
+    sender_role: "adopter" as const,
     shelter_id: appointment.shelter_id,
-  });
+  };
+
+  let { error } = await admin.from("appointment_messages").insert(messagePayload);
+  if (error && isMissingAppointmentColumnError(error, "attachment_storage_path")) {
+    const legacyPayload = { ...messagePayload } as Omit<typeof messagePayload, "attachment_storage_path"> & {
+      attachment_storage_path?: string | null;
+    };
+    delete legacyPayload.attachment_storage_path;
+    ({ error } = await admin.from("appointment_messages").insert({
+      ...legacyPayload,
+      attachment_url: attachment?.url ?? null,
+    }));
+  }
 
   if (error) {
     const message = isAppointmentMessagesUnavailableError(error)
@@ -176,12 +191,12 @@ export async function createReturnInquiryAction(appointmentId: string) {
     shelter_id: appointment.shelter_id,
   });
 
-  if (error && error.code !== "23505") {
+  if (error && error.code !== "23505" && !isReturnInquiriesUnavailableError(error)) {
     console.error("Return inquiry could not be recorded", error);
     return { ok: false, error: "Return inquiry could not be recorded." };
   }
 
-  if (!error) {
+  if (!error || isReturnInquiriesUnavailableError(error)) {
     await sendReturnInquiryNotificationForAppointment({
       admin,
       appointmentId: appointment.id,
@@ -225,7 +240,9 @@ export async function submitReturnInquiryAction(formData: FormData) {
     shelter_id: appointment.shelter_id,
   });
 
-  if (inquiryError && inquiryError.code !== "23505") {
+  const returnInquiryUnavailable = isReturnInquiriesUnavailableError(inquiryError);
+
+  if (inquiryError && inquiryError.code !== "23505" && !returnInquiryUnavailable) {
     console.error("Return inquiry could not be recorded", inquiryError);
     redirect(`/appointments/${appointment.id}?tab=messages&message=${encodeURIComponent("Return inquiry could not be sent.")}`);
   }
@@ -247,7 +264,7 @@ export async function submitReturnInquiryAction(formData: FormData) {
     redirect(`/appointments/${appointment.id}?tab=messages&message=${encodeURIComponent(message)}`);
   }
 
-  if (!inquiryError) {
+  if (!inquiryError || returnInquiryUnavailable) {
     await sendReturnInquiryNotificationForAppointment({
       admin,
       appointmentId: appointment.id,

@@ -21,7 +21,7 @@ function loadAppointmentMessages() {
 }
 
 test("detects appointment message schema/cache failures", () => {
-  const { isAppointmentMessagesUnavailableError } = loadAppointmentMessages();
+  const { isAppointmentMessagesUnavailableError, isReturnInquiriesUnavailableError } = loadAppointmentMessages();
 
   assert.equal(
     isAppointmentMessagesUnavailableError({
@@ -37,15 +37,89 @@ test("detects appointment message schema/cache failures", () => {
   );
   assert.equal(isAppointmentMessagesUnavailableError({ message: "duplicate key value violates unique constraint" }), false);
   assert.equal(isAppointmentMessagesUnavailableError(null), false);
+  assert.equal(
+    isReturnInquiriesUnavailableError({
+      message: 'relation "public.return_inquiries" does not exist',
+    }),
+    true,
+  );
+  assert.equal(
+    isReturnInquiriesUnavailableError({
+      message: "Could not find the table 'public.return_inquiries' in the schema cache",
+    }),
+    true,
+  );
+  assert.equal(isReturnInquiriesUnavailableError({ message: "duplicate key value violates unique constraint" }), false);
 });
 
 test("database types include appointment messages table", () => {
   const source = readFileSync(new URL("../types/database.ts", import.meta.url), "utf8");
 
   assert.match(source, /appointment_messages:\s*\{/);
+  assert.match(source, /attachment_storage_path: string \| null/);
   assert.match(source, /attachment_url: string \| null/);
   assert.match(source, /sender_role: "adopter" \| "shelter" \| "system"/);
   assert.match(source, /return_inquiries:\s*\{/);
+});
+
+function loadAppointmentMessageAttachments() {
+  const source = readFileSync(new URL("../utils/appointment-message-attachments.ts", import.meta.url), "utf8");
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  });
+  const module = { exports: {} };
+  new Script(outputText).runInNewContext({
+    Buffer,
+    console,
+    crypto,
+    exports: module.exports,
+    File: class File {},
+    module,
+    require: (specifier) => {
+      if (specifier === "@/utils/supabase/admin") {
+        return { createAdminClient: () => ({}) };
+      }
+      return {};
+    },
+  });
+  return module.exports;
+}
+
+test("signs appointment message attachments from private storage paths", async () => {
+  const { signAppointmentMessageAttachments } = loadAppointmentMessageAttachments();
+  const signedMessages = await signAppointmentMessageAttachments(
+    {
+      storage: {
+        from(bucket) {
+          assert.equal(bucket, "appointment-message-attachments");
+          return {
+            async createSignedUrl(path, expiresIn) {
+              assert.equal(expiresIn, 60 * 60);
+              return { data: { signedUrl: `signed:${path}` }, error: null };
+            },
+          };
+        },
+      },
+    },
+    [
+      {
+        attachment_storage_path: "appointment-messages/appt/file.pdf",
+        attachment_url: "https://old-public-url.example/file.pdf",
+        id: "message-with-path",
+      },
+      {
+        attachment_storage_path: null,
+        attachment_url: "https://legacy-public-url.example/file.pdf",
+        id: "legacy-message",
+      },
+    ],
+  );
+
+  assert.equal(signedMessages[0].attachment_url, "signed:appointment-messages/appt/file.pdf");
+  assert.equal(signedMessages[1].attachment_url, "https://legacy-public-url.example/file.pdf");
 });
 
 function loadMessageThreads() {
@@ -63,6 +137,11 @@ function loadMessageThreads() {
     require: (specifier) => {
       if (specifier === "@/utils/appointment-messages") {
         return loadAppointmentMessages();
+      }
+      if (specifier === "@/utils/appointment-message-attachments") {
+        return {
+          signAppointmentMessageAttachments: async (_admin, messages) => messages,
+        };
       }
       if (specifier === "@/utils/supabase/admin") {
         return { createAdminClient: () => ({}) };

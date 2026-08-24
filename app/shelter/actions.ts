@@ -13,6 +13,7 @@ import {
   getAppointmentMessageAttachmentFile,
   uploadAppointmentMessageAttachment,
 } from "@/utils/appointment-message-attachments";
+import { isMissingAppointmentColumnError } from "@/utils/appointment-queries";
 import { sendAppointmentMessageNotificationForAppointment } from "@/utils/booking-email";
 import {
   getShelterPortalTarget,
@@ -256,18 +257,31 @@ export async function sendShelterAppointmentMessageAction(formData: FormData) {
 
   const senderLabel = context.fullName || context.userEmail || "Shelter team";
   const now = new Date().toISOString();
-  const { error } = await admin.from("appointment_messages").insert({
+  const messagePayload = {
     adopter_id: appointment.adopter_id,
     appointment_id: appointment.id,
     attachment_name: attachment?.name ?? null,
+    attachment_storage_path: attachment?.storagePath ?? null,
     attachment_type: attachment?.type ?? null,
-    attachment_url: attachment?.url ?? null,
+    attachment_url: null,
     body: body || (attachment ? `Attachment: ${attachment.name}` : body),
     read_by_shelter_at: now,
     sender_label: senderLabel,
-    sender_role: "shelter",
+    sender_role: "shelter" as const,
     shelter_id: appointment.shelter_id,
-  });
+  };
+
+  let { error } = await admin.from("appointment_messages").insert(messagePayload);
+  if (error && isMissingAppointmentColumnError(error, "attachment_storage_path")) {
+    const legacyPayload = { ...messagePayload } as Omit<typeof messagePayload, "attachment_storage_path"> & {
+      attachment_storage_path?: string | null;
+    };
+    delete legacyPayload.attachment_storage_path;
+    ({ error } = await admin.from("appointment_messages").insert({
+      ...legacyPayload,
+      attachment_url: attachment?.url ?? null,
+    }));
+  }
 
   if (error) {
     const message = isAppointmentMessagesUnavailableError(error)

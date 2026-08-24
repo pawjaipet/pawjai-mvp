@@ -47,9 +47,13 @@ test("shelter message action supports appointment attachments", () => {
   assert.equal(policySource.includes("MOV"), true);
   assert.equal(policySource.includes(".storage.from(APPOINTMENT_MESSAGE_ATTACHMENTS_BUCKET).upload"), true);
   assert.equal(policySource.includes("appointment-messages/${appointmentId}/"), true);
+  assert.equal(policySource.includes("storagePath"), true);
+  assert.equal(policySource.includes("signAppointmentMessageAttachments"), true);
   assert.equal(source.includes("attachment_name: attachment?.name ?? null"), true);
   assert.equal(source.includes("attachment_type: attachment?.type ?? null"), true);
-  assert.equal(source.includes("attachment_url: attachment?.url ?? null"), true);
+  assert.equal(source.includes("attachment_storage_path: attachment?.storagePath ?? null"), true);
+  assert.equal(source.includes("attachment_url: null"), true);
+  assert.equal(source.includes("isMissingAppointmentColumnError(error, \"attachment_storage_path\")"), true);
   assert.equal(source.includes("sendAppointmentMessageNotificationForAppointment"), true);
   assert.equal(adopterSource.includes("sendAppointmentMessageNotificationForAppointment"), true);
   assert.equal(configSource.includes('bodySizeLimit: "210mb"'), true);
@@ -58,15 +62,22 @@ test("shelter message action supports appointment attachments", () => {
   assert.equal(bucketMigrationSource.includes("209715200"), true);
   assert.equal(bucketMigrationSource.includes("'application/pdf'"), true);
   assert.equal(bucketMigrationSource.includes("'video/quicktime'"), true);
+  const privateBucketMigrationSource = readFileSync(new URL("../supabase/migrations/20260824100225_private_appointment_message_attachments.sql", import.meta.url), "utf8");
+  assert.equal(privateBucketMigrationSource.includes("attachment_storage_path"), true);
+  assert.equal(privateBucketMigrationSource.includes("public = false"), true);
+  assert.equal(privateBucketMigrationSource.includes("split_part"), true);
 });
 
 test("adopter return inquiry action writes a message with a reason", () => {
   const source = readFileSync(new URL("../app/appointments/[id]/actions.ts", import.meta.url), "utf8");
+  const messageSource = readFileSync(new URL("../utils/appointment-messages.ts", import.meta.url), "utf8");
 
   assert.equal(source.includes("submitReturnInquiryAction"), true);
   assert.equal(source.includes('formData.get("returnReason")'), true);
   assert.equal(source.includes('sender_role: "adopter"'), true);
-  assert.equal(source.includes("Return inquiry requested"), true);
+  assert.equal(source.includes("formatReturnInquiryMessageBody(returnReason)"), true);
+  assert.equal(messageSource.includes("Return inquiry requested"), true);
+  assert.equal(source.includes("isReturnInquiriesUnavailableError"), true);
   assert.equal(source.includes("reason ||"), true);
   assert.equal(source.includes(".from(\"appointment_messages\").insert"), true);
 });
