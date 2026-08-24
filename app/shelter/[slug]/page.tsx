@@ -19,12 +19,8 @@ export default async function ShelterPortalPage({
   const [{ slug }, resolvedSearchParams] = await Promise.all([params, searchParams]);
   const context = await getAdminAuthContext({ includePhraseGate: false });
 
-  if (!context) {
+  if (!context || context.isGlobalAdmin) {
     redirect("/shelter");
-  }
-
-  if (context.isGlobalAdmin) {
-    redirect("/admin");
   }
 
   const shelter = await getShelterByPortalSlug(slug, context.shelterIds);

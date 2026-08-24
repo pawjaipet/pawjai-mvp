@@ -42,9 +42,11 @@ test("admin trees reject shelter accounts on fresh requests and browser-history 
 });
 
 test("shelter portal pages and deep dog routes use real scoped auth only", () => {
+  const loginPage = source("../app/shelter/page.tsx");
   const portalPage = source("../app/shelter/[slug]/page.tsx");
   const createDogPage = source("../app/shelter/[slug]/dogs/new/page.tsx");
   const editDogPage = source("../app/shelter/[slug]/dogs/[id]/edit/page.tsx");
+  const portalHelper = source("../utils/shelter-portal.ts");
 
   for (const page of [createDogPage, editDogPage]) {
     assert.match(page, /getAdminAuthContext\(\{ includePhraseGate: false \}\)/);
@@ -55,6 +57,13 @@ test("shelter portal pages and deep dog routes use real scoped auth only", () =>
 
   assert.match(portalPage, /loadAdminDraftData\(\{ shelterIds: \[shelter\.id\] \}\)/);
   assert.match(portalPage, /workspaceBaseHref=\{`\/shelter\/\$\{slug\}`\}/);
+  assert.match(loginPage, /context\?\.role === "shelter_admin"/);
+  assert.match(loginPage, /target\?\.startsWith\("\/shelter\/"\)/);
+  assert.doesNotMatch(loginPage, /redirect\("\/admin"\)/);
+  assert.match(portalPage, /!context \|\| context\.isGlobalAdmin/);
+  assert.doesNotMatch(portalPage, /redirect\("\/admin"\)/);
+  assert.match(portalHelper, /if \(context\.isGlobalAdmin\) return null/);
+  assert.doesNotMatch(portalHelper, /return "\/admin"/);
 });
 
 test("shelter query tabs keep URL and rendered workspace state synchronized", () => {

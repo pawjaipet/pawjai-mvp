@@ -14,9 +14,9 @@ export default async function ShelterLoginPage({
   const context = await getAdminAuthContext({ includePhraseGate: false });
   const resolvedSearchParams = await searchParams;
 
-  if (context) {
+  if (context?.role === "shelter_admin") {
     const target = await getShelterPortalTarget(context);
-    if (target) redirect(target);
+    if (target?.startsWith("/shelter/")) redirect(target);
   }
 
   return (

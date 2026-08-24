@@ -40,7 +40,7 @@ export function slugifyShelterName(name: string) {
 }
 
 export async function getShelterPortalTarget(context: AdminAuthContext) {
-  if (context.isGlobalAdmin) return "/admin";
+  if (context.isGlobalAdmin) return null;
 
   const shelterId = context.shelterIds[0];
   if (!shelterId) return null;
