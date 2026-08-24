@@ -204,14 +204,18 @@ export default function SwipeDogCard({
         </div>
       )}
 
-      {/* Name + tags overlay */}
-      <div className="absolute bottom-4 left-4 right-4 z-10">
+      {/* Dog name, centered in the pocket between Treat and tags */}
+      <div className="pointer-events-none absolute bottom-[52px] left-4 right-4 z-10 flex h-[108px] items-center">
         <p
-          className="pointer-events-none mb-[10px] max-w-[calc(100%-70px)] break-words text-[35px] font-black leading-[0.96] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]"
+          className="max-w-[calc(100%-70px)] break-words text-[35px] font-black leading-[0.96] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]"
           style={{ fontFamily: "Montserrat, sans-serif" }}
         >
           {dog.name}
         </p>
+      </div>
+
+      {/* Tags overlay */}
+      <div className="absolute bottom-4 left-4 right-4 z-10">
         <div className="flex items-center gap-1.5 overflow-hidden">
           {primaryTags.map((tag, i) => (
             <span
