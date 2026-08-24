@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 function isPlainInternalNavigation(event: MouseEvent, anchor: HTMLAnchorElement) {
   if (event.defaultPrevented || event.button !== 0) return false;
@@ -23,7 +22,6 @@ function isPlainInternalNavigation(event: MouseEvent, anchor: HTMLAnchorElement)
 
 export default function NavigationFeedback() {
   const pathname = usePathname();
-  const { t } = useLanguage();
   const [pending, setPending] = useState(false);
   const timeoutRef = useRef<number | null>(null);
 
@@ -60,9 +58,6 @@ export default function NavigationFeedback() {
       <div className="relative w-full max-w-[402px]">
         <div className="h-[3px] overflow-hidden bg-[#f1d5d8]">
           <div className="h-full w-1/2 animate-[pawjai-route-progress_1.05s_ease-in-out_infinite] rounded-full bg-[#cd8188]" />
-        </div>
-        <div className="absolute right-[14px] top-[10px] rounded-full bg-white/92 px-[11px] py-[6px] text-[11px] font-bold text-[#65584f] shadow-[0_8px_22px_rgba(101,88,79,0.14)] backdrop-blur">
-          {t("Loading...")}
         </div>
         <style>{`
           @keyframes pawjai-route-progress {
