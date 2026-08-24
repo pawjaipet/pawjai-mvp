@@ -7,6 +7,7 @@ node_modules/
 .next/
 .next.corrupt-*/
 out/
+outputs/
 
 # env
 .env
@@ -15,6 +16,7 @@ out/
 
 # misc
 .DS_Store
+.claude/
 *.pem
 npm-debug.log*
 .npm-cache/
@@ -27,3 +29,4 @@ pawjaidogs/
 pawjai related secrets/
 IMG_6829*.PNG
 .vercel
+pawjai linked in/
