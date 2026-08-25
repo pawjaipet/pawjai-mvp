@@ -220,8 +220,8 @@ export default function SwipeDogCard({
         )}
       </div>
 
-      {/* Dog name, centered in the pocket between Treat and tags */}
-      <div className="pointer-events-none absolute bottom-[52px] left-4 right-4 z-10 flex h-[108px] items-center">
+      {/* Dog name, centered in the pocket above the tags */}
+      <div className="pointer-events-none absolute bottom-[44px] left-4 right-4 z-10 flex h-[96px] items-center">
         <p
           className="max-w-[calc(100%-70px)] break-words text-[35px] font-black leading-[0.96] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]"
           style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -252,7 +252,16 @@ export default function SwipeDogCard({
       </div>
 
       {/* Action buttons */}
-      <div className="absolute right-4 top-1/2 -translate-y-[calc(50%-50px)] flex flex-col gap-4 z-10">
+      <div className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-3.5">
+        <TreatButton
+          variant="swipe"
+          dogId={dog.id}
+          dogName={dog.name}
+          shelterId={dog.shelter_id}
+          shelterName={dog.shelter_name ?? "their shelter"}
+          dogPhotoUrl={photoMedia[0]?.publicUrl ?? null}
+          isLoggedIn={isLoggedIn}
+        />
         <button
           onClick={handleShare}
           className="bg-[#cd8188] w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
@@ -276,19 +285,6 @@ export default function SwipeDogCard({
         >
           <Bookmark size={24} stroke="white" fill={saved ? "white" : "none"} strokeWidth={2} />
         </button>
-      </div>
-
-      {/* Treat button — left edge, vertically aligned with the bookmark button */}
-      <div className="absolute left-4 top-1/2 translate-y-[94px] z-10">
-        <TreatButton
-          variant="swipe"
-          dogId={dog.id}
-          dogName={dog.name}
-          shelterId={dog.shelter_id}
-          shelterName={dog.shelter_name ?? "their shelter"}
-          dogPhotoUrl={photoMedia[0]?.publicUrl ?? null}
-          isLoggedIn={isLoggedIn}
-        />
       </div>
     </div>
   );
