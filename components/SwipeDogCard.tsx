@@ -252,7 +252,7 @@ export default function SwipeDogCard({
       </div>
 
       {/* Action buttons */}
-      <div className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-3.5">
+      <div className="absolute right-4 top-1/2 z-10 flex translate-y-[calc(-50%+72px)] flex-col gap-3.5">
         <TreatButton
           variant="swipe"
           dogId={dog.id}
