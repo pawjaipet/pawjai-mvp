@@ -127,7 +127,7 @@ export default async function DogProfilePage({
     supabase.from("dog_traits").select("*").eq("dog_id", id).order("created_at"),
     supabase
       .from("shelters")
-      .select("name, hygiene_rating, professionalism_rating, province, district, phone_number, facebook_url")
+      .select("name, logo_url, hygiene_rating, professionalism_rating, province, district, phone_number, facebook_url")
       .eq("id", dog.shelter_id)
       .single(),
   ]);
@@ -350,12 +350,20 @@ export default async function DogProfilePage({
             className="mt-[20px] rounded-[20px] p-[16px] flex items-center gap-[14px]"
             style={{ background: "white", boxShadow: "0 2px 12px rgba(101,88,79,0.08)" }}
           >
-            {/* Logo placeholder */}
             <div
-              className="shrink-0 w-[64px] h-[64px] rounded-[14px] flex items-center justify-center"
+              className="shrink-0 w-[64px] h-[64px] rounded-[14px] flex items-center justify-center overflow-hidden"
               style={{ background: "#F5F1E8", border: "1.5px solid #d6c8ad" }}
             >
-              <span className="text-[26px]">🏠</span>
+              {shelter.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={shelter.logo_url}
+                  alt={`${shelter.name} logo`}
+                  className="max-h-[50px] max-w-[50px] object-contain"
+                />
+              ) : (
+                <span className="text-[26px]">🏠</span>
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p
