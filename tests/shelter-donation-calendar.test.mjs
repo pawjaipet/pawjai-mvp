@@ -62,6 +62,10 @@ test("adopted dogs have a dedicated archive while unavailable records stay manag
   assert.equal(panel.includes('["all", "All records"]'), true);
   assert.equal(panel.includes('<option value="adopted">Adopted</option>'), true);
   assert.equal(panel.includes('<option value="unavailable">Unavailable</option>'), true);
+  assert.equal(panel.includes("Adoption record"), true);
+  assert.equal(panel.includes("Visitor profile"), true);
+  assert.equal(panel.includes("Booking detail"), true);
+  assert.equal(panel.includes("adoptedAppointmentId"), true);
 });
 
 test("shelter lane enables English and Thai without translating admin lanes", () => {
@@ -77,6 +81,7 @@ test("shelter lane enables English and Thai without translating admin lanes", ()
   assert.equal(translations.includes('Requested: "รอการตอบรับ"'), true);
   assert.equal(translations.includes('"Pending Reschedule": "รอเปลี่ยนวันเวลา"'), true);
   assert.equal(translations.includes('"Adopted dogs": "สุนัขที่ได้รับการรับเลี้ยงแล้ว"'), true);
+  assert.equal(translations.includes('"Adoption record": "บันทึกการรับเลี้ยง"'), true);
   assert.equal(translations.includes('"Dog name (Thai)": "ชื่อสุนัข (ภาษาไทย)"'), true);
   assert.equal(provider.includes("requestAnimationFrame"), true);
   assert.equal(provider.includes("settledRenderTimer"), true);

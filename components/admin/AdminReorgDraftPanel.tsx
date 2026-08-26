@@ -251,12 +251,12 @@ const fallbackShelters: AdminDraftShelter[] = [
 ];
 
 const fallbackDogs: AdminDraftDog[] = [
-  { breed: "Mixed breed", coverUrl: null, createdAt: "", energyLevel: null, gender: "unknown", id: "won", name: "วอน", photosCount: 0, shelterId: "voice", shelterName: "The Voice Foundation", size: null, status: "available", updatedAt: "" },
-  { breed: "Thai mix", coverUrl: null, createdAt: "", energyLevel: null, gender: "unknown", id: "yala", name: "ยะลา (yala)", photosCount: 0, shelterId: "voice", shelterName: "The Voice Foundation", size: null, status: "available", updatedAt: "" },
-  { breed: "Mixed breed", coverUrl: null, createdAt: "", energyLevel: null, gender: "unknown", id: "ploy", name: "พลอย (Ploy)", photosCount: 0, shelterId: "voice", shelterName: "The Voice Foundation", size: null, status: "reserved", updatedAt: "" },
-  { breed: "Mixed breed", coverUrl: null, createdAt: "", energyLevel: null, gender: "unknown", id: "tua-daang", name: "ตัวแดง (Tua Daang)", photosCount: 0, shelterId: "voice", shelterName: "The Voice Foundation", size: null, status: "draft", updatedAt: "" },
-  { breed: "Mixed breed", coverUrl: null, createdAt: "", energyLevel: null, gender: "unknown", id: "tong-dum", name: "ทองดำ (Tong Dum)", photosCount: 0, shelterId: "voice", shelterName: "The Voice Foundation", size: null, status: "adopted", updatedAt: "" },
-  { breed: "Mixed breed", coverUrl: null, createdAt: "", energyLevel: null, gender: "unknown", id: "butcher", name: "Butcher", photosCount: 0, shelterId: "voice", shelterName: "The Voice Foundation", size: null, status: "available", updatedAt: "" },
+  { adoptedAppointmentId: null, adoptedAt: null, adoptedByEmail: null, adoptedById: null, adoptedByName: null, adoptedByPhoneNumber: null, breed: "Mixed breed", coverUrl: null, createdAt: "", energyLevel: null, gender: "unknown", id: "won", name: "วอน", photosCount: 0, shelterId: "voice", shelterName: "The Voice Foundation", size: null, status: "available", updatedAt: "" },
+  { adoptedAppointmentId: null, adoptedAt: null, adoptedByEmail: null, adoptedById: null, adoptedByName: null, adoptedByPhoneNumber: null, breed: "Thai mix", coverUrl: null, createdAt: "", energyLevel: null, gender: "unknown", id: "yala", name: "ยะลา (yala)", photosCount: 0, shelterId: "voice", shelterName: "The Voice Foundation", size: null, status: "available", updatedAt: "" },
+  { adoptedAppointmentId: null, adoptedAt: null, adoptedByEmail: null, adoptedById: null, adoptedByName: null, adoptedByPhoneNumber: null, breed: "Mixed breed", coverUrl: null, createdAt: "", energyLevel: null, gender: "unknown", id: "ploy", name: "พลอย (Ploy)", photosCount: 0, shelterId: "voice", shelterName: "The Voice Foundation", size: null, status: "reserved", updatedAt: "" },
+  { adoptedAppointmentId: null, adoptedAt: null, adoptedByEmail: null, adoptedById: null, adoptedByName: null, adoptedByPhoneNumber: null, breed: "Mixed breed", coverUrl: null, createdAt: "", energyLevel: null, gender: "unknown", id: "tua-daang", name: "ตัวแดง (Tua Daang)", photosCount: 0, shelterId: "voice", shelterName: "The Voice Foundation", size: null, status: "draft", updatedAt: "" },
+  { adoptedAppointmentId: "booking-3", adoptedAt: "2026-07-12T11:00", adoptedByEmail: "proudxd@gmail.com", adoptedById: "adopter-1", adoptedByName: "Polchaya Sudlabha", adoptedByPhoneNumber: "0970974747", breed: "Mixed breed", coverUrl: null, createdAt: "", energyLevel: null, gender: "unknown", id: "tong-dum", name: "ทองดำ (Tong Dum)", photosCount: 0, shelterId: "voice", shelterName: "The Voice Foundation", size: null, status: "adopted", updatedAt: "" },
+  { adoptedAppointmentId: null, adoptedAt: null, adoptedByEmail: null, adoptedById: null, adoptedByName: null, adoptedByPhoneNumber: null, breed: "Mixed breed", coverUrl: null, createdAt: "", energyLevel: null, gender: "unknown", id: "butcher", name: "Butcher", photosCount: 0, shelterId: "voice", shelterName: "The Voice Foundation", size: null, status: "available", updatedAt: "" },
 ];
 
 const fallbackBookings: AdminDraftBooking[] = [
@@ -706,6 +706,11 @@ function isoDate(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function formatAdoptionDate(value: string | null) {
+  if (!value) return null;
+  return formatShortDate(value.slice(0, 10));
+}
+
 function AdminReturnFields({ returnTo = ADMIN_RETURN_TO, shelterId }: { returnTo?: string; shelterId: string }) {
   return (
     <>
@@ -715,7 +720,29 @@ function AdminReturnFields({ returnTo = ADMIN_RETURN_TO, shelterId }: { returnTo
   );
 }
 
-function DogCard({ dog, editHref }: { dog: AdminDraftDog; editHref: string }) {
+function DogCard({
+  adoptionBookingListHref,
+  dog,
+  editHref,
+}: {
+  adoptionBookingListHref?: string;
+  dog: AdminDraftDog;
+  editHref: string;
+}) {
+  const adoptedAt = formatAdoptionDate(dog.adoptedAt);
+  const visitorHref = dog.adoptedAppointmentId && adoptionBookingListHref
+    ? withReturnTo(bookingWorkspaceVisitorHref({
+      appointmentId: dog.adoptedAppointmentId,
+      bookingListHref: adoptionBookingListHref,
+    }), adoptionBookingListHref)
+    : null;
+  const bookingHref = dog.adoptedAppointmentId && adoptionBookingListHref
+    ? withReturnTo(bookingWorkspaceDetailHref({
+      appointmentId: dog.adoptedAppointmentId,
+      bookingListHref: adoptionBookingListHref,
+    }), adoptionBookingListHref)
+    : null;
+
   return (
     <article className="overflow-hidden rounded-[20px] border border-[#d6c8ad] bg-white shadow-[0_10px_28px_rgba(101,88,79,0.08)]">
       <div className="flex aspect-[16/9] items-center justify-center bg-[#d6c8ad] text-[#65584f]">
@@ -743,6 +770,48 @@ function DogCard({ dog, editHref }: { dog: AdminDraftDog; editHref: string }) {
         {dog.size ? <span>{formatStatus(dog.size)}</span> : null}
         {dog.energyLevel ? <span>{formatStatus(dog.energyLevel)}</span> : null}
       </div>
+      {dog.status === "adopted" ? (
+        <div className="mt-4 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Adoption record</p>
+          {dog.adoptedByName ? (
+            <>
+              <p className="mt-2 text-sm font-semibold text-[#65584f]">Adopted by {dog.adoptedByName}</p>
+              <p className="mt-1 break-words text-xs leading-5 text-[#65584f]">
+                {[dog.adoptedByEmail, dog.adoptedByPhoneNumber].filter(Boolean).join(" / ") || "No contact saved"}
+              </p>
+              {adoptedAt ? (
+                <p className="mt-1 text-xs leading-5 text-[#65584f]">Adoption visit: {adoptedAt}</p>
+              ) : null}
+              {visitorHref || bookingHref ? (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {visitorHref ? (
+                    <Link
+                      className="inline-flex items-center justify-center gap-1 rounded-full border border-[#d6c8ad] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
+                      href={visitorHref}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Visitor profile
+                    </Link>
+                  ) : null}
+                  {bookingHref ? (
+                    <Link
+                      className="inline-flex items-center justify-center gap-1 rounded-full border border-[#d6c8ad] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
+                      href={bookingHref}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Booking detail
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="mt-2 text-sm leading-6 text-[#65584f]">
+              No linked adoption booking yet. This dog was marked adopted directly from the profile.
+            </p>
+          )}
+        </div>
+      ) : null}
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Link
           className="inline-flex items-center justify-center rounded-full bg-[#cd8188] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#b87179]"
@@ -1153,10 +1222,12 @@ function ShelterCalendar({ returnTo, shelter }: { returnTo: string; shelter: Adm
 }
 
 function ShelterDogsTab({
+  bookingListHref,
   dogEditHref,
   dogs,
   shelter,
 }: {
+  bookingListHref: string;
   dogEditHref: (dog: AdminDraftDog) => string;
   dogs: AdminDraftDog[];
   shelter: AdminDraftShelter;
@@ -1242,7 +1313,7 @@ function ShelterDogsTab({
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filteredDogs.map((dog) => (
-            <DogCard dog={dog} editHref={dogEditHref(dog)} key={dog.id} />
+            <DogCard adoptionBookingListHref={bookingListHref} dog={dog} editHref={dogEditHref(dog)} key={dog.id} />
           ))}
           {filteredDogs.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] p-6 text-sm text-[#65584f]">
@@ -2290,7 +2361,7 @@ function ShelterWorkspace({
         </div>
       </Section>
       {tab === "profile" ? <ShelterProfileTab returnTo={profileReturnTo} shelter={shelter} /> : null}
-      {tab === "dogs" ? <ShelterDogsTab dogEditHref={dogEditHref} dogs={dogs} shelter={shelter} /> : null}
+      {tab === "dogs" ? <ShelterDogsTab bookingListHref={bookingListHref} dogEditHref={dogEditHref} dogs={dogs} shelter={shelter} /> : null}
       {tab === "bookings" ? (
         <ShelterBookingsTab
           bookingListHref={bookingListHref}
@@ -2478,7 +2549,12 @@ function AllDogsTab({ dogs, shelters }: { dogs: AdminDraftDog[]; shelters: Admin
       </div>
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {filteredDogs.map((dog) => (
-          <DogCard dog={dog} editHref={`/admin/dogs/${dog.id}/edit`} key={dog.id} />
+          <DogCard
+            adoptionBookingListHref={`/admin?shelter=${dog.shelterId}&view=bookings`}
+            dog={dog}
+            editHref={`/admin/dogs/${dog.id}/edit`}
+            key={dog.id}
+          />
         ))}
         {filteredDogs.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] p-6 text-sm text-[#65584f]">

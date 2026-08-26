@@ -61,6 +61,12 @@ export type AdminDraftShelterRegularHours = {
 };
 
 export type AdminDraftDog = {
+  adoptedAppointmentId: string | null;
+  adoptedAt: string | null;
+  adoptedByEmail: string | null;
+  adoptedById: string | null;
+  adoptedByName: string | null;
+  adoptedByPhoneNumber: string | null;
   breed: string | null;
   coverUrl: string | null;
   createdAt: string;
@@ -382,6 +388,14 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
   const messagesByShelter = new Map<string, number>();
   const availabilityByShelter = new Map<string, AdminDraftShelterAvailability[]>();
   const regularHoursByShelter = new Map<string, AdminDraftShelterRegularHours[]>();
+  const adoptedBookingsByDog = new Map<string, {
+    adoptedAt: string;
+    adopterEmail: string | null;
+    adopterId: string;
+    adopterName: string;
+    adopterPhoneNumber: string | null;
+    appointmentId: string;
+  }>();
 
   for (const dog of rawDogs) {
     dogsByShelter.set(dog.shelter_id, (dogsByShelter.get(dog.shelter_id) ?? 0) + 1);
@@ -400,6 +414,30 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
   for (const booking of rawBookings) {
     if (booking.status === "requested") {
       pendingBookingsByShelter.set(booking.shelter_id, (pendingBookingsByShelter.get(booking.shelter_id) ?? 0) + 1);
+    }
+
+    const dog = booking.dog_id ? dogSummary.get(booking.dog_id) : null;
+    const adoptionNote = typeof booking.shelter_note === "string"
+      && booking.shelter_note.toLocaleLowerCase("en").includes("adopted this dog");
+    if (booking.dog_id && booking.status === "completed" && (dog?.adoption_status === "adopted" || adoptionNote)) {
+      const adopter = adopterSummary.get(booking.adopter_id);
+      const adopterName = [
+        adopter?.first_name,
+        adopter?.last_name,
+      ].filter(Boolean).join(" ") || "Unknown adopter";
+      const adoptedAt = `${booking.appointment_date}T${booking.appointment_time ?? "00:00"}`;
+      const existing = adoptedBookingsByDog.get(booking.dog_id);
+
+      if (!existing || adoptedAt > existing.adoptedAt) {
+        adoptedBookingsByDog.set(booking.dog_id, {
+          adoptedAt,
+          adopterEmail: adopter?.email ?? null,
+          adopterId: booking.adopter_id,
+          adopterName,
+          adopterPhoneNumber: adopter?.phone_number ?? null,
+          appointmentId: booking.id,
+        });
+      }
     }
   }
 
@@ -551,8 +589,15 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     }),
     dogs: rawDogs.map((dog) => {
       const photoSummary = photoSummaryByDog.get(dog.id) ?? { coverUrl: null, photosCount: 0 };
+      const adoptedBooking = adoptedBookingsByDog.get(dog.id) ?? null;
 
       return {
+        adoptedAppointmentId: adoptedBooking?.appointmentId ?? null,
+        adoptedAt: adoptedBooking?.adoptedAt ?? null,
+        adoptedByEmail: adoptedBooking?.adopterEmail ?? null,
+        adoptedById: adoptedBooking?.adopterId ?? null,
+        adoptedByName: adoptedBooking?.adopterName ?? null,
+        adoptedByPhoneNumber: adoptedBooking?.adopterPhoneNumber ?? null,
         breed: dog.breed,
         coverUrl: photoSummary.coverUrl,
         createdAt: dog.created_at,

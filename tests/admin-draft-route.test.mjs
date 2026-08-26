@@ -276,6 +276,8 @@ test("canonical admin dog cards edit through an admin-native dog edit route", ()
 
   assert.equal(panelSource.includes("`/admin/dogs/${dog.id}/edit`"), true);
   assert.equal(panelSource.includes("`${workspaceBaseHref}/dogs/${dog.id}/edit`"), true);
+  assert.equal(panelSource.includes("adoptionBookingListHref"), true);
+  assert.equal(panelSource.includes("bookingWorkspaceVisitorHref"), true);
   assert.equal(adminEditSource.includes("DogEditForm"), true);
   assert.equal(adminEditSource.includes("requireGlobalAdmin"), true);
   assert.equal(adminEditSource.includes("AdminDraftGate"), false);
