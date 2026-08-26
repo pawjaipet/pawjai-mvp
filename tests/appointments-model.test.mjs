@@ -44,3 +44,12 @@ test("allows users to edit only active dated appointment requests", () => {
   assert.equal(canEditAppointmentDateTime({ appointment_date: "2026-05-22", status: "requested" }, "2026-05-23"), false);
   assert.equal(canEditAppointmentDateTime({ appointment_date: "2026-05-29", status: "completed" }, "2026-05-23"), false);
 });
+
+test("flags post-visit follow-up as soon as the scheduled time has passed", () => {
+  const { appointmentFollowUpDue } = loadAppointmentsModel();
+  const now = new Date("2026-05-23T11:01:00");
+
+  assert.equal(appointmentFollowUpDue({ appointment_date: "2026-05-23", appointment_time: "11:00", status: "confirmed" }, now), true);
+  assert.equal(appointmentFollowUpDue({ appointment_date: "2026-05-23", appointment_time: "13:00", status: "confirmed" }, now), false);
+  assert.equal(appointmentFollowUpDue({ appointment_date: "2026-05-23", appointment_time: "11:00", status: "completed" }, now), false);
+});

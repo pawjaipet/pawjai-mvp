@@ -414,8 +414,11 @@ export async function decideBookingAction(formData: FormData) {
       },
     });
   } else {
+    const adoptedNote = shelterNote
+      ? `Visitor adopted this dog after the visit. ${shelterNote}`
+      : "Visitor adopted this dog after the visit.";
     const legacyUpdate = {
-      shelter_note: shelterNote || (decision === "adopted" ? "Visitor adopted this dog after the visit." : null),
+      shelter_note: decision === "adopted" ? adoptedNote : shelterNote || null,
       status,
       updated_at: new Date().toISOString(),
     };

@@ -86,8 +86,13 @@ export type AdminDraftBooking = {
   bookingCode: string | null;
   checkedIn: boolean;
   dogBreed: string | null;
+  dogCoverUrl: string | null;
+  dogEnergyLevel: string | null;
+  dogGender: string | null;
   dogId: string | null;
   dogName: string;
+  dogSize: string | null;
+  dogStatus: string | null;
   id: string;
   proposedAppointmentDate: string | null;
   proposedAppointmentTime: string | null;
@@ -479,32 +484,42 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
       startDate: ad.start_date,
       submissionCode: ad.submission_code,
     })),
-    bookings: rawBookings.map((booking) => ({
-      adopterEmail: adopterSummary.get(booking.adopter_id)?.email ?? null,
-      adopterId: booking.adopter_id,
-      adopterName: [
-        adopterSummary.get(booking.adopter_id)?.first_name,
-        adopterSummary.get(booking.adopter_id)?.last_name,
-      ].filter(Boolean).join(" ") || "Unknown adopter",
-      adopterPhoneNumber: adopterSummary.get(booking.adopter_id)?.phone_number ?? null,
-      appointmentDate: booking.appointment_date,
-      appointmentTime: booking.appointment_time,
-      bookingCode: booking.booking_code,
-      checkedIn: Boolean(booking.checked_in_at),
-      dogBreed: booking.dog_id ? dogSummary.get(booking.dog_id)?.breed ?? null : null,
-      dogId: booking.dog_id,
-      dogName: booking.dog_id ? dogNames.get(booking.dog_id) ?? "Dog profile" : "Shelter visit",
-      id: booking.id,
-      proposedAppointmentDate: (booking as { proposed_appointment_date?: string | null }).proposed_appointment_date ?? null,
-      proposedAppointmentTime: (booking as { proposed_appointment_time?: string | null }).proposed_appointment_time ?? null,
-      shelterDistrict: shelterSummary.get(booking.shelter_id)?.district ?? null,
-      shelterId: booking.shelter_id,
-      shelterName: shelterNames.get(booking.shelter_id) ?? "Unknown shelter",
-      shelterNote: booking.shelter_note,
-      shelterProvince: shelterSummary.get(booking.shelter_id)?.province ?? null,
-      status: booking.status,
-      visitorNote: booking.visitor_note,
-    })),
+    bookings: rawBookings.map((booking) => {
+      const dog = booking.dog_id ? dogSummary.get(booking.dog_id) : null;
+      const photoSummary = booking.dog_id ? photoSummaryByDog.get(booking.dog_id) : null;
+
+      return {
+        adopterEmail: adopterSummary.get(booking.adopter_id)?.email ?? null,
+        adopterId: booking.adopter_id,
+        adopterName: [
+          adopterSummary.get(booking.adopter_id)?.first_name,
+          adopterSummary.get(booking.adopter_id)?.last_name,
+        ].filter(Boolean).join(" ") || "Unknown adopter",
+        adopterPhoneNumber: adopterSummary.get(booking.adopter_id)?.phone_number ?? null,
+        appointmentDate: booking.appointment_date,
+        appointmentTime: booking.appointment_time,
+        bookingCode: booking.booking_code,
+        checkedIn: Boolean(booking.checked_in_at),
+        dogBreed: dog?.breed ?? null,
+        dogCoverUrl: photoSummary?.coverUrl ?? null,
+        dogEnergyLevel: dog?.energy_level ?? null,
+        dogGender: dog?.gender ?? null,
+        dogId: booking.dog_id,
+        dogName: booking.dog_id ? dogNames.get(booking.dog_id) ?? "Dog profile" : "Shelter visit",
+        dogSize: dog?.size ?? null,
+        dogStatus: dog?.adoption_status ?? null,
+        id: booking.id,
+        proposedAppointmentDate: (booking as { proposed_appointment_date?: string | null }).proposed_appointment_date ?? null,
+        proposedAppointmentTime: (booking as { proposed_appointment_time?: string | null }).proposed_appointment_time ?? null,
+        shelterDistrict: shelterSummary.get(booking.shelter_id)?.district ?? null,
+        shelterId: booking.shelter_id,
+        shelterName: shelterNames.get(booking.shelter_id) ?? "Unknown shelter",
+        shelterNote: booking.shelter_note,
+        shelterProvince: shelterSummary.get(booking.shelter_id)?.province ?? null,
+        status: booking.status,
+        visitorNote: booking.visitor_note,
+      };
+    }),
     donations: rawDonations.map((donation) => {
       const adopter = donationAdopterSummary.get(donation.user_id);
       const profile = donationProfileSummary.get(donation.user_id);

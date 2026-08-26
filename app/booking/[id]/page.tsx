@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, CheckCircle2, ExternalLink, QrCode, ShieldCheck } from "lucide-react";
 import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
 import type { Database } from "@/types/database";
-import { APPOINTMENT_TIME_SLOTS, normalizeAppointmentTime } from "@/utils/appointments-model";
+import { APPOINTMENT_TIME_SLOTS, appointmentFollowUpDue, normalizeAppointmentTime } from "@/utils/appointments-model";
 import { formatBookingCode } from "@/utils/booking";
 import {
   bookingWorkspaceDetailHref,
@@ -220,6 +220,14 @@ export async function renderBookingDetailPage({
 
   const bookingCode = typedAppointment.booking_code ?? formatBookingCode(typedAppointment.id);
   const checkedIn = Boolean(typedAppointment.checked_in_at);
+  const canRecordPostVisitOutcome = appointmentFollowUpDue({
+    appointment_date: typedAppointment.appointment_date,
+    appointment_time: typedAppointment.appointment_time,
+    status: typedAppointment.status,
+  });
+  const canEditPreVisitDecision = !canRecordPostVisitOutcome
+    && (typedAppointment.status === "requested" || typedAppointment.status === "confirmed");
+  const canChangeBookingStatus = canEditPreVisitDecision || canRecordPostVisitOutcome;
   const bookingListHref = safeBookingReturnTo({
     context,
     requestedReturnTo: resolvedSearchParams?.returnTo,
@@ -316,57 +324,79 @@ export async function renderBookingDetailPage({
                     </p>
                   ) : null}
                 </div>
-                <label className="mt-3 block">
-                  <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
-                    Shelter note
-                  </span>
-                  <textarea
-                    className="min-h-[92px] w-full resize-none rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
-                    defaultValue={typedAppointment.shelter_note ?? ""}
-                    name="shelterNote"
-                    placeholder="Optional note for denial, date change, or staff context"
-                  />
-                </label>
-                <details className="mt-3 rounded-2xl border border-[#d6c8ad] bg-white p-3">
-                  <summary className="cursor-pointer text-sm font-semibold text-[#65584f]">
-                    Edit decision
-                  </summary>
-                  <div className="mt-3 grid gap-2">
-                    <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#f5f1e8] p-3">
-                      <label className="block">
-                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New date</span>
-                        <input
-                          className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
-                          defaultValue={(typedAppointment as any).proposed_appointment_date ?? typedAppointment.appointment_date}
-                          min={new Date().toISOString().slice(0, 10)}
-                          name="proposedAppointmentDate"
-                          type="date"
-                        />
-                      </label>
-                      <label className="block">
-                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New time</span>
-                        <select
-                          className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
-                          defaultValue={normalizeAppointmentTime((typedAppointment as any).proposed_appointment_time ?? typedAppointment.appointment_time)}
-                          name="proposedAppointmentTime"
-                        >
-                          {APPOINTMENT_TIME_SLOTS.map((slot) => (
-                            <option key={slot} value={slot}>{slot}</option>
-                          ))}
-                        </select>
-                      </label>
+                {canChangeBookingStatus ? (
+                  <label className="mt-3 block">
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">
+                      Shelter note
+                    </span>
+                    <textarea
+                      className="min-h-[92px] w-full resize-none rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+                      defaultValue={typedAppointment.shelter_note ?? ""}
+                      name="shelterNote"
+                      placeholder="Optional note for denial, date change, or staff context"
+                    />
+                  </label>
+                ) : null}
+                {canEditPreVisitDecision ? (
+                  <details className="mt-3 rounded-2xl border border-[#d6c8ad] bg-white p-3">
+                    <summary className="cursor-pointer text-sm font-semibold text-[#65584f]">
+                      Edit decision
+                    </summary>
+                    <div className="mt-3 grid gap-2">
+                      <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#f5f1e8] p-3">
+                        <label className="block">
+                          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New date</span>
+                          <input
+                            className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+                            defaultValue={(typedAppointment as any).proposed_appointment_date ?? typedAppointment.appointment_date}
+                            min={new Date().toISOString().slice(0, 10)}
+                            name="proposedAppointmentDate"
+                            type="date"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New time</span>
+                          <select
+                            className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+                            defaultValue={normalizeAppointmentTime((typedAppointment as any).proposed_appointment_time ?? typedAppointment.appointment_time)}
+                            name="proposedAppointmentTime"
+                          >
+                            {APPOINTMENT_TIME_SLOTS.map((slot) => (
+                              <option key={slot} value={slot}>{slot}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      <button className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" name="decision" type="submit" value="accept">
+                        Mark accepted
+                      </button>
+                      <button className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64]" name="decision" type="submit" value="deny">
+                        Mark denied
+                      </button>
+                      <button className="w-full rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" name="decision" type="submit" value="request_change">
+                        Ask to change date/time
+                      </button>
                     </div>
-                    <button className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" name="decision" type="submit" value="accept">
-                      Mark accepted
-                    </button>
-                    <button className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64]" name="decision" type="submit" value="deny">
-                      Mark denied
-                    </button>
-                    <button className="w-full rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" name="decision" type="submit" value="request_change">
-                      Ask to change date/time
-                    </button>
+                  </details>
+                ) : null}
+                {canRecordPostVisitOutcome ? (
+                  <div className="mt-3 rounded-2xl border border-[#d6c8ad] bg-white p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Post-visit outcome</p>
+                    <div className="mt-3 grid gap-2">
+                      <button className="w-full rounded-full bg-[#65584f] px-5 py-3 text-sm font-semibold text-white hover:bg-[#50443b]" name="decision" type="submit" value="complete">
+                        Mark visit completed
+                      </button>
+                      <button className="w-full rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" name="decision" type="submit" value="no_show">
+                        Visitor did not show
+                      </button>
+                      {typedAppointment.dog_id ? (
+                        <button className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" name="decision" type="submit" value="adopted">
+                          Mark dog adopted
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
-                </details>
+                ) : null}
               </form>
 
               {token ? (

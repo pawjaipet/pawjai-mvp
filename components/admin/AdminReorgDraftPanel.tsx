@@ -34,7 +34,6 @@ import {
 import {
   APPOINTMENT_TIME_SLOTS,
   appointmentFollowUpDue,
-  isPastAppointmentByTime,
   normalizeAppointmentTime,
 } from "@/utils/appointments-model";
 import {
@@ -86,7 +85,7 @@ type MainTab = "shelters" | "dogs" | "bookings" | "donations" | "ads" | "about";
 type ShelterTab = "profile" | "dogs" | "bookings" | "donations" | "messages";
 type DogRecordView = "current" | "adopted" | "all";
 type BookingWorkspaceView = "visits" | "calendar";
-type VisitBucket = "upcoming" | "needs_follow_up" | "past" | "all";
+type VisitBucket = "upcoming" | "past" | "history" | "adopted";
 type MessageFilter = "all" | "unread" | "upcoming" | "needs_reply";
 type AdStatusFilter = "all" | AdDisplayStatus;
 
@@ -149,9 +148,9 @@ const AD_STATUS_TABS: { label: string; value: AdStatusFilter }[] = [
 ];
 const VISIT_BUCKETS: { label: string; value: VisitBucket }[] = [
   { label: "Upcoming", value: "upcoming" },
-  { label: "Needs follow-up", value: "needs_follow_up" },
   { label: "Past", value: "past" },
-  { label: "All", value: "all" },
+  { label: "History", value: "history" },
+  { label: "Adopted", value: "adopted" },
 ];
 const WEEKDAYS = [
   { label: "Sun", value: 0 },
@@ -271,8 +270,13 @@ const fallbackBookings: AdminDraftBooking[] = [
     bookingCode: "APT-D5A8A",
     checkedIn: false,
     dogBreed: "Ridgeback",
+    dogCoverUrl: null,
+    dogEnergyLevel: "medium",
+    dogGender: "male",
     dogId: "won",
     dogName: "วอน",
+    dogSize: "medium",
+    dogStatus: "available",
     id: "booking-1",
     proposedAppointmentDate: null,
     proposedAppointmentTime: null,
@@ -294,8 +298,13 @@ const fallbackBookings: AdminDraftBooking[] = [
     bookingCode: "APT-86496",
     checkedIn: false,
     dogBreed: "Poodle Terrier Mix",
+    dogCoverUrl: null,
+    dogEnergyLevel: "medium",
+    dogGender: "unknown",
     dogId: "tua-daang",
     dogName: "ตัวแดง (Tua Daang)",
+    dogSize: "small",
+    dogStatus: "draft",
     id: "booking-2",
     proposedAppointmentDate: "2026-07-30",
     proposedAppointmentTime: "11:00",
@@ -513,6 +522,37 @@ function bookingDogLabel(booking: AdminDraftBooking) {
   return `${booking.dogName}${booking.dogBreed ? ` - ${booking.dogBreed}` : ""}`;
 }
 
+function isAdoptedBookingRecord(booking: AdminDraftBooking) {
+  if (booking.status !== "completed") return false;
+  if (booking.dogStatus === "adopted") return true;
+  return booking.shelterNote?.toLocaleLowerCase("en").includes("adopted this dog") ?? false;
+}
+
+function bookingVisitBucket(booking: AdminDraftBooking, now = new Date()): VisitBucket {
+  if (isAdoptedBookingRecord(booking)) return "adopted";
+
+  if (booking.status === "completed" || booking.status === "no_show" || booking.status === "cancelled") {
+    return "history";
+  }
+
+  const followUpDue = appointmentFollowUpDue({
+    appointment_date: booking.appointmentDate,
+    appointment_time: booking.appointmentTime,
+    status: booking.status,
+  }, now);
+
+  return followUpDue ? "past" : "upcoming";
+}
+
+function bookingDogProfileFacts(booking: AdminDraftBooking) {
+  return [
+    booking.dogBreed,
+    booking.dogSize,
+    booking.dogGender,
+    booking.dogEnergyLevel ? `${booking.dogEnergyLevel} energy` : null,
+  ].filter(Boolean);
+}
+
 function matchesBookingFilters({
   booking,
   date,
@@ -528,26 +568,12 @@ function matchesBookingFilters({
 }) {
   const normalizedSearch = normalizeBookingSearch(search);
   const displayCode = formatBookingDisplayCode(booking).toUpperCase();
-  const now = new Date();
-  const followUpDue = appointmentFollowUpDue({
-    appointment_date: booking.appointmentDate,
-    appointment_time: booking.appointmentTime,
-    status: booking.status,
-  }, now);
-  const isPast = isPastAppointmentByTime({
-    appointment_date: booking.appointmentDate,
-    appointment_time: booking.appointmentTime,
-    status: booking.status,
-  }, now);
+  const bucket = bookingVisitBucket(booking);
 
   if (date && booking.appointmentDate !== date) return false;
   if (status !== "all" && booking.status !== status) return false;
   if (normalizedSearch && !displayCode.startsWith(normalizedSearch)) return false;
-  if (date || status !== "all" || normalizedSearch) return true;
-  if (visitBucket === "past") return isPast;
-  if (visitBucket === "needs_follow_up") return followUpDue;
-  if (visitBucket === "all") return true;
-  return !isPast;
+  return bucket === visitBucket;
 }
 
 function matchesDogFilters(dog: AdminDraftDog, search: string, status: string) {
@@ -1315,24 +1341,15 @@ function ShelterBookingVisitList({
   const checkedInCount = bookings.filter((booking) => booking.checkedIn).length;
   const bucketCounts = useMemo(() => {
     const now = new Date();
-    return {
-      all: bookings.length,
-      needs_follow_up: bookings.filter((booking) => appointmentFollowUpDue({
-        appointment_date: booking.appointmentDate,
-        appointment_time: booking.appointmentTime,
-        status: booking.status,
-      }, now)).length,
-      past: bookings.filter((booking) => isPastAppointmentByTime({
-        appointment_date: booking.appointmentDate,
-        appointment_time: booking.appointmentTime,
-        status: booking.status,
-      }, now)).length,
-      upcoming: bookings.filter((booking) => !isPastAppointmentByTime({
-        appointment_date: booking.appointmentDate,
-        appointment_time: booking.appointmentTime,
-        status: booking.status,
-      }, now)).length,
-    };
+    return bookings.reduce<Record<VisitBucket, number>>((counts, booking) => {
+      counts[bookingVisitBucket(booking, now)] += 1;
+      return counts;
+    }, {
+      adopted: 0,
+      history: 0,
+      past: 0,
+      upcoming: 0,
+    });
   }, [bookings]);
   const visibleBookings = useMemo(
     () => bookings.filter((booking) => matchesBookingFilters({
@@ -1381,7 +1398,7 @@ function ShelterBookingVisitList({
           ))}
         </div>
         <p className="mt-3 text-xs leading-5 text-[#65584f]">
-          Visits move to past 24 hours after their scheduled time. Needs follow-up highlights visits where staff should record the outcome.
+          Past visits are waiting for a post-visit outcome. Completed, missed, or denied visits move to History; adopted outcomes move to Adopted.
         </p>
       </div>
 
@@ -1466,11 +1483,11 @@ function ShelterBookingVisitList({
           </div>
         ) : (
           visibleBookings.map((booking) => {
-            const followUpDue = appointmentFollowUpDue({
-              appointment_date: booking.appointmentDate,
-              appointment_time: booking.appointmentTime,
-              status: booking.status,
-            });
+            const bucket = bookingVisitBucket(booking);
+            const canEditPreVisitDecision = bucket === "upcoming" && (booking.status === "requested" || booking.status === "confirmed");
+            const canRecordPostVisitOutcome = bucket === "past";
+            const dogProfileFacts = bookingDogProfileFacts(booking);
+            const isAdoptedRecord = bucket === "adopted";
 
             return (
               <section
@@ -1515,6 +1532,39 @@ function ShelterBookingVisitList({
                       </div>
                     </div>
 
+                    {isAdoptedRecord ? (
+                      <div className="mt-4 grid gap-4 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4 sm:grid-cols-[112px_minmax(0,1fr)]">
+                        <div className="aspect-square overflow-hidden rounded-2xl bg-white">
+                          {booking.dogCoverUrl ? (
+                            <img alt={`${booking.dogName} cover`} className="h-full w-full object-cover" src={booking.dogCoverUrl} />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[#cd8188]">
+                              <PawPrint className="h-8 w-8" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Adopted dog profile</p>
+                          <p className="mt-1 text-xl font-semibold text-[#65584f]">{booking.dogName}</p>
+                          {dogProfileFacts.length > 0 ? (
+                            <p className="mt-1 text-sm capitalize text-[#65584f]">{dogProfileFacts.join(" / ")}</p>
+                          ) : null}
+                          <p className="mt-2 text-sm leading-6 text-[#65584f]">
+                            Adopted by {booking.adopterName} after this visit.
+                          </p>
+                          {booking.dogId ? (
+                            <Link
+                              className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[#9b5961] hover:text-[#7f454b]"
+                              href={`/dogs/${booking.dogId}`}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              Open dog profile
+                            </Link>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+
                     {booking.visitorNote ? (
                       <div className="mt-4 rounded-2xl bg-[#f8f0e5] p-4">
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Visitor note</p>
@@ -1539,58 +1589,62 @@ function ShelterBookingVisitList({
                       ) : null}
                     </div>
 
-                    <label className="mt-3 block">
-                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Shelter note</span>
-                      <textarea
-                        className="min-h-[92px] w-full resize-none rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
-                        defaultValue={booking.shelterNote ?? ""}
-                        name="shelterNote"
-                        placeholder="Optional note for denial, date change, or staff context"
-                      />
-                    </label>
+                    {canEditPreVisitDecision || canRecordPostVisitOutcome ? (
+                      <label className="mt-3 block">
+                        <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Shelter note</span>
+                        <textarea
+                          className="min-h-[92px] w-full resize-none rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+                          defaultValue={booking.shelterNote ?? ""}
+                          name="shelterNote"
+                          placeholder="Optional note for denial, date change, or staff context"
+                        />
+                      </label>
+                    ) : null}
 
-                    <details className="mt-3 rounded-2xl border border-[#d6c8ad] bg-white p-3" open={booking.status === "requested"}>
-                      <summary className="cursor-pointer text-sm font-semibold text-[#65584f]">
-                        Edit decision
-                      </summary>
-                      <div className="mt-3 grid gap-2">
-                        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#fffaf3] p-3">
-                          <label className="block">
-                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#65584f]">New date</span>
-                            <input
-                              className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
-                              defaultValue={booking.proposedAppointmentDate ?? booking.appointmentDate}
-                              min={new Date().toISOString().slice(0, 10)}
-                              name="proposedAppointmentDate"
-                              type="date"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#65584f]">New time</span>
-                            <select
-                              className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
-                              defaultValue={normalizeAppointmentTime(booking.proposedAppointmentTime ?? booking.appointmentTime)}
-                              name="proposedAppointmentTime"
-                            >
-                              {APPOINTMENT_TIME_SLOTS.map((slot) => (
-                                <option key={slot} value={slot}>{slot}</option>
-                              ))}
-                            </select>
-                          </label>
+                    {canEditPreVisitDecision ? (
+                      <details className="mt-3 rounded-2xl border border-[#d6c8ad] bg-white p-3" open={booking.status === "requested"}>
+                        <summary className="cursor-pointer text-sm font-semibold text-[#65584f]">
+                          Edit decision
+                        </summary>
+                        <div className="mt-3 grid gap-2">
+                          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#fffaf3] p-3">
+                            <label className="block">
+                              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#65584f]">New date</span>
+                              <input
+                                className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+                                defaultValue={booking.proposedAppointmentDate ?? booking.appointmentDate}
+                                min={new Date().toISOString().slice(0, 10)}
+                                name="proposedAppointmentDate"
+                                type="date"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#65584f]">New time</span>
+                              <select
+                                className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+                                defaultValue={normalizeAppointmentTime(booking.proposedAppointmentTime ?? booking.appointmentTime)}
+                                name="proposedAppointmentTime"
+                              >
+                                {APPOINTMENT_TIME_SLOTS.map((slot) => (
+                                  <option key={slot} value={slot}>{slot}</option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                          <button className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" name="decision" type="submit" value="accept">
+                            {booking.status === "requested" ? "Accept booking" : "Mark accepted"}
+                          </button>
+                          <button className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64]" name="decision" type="submit" value="deny">
+                            {booking.status === "requested" ? "Deny booking" : "Mark denied"}
+                          </button>
+                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" name="decision" type="submit" value="request_change">
+                            Ask to change date/time
+                          </button>
                         </div>
-                        <button className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" name="decision" type="submit" value="accept">
-                          {booking.status === "requested" ? "Accept booking" : "Mark accepted"}
-                        </button>
-                        <button className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64]" name="decision" type="submit" value="deny">
-                          {booking.status === "requested" ? "Deny booking" : "Mark denied"}
-                        </button>
-                        <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" name="decision" type="submit" value="request_change">
-                          Ask to change date/time
-                        </button>
-                      </div>
-                    </details>
+                      </details>
+                    ) : null}
 
-                    {followUpDue ? (
+                    {canRecordPostVisitOutcome ? (
                       <div className="mt-3 rounded-2xl border border-[#d6c8ad] bg-white p-3">
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Post-visit outcome</p>
                         <div className="mt-3 grid gap-2">
@@ -1616,13 +1670,13 @@ function ShelterBookingVisitList({
                       <ExternalLink className="h-4 w-4" />
                       Open visitor profile
                     </Link>
-            <Link
+                    <Link
                       className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
-              href={withReturnTo(bookingWorkspaceDetailHref({ appointmentId: booking.id, bookingListHref }), bookingListHref)}
-            >
+                      href={withReturnTo(bookingWorkspaceDetailHref({ appointmentId: booking.id, bookingListHref }), bookingListHref)}
+                    >
                       <ExternalLink className="h-4 w-4" />
                       Open booking detail
-            </Link>
+                    </Link>
                   </form>
                 </div>
               </section>

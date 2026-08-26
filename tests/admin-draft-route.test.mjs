@@ -375,12 +375,18 @@ test("admin draft booking tab duplicates the low-friction old booking workspace 
   const scannerSource = readFileSync(new URL("../app/admin/bookings/BookingQrScanner.tsx", import.meta.url), "utf8");
 
   assert.equal(panelSource.includes("VISIT_BUCKETS"), true);
+  assert.equal(panelSource.includes('{ label: "Past", value: "past" }'), true);
+  assert.equal(panelSource.includes('{ label: "History", value: "history" }'), true);
+  assert.equal(panelSource.includes('{ label: "Adopted", value: "adopted" }'), true);
+  assert.equal(panelSource.includes('"needs_follow_up"'), false);
   assert.equal(panelSource.includes("bookingSearch"), true);
   assert.equal(panelSource.includes("bookingStatusFilter"), true);
   assert.equal(panelSource.includes("Search booking code"), true);
   assert.equal(panelSource.includes("BookingQrScanner"), true);
   assert.equal(scannerSource.includes("QR check-in scanner"), true);
   assert.equal(panelSource.includes("decideBookingAction"), true);
+  assert.equal(panelSource.includes("canRecordPostVisitOutcome"), true);
+  assert.equal(panelSource.includes("Adopted dog profile"), true);
   assert.equal(panelSource.includes("Edit decision"), true);
   assert.equal(panelSource.includes("Open visitor profile"), true);
   assert.equal(panelSource.includes("Open booking detail"), true);

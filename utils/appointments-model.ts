@@ -88,7 +88,7 @@ export function appointmentFollowUpDue(appointment: AppointmentSummary, now = ne
   }
 
   const visitStart = new Date(`${appointment.appointment_date}T${normalizeAppointmentTime(appointment.appointment_time)}:00`);
-  return visitStart.getTime() + 24 * 60 * 60 * 1000 <= now.getTime();
+  return visitStart.getTime() <= now.getTime();
 }
 
 export function isPastAppointmentByTime(appointment: AppointmentSummary, now = new Date()) {
