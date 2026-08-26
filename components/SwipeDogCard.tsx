@@ -155,7 +155,7 @@ export default function SwipeDogCard({
       <div
         ref={carouselRef}
         onScroll={onCarouselScroll}
-        className="flex overflow-x-auto snap-x snap-mandatory rounded-[22px]"
+        className="flex overflow-x-auto snap-x snap-mandatory rounded-[22px] shadow-[0_18px_44px_rgba(101,88,79,0.24)] ring-1 ring-white/35"
         style={{ width: cardWidth, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
       >
         {orderedMedia.map((item, i) => (

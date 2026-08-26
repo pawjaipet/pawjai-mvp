@@ -51,13 +51,13 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNo
 
   return (
     <div
-      className="relative flex flex-col bg-white overflow-hidden"
-      style={{ width: 402, maxWidth: "100vw", margin: "0 auto", height: "100dvh" }}
+      className="relative flex flex-col overflow-hidden"
+      style={{ width: 402, maxWidth: "100vw", margin: "0 auto", height: "100dvh", background: "#d6c8ad" }}
     >
-      {/* Gradient header — push-down, card sits below */}
+      {/* Solid header — push-down, card sits below */}
       <div
         className="shrink-0 h-[110px] w-full z-20"
-        style={{ background: "linear-gradient(to bottom, #d6c8ad 0%, rgba(214,200,173,0.75) 38.942%, rgba(214,200,173,0) 100%)" }}
+        style={{ background: "#d6c8ad" }}
       >
         <Link
           href="/"
