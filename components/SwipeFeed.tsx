@@ -52,12 +52,12 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNo
   return (
     <div
       className="relative flex flex-col overflow-hidden"
-      style={{ width: 402, maxWidth: "100vw", margin: "0 auto", height: "100dvh", background: "#d6c8ad" }}
+      style={{ width: 402, maxWidth: "100vw", margin: "0 auto", height: "100dvh", background: "#F5EEDD" }}
     >
       {/* Solid header — push-down, card sits below */}
       <div
         className="shrink-0 h-[110px] w-full z-20"
-        style={{ background: "#d6c8ad" }}
+        style={{ background: "#F5EEDD" }}
       >
         <Link
           href="/"
