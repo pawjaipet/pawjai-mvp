@@ -128,14 +128,20 @@ test("shelter booking routes remain under the portal for detail, visitor, and QR
 
 test("shelter form mutations cannot honor an admin return destination", () => {
   const bookingActions = source("../app/admin/bookings/actions.ts");
+  const dogCreateActions = source("../app/admin/dogs/new/actions.ts");
   const dogEditActions = source("../app/admin/dogs/[id]/edit/actions.ts");
 
   assert.match(bookingActions, /if \(!context\.isGlobalAdmin\)/);
   assert.match(bookingActions, /allowedPortalReturn/);
   assert.match(bookingActions, /await redirectAfterShelterMutation\(formData, adminContext/);
+  assert.match(dogCreateActions, /if \(!context\.isGlobalAdmin\)/);
+  assert.match(dogCreateActions, /allowedPortalReturn/);
+  assert.match(dogCreateActions, /redirect\(addDogRedirectMessage\(allowedPortalReturn \? requested : fallback, message\)\)/);
   assert.match(dogEditActions, /if \(!adminContext\.isGlobalAdmin\)/);
+  assert.match(dogEditActions, /if \(!context\.isGlobalAdmin\)/);
   assert.match(dogEditActions, /safePortalReturn/);
   assert.match(dogEditActions, /portalTarget \? `\$\{portalTarget\}\?view=dogs` : "\/shelter"/);
+  assert.match(dogEditActions, /redirect\(addDogRedirectMessage\(allowedPortalReturn \? requested : fallback, message\)\)/);
 });
 
 test("shared workspace and adopter navigation fail closed outside user routes", () => {

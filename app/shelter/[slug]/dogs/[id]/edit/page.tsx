@@ -81,7 +81,7 @@ export default async function ShelterEditDogPage({
           (personalityTraitRows ?? []).map((trait) => trait.trait_value),
         )}
         photos={photos ?? []}
-        returnTo={`/shelter/${slug}/dogs/${dog.id}/edit`}
+        returnTo={shelterListingsHref}
         shelters={shelters ?? []}
         traits={traits ?? []}
       />

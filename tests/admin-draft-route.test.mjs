@@ -253,7 +253,7 @@ test("canonical admin has a focused create-dog route that reuses the real dog li
   assert.equal(shelterCreateSource.includes("getShelterByPortalSlug"), true);
   assert.equal(shelterCreateSource.includes("PawjaiWorkspaceShell"), true);
   assert.equal(shelterCreateSource.includes("successListingsHref={cancelHref}"), true);
-  assert.equal(shelterCreateSource.includes("returnTo={`/shelter/${slug}/dogs/new`}"), true);
+  assert.equal(shelterCreateSource.includes("returnTo={cancelHref}"), true);
 });
 
 test("admin draft dog listings remove the inline field map and expose creation as a shelter workspace tab", () => {
@@ -287,7 +287,7 @@ test("canonical admin dog cards edit through an admin-native dog edit route", ()
   assert.equal(shelterEditSource.includes("getAdminAuthContext({ includePhraseGate: false })"), true);
   assert.equal(shelterEditSource.includes("getShelterByPortalSlug"), true);
   assert.equal(shelterEditSource.includes("dog.shelter_id !== shelter.id"), true);
-  assert.equal(shelterEditSource.includes("returnTo={`/shelter/${slug}/dogs/${dog.id}/edit`}"), true);
+  assert.equal(shelterEditSource.includes("returnTo={shelterListingsHref}"), true);
 });
 
 test("admin draft and shelter portal open booking detail and visitor profile through shared guarded routes", () => {

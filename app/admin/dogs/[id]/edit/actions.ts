@@ -422,6 +422,43 @@ function revalidateDogManagementPaths(dogId: string) {
   revalidatePath(`/admin/dogs/${dogId}/edit`);
 }
 
+function addDogRedirectMessage(path: string, message: string) {
+  const url = new URL(path, "https://pawjai.local");
+  if (message) url.searchParams.set("message", message);
+  return `${url.pathname}${url.search}`;
+}
+
+async function redirectAfterShelterDogMutation({
+  context,
+  returnTo,
+  message,
+}: {
+  context: Awaited<ReturnType<typeof requireShelterAccess>>;
+  returnTo: string;
+  message: string;
+}): Promise<never | null> {
+  const requested = returnTo.trim();
+
+  if (!context.isGlobalAdmin) {
+    const portalTarget = await getShelterPortalTarget(context);
+    const fallback = portalTarget ? `${portalTarget}?view=dogs` : "/shelter";
+    const allowedPortalReturn = portalTarget
+      ? requested === portalTarget || requested.startsWith(`${portalTarget}?`)
+      : requested === "/shelter" || requested.startsWith("/shelter?");
+
+    redirect(addDogRedirectMessage(allowedPortalReturn ? requested : fallback, message));
+  }
+
+  if (requested.startsWith("/admin") || requested.startsWith("/admindraft")) {
+    const canonicalReturnTo = requested.replace(/^\/admindraft/, "/admin");
+    if (canonicalReturnTo === "/admin" || canonicalReturnTo.startsWith("/admin?")) {
+      redirect(addDogRedirectMessage(canonicalReturnTo, message));
+    }
+  }
+
+  return null;
+}
+
 function formatDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -824,10 +861,13 @@ export async function updateDogProfileAction(
     targetTable: "dogs",
   });
 
+  const message = cancelledFutureAppointments > 0
+    ? `Dog profile updated successfully. ${cancelledFutureAppointments} future appointment${cancelledFutureAppointments === 1 ? "" : "s"} cancelled because this dog is adopted.`
+    : "Dog profile updated successfully.";
+  await redirectAfterShelterDogMutation({ context: adminContext, returnTo, message });
+
   return {
-    message: cancelledFutureAppointments > 0
-      ? `Dog profile updated successfully. ${cancelledFutureAppointments} future appointment${cancelledFutureAppointments === 1 ? "" : "s"} cancelled because this dog is adopted.`
-      : "Dog profile updated successfully.",
+    message,
     status: "success",
   };
 }
@@ -893,12 +933,13 @@ export async function deleteDogProfileAction(formData: FormData) {
   if (!adminContext.isGlobalAdmin) {
     const portalTarget = await getShelterPortalTarget(adminContext);
     const safePortalReturn = portalTarget
-      && (returnTo === portalTarget || returnTo.startsWith(`${portalTarget}?`) || returnTo.startsWith(`${portalTarget}/`));
-    redirect(safePortalReturn ? returnTo : portalTarget ? `${portalTarget}?view=dogs` : "/shelter");
+      && (returnTo === portalTarget || returnTo.startsWith(`${portalTarget}?`));
+    const target = safePortalReturn ? returnTo : portalTarget ? `${portalTarget}?view=dogs` : "/shelter";
+    redirect(addDogRedirectMessage(target, "Dog profile deleted."));
   }
 
   if (returnTo.startsWith("/admin") || returnTo.startsWith("/admindraft")) {
-    redirect(returnTo.replace(/^\/admindraft/, "/admin"));
+    redirect(addDogRedirectMessage(returnTo.replace(/^\/admindraft/, "/admin"), "Dog profile deleted."));
   }
-  redirect("/admin?view=dogs");
+  redirect("/admin?view=dogs&message=Dog+profile+deleted.");
 }

@@ -82,7 +82,7 @@ export default async function ShelterNewDogPage({
         cancelLabel="Exit"
         cancelHref={cancelHref}
         personalityTags={personalityTags}
-        returnTo={`/shelter/${slug}/dogs/new`}
+        returnTo={cancelHref}
         selectedShelterId={selectedShelterId}
         shelters={shelterOptions}
         showIntro={false}

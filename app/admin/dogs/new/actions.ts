@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -16,6 +17,7 @@ import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { canonicalizeBreedLabel, isCanonicalDogBreed } from "@/utils/dog-breeds";
 import { fetchRemoteAsset } from "@/utils/onedrive";
 import { dedupePersonalityTags } from "@/utils/personality-tags";
+import { getShelterPortalTarget } from "@/utils/shelter-portal";
 import { slugify } from "@/utils/slug";
 import { createAdminClient } from "@/utils/supabase/admin";
 import type { AdminGateState, CreateDogListingState } from "./form-state";
@@ -109,6 +111,39 @@ type PendingPhotoMediaItem = {
 function getString(formData: FormData, name: string) {
   const value = formData.get(name);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function addDogRedirectMessage(path: string, message: string) {
+  const url = new URL(path, "https://pawjai.local");
+  if (message) url.searchParams.set("message", message);
+  return `${url.pathname}${url.search}`;
+}
+
+async function redirectAfterShelterDogMutation(
+  context: Awaited<ReturnType<typeof requireShelterAccess>>,
+  returnTo: string,
+  message: string,
+): Promise<never | null> {
+  const requested = returnTo.trim();
+
+  if (!context.isGlobalAdmin) {
+    const portalTarget = await getShelterPortalTarget(context);
+    const fallback = portalTarget ? `${portalTarget}?view=dogs` : "/shelter";
+    const allowedPortalReturn = portalTarget
+      ? requested === portalTarget || requested.startsWith(`${portalTarget}?`)
+      : requested === "/shelter" || requested.startsWith("/shelter?");
+
+    redirect(addDogRedirectMessage(allowedPortalReturn ? requested : fallback, message));
+  }
+
+  if (requested.startsWith("/admin") || requested.startsWith("/admindraft")) {
+    const canonicalReturnTo = requested.replace(/^\/admindraft/, "/admin");
+    if (canonicalReturnTo === "/admin" || canonicalReturnTo.startsWith("/admin?")) {
+      redirect(addDogRedirectMessage(canonicalReturnTo, message));
+    }
+  }
+
+  return null;
 }
 
 function getOptionalString(formData: FormData, name: string) {
@@ -1303,12 +1338,14 @@ export async function createDogListingAction(
   revalidatePath("/admin/dogs/new");
   revalidatePath(`/dogs/${insertedDog.id}`);
 
+  const message = backblazeMirrorWarningCount > 0
+    ? `Dog listing created and photos saved to Supabase. Backblaze mirror needs attention for ${backblazeMirrorWarningCount} photo(s).`
+    : "Dog listing created successfully.";
+  await redirectAfterShelterDogMutation(adminContext, returnTo, message);
+
   return {
     dogId: insertedDog.id,
-    message:
-      backblazeMirrorWarningCount > 0
-        ? `Dog listing created and photos saved to Supabase. Backblaze mirror needs attention for ${backblazeMirrorWarningCount} photo(s).`
-        : "Dog listing created successfully.",
+    message,
     status: "success",
   };
 }
