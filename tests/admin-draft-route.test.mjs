@@ -383,7 +383,8 @@ test("admin draft booking tab duplicates the low-friction old booking workspace 
   assert.equal(panelSource.includes('"needs_follow_up"'), false);
   assert.equal(panelSource.includes("bookingSearch"), true);
   assert.equal(panelSource.includes("bookingStatusFilter"), true);
-  assert.equal(panelSource.includes("Search booking code"), true);
+  assert.equal(panelSource.includes("Find bookings"), true);
+  assert.equal(panelSource.includes("Booking code"), true);
   assert.equal(panelSource.includes("BookingQrScanner"), true);
   assert.equal(scannerSource.includes("QR check-in scanner"), true);
   assert.equal(panelSource.includes("decideBookingAction"), true);

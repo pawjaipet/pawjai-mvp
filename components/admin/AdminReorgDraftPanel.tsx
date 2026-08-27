@@ -1473,73 +1473,64 @@ function ShelterBookingVisitList({
         </p>
       </div>
 
-      <div className="mt-5 grid gap-4 rounded-[24px] border border-[#d6c8ad] bg-white p-4 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
-        <label>
-          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Date</span>
-          <input
-            className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
-            onChange={(event) => setBookingDateFilter(event.target.value)}
-            type="date"
-            value={bookingDateFilter}
-          />
-        </label>
-        <label>
-          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Status</span>
-          <select
-            className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
-            onChange={(event) => setBookingStatusFilter(event.target.value)}
-            value={bookingStatusFilter}
-          >
-            <option value="all">All statuses</option>
-            {BOOKING_STATUS_OPTIONS.map((status) => (
-              <option key={status} value={status}>
-                {status.replace("_", " ")}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white" type="button">
-          <Search className="h-4 w-4" />
-          Filter
-        </button>
-        <button
-          className="rounded-full border border-[#d6c8ad] bg-white px-6 py-3 text-sm font-semibold text-[#65584f]"
-          onClick={() => {
-            setBookingDateFilter("");
-            setBookingSearch("");
-            setBookingStatusFilter("all");
-            setVisitBucket("upcoming");
-          }}
-          type="button"
-        >
-          Reset
-        </button>
-      </div>
-
       <form
         className="mt-5 rounded-[24px] border border-[#d6c8ad] bg-white p-4"
         onSubmit={(event) => event.preventDefault()}
       >
-        <label>
-          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">
-            Search booking code
-          </span>
-          <div className="flex flex-col gap-3 md:flex-row">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Find bookings</p>
+        <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_auto_auto] lg:items-end">
+          <label>
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Date</span>
             <input
-              className="min-w-0 flex-1 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-[#65584f] outline-none focus:border-[#cd8188]"
+              className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+              onChange={(event) => setBookingDateFilter(event.target.value)}
+              type="date"
+              value={bookingDateFilter}
+            />
+          </label>
+          <label>
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Status</span>
+            <select
+              className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+              onChange={(event) => setBookingStatusFilter(event.target.value)}
+              value={bookingStatusFilter}
+            >
+              <option value="all">All statuses</option>
+              {BOOKING_STATUS_OPTIONS.map((status) => (
+                <option key={status} value={status}>
+                  {status.replace("_", " ")}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">
+              Booking code
+            </span>
+            <input
+              className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-[#65584f] outline-none focus:border-[#cd8188]"
               onChange={(event) => setBookingSearch(event.target.value)}
               placeholder="APT-FA5C9"
               value={bookingSearch}
             />
-            <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white" type="submit">
-              <Search className="h-4 w-4" />
-              Search code
-            </button>
-          </div>
-        </label>
-        <p className="mt-3 text-xs leading-5 text-[#65584f]">
-          Type the visitor booking ID from their appointment card or QR screen.
-        </p>
+          </label>
+          <button className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white" type="submit">
+            <Search className="h-4 w-4" />
+            Apply
+          </button>
+          <button
+            className="min-h-12 rounded-full border border-[#d6c8ad] bg-white px-6 py-3 text-sm font-semibold text-[#65584f]"
+            onClick={() => {
+              setBookingDateFilter("");
+              setBookingSearch("");
+              setBookingStatusFilter("all");
+              setVisitBucket("upcoming");
+            }}
+            type="button"
+          >
+            Reset
+          </button>
+        </div>
       </form>
 
       <div className="mt-5">
