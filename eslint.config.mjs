@@ -16,6 +16,7 @@ const config = [
       ".next/**",
       ".next.corrupt-*/**",
       "node_modules/**",
+      "pawjai snapshots/**",
       "tests/**",
     ],
   },
