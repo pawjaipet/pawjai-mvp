@@ -1,7 +1,7 @@
 "use client";
 
-import { Check, ChevronDown, Search } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import {
   buildBreedPickerOptions,
@@ -34,12 +34,6 @@ function saveRecentBreeds(values: string[]) {
   }
 }
 
-function includesSearch(label: string, searchTerm: string) {
-  const query = searchTerm.trim().toLocaleLowerCase();
-  if (!query) return true;
-  return label.toLocaleLowerCase().includes(query);
-}
-
 export default function DogBreedPicker({
   buttonClassName,
   defaultValue,
@@ -52,10 +46,6 @@ export default function DogBreedPicker({
   placeholder?: string;
 }) {
   const { t } = useLanguage();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
   const [selectedBreed, setSelectedBreed] = useState(() => normalizeBreedLabel(defaultValue ?? ""));
   const [recentBreeds, setRecentBreeds] = useState<string[]>([]);
 
@@ -67,144 +57,42 @@ export default function DogBreedPicker({
     setSelectedBreed(normalizeBreedLabel(defaultValue ?? ""));
   }, [defaultValue]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    window.setTimeout(() => {
-      searchInputRef.current?.focus();
-    }, 0);
-
-    function handlePointerDown(event: PointerEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-        setSearchTerm("");
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-        setSearchTerm("");
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen]);
-
   const options = useMemo(
     () => buildBreedPickerOptions({ currentBreed: selectedBreed, recentBreeds }),
     [recentBreeds, selectedBreed],
   );
 
-  const recentKeys = useMemo(
-    () => new Set(recentBreeds.map((breed) => normalizeBreedLabel(breed).toLocaleLowerCase())),
-    [recentBreeds],
-  );
-  const selectedKey = selectedBreed.toLocaleLowerCase();
-  const filteredOptions = options.filter((option) => (
-    includesSearch(option, searchTerm) || includesSearch(t(option), searchTerm)
-  ));
-  const recentOptions = filteredOptions.filter((option) => recentKeys.has(option.toLocaleLowerCase()));
-  const remainingOptions = filteredOptions.filter((option) => !recentKeys.has(option.toLocaleLowerCase()));
-
   const chooseBreed = (breed: string) => {
     const label = normalizeBreedLabel(breed);
     setSelectedBreed(label);
+    if (!label) return;
+
     const nextRecentBreeds = recordRecentBreedSelection(label, recentBreeds);
     setRecentBreeds(nextRecentBreeds);
     saveRecentBreeds(nextRecentBreeds);
-    setIsOpen(false);
-    setSearchTerm("");
-  };
-
-  const optionButton = (breed: string) => {
-    const isSelected = breed.toLocaleLowerCase() === selectedKey;
-
-    return (
-      <button
-        key={breed}
-        type="button"
-        className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition ${
-          isSelected
-            ? "bg-[#f8e8ea] font-semibold text-[#65584f]"
-            : "text-[#65584f] hover:bg-[#f5f1e8]"
-        }`}
-        onClick={() => chooseBreed(breed)}
-      >
-        <span>{t(breed)}</span>
-        {isSelected ? <Check className="h-4 w-4 shrink-0 text-[#cd8188]" aria-hidden="true" /> : null}
-      </button>
-    );
   };
 
   return (
-    <div className="relative" ref={containerRef}>
-      <input type="hidden" name={name} value={selectedBreed} />
-      <button
-        type="button"
-        className={`${buttonClassName} flex items-center justify-between gap-3 text-left`}
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-        onClick={() => setIsOpen((value) => !value)}
+    <div className="relative">
+      <select
+        name={name}
+        className={`${buttonClassName} appearance-none pr-11`}
+        value={selectedBreed}
+        onChange={(event) => chooseBreed(event.target.value)}
       >
-        <span className={selectedBreed ? "truncate" : "truncate text-[#a79a8e]"}>
-          {selectedBreed ? t(selectedBreed) : t(placeholder)}
-        </span>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-[#9a8b7d] transition ${isOpen ? "rotate-180" : ""}`}
-          aria-hidden="true"
-        />
-      </button>
-
-      {isOpen ? (
-        <div className="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-[#d6c8ad] bg-white shadow-[0_18px_48px_rgba(79,67,56,0.16)]">
-          <div className="flex items-center gap-2 border-b border-[#efe4d5] px-3 py-2">
-            <Search className="h-4 w-4 shrink-0 text-[#cd8188]" aria-hidden="true" />
-            <input
-              ref={searchInputRef}
-              className="min-w-0 flex-1 bg-transparent py-2 text-sm text-[#65584f] outline-none placeholder:text-[#b4a89e]"
-              placeholder="Search breeds"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") event.preventDefault();
-              }}
-            />
-          </div>
-
-          <div className="max-h-72 overflow-y-auto p-2" role="listbox">
-            {recentOptions.length > 0 ? (
-              <div className="mb-2">
-                <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#cd8188]">
-                  Recent
-                </p>
-                <div className="space-y-1">{recentOptions.map(optionButton)}</div>
-              </div>
-            ) : null}
-
-            {remainingOptions.length > 0 ? (
-              <div>
-                <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9b8c7d]">
-                  Breed list
-                </p>
-                <div className="space-y-1">{remainingOptions.map(optionButton)}</div>
-              </div>
-            ) : null}
-
-            {filteredOptions.length === 0 ? (
-              <p className="px-3 py-5 text-sm text-[#65584f]">
-                No breed match yet. Choose the closest category, usually Mixed Breed or Thai Dog.
-              </p>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+        <option value="" disabled>
+          {t(placeholder)}
+        </option>
+        {options.map((breed) => (
+          <option key={breed} value={breed}>
+            {t(breed)}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a8b7d]"
+        aria-hidden="true"
+      />
     </div>
   );
 }
