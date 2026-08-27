@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import SwipeDogCard, { type SwipeDog } from "./SwipeDogCard";
 import AdCard from "./AdCard";
@@ -9,6 +9,7 @@ import SwipeFeedTutorial from "@/components/SwipeFeedTutorial";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import type { Ad } from "@/utils/ads";
+import { sendProductAnalyticsEvent } from "@/utils/product-analytics-client";
 import { buildSwipeFeed, isActiveDogFeedItem } from "@/utils/swipe-feed-model";
 
 const CARD_W = "min(370px, calc(100vw - 32px))";
@@ -27,15 +28,110 @@ interface Props {
 
 export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNoFilterResultsNotice = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const activeIndexRef = useRef(0);
+  const backwardFeedSwipesRef = useRef(0);
+  const feedVisitIdRef = useRef<string | null>(null);
+  const forwardFeedSwipesRef = useRef(0);
+  const seenDogIdsRef = useRef(new Set<string>());
+  const settledIndexRef = useRef(0);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const visitStartedAtRef = useRef<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [showFallbackNotice, setShowFallbackNotice] = useState(showNoFilterResultsNotice);
   const { t } = useLanguage();
 
-  const feed = buildSwipeFeed(dogs, ads, AD_EVERY);
+  const feed = useMemo(() => buildSwipeFeed(dogs, ads, AD_EVERY), [ads, dogs]);
+
+  const ensureFeedVisit = useCallback(() => {
+    feedVisitIdRef.current ??= window.crypto.randomUUID();
+    visitStartedAtRef.current ??= Date.now();
+    return feedVisitIdRef.current;
+  }, []);
+
+  const trackDogImpression = useCallback((index: number) => {
+    const item = feed[index];
+    if (!item || item.kind !== "dog" || seenDogIdsRef.current.has(item.dog.id)) return;
+
+    const feedVisitId = ensureFeedVisit();
+    seenDogIdsRef.current.add(item.dog.id);
+    sendProductAnalyticsEvent({
+      dedupeKey: `feed-impression:${feedVisitId}:${item.dog.id}`,
+      dogId: item.dog.id,
+      eventName: "dog_feed_impression",
+      metadata: {
+        cardPosition: index + 1,
+        dogPosition: item.dogIndex + 1,
+        feedVisitId,
+        totalDogs: dogs.length,
+      },
+    });
+  }, [dogs.length, ensureFeedVisit, feed]);
+
+  const settleFeedIndex = useCallback((index: number) => {
+    const previousIndex = settledIndexRef.current;
+    if (index === previousIndex) return;
+
+    if (index > previousIndex) {
+      forwardFeedSwipesRef.current += index - previousIndex;
+    } else {
+      backwardFeedSwipesRef.current += previousIndex - index;
+    }
+    settledIndexRef.current = index;
+    trackDogImpression(index);
+  }, [trackDogImpression]);
+
+  const sendFeedSummary = useCallback((exitReason: string) => {
+    if (dogs.length === 0 || visitStartedAtRef.current === null) return;
+
+    if (settleTimerRef.current !== null) {
+      clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = null;
+      settleFeedIndex(activeIndexRef.current);
+    }
+
+    const feedVisitId = ensureFeedVisit();
+    const durationSeconds = Math.max(0, Math.round((Date.now() - visitStartedAtRef.current) / 1000));
+    const totalFeedSwipes = forwardFeedSwipesRef.current + backwardFeedSwipesRef.current;
+    const reachedEnd = activeIndexRef.current >= feed.length || seenDogIdsRef.current.size >= dogs.length;
+    sendProductAnalyticsEvent({
+      dedupeKey: `feed-summary:${feedVisitId}:${seenDogIdsRef.current.size}:${totalFeedSwipes}:${durationSeconds}`,
+      eventName: "feed_session_summary",
+      metadata: {
+        backwardFeedSwipes: backwardFeedSwipesRef.current,
+        dogsViewed: seenDogIdsRef.current.size,
+        durationSeconds,
+        exitReason,
+        feedVisitId,
+        forwardFeedSwipes: forwardFeedSwipesRef.current,
+        reachedEnd,
+        totalFeedSwipes,
+        totalDogs: dogs.length,
+      },
+    });
+  }, [dogs.length, ensureFeedVisit, feed.length, settleFeedIndex]);
 
   useEffect(() => {
     setShowFallbackNotice(showNoFilterResultsNotice);
   }, [showNoFilterResultsNotice]);
+
+  useEffect(() => {
+    if (dogs.length === 0) return;
+
+    ensureFeedVisit();
+    trackDogImpression(activeIndexRef.current);
+    const handlePageHide = () => sendFeedSummary("page_hidden");
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") sendFeedSummary("page_hidden");
+    };
+
+    window.addEventListener("pagehide", handlePageHide);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      sendFeedSummary("navigation");
+    };
+  }, [dogs.length, ensureFeedVisit, sendFeedSummary, trackDogImpression]);
 
   function scrollToTop() {
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -46,7 +142,16 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNo
     const sectionHeight = containerRef.current.clientHeight;
     if (sectionHeight <= 0) return;
     const nextIndex = Math.round(containerRef.current.scrollTop / sectionHeight);
-    setActiveIndex(Math.min(Math.max(nextIndex, 0), Math.max(feed.length - 1, 0)));
+    const clampedIndex = Math.min(Math.max(nextIndex, 0), Math.max(feed.length, 0));
+    if (clampedIndex === activeIndexRef.current) return;
+
+    activeIndexRef.current = clampedIndex;
+    setActiveIndex(clampedIndex);
+    if (settleTimerRef.current !== null) clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = setTimeout(() => {
+      settleTimerRef.current = null;
+      settleFeedIndex(clampedIndex);
+    }, 180);
   }
 
   return (

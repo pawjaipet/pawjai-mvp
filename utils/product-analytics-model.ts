@@ -1,6 +1,9 @@
 export const PRODUCT_ANALYTICS_EVENT_NAMES = [
   "page_view",
   "dog_profile_view",
+  "dog_feed_impression",
+  "dog_shared",
+  "feed_session_summary",
   "booking_started",
   "booking_succeeded",
   "booking_failed",

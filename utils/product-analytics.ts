@@ -18,10 +18,12 @@ export type ProductAnalyticsEventInput = {
   visitorId?: string | null;
 };
 
-export async function recordProductAnalyticsEvent(input: ProductAnalyticsEventInput) {
+export async function recordProductAnalyticsEvents(inputs: ProductAnalyticsEventInput[]) {
+  if (inputs.length === 0) return true;
+
   try {
     const admin = createAdminClient();
-    const { error } = await admin.from("product_analytics_events").insert({
+    const rows = inputs.map((input) => ({
       appointment_id: input.appointmentId ?? null,
       dog_id: input.dogId ?? null,
       event_name: input.eventName,
@@ -30,12 +32,13 @@ export async function recordProductAnalyticsEvent(input: ProductAnalyticsEventIn
       session_id: input.sessionId ?? null,
       user_id: input.userId ?? null,
       visitor_id: input.visitorId ?? null,
-    });
+    }));
+    const { error } = await admin.from("product_analytics_events").insert(rows);
 
     if (error) {
       console.error("Product analytics event could not be recorded", {
         code: error.code,
-        eventName: input.eventName,
+        eventNames: inputs.map((input) => input.eventName),
       });
       return false;
     }
@@ -45,4 +48,8 @@ export async function recordProductAnalyticsEvent(input: ProductAnalyticsEventIn
     console.error("Product analytics is unavailable", error);
     return false;
   }
+}
+
+export async function recordProductAnalyticsEvent(input: ProductAnalyticsEventInput) {
+  return recordProductAnalyticsEvents([input]);
 }

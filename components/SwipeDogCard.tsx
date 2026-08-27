@@ -12,6 +12,7 @@ import { translateAgeLabel, translateDogValue } from "@/components/i18n/translat
 import type { Dog, DogPhoto, DogTrait } from "@/types/database";
 import { canonicalizeBreedLabel } from "@/utils/dog-breeds";
 import { normalizeDogMediaUrl, type DogMediaItem } from "@/utils/dog-media";
+import { sendProductAnalyticsEvent } from "@/utils/product-analytics-client";
 
 export type SwipeDog = Dog & {
   photos: Pick<DogPhoto, "public_url" | "is_cover" | "sort_order">[];
@@ -121,9 +122,30 @@ export default function SwipeDogCard({
     setImgIdx(idx);
   }
 
-  function handleShare() {
-    if (navigator.share) {
-      navigator.share({ title: dog.name, url: `/dogs/${dog.id}` }).catch(() => {});
+  async function handleShare() {
+    const shareUrl = new URL(`/dogs/${dog.id}`, window.location.origin).toString();
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: dog.name, url: shareUrl });
+        sendProductAnalyticsEvent({
+          dogId: dog.id,
+          eventName: "dog_shared",
+          metadata: { method: "native", source: "swipe_feed" },
+        });
+        return;
+      }
+
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(shareUrl);
+        sendProductAnalyticsEvent({
+          dogId: dog.id,
+          eventName: "dog_shared",
+          metadata: { method: "clipboard", source: "swipe_feed" },
+        });
+      }
+    } catch {
+      // Closing the native share sheet is not a completed share.
     }
   }
 
@@ -263,6 +285,7 @@ export default function SwipeDogCard({
           isLoggedIn={isLoggedIn}
         />
         <button
+          type="button"
           onClick={handleShare}
           className="bg-[#cd8188] w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
           aria-label={t("Share")}
