@@ -822,6 +822,8 @@ function DogCard({
         <Link
           className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-4 py-2 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
           href={`/dogs/${dog.id}`}
+          rel="noopener noreferrer"
+          target="_blank"
         >
           Open
         </Link>

@@ -74,6 +74,12 @@ test("shelter query tabs keep URL and rendered workspace state synchronized", ()
   assert.match(panel, /setShelterTab\(initialShelterTab\)/);
 });
 
+test("shelter dog listing profile previews open outside the portal tab", () => {
+  const panel = source("../components/admin/AdminReorgDraftPanel.tsx");
+
+  assert.match(panel, /href=\{`\/dogs\/\$\{dog\.id\}`\}[\s\S]{0,160}rel="noopener noreferrer"[\s\S]{0,80}target="_blank"/);
+});
+
 test("shelter password changes verify the current password and confirmation", () => {
   const settings = source("../app/shelter/[slug]/settings/page.tsx");
   const actions = source("../app/shelter/actions.ts");
