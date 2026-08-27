@@ -5,6 +5,7 @@ type Language = "en" | "th";
 const MAX_TEXTS = 20;
 const MAX_TEXT_LENGTH = 1200;
 const CACHE_LIMIT = 600;
+const THAI_RE = /[\u0E00-\u0E7F]/;
 
 const globalCache = globalThis as typeof globalThis & {
   __pawjaiMachineTranslationCache?: Map<string, string>;
@@ -25,13 +26,9 @@ function normalizeInput(value: unknown) {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_TEXT_LENGTH);
 }
 
-async function translateOne(text: string, targetLanguage: Language) {
-  const cacheKey = `${targetLanguage}:${text}`;
-  const cached = translationCache.get(cacheKey);
-  if (cached) return cached;
-
+async function translateWithGoogle(text: string, targetLanguage: Language) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6000);
+  const timeout = setTimeout(() => controller.abort(), 8000);
   try {
     const params = new URLSearchParams({
       client: "gtx",
@@ -44,7 +41,7 @@ async function translateOne(text: string, targetLanguage: Language) {
       headers: { "User-Agent": "PawJai/1.0" },
       signal: controller.signal,
     });
-    if (!response.ok) return text;
+    if (!response.ok) return null;
 
     const payload = (await response.json()) as unknown;
     const segments = Array.isArray(payload) && Array.isArray(payload[0]) ? payload[0] : [];
@@ -54,14 +51,58 @@ async function translateOne(text: string, targetLanguage: Language) {
       .join("")
       .trim();
 
-    const result = translated || text;
-    cacheSet(cacheKey, result);
-    return result;
+    return translated && translated !== text ? translated : null;
   } catch {
-    return text;
+    return null;
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function translateWithMyMemory(text: string, targetLanguage: Language) {
+  const sourceLanguage = THAI_RE.test(text) ? "th" : "en";
+  if (sourceLanguage === targetLanguage) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const params = new URLSearchParams({
+      q: text,
+      langpair: `${sourceLanguage}|${targetLanguage}`,
+    });
+    const response = await fetch(`https://api.mymemory.translated.net/get?${params}`, {
+      headers: { "User-Agent": "PawJai/1.0" },
+      signal: controller.signal,
+    });
+    if (!response.ok) return null;
+
+    const payload = (await response.json()) as {
+      responseData?: { translatedText?: unknown };
+      responseStatus?: unknown;
+    };
+    if (payload.responseStatus !== 200) return null;
+
+    const translated = String(payload.responseData?.translatedText ?? "").trim();
+    return translated && translated !== text ? translated : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function translateOne(text: string, targetLanguage: Language) {
+  const cacheKey = `${targetLanguage}:${text}`;
+  const cached = translationCache.get(cacheKey);
+  if (cached) return cached;
+
+  const translated =
+    (await translateWithGoogle(text, targetLanguage)) ??
+    (await translateWithMyMemory(text, targetLanguage)) ??
+    text;
+
+  cacheSet(cacheKey, translated);
+  return translated;
 }
 
 export async function POST(request: Request) {

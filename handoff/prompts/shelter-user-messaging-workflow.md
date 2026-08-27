@@ -1,149 +1,380 @@
 # Shelter And Adopter Messaging Workflow Prompt
 
-## Context
+## Purpose
 
-PAWJAI is moving from the old `/admin` workspace into `/admindraft`, with the long-term goal of giving each partner shelter its own workspace. Shelter staff should be able to manage their shelter profile, dog listings, booking visits, and messages without seeing other shelters. PawJai admins should still see the full umbrella across every shelter.
+Build the real messaging workflow for PAWJAI after the shelter/admin reorganization.
 
-The adopter side already has a `Messages` surface tied to appointments. The database already has `appointment_messages`, with each message linked to:
+Messaging is **not ready for the shelter pilot yet**, so do not promise it to partner shelters until this prompt has been implemented and tested. The MVP should only allow messages between:
 
+- an adopter who has booked a visit
+- the shelter linked to that booked dog/appointment
+
+PawJai admin can view message activity and thread contents for oversight, but PawJai admin must not reply, edit, delete, or impersonate either side in the first version.
+
+## Current Context
+
+PAWJAI has these lanes now:
+
+- Public/adopter app:
+  - `/messages`
+  - `/appointments/[id]?tab=messages`
+- Shelter portal:
+  - `/shelter`
+  - `/shelter/[slug]?view=messages`
+  - shelters authenticate through Supabase Auth, with username aliases resolved by `utils/shelter-portal.ts`
+- PawJai admin umbrella:
+  - `/admindraft`
+  - admin can see all shelters and bookings
+- Shared internal booking routes:
+  - `/booking/[id]`
+  - `/booking/[id]/visitor-profile`
+  - these must keep role-aware Back/Exit behavior through `returnTo`
+
+Existing useful files:
+
+- `app/messages/page.tsx`
+- `components/appointments/AppointmentDetailClient.tsx`
+- `app/appointments/[id]/actions.ts`
+- `utils/appointment-messages.ts`
+- `utils/admin-auth.ts`
+- `utils/shelter-portal.ts`
+- `components/admin/AdminReorgDraftPanel.tsx`
+- `types/database.ts`
+
+The adopter side already has a message surface and can insert adopter messages through `sendAppointmentMessageAction`. The shelter/admin side currently only shows connected message counts and a visual-only composer in `ShelterMessagesTab`.
+
+## Recommendation On Third-Party Tools
+
+Do **not** use a third-party chat platform for the MVP.
+
+Use PAWJAI's existing Supabase database as the source of truth:
+
+- Supabase Postgres: message rows
+- Supabase Storage: optional attachments
+- Resend: email notifications only
+- Supabase Realtime: optional later if live chat becomes necessary
+
+This is better for the pilot because the message rules are simple and sensitive:
+
+- conversation exists only after a real booking
+- shelter cannot message random users
+- adopter cannot message unrelated shelters
+- PawJai admin can read but not interact
+- adopter documents and private booking context stay inside PAWJAI
+
+Future optional integrations:
+
+- LINE Messaging API if Thai adopters strongly prefer LINE and explicitly opt in
+- Twilio Conversations or WhatsApp only if phone-based support becomes a proven need
+- Intercom/Zendesk only if PAWJAI later needs support-ticket workflows, not shelter/adopter booking chat
+
+Do not send ID documents, verification photos, house photos, or sensitive adopter profile data through a third-party chat API.
+
+## Data Model
+
+Reuse the existing `appointment_messages` table. Do not create a parallel message table unless the existing table is proven insufficient.
+
+Current table shape in `types/database.ts`:
+
+- `id`
 - `appointment_id`
-- `shelter_id`
 - `adopter_id`
-- `sender_role`: `adopter`, `shelter`, or `system`
-- body and optional attachment metadata
-- read timestamps for adopter and shelter
+- `shelter_id`
+- `sender_role`: `"adopter" | "shelter" | "system"`
+- `sender_label`
+- `body`
+- `attachment_url`
+- `attachment_name`
+- `attachment_type`
+- `read_by_adopter_at`
+- `read_by_shelter_at`
+- `created_at`
 
-The admin draft currently has a visual-only shelter `Messaging` tab. This prompt is for building the real messaging workflow between shelter employees and adopters.
+Thread identity should be `appointment_id`.
 
-## Goal
+The appointment already connects:
 
-Build a draft-native messaging workflow inside `/admindraft` so shelter admins can:
+- adopter
+- dog
+- shelter
+- booking code
+- visit date/time
+- booking status
 
-1. See message threads for their own shelter only.
-2. Open conversations by booking, adopter, dog, and shelter.
-3. Reply to adopters from the shelter workspace.
-4. See unread counts in the shelter workspace tab/card.
-5. Mark messages as read for shelter staff.
-6. Keep PawJai admins able to view messages across all shelters when using the umbrella view.
+Do not create free-floating shelter-to-user conversations.
 
-The first production version can be simple. It does not need brand chat accounts or public brand logins.
+## Access Rules
 
-## Existing Data Model To Reuse
+Every read/write path must prove access from database state, not from URL params alone.
 
-Use the existing `appointment_messages` table first. Do not create a parallel messaging table unless the existing table is insufficient.
+Adopter:
 
-Required behavior:
+- can read messages only where `appointments.adopter_id` matches their adopter profile
+- can send messages only to appointments they own
+- sender role must be `"adopter"`
 
-- Adopter messages insert with `sender_role = "adopter"`.
-- Shelter replies insert with `sender_role = "shelter"`.
-- System messages, if needed, insert with `sender_role = "system"`.
-- Every query must scope by `shelter_id` for shelter admins.
-- PawJai admins can query all shelters.
-- Threads should be grouped by appointment because appointments already connect adopter, dog, shelter, and visit status.
+Shelter:
 
-## Admin Draft UX
+- can read messages only for appointments where `appointment.shelter_id` is one of the signed-in shelter admin's `shelter_users.shelter_id` values
+- can send messages only for appointments linked to their shelter
+- sender role must be `"shelter"`
+- route should live in the shelter lane, not old `/admin`
 
-Inside `/admindraft`, shelter view should show:
+PawJai admin:
 
-- Conversation list
+- can read all threads from `/admindraft`
+- cannot send messages in MVP
+- should see a clear read-only label in the UI
+- any attempted admin send action should be impossible from UI and rejected on the server
+
+System:
+
+- can insert `"system"` messages only from trusted server actions if needed
+- system messages should be rare and clearly labelled
+
+## Route Design
+
+Shelter portal:
+
+- `/shelter/[slug]?view=messages`
+  - list message threads for that shelter
+- `/shelter/[slug]/messages/[appointmentId]`
+  - focused conversation page if inline messaging becomes too crowded
+  - Back/Exit returns to `/shelter/[slug]?view=messages`
+
+PawJai admin:
+
+- `/admindraft?view=messages`
+  - all-shelter message overview
+- `/admindraft?view=shelters&shelter={shelterId}&shelterView=messages`
+  - shelter-specific message list inside the umbrella
+- `/admindraft/messages/[appointmentId]`
+  - optional read-only thread page
+  - Back/Exit returns to the correct admin umbrella URL
+
+Adopter:
+
+- keep `/messages`
+- keep `/appointments/[id]?tab=messages`
+- adopter sees the same messages from the same `appointment_messages` rows
+
+Shared booking pages:
+
+- `/booking/[id]`
+- `/booking/[id]/visitor-profile`
+- these may link to the message thread, but must preserve `returnTo`
+
+Important: do not redirect shelter staff to `/admindraft` from any shelter messaging path.
+
+## Shelter Messaging UI
+
+Inside the shelter workspace, replace the current visual-only `ShelterMessagesTab` with real data.
+
+Conversation list should show:
+
+- adopter name
+- dog name
+- booking code
+- appointment date/time
+- booking status
+- latest message preview
+- latest message timestamp
+- unread badge/count for shelter
+- quick filters:
+  - unread
+  - upcoming visits
+  - needs reply
+  - all
+- search:
   - adopter name
   - dog name
   - booking code
-  - appointment date/time
-  - latest message preview
-  - unread indicator
-  - booking status
-- Conversation detail
-  - timeline of messages
-  - sender label
-  - timestamp
-  - booking context panel
-  - reply box
-  - send button
 
-Keep it operational and close to the current admin styling. Avoid building a separate social-chat style app.
+Conversation detail should show:
 
-## Suggested Routes
+- header with dog, adopter, booking code, visit date/time, and status
+- Back/Exit button returning to the correct shelter URL
+- message timeline
+- sender labels: adopter, shelter, PawJai/system
+- timestamps
+- optional attachment preview
+- shelter reply composer
+- disabled/error state if messages are temporarily unavailable
 
-- `/admindraft?shelter={shelterId}&view=messages`
-  - messaging list inside the shelter workspace
-- `/admindraft/messages/{appointmentId}`
-  - optional focused conversation page if the inline tab becomes crowded
+The UI should match the existing PAWJAI admin/shelter visual language. Keep it operational and calm, not social-media-like.
 
-If possible, start inline in the shelter workspace and add the focused page only if needed.
+## PawJai Admin Read-Only UI
 
-## Server Actions
+PawJai admin should be able to:
 
-Create draft-native server actions, or shared actions in a neutral folder, for:
+- see message activity across all shelters
+- filter by shelter
+- search by dog, adopter, shelter, or booking code
+- open a thread for oversight
+- see the same booking context as shelter staff
 
-- `sendShelterAppointmentMessageAction`
-- `markShelterThreadReadAction`
+PawJai admin must not see:
 
-These should:
+- a reply composer
+- send button
+- attachment upload button
+- "mark as shelter read" behavior
 
-- call `requireShelterAccess(shelterId, "/admindraft?...")`
+Add visible copy such as:
+
+`Read-only PawJai admin view`
+
+## Server Actions And Data Helpers
+
+Create shared helpers first, then wire UI.
+
+Suggested helpers:
+
+- `loadShelterMessageThreads({ shelterId })`
+- `loadAdminMessageThreads({ shelterId?: string })`
+- `loadAppointmentMessageThread({ appointmentId, context })`
+- `assertCanReadAppointmentMessages({ appointmentId, context })`
+- `assertCanSendAppointmentMessage({ appointmentId, context, senderRole })`
+
+Suggested server actions:
+
+- `sendShelterAppointmentMessageAction(formData)`
+- `markShelterThreadReadAction(formData)`
+- optional: `markAdopterThreadReadAction(formData)` if the adopter side does not already do it
+
+Action behavior:
+
+- validate current auth context with `getAdminAuthContext({ includePhraseGate: false })` for shelter routes
+- validate `context.role === "shelter_admin"` for shelter sending
 - validate the appointment belongs to the shelter
 - insert into `appointment_messages`
-- revalidate `/admindraft`
-- revalidate `/messages`
-- revalidate `/appointments/{appointmentId}`
+- update `read_by_shelter_at` or `read_by_adopter_at` only for the correct actor
+- revalidate:
+  - `/shelter/[slug]`
+  - `/messages`
+  - `/appointments/[appointmentId]`
+  - `/admindraft`
 
-Do not rely on the temporary phrase gate for real shelter access. Real shelter access must come from Supabase Auth + `profiles` + `shelter_users`.
+PawJai admin should not share the shelter send action.
 
-## Third-Party API Considerations
+## Attachments
 
-Start with in-app Supabase messaging. Add third-party messaging only if it improves staff response speed or adopter notifications.
+Adopter attachment behavior already exists in `app/appointments/[id]/actions.ts`.
 
-Possible future integrations:
+For shelter MVP, start text-only unless attachments are necessary for the pilot.
 
-- Resend email notification when a shelter replies.
-- LINE Messaging API for Thailand-friendly notifications if adopters opt in.
-- Twilio or WhatsApp only if phone-based messaging becomes a clear requirement.
+If adding shelter attachments:
 
-Do not send private adopter documents or IDs through a third-party chat API. Keep sensitive content inside PAWJAI.
+- reuse the existing attachment columns
+- keep max size and MIME checks strict
+- prefer image-only first: JPG, PNG, WebP
+- store under an `appointment-messages/{appointmentId}/...` path
+- consider a dedicated bucket later if the current `dog-photos` bucket becomes semantically confusing
+- never expose private verification documents through message attachments
 
-## Notification Rules
+## Notifications
 
-First version:
+MVP notification layer:
 
-- In-app unread badges.
-- Optional email notification to adopter when shelter replies.
+- send adopter an email through Resend when shelter replies
+- send shelter an email through Resend when adopter replies, only if a shelter contact email exists and the shelter wants notifications
+- email content should be minimal:
+  - shelter/adopter display name
+  - dog name
+  - booking code
+  - short message preview
+  - button link back to PAWJAI
+
+Do not include:
+
+- ID numbers
+- document links
+- house photos
+- full verification data
+- private internal notes
 
 Later:
 
-- Shelter email notification when adopter replies.
-- LINE notification opt-in.
-- Message digest for shelter staff.
+- unread digest for shelter staff
+- Supabase Realtime for live message updates
+- LINE opt-in if the pilot proves it is worth it
 
-## Security Requirements
+## Error Handling
 
-- Shelter admins can only read and send messages for appointments tied to their `shelter_users.shelter_id`.
-- PawJai admins can see all.
-- Adopters can only read and send messages for appointments linked to their adopter profile.
-- Never expose service-role Supabase keys in client components.
-- File attachments should use an existing private/public storage policy appropriate to the attachment type.
+Reuse `isAppointmentMessagesUnavailableError` and `APPOINTMENT_MESSAGES_UNAVAILABLE_MESSAGE`.
 
-## Acceptance Checklist
+Required behavior:
 
-- Shelter staff can open `/admindraft` and see only their shelter's message threads.
-- PawJai admin can see message activity across shelters.
-- Shelter can send a reply and adopter sees it in `/messages` and appointment detail.
-- Adopter can reply and shelter sees it in `/admindraft`.
-- Unread count updates in shelter workspace.
-- Message queries are scoped and tested with at least two shelters: The Voice Foundation and Rescue Dog Thailand.
-- No redirects to old `/admin` messaging.
+- if `appointment_messages` is unavailable, show a graceful disabled state
+- do not crash the shelter portal
+- keep booking and dog management usable
+- log unexpected errors server-side
+- do not reveal whether another shelter's appointment exists
 
-## Testing Plan
+Forbidden behavior:
 
-Use two shelters:
+- shelter route falls back to `/admindraft`
+- shelter can open another shelter's thread
+- PawJai admin can send a message
+- adopter can message a shelter without a booking
 
-- The Voice Foundation
-- Rescue Dog Thailand
+## Tests
 
-Create or use one shelter admin account per shelter. Confirm:
+Add tests before or alongside implementation.
 
-- Voice admin cannot see Rescue Dog Thailand messages.
-- Rescue Dog Thailand admin cannot see Voice messages.
-- PawJai admin can see both.
-- Message send/read works from both sides.
+Required coverage:
 
+- Voice shelter can see Voice message threads
+- Voice shelter cannot see Rescue Dog Thailand threads
+- Rescue Dog Thailand cannot see Voice threads
+- shelter can send a message only for its own appointment
+- adopter can send a message only for their own appointment
+- PawJai admin can read all threads
+- PawJai admin cannot send a message
+- thread list search finds booking code, dog name, and adopter name
+- unread count updates after sending and marking read
+- Back/Exit from shelter thread returns to `/shelter/[slug]?view=messages`
+- Back/Exit from admin thread returns to `/admindraft`
+- old `/admin` is not used by the new messaging workflow
+
+Manual checks:
+
+- login as `thevoice` and open shelter messaging
+- login as `rescuedog` and confirm empty or Rescue-only messaging
+- create or use one appointment for each shelter
+- send adopter -> shelter and shelter -> adopter
+- confirm `/messages` and `/appointments/[id]?tab=messages` show the same thread
+- confirm `/admindraft` sees both shelters read-only
+
+Run before commit:
+
+- `npm run typecheck`
+- `npm test`
+- `npm run verify` if the change touches multiple routes/actions
+
+## Implementation Order
+
+1. Audit current adopter messaging and appointment query helpers.
+2. Create shared message loading helpers.
+3. Create shelter send/read server actions with strict shelter scoping.
+4. Replace the visual-only shelter `Messaging` tab with real thread data.
+5. Add focused shelter thread route only if the inline tab is too crowded.
+6. Add PawJai admin read-only message overview/thread view.
+7. Add Resend notifications for shelter replies.
+8. Add tests for cross-shelter isolation and admin read-only behavior.
+9. Update the admin transfer Excel after the routes are implemented.
+
+## Acceptance Criteria
+
+Messaging can be considered pilot-ready only when:
+
+- every message belongs to one appointment
+- the appointment belongs to one shelter and one adopter
+- shelter staff can send/read only for their shelter
+- adopter can send/read only for their appointment
+- PawJai admin can view but not interact
+- `/shelter` never falls into `/admindraft`
+- `/admindraft` never depends on old `/admin`
+- messages are visible from both sides because they use the same `appointment_messages` table
+- two-shelter separation has been tested with The Voice Foundation and Rescue Dog Thailand
+- messaging is documented as available only after a booked visit
