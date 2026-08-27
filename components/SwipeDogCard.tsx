@@ -30,9 +30,9 @@ function ageLabel(months: number | null) {
   return m ? `${y}y ${m}mo` : `${y}y`;
 }
 
-// Subtle shadow so beige tags stay visible on placeholder beige background
-const TAG_BEIGE = "bg-[#d6c8ad] text-black shadow-[0_1px_4px_rgba(0,0,0,0.18)]";
-const TAG_ROSE  = "bg-[#cd8188] text-white shadow-[0_1px_4px_rgba(0,0,0,0.18)]";
+// Soft lift so tags stay readable over busy dog photos.
+const TAG_BEIGE = "bg-[#d6c8ad] text-black shadow-[0_7px_16px_rgba(0,0,0,0.20)] ring-1 ring-white/30";
+const TAG_ROSE  = "bg-[#cd8188] text-white shadow-[0_7px_16px_rgba(0,0,0,0.22)] ring-1 ring-white/25";
 
 function CurvedShareArrow() {
   return (
@@ -206,13 +206,13 @@ export default function SwipeDogCard({
       )}
 
       {/* Shelter logo overlay */}
-      <div className={`pointer-events-none absolute left-4 z-20 flex h-[66px] min-w-[90px] max-w-[156px] items-center justify-center overflow-hidden rounded-[20px] border border-white/60 bg-white/92 px-[12px] shadow-[0_10px_26px_rgba(0,0,0,0.16)] backdrop-blur-sm ${orderedMedia.length > 1 ? "top-[30px]" : "top-4"}`}>
+      <div className={`pointer-events-none absolute left-4 z-20 flex h-[66px] min-w-[90px] max-w-[156px] items-center justify-center overflow-hidden rounded-[20px] border border-white/60 bg-white/40 px-[12px] shadow-[0_10px_26px_rgba(0,0,0,0.16)] backdrop-blur-md ${orderedMedia.length > 1 ? "top-[30px]" : "top-4"}`}>
         {dog.shelter_logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={dog.shelter_logo_url}
             alt={`${dog.shelter_name ?? "Shelter"} logo`}
-            className="max-h-[52px] max-w-[132px] object-contain"
+            className="max-h-[52px] max-w-[132px] object-contain mix-blend-multiply contrast-110 saturate-110"
             draggable={false}
           />
         ) : (
