@@ -166,7 +166,7 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNo
       >
         <Link
           href="/"
-          className="absolute left-[16px] top-[12px] block h-[84px] w-[164px]"
+          className="absolute left-[16px] top-[17px] block h-[84px] w-[164px]"
           style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.06))" }}
         >
           <img
