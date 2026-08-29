@@ -1927,7 +1927,8 @@ function DonationLedger({
 
       <div className="mt-6 space-y-4">
         {visibleDonations.map((donation) => {
-          const canReview = Boolean(donation.proofUrl) && donation.status !== "verified";
+          const proofHref = donation.proofStoragePath ? `/api/donation-slips/${donation.id}` : null;
+          const canReview = Boolean(proofHref) && donation.status !== "verified";
           return (
             <article className="rounded-[28px] border border-[#d6c8ad] bg-white p-5 shadow-[0_16px_50px_rgba(101,88,79,0.08)]" key={donation.id}>
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
@@ -1964,8 +1965,8 @@ function DonationLedger({
                   <input name="returnTo" type="hidden" value={returnTo} />
                   <input name="shelterId" type="hidden" value={donation.shelterId} />
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Transfer evidence</p>
-                  {donation.proofUrl ? (
-                    <a className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" href={donation.proofUrl} rel="noreferrer" target="_blank">
+                  {proofHref ? (
+                    <a className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" href={proofHref} rel="noreferrer" target="_blank">
                       <FileCheck2 size={16} />
                       Open transfer slip
                     </a>

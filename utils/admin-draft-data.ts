@@ -120,10 +120,11 @@ export type AdminDraftDonation = {
   donorName: string;
   donorPhoneNumber: string | null;
   id: string;
+  proofBucketId: string | null;
   proofMimeType: string | null;
   proofOriginalFileName: string | null;
   proofSubmittedAt: string | null;
-  proofUrl: string | null;
+  proofStoragePath: string | null;
   shelterId: string;
   shelterName: string;
   shelterNote: string | null;
@@ -363,16 +364,6 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
           .in("profile_id", donationProfileIds),
       ])
     : [{ data: [], error: null }, { data: [], error: null }];
-  const donationProofUrls = new Map<string, string>();
-  await Promise.all(rawDonations.map(async (donation) => {
-    if (!donation.proof_storage_path) return;
-
-    const { data } = await supabase.storage
-      .from(donation.proof_bucket_id || "donation-slips")
-      .createSignedUrl(donation.proof_storage_path, 60 * 60);
-    if (data?.signedUrl) donationProofUrls.set(donation.id, data.signedUrl);
-  }));
-
   const shelterSummary = new Map(rawShelters.map((shelter) => [shelter.id, shelter]));
   const dogSummary = new Map(rawDogs.map((dog) => [dog.id, dog]));
   const adopterSummary = new Map((adoptersResult.data ?? []).map((adopter) => [adopter.id, adopter]));
@@ -574,10 +565,11 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
         donorName,
         donorPhoneNumber: adopter?.phone_number ?? profile?.phone_number ?? null,
         id: donation.id,
+        proofBucketId: donation.proof_bucket_id,
         proofMimeType: donation.proof_mime_type,
         proofOriginalFileName: donation.proof_original_file_name,
         proofSubmittedAt: donation.proof_submitted_at,
-        proofUrl: donationProofUrls.get(donation.id) ?? null,
+        proofStoragePath: donation.proof_storage_path,
         shelterId: donation.shelter_id,
         shelterName: shelterNames.get(donation.shelter_id) ?? "Unknown shelter",
         shelterNote: donation.shelter_note,

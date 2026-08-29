@@ -90,12 +90,20 @@ test("shelter lane enables English and Thai without translating admin lanes", ()
 test("donation slips use private storage and shelter-scoped review", () => {
   const donationActions = readFileSync(new URL("../app/donations/actions.ts", import.meta.url), "utf8");
   const bookingActions = readFileSync(new URL("../app/admin/bookings/actions.ts", import.meta.url), "utf8");
+  const donationSlipRoute = readFileSync(new URL("../app/api/donation-slips/[id]/route.ts", import.meta.url), "utf8");
+  const dataLoader = readFileSync(new URL("../utils/admin-draft-data.ts", import.meta.url), "utf8");
+  const panel = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
   const migration = readFileSync(new URL("../supabase/migrations/20260731074531_donation_proof_and_personality_dedupe.sql", import.meta.url), "utf8");
   const imageOnlyMigration = readFileSync(new URL("../supabase/migrations/20260824053812_donation_slips_image_only.sql", import.meta.url), "utf8");
 
   assert.equal(donationActions.includes('const DONATION_SLIPS_BUCKET = "donation-slips"'), true);
   assert.equal(donationActions.includes('.eq("user_id", user.id)'), true);
   assert.equal(bookingActions.includes('.eq("shelter_id", shelterId)'), true);
+  assert.equal(donationSlipRoute.includes("canAccessShelter"), true);
+  assert.equal(donationSlipRoute.includes("createSignedUrl(donation.proof_storage_path"), true);
+  assert.equal(panel.includes('href={proofHref}'), true);
+  assert.equal(dataLoader.includes("proofStoragePath: donation.proof_storage_path"), true);
+  assert.equal(dataLoader.includes("createSignedUrl(donation.proof_storage_path"), false);
   assert.equal(migration.includes("'donation-slips',\n  'donation-slips',\n  false"), true);
   assert.equal(imageOnlyMigration.includes("donation_intents_proof_image_mime_type"), true);
   assert.equal(imageOnlyMigration.includes("6291456"), true);
