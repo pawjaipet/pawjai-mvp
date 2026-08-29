@@ -42,7 +42,7 @@ export default function PawjaiWorkspaceShell({
   const isShelterShell = resolvedHomeHref.startsWith("/shelter/");
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#f5f1e8] px-4 py-8 text-[#65584f]">
+    <main className={`relative min-h-screen overflow-hidden bg-[#f5f1e8] text-[#65584f] ${isShelterShell ? "px-2 py-3 md:px-4 md:py-8" : "px-4 py-8"}`}>
       <Bone
         aria-hidden="true"
         className="pointer-events-none absolute -right-10 top-20 hidden h-36 w-36 rotate-12 text-[#d6c8ad]/35 lg:block"
@@ -55,32 +55,32 @@ export default function PawjaiWorkspaceShell({
       />
 
       <div className={`relative mx-auto ${isAdminShell ? "max-w-7xl" : maxWidth}`}>
-        <header className="mb-6 overflow-hidden rounded-[32px] border border-[#d6c8ad] bg-white/90 p-5 shadow-[0_18px_54px_rgba(101,88,79,0.10)] backdrop-blur md:p-6">
-          <div className={`flex flex-col gap-5 lg:flex-row lg:justify-between ${isAdminShell ? "lg:items-start" : "lg:items-center"}`}>
-          <div className={`flex min-w-0 flex-col gap-4 sm:flex-row ${isAdminShell ? "sm:items-start" : "sm:items-center"}`}>
+        <header className={`overflow-hidden border border-[#d6c8ad] bg-white/90 shadow-[0_18px_54px_rgba(101,88,79,0.10)] backdrop-blur ${isShelterShell ? "mb-3 rounded-[22px] p-3 md:mb-6 md:rounded-[32px] md:p-6" : "mb-6 rounded-[32px] p-5 md:p-6"}`}>
+          <div className={`flex flex-col lg:flex-row lg:justify-between ${isShelterShell ? "gap-3 md:gap-5" : "gap-5"} ${isAdminShell ? "lg:items-start" : "lg:items-center"}`}>
+          <div className={`flex min-w-0 gap-3 sm:flex-row ${isShelterShell ? "flex-row items-start md:gap-4" : `flex-col gap-4 ${isAdminShell ? "sm:items-start" : "sm:items-center"}`}`}>
             <Link
               aria-label="Back to workspace"
-              className={`relative flex shrink-0 items-center justify-center overflow-hidden bg-[#f5f1e8] shadow-[inset_0_0_0_1px_rgba(214,200,173,0.8)] ${isAdminShell ? "h-20 w-20 rounded-[24px]" : "h-16 w-16 rounded-[20px]"}`}
+              className={`relative flex shrink-0 items-center justify-center overflow-hidden bg-[#f5f1e8] shadow-[inset_0_0_0_1px_rgba(214,200,173,0.8)] ${isShelterShell ? "h-12 w-12 rounded-[16px] md:h-16 md:w-16 md:rounded-[20px]" : isAdminShell ? "h-20 w-20 rounded-[24px]" : "h-16 w-16 rounded-[20px]"}`}
               href={resolvedHomeHref}
             >
               <Image
                 alt="PawJai"
-                className={`object-contain ${isAdminShell ? "p-2" : "p-1.5"}`}
+                className={`object-contain ${isShelterShell ? "p-1.5" : isAdminShell ? "p-2" : "p-1.5"}`}
                 fill
                 priority
-                sizes={isAdminShell ? "80px" : "64px"}
+                sizes={isShelterShell ? "(max-width: 767px) 48px, 64px" : isAdminShell ? "80px" : "64px"}
                 src="/pawjai-logo-square.png"
               />
             </Link>
             <div className="min-w-0">
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">
+              <p className={`font-semibold uppercase text-[#cd8188] ${isShelterShell ? "text-[11px] tracking-[0.16em] md:text-sm md:tracking-[0.24em]" : "text-sm tracking-[0.24em]"}`}>
                 {resolvedEyebrow}
               </p>
-              <h1 className="mt-2 text-3xl font-semibold text-[#65584f] md:text-4xl">
+              <h1 className={`font-semibold text-[#65584f] ${isShelterShell ? "mt-1 text-2xl leading-tight md:mt-2 md:text-4xl" : "mt-2 text-3xl md:text-4xl"}`}>
                 {resolvedTitle}
               </h1>
               {resolvedDescription ? (
-                <div className="mt-2 max-w-3xl text-sm leading-6 text-[#65584f]/75">
+                <div className={`max-w-3xl text-[#65584f]/75 ${isShelterShell ? "mt-1 text-xs leading-4 md:mt-2 md:text-sm md:leading-6" : "mt-2 text-sm leading-6"}`}>
                   {resolvedDescription}
                 </div>
               ) : null}

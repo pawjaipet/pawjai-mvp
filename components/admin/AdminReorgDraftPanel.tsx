@@ -380,14 +380,14 @@ function Section({
   title: string;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-[#d6c8ad] bg-white/95 p-6 shadow-[0_16px_50px_rgba(101,88,79,0.08)]">
+    <section className="relative overflow-hidden rounded-[22px] border border-[#d6c8ad] bg-white/95 p-4 shadow-[0_16px_50px_rgba(101,88,79,0.08)] md:rounded-[28px] md:p-6">
       <div className="pointer-events-none absolute right-5 top-5 hidden items-center gap-2 text-[#d6c8ad]/55 sm:flex" aria-hidden="true">
         <Bone className="h-5 w-5 rotate-[-18deg]" />
         <PawPrint className="h-5 w-5 rotate-12" />
       </div>
       <div className="relative">
-        {eyebrow ? <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#cd8188]">{eyebrow}</p> : null}
-        <h2 className={eyebrow ? "mt-2 text-2xl font-semibold text-[#65584f]" : "text-2xl font-semibold text-[#65584f]"}>
+        {eyebrow ? <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#cd8188] md:text-xs md:tracking-[0.2em]">{eyebrow}</p> : null}
+        <h2 className={eyebrow ? "mt-1 text-xl font-semibold text-[#65584f] md:mt-2 md:text-2xl" : "text-xl font-semibold text-[#65584f] md:text-2xl"}>
           {title}
         </h2>
         {children}
@@ -723,10 +723,12 @@ function AdminReturnFields({ returnTo = ADMIN_RETURN_TO, shelterId }: { returnTo
 
 function DogCard({
   adoptionBookingListHref,
+  compactMobile = false,
   dog,
   editHref,
 }: {
   adoptionBookingListHref?: string;
+  compactMobile?: boolean;
   dog: AdminDraftDog;
   editHref: string;
 }) {
@@ -745,8 +747,8 @@ function DogCard({
     : null;
 
   return (
-    <article className="overflow-hidden rounded-[20px] border border-[#d6c8ad] bg-white shadow-[0_10px_28px_rgba(101,88,79,0.08)]">
-      <div className="flex aspect-[16/9] items-center justify-center bg-[#d6c8ad] text-[#65584f]">
+    <article className={`overflow-hidden border border-[#d6c8ad] bg-white shadow-[0_10px_28px_rgba(101,88,79,0.08)] ${compactMobile ? "rounded-[14px] md:rounded-[20px]" : "rounded-[20px]"}`}>
+      <div className={`flex items-center justify-center bg-[#d6c8ad] text-[#65584f] ${compactMobile ? "aspect-square md:aspect-[16/9]" : "aspect-[16/9]"}`}>
         {dog.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img alt={`${dog.name} cover`} className="h-full w-full object-cover" src={dog.coverUrl} />
@@ -754,37 +756,37 @@ function DogCard({
           <PawPrint className="h-8 w-8" />
         )}
       </div>
-      <div className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-lg font-semibold text-[#65584f]">{dog.name}</h3>
-          <p className="mt-1 text-sm text-[#65584f]">{dog.breed}</p>
+      <div className={compactMobile ? "p-2 md:p-4" : "p-4"}>
+      <div className={compactMobile ? "flex flex-col gap-1 md:flex-row md:items-start md:justify-between md:gap-3" : "flex items-start justify-between gap-3"}>
+        <div className="min-w-0">
+          <h3 className={`truncate font-semibold text-[#65584f] ${compactMobile ? "text-xs leading-tight md:text-lg" : "text-lg"}`}>{dog.name}</h3>
+          <p className={`truncate text-[#65584f] ${compactMobile ? "mt-0.5 text-[10px] leading-tight md:mt-1 md:text-sm" : "mt-1 text-sm"}`}>{dog.breed}</p>
         </div>
-        <span className="rounded-full bg-[#d6c8ad] px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#65584f]">
+        <span className={`w-fit rounded-full bg-[#d6c8ad] font-bold uppercase text-[#65584f] ${compactMobile ? "px-1.5 py-0.5 text-[8px] tracking-[0.08em] md:px-3 md:py-1 md:text-xs md:tracking-[0.12em]" : "px-3 py-1 text-xs tracking-[0.12em]"}`}>
           {formatStatus(dog.status)}
         </span>
       </div>
-      <p className="mt-3 text-sm text-[#65584f]">{dog.shelterName}</p>
-      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#65584f]">
+      <p className={`truncate text-[#65584f] ${compactMobile ? "mt-1 text-[10px] leading-tight md:mt-3 md:text-sm" : "mt-3 text-sm"}`}>{dog.shelterName}</p>
+      <div className={`flex flex-wrap font-semibold text-[#65584f] ${compactMobile ? "mt-1 gap-1 text-[9px] leading-tight md:mt-3 md:gap-2 md:text-xs" : "mt-3 gap-2 text-xs"}`}>
         <span>{dog.photosCount} photos</span>
         {dog.gender ? <span>{formatStatus(dog.gender)}</span> : null}
         {dog.size ? <span>{formatStatus(dog.size)}</span> : null}
         {dog.energyLevel ? <span>{formatStatus(dog.energyLevel)}</span> : null}
       </div>
       {dog.status === "adopted" ? (
-        <div className="mt-4 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Adoption record</p>
+        <div className={`border border-[#d6c8ad] bg-[#fffaf5] ${compactMobile ? "mt-2 rounded-xl p-2 md:mt-4 md:rounded-2xl md:p-3" : "mt-4 rounded-2xl p-3"}`}>
+          <p className={`font-semibold uppercase text-[#65584f] ${compactMobile ? "text-[9px] tracking-[0.1em] md:text-xs md:tracking-[0.16em]" : "text-xs tracking-[0.16em]"}`}>Adoption record</p>
           {dog.adoptedByName ? (
             <>
-              <p className="mt-2 text-sm font-semibold text-[#65584f]">Adopted by {dog.adoptedByName}</p>
-              <p className="mt-1 break-words text-xs leading-5 text-[#65584f]">
+              <p className={`font-semibold text-[#65584f] ${compactMobile ? "mt-1 truncate text-[10px] md:mt-2 md:text-sm" : "mt-2 text-sm"}`}>Adopted by {dog.adoptedByName}</p>
+              <p className={`mt-1 break-words text-xs leading-5 text-[#65584f] ${compactMobile ? "hidden md:block" : ""}`}>
                 {[dog.adoptedByEmail, dog.adoptedByPhoneNumber].filter(Boolean).join(" / ") || "No contact saved"}
               </p>
               {adoptedAt ? (
-                <p className="mt-1 text-xs leading-5 text-[#65584f]">Adoption visit: {adoptedAt}</p>
+                <p className={`mt-1 text-xs leading-5 text-[#65584f] ${compactMobile ? "hidden md:block" : ""}`}>Adoption visit: {adoptedAt}</p>
               ) : null}
               {visitorHref || bookingHref ? (
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className={`mt-3 gap-2 sm:grid-cols-2 ${compactMobile ? "hidden md:grid" : "grid"}`}>
                   {visitorHref ? (
                     <Link
                       className="inline-flex items-center justify-center gap-1 rounded-full border border-[#d6c8ad] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
@@ -807,21 +809,21 @@ function DogCard({
               ) : null}
             </>
           ) : (
-            <p className="mt-2 text-sm leading-6 text-[#65584f]">
+            <p className={`mt-2 leading-6 text-[#65584f] ${compactMobile ? "text-[10px] md:text-sm" : "text-sm"}`}>
               No linked adoption booking yet. This dog was marked adopted directly from the profile.
             </p>
           )}
         </div>
       ) : null}
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className={`grid grid-cols-2 gap-2 ${compactMobile ? "mt-2 md:mt-4" : "mt-4"}`}>
         <Link
-          className="inline-flex items-center justify-center rounded-full bg-[#cd8188] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#b87179]"
+          className={`inline-flex items-center justify-center rounded-full bg-[#cd8188] font-semibold text-white transition hover:bg-[#b87179] ${compactMobile ? "min-h-8 px-2 py-1.5 text-[11px] md:px-4 md:py-2 md:text-sm" : "px-4 py-2 text-sm"}`}
           href={editHref}
         >
           Edit
         </Link>
         <Link
-          className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-4 py-2 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
+          className={`inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white font-semibold text-[#65584f] transition hover:bg-[#f5f1e8] ${compactMobile ? "min-h-8 px-2 py-1.5 text-[11px] md:px-4 md:py-2 md:text-sm" : "px-4 py-2 text-sm"}`}
           href={`/dogs/${dog.id}`}
           rel="noopener noreferrer"
           target="_blank"
@@ -859,21 +861,21 @@ function ShelterWorkspaceTabButton({
     );
   }
 
-  const className = `flex aspect-square min-h-32 flex-col justify-between rounded-2xl border p-4 text-left transition ${
+  const className = `flex aspect-square min-h-24 flex-col justify-between rounded-xl border p-2 text-left transition md:min-h-32 md:rounded-2xl md:p-4 ${
     active
       ? "border-[#cd8188] bg-[#f8e8ea] text-[#65584f] shadow-[0_12px_28px_rgba(205,129,136,0.18)]"
       : "border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]"
   }`;
   const content = (
     <>
-      <span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+      <span className={`flex h-8 w-8 items-center justify-center rounded-xl md:h-10 md:w-10 md:rounded-2xl ${
         active ? "bg-white text-[#cd8188]" : "bg-[#f5f1e8] text-[#cd8188]"
       }`}>
         {icon}
       </span>
-      <span>
-        <span className="block text-base font-semibold">{children}</span>
-        <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#65584f]">{meta}</span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-semibold leading-tight md:text-base">{children}</span>
+        <span className="mt-1 block truncate text-[9px] font-semibold uppercase tracking-[0.08em] text-[#65584f] md:text-xs md:tracking-[0.12em]">{meta}</span>
       </span>
     </>
   );
@@ -915,15 +917,15 @@ function ShelterWorkspaceLinkTab({
 
   return (
     <Link
-      className="flex aspect-square min-h-32 flex-col justify-between rounded-2xl border border-[#d6c8ad] bg-white p-4 text-left text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]"
+      className="flex aspect-square min-h-24 flex-col justify-between rounded-xl border border-[#d6c8ad] bg-white p-2 text-left text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea] md:min-h-32 md:rounded-2xl md:p-4"
       href={href}
     >
-      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#f5f1e8] text-[#cd8188]">
+      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#f5f1e8] text-[#cd8188] md:h-10 md:w-10 md:rounded-2xl">
         {icon}
       </span>
-      <span>
-        <span className="block text-base font-semibold">{children}</span>
-        <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#65584f]">{meta}</span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-semibold leading-tight md:text-base">{children}</span>
+        <span className="mt-1 block truncate text-[9px] font-semibold uppercase tracking-[0.08em] text-[#65584f] md:text-xs md:tracking-[0.12em]">{meta}</span>
       </span>
     </Link>
   );
@@ -1254,19 +1256,19 @@ function ShelterDogsTab({
   return (
     <div className="space-y-6">
       <Section eyebrow="Dog listings" title={`Dogs at ${shelter.name}`}>
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm leading-6 text-[#65584f]">
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:mt-5">
+          <p className="text-xs leading-5 text-[#65584f] md:text-sm md:leading-6">
             Shelter staff can manage their own dogs here. PawJai HQ can see the same list from the shelter umbrella.
           </p>
         </div>
-        <div className="mt-5 grid gap-2 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-2 sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-2 md:mt-5">
           {([
             ["current", "Current dogs"],
             ["adopted", "Adopted dogs"],
             ["all", "All records"],
           ] as const).map(([value, label]) => (
             <button
-              className={`rounded-xl px-4 py-3 text-sm font-semibold transition ${recordView === value ? "bg-[#cd8188] text-white" : "bg-white text-[#65584f] hover:bg-[#f5f1e8]"}`}
+              className={`rounded-xl px-2 py-2 text-[11px] font-semibold transition md:px-4 md:py-3 md:text-sm ${recordView === value ? "bg-[#cd8188] text-white" : "bg-white text-[#65584f] hover:bg-[#f5f1e8]"}`}
               key={value}
               onClick={() => {
                 setRecordView(value);
@@ -1278,10 +1280,10 @@ function ShelterDogsTab({
             </button>
           ))}
         </div>
-        <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]">
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,108px)] gap-2 min-[420px]:grid-cols-[minmax(0,1fr)_130px_auto] md:mt-5 md:grid-cols-[minmax(0,1fr)_220px_auto] md:gap-3">
           <label className="sr-only" htmlFor="shelter-dog-search">Search shelter dogs</label>
           <input
-            className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+            className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-3 py-2.5 text-xs text-[#65584f] outline-none focus:border-[#cd8188] md:px-4 md:py-3 md:text-sm"
             id="shelter-dog-search"
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search dog name, breed, size"
@@ -1290,7 +1292,7 @@ function ShelterDogsTab({
           />
           <label className="sr-only" htmlFor="shelter-dog-status">Filter by status</label>
           <select
-            className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+            className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-3 py-2.5 text-xs text-[#65584f] outline-none focus:border-[#cd8188] md:px-4 md:py-3 md:text-sm"
             id="shelter-dog-status"
             onChange={(event) => setStatus(event.target.value)}
             value={status}
@@ -1303,7 +1305,7 @@ function ShelterDogsTab({
             <option value="unavailable">Unavailable</option>
           </select>
           <button
-            className="rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f]"
+            className="col-span-2 rounded-full border border-[#d6c8ad] bg-white px-4 py-2.5 text-xs font-semibold text-[#65584f] min-[420px]:col-span-1 md:px-5 md:py-3 md:text-sm"
             onClick={() => {
               setSearch("");
               setStatus("all");
@@ -1314,9 +1316,9 @@ function ShelterDogsTab({
             Reset
           </button>
         </div>
-        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-4 grid grid-cols-3 gap-2 md:mt-5 md:grid-cols-2 md:gap-3 xl:grid-cols-3">
           {filteredDogs.map((dog) => (
-            <DogCard adoptionBookingListHref={bookingListHref} dog={dog} editHref={dogEditHref(dog)} key={dog.id} />
+            <DogCard adoptionBookingListHref={bookingListHref} compactMobile dog={dog} editHref={dogEditHref(dog)} key={dog.id} />
           ))}
           {filteredDogs.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-[#fffaf5] p-6 text-sm text-[#65584f]">
@@ -1371,16 +1373,16 @@ function ShelterBookingsTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-2 rounded-[24px] border border-[#d6c8ad] bg-white p-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2 rounded-[20px] border border-[#d6c8ad] bg-white p-2 md:rounded-[24px] md:p-3">
         <Link
-          className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition ${workspaceView === "visits" ? "bg-[#cd8188] text-white" : "bg-[#fffaf5] text-[#65584f] hover:bg-[#f5f1e8]"}`}
+          className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-2xl px-3 py-2 text-xs font-semibold transition md:min-h-12 md:gap-2 md:px-5 md:py-3 md:text-sm ${workspaceView === "visits" ? "bg-[#cd8188] text-white" : "bg-[#fffaf5] text-[#65584f] hover:bg-[#f5f1e8]"}`}
           href={bookingListHref}
         >
           <CalendarDays size={17} />
           Booking visits
         </Link>
         <Link
-          className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition ${workspaceView === "calendar" ? "bg-[#cd8188] text-white" : "bg-[#fffaf5] text-[#65584f] hover:bg-[#f5f1e8]"}`}
+          className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-2xl px-3 py-2 text-xs font-semibold transition md:min-h-12 md:gap-2 md:px-5 md:py-3 md:text-sm ${workspaceView === "calendar" ? "bg-[#cd8188] text-white" : "bg-[#fffaf5] text-[#65584f] hover:bg-[#f5f1e8]"}`}
           href={calendarReturnTo}
         >
           <CalendarDays size={17} />
@@ -1438,27 +1440,27 @@ function ShelterBookingVisitList({
 
   return (
     <Section eyebrow="Booking visits" title="Visit management">
-      <div className="mt-5 grid gap-4 md:grid-cols-3">
+      <div className="mt-4 grid grid-cols-3 gap-2 md:mt-5 md:gap-4">
         {[
           ["Visible bookings", String(bookings.length)],
           ["Today", String(todayCount)],
           ["Checked in", String(checkedInCount)],
         ].map(([label, value]) => (
-          <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-5" key={label}>
-            <p className="text-sm font-semibold text-[#65584f]">{label}</p>
-            <p className="mt-3 text-3xl font-semibold text-[#65584f]">{value}</p>
+          <div className="rounded-xl border border-[#d6c8ad] bg-[#fffaf5] p-3 md:rounded-2xl md:p-5" key={label}>
+            <p className="text-[10px] font-semibold leading-tight text-[#65584f] md:text-sm">{label}</p>
+            <p className="mt-1 text-xl font-semibold text-[#65584f] md:mt-3 md:text-3xl">{value}</p>
           </div>
         ))}
       </div>
 
-      <div className="mt-6 rounded-[24px] border border-[#d6c8ad] bg-white p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">
+      <div className="mt-4 rounded-[20px] border border-[#d6c8ad] bg-white p-3 md:mt-6 md:rounded-[24px] md:p-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#65584f] md:text-xs md:tracking-[0.16em]">
           Visit timing
         </p>
-        <div className="mt-3 grid gap-2 md:grid-cols-4">
+        <div className="mt-3 grid grid-cols-4 gap-1.5 md:gap-2">
           {VISIT_BUCKETS.map((bucket) => (
             <button
-              className={`rounded-2xl px-4 py-3 text-center text-sm font-semibold transition ${
+              className={`rounded-xl px-1.5 py-2 text-center text-[10px] font-semibold transition md:rounded-2xl md:px-4 md:py-3 md:text-sm ${
                 visitBucket === bucket.value
                   ? "bg-[#cd8188] text-white shadow-[0_10px_24px_rgba(205,129,136,0.18)]"
                   : "border border-[#d6c8ad] bg-[#fffaf5] text-[#65584f] hover:bg-[#f5f1e8]"
@@ -1471,30 +1473,30 @@ function ShelterBookingVisitList({
             </button>
           ))}
         </div>
-        <p className="mt-3 text-xs leading-5 text-[#65584f]">
+        <p className="mt-2 text-[11px] leading-4 text-[#65584f] md:mt-3 md:text-xs md:leading-5">
           Past visits are waiting for a post-visit outcome. Completed, missed, or denied visits move to History; adopted outcomes move to Adopted.
         </p>
       </div>
 
       <form
-        className="mt-5 rounded-[24px] border border-[#d6c8ad] bg-white p-4"
+        className="mt-4 rounded-[20px] border border-[#d6c8ad] bg-white p-3 md:mt-5 md:rounded-[24px] md:p-4"
         onSubmit={(event) => event.preventDefault()}
       >
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Find bookings</p>
-        <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_auto_auto] lg:items-end">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#65584f] md:text-xs md:tracking-[0.16em]">Find bookings</p>
+        <div className="mt-3 grid grid-cols-2 gap-2 min-[430px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.15fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_auto_auto] lg:items-end">
           <label>
-            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Date</span>
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#65584f] md:mb-2 md:text-xs md:tracking-[0.16em]">Date</span>
             <input
-              className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+              className="w-full rounded-xl border border-[#d6c8ad] bg-[#fffaf5] px-2.5 py-2 text-xs text-[#65584f] outline-none focus:border-[#cd8188] md:rounded-2xl md:px-4 md:py-3 md:text-sm"
               onChange={(event) => setBookingDateFilter(event.target.value)}
               type="date"
               value={bookingDateFilter}
             />
           </label>
           <label>
-            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Status</span>
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#65584f] md:mb-2 md:text-xs md:tracking-[0.16em]">Status</span>
             <select
-              className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+              className="w-full rounded-xl border border-[#d6c8ad] bg-[#fffaf5] px-2.5 py-2 text-xs text-[#65584f] outline-none focus:border-[#cd8188] md:rounded-2xl md:px-4 md:py-3 md:text-sm"
               onChange={(event) => setBookingStatusFilter(event.target.value)}
               value={bookingStatusFilter}
             >
@@ -1506,23 +1508,23 @@ function ShelterBookingVisitList({
               ))}
             </select>
           </label>
-          <label>
-            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">
+          <label className="col-span-2 min-[430px]:col-span-1">
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#65584f] md:mb-2 md:text-xs md:tracking-[0.16em]">
               Booking code
             </span>
             <input
-              className="w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-[#65584f] outline-none focus:border-[#cd8188]"
+              className="w-full rounded-xl border border-[#d6c8ad] bg-[#fffaf5] px-2.5 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#65584f] outline-none focus:border-[#cd8188] md:rounded-2xl md:px-4 md:py-3 md:text-sm"
               onChange={(event) => setBookingSearch(event.target.value)}
               placeholder="APT-FA5C9"
               value={bookingSearch}
             />
           </label>
-          <button className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#cd8188] px-6 py-3 text-sm font-semibold text-white" type="submit">
+          <button className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#cd8188] px-4 py-2 text-xs font-semibold text-white md:min-h-12 md:gap-2 md:px-6 md:py-3 md:text-sm" type="submit">
             <Search className="h-4 w-4" />
             Apply
           </button>
           <button
-            className="min-h-12 rounded-full border border-[#d6c8ad] bg-white px-6 py-3 text-sm font-semibold text-[#65584f]"
+            className="min-h-10 rounded-full border border-[#d6c8ad] bg-white px-4 py-2 text-xs font-semibold text-[#65584f] md:min-h-12 md:px-6 md:py-3 md:text-sm"
             onClick={() => {
               setBookingDateFilter("");
               setBookingSearch("");
@@ -1536,11 +1538,11 @@ function ShelterBookingVisitList({
         </div>
       </form>
 
-      <div className="mt-5">
+      <div className="mt-4 md:mt-5">
         <BookingQrScanner checkInHref={checkInHref} />
       </div>
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-5 grid grid-cols-2 gap-3 min-[430px]:grid-cols-3 md:mt-6 md:block md:space-y-4">
         {visibleBookings.length === 0 ? (
           <div className="rounded-[28px] border border-dashed border-[#d6c8ad] bg-white p-8 text-center">
             <p className="text-xl font-semibold text-[#65584f]">No bookings match this view.</p>
@@ -1556,44 +1558,44 @@ function ShelterBookingVisitList({
 
             return (
               <section
-                className="rounded-[28px] border border-[#d6c8ad] bg-white p-5 shadow-[0_16px_50px_rgba(101,88,79,0.08)]"
+                className="rounded-[18px] border border-[#d6c8ad] bg-white p-3 shadow-[0_16px_50px_rgba(101,88,79,0.08)] md:rounded-[28px] md:p-5"
                 key={booking.id}
               >
-                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] ${bookingStatusClass(booking.status)}`}>
+                      <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] md:px-3 md:py-1 md:text-xs md:tracking-[0.12em] ${bookingStatusClass(booking.status)}`}>
                         {booking.status.replace("_", " ")}
                       </span>
                       {booking.checkedIn ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[#eaf6df] px-3 py-1 text-xs font-bold text-[#3f6f24]">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[#eaf6df] px-2 py-0.5 text-[9px] font-bold text-[#3f6f24] md:px-3 md:py-1 md:text-xs">
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           Checked in
                         </span>
                       ) : null}
-                      <span className="inline-flex items-center gap-1 rounded-full bg-[#f7ecda] px-3 py-1 text-xs font-bold text-[#65584f]">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[#f7ecda] px-2 py-0.5 text-[9px] font-bold text-[#65584f] md:px-3 md:py-1 md:text-xs">
                         <QrCode className="h-3.5 w-3.5" />
                         {formatBookingDisplayCode(booking)}
                       </span>
                     </div>
 
-                    <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    <div className="mt-3 grid gap-2 md:mt-4 md:grid-cols-3 md:gap-4">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Visit</p>
-                        <p className="mt-1 text-lg font-semibold text-[#65584f]">{formatBookingDate(booking.appointmentDate)}</p>
-                        <p className="text-sm text-[#65584f]">{formatBookingTime(booking.appointmentTime)}</p>
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#65584f] md:text-xs md:tracking-[0.16em]">Visit</p>
+                        <p className="mt-0.5 text-xs font-semibold text-[#65584f] md:mt-1 md:text-lg">{formatBookingDate(booking.appointmentDate)}</p>
+                        <p className="text-[11px] text-[#65584f] md:text-sm">{formatBookingTime(booking.appointmentTime)}</p>
                       </div>
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Adopter</p>
-                        <p className="mt-1 text-lg font-semibold text-[#65584f]">{booking.adopterName}</p>
-                        <p className="break-words text-sm text-[#65584f]">{booking.adopterEmail ?? "No email"}</p>
-                        <p className="text-sm text-[#65584f]">{booking.adopterPhoneNumber ?? "No phone"}</p>
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#65584f] md:text-xs md:tracking-[0.16em]">Adopter</p>
+                        <p className="mt-0.5 truncate text-xs font-semibold text-[#65584f] md:mt-1 md:text-lg">{booking.adopterName}</p>
+                        <p className="hidden break-words text-sm text-[#65584f] md:block">{booking.adopterEmail ?? "No email"}</p>
+                        <p className="hidden text-sm text-[#65584f] md:block">{booking.adopterPhoneNumber ?? "No phone"}</p>
                       </div>
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Dog and Shelter</p>
-                        <p className="mt-1 text-lg font-semibold text-[#65584f]">{bookingDogLabel(booking)}</p>
-                        <p className="text-sm text-[#65584f]">{booking.shelterName}</p>
-                        <p className="text-sm text-[#65584f]">{[booking.shelterDistrict, booking.shelterProvince].filter(Boolean).join(", ")}</p>
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#65584f] md:text-xs md:tracking-[0.16em]">Dog and Shelter</p>
+                        <p className="mt-0.5 truncate text-xs font-semibold text-[#65584f] md:mt-1 md:text-lg">{bookingDogLabel(booking)}</p>
+                        <p className="hidden text-sm text-[#65584f] md:block">{booking.shelterName}</p>
+                        <p className="hidden text-sm text-[#65584f] md:block">{[booking.shelterDistrict, booking.shelterProvince].filter(Boolean).join(", ")}</p>
                       </div>
                     </div>
 
@@ -1638,14 +1640,14 @@ function ShelterBookingVisitList({
                     ) : null}
                   </div>
 
-                  <form action={decideBookingAction} className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
+                  <form action={decideBookingAction} className="rounded-xl border border-[#d6c8ad] bg-[#fffaf5] p-2 md:rounded-2xl md:p-4">
                     <input name="appointmentId" type="hidden" value={booking.id} />
                     <input name="returnTo" type="hidden" value={bookingListHref} />
-                    <div className="rounded-2xl bg-white px-4 py-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Status</p>
-                      <p className="mt-1 text-lg font-semibold text-[#65584f]">{bookingDecisionLabel(booking.status)}</p>
+                    <div className="rounded-xl bg-white px-3 py-2 md:rounded-2xl md:px-4 md:py-3">
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#65584f] md:text-xs md:tracking-[0.16em]">Status</p>
+                      <p className="mt-0.5 text-xs font-semibold text-[#65584f] md:mt-1 md:text-lg">{bookingDecisionLabel(booking.status)}</p>
                       {booking.shelterNote ? (
-                        <p className="mt-2 text-sm leading-6 text-[#65584f]">{booking.shelterNote}</p>
+                        <p className="mt-2 hidden text-sm leading-6 text-[#65584f] md:block">{booking.shelterNote}</p>
                       ) : null}
                       {booking.proposedAppointmentDate && booking.proposedAppointmentTime ? (
                         <p className="mt-2 rounded-xl bg-[#f8e8ea] px-3 py-2 text-xs font-semibold text-[#65584f]">
@@ -1656,9 +1658,9 @@ function ShelterBookingVisitList({
 
                     {canEditPreVisitDecision || canRecordPostVisitOutcome ? (
                       <label className="mt-3 block">
-                        <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Shelter note</span>
+                        <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.12em] text-[#65584f] md:mb-2 md:text-xs md:tracking-[0.16em]">Shelter note</span>
                         <textarea
-                          className="min-h-[92px] w-full resize-none rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
+                          className="min-h-16 w-full resize-none rounded-xl border border-[#d6c8ad] bg-white px-3 py-2 text-xs text-[#65584f] outline-none focus:border-[#cd8188] md:min-h-[92px] md:rounded-2xl md:px-4 md:py-3 md:text-sm"
                           defaultValue={booking.shelterNote ?? ""}
                           name="shelterNote"
                           placeholder="Optional note for denial, date change, or staff context"
@@ -1696,13 +1698,13 @@ function ShelterBookingVisitList({
                               </select>
                             </label>
                           </div>
-                          <button className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" name="decision" type="submit" value="accept">
+                          <button className="w-full rounded-full bg-[#3f7b35] px-3 py-2 text-xs font-semibold text-white hover:bg-[#356b2d] md:px-5 md:py-3 md:text-sm" name="decision" type="submit" value="accept">
                             {booking.status === "requested" ? "Accept booking" : "Mark accepted"}
                           </button>
-                          <button className="w-full rounded-full bg-[#c46f75] px-5 py-3 text-sm font-semibold text-white hover:bg-[#ae5e64]" name="decision" type="submit" value="deny">
+                          <button className="w-full rounded-full bg-[#c46f75] px-3 py-2 text-xs font-semibold text-white hover:bg-[#ae5e64] md:px-5 md:py-3 md:text-sm" name="decision" type="submit" value="deny">
                             {booking.status === "requested" ? "Deny booking" : "Mark denied"}
                           </button>
-                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" name="decision" type="submit" value="request_change">
+                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] hover:bg-[#f5f1e8] md:px-5 md:py-3 md:text-sm" name="decision" type="submit" value="request_change">
                             Ask to change date/time
                           </button>
                         </div>
@@ -1713,14 +1715,14 @@ function ShelterBookingVisitList({
                       <div className="mt-3 rounded-2xl border border-[#d6c8ad] bg-white p-3">
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Post-visit outcome</p>
                         <div className="mt-3 grid gap-2">
-                          <button className="w-full rounded-full bg-[#65584f] px-5 py-3 text-sm font-semibold text-white hover:bg-[#50443b]" name="decision" type="submit" value="complete">
+                          <button className="w-full rounded-full bg-[#65584f] px-3 py-2 text-xs font-semibold text-white hover:bg-[#50443b] md:px-5 md:py-3 md:text-sm" name="decision" type="submit" value="complete">
                             Mark visit completed
                           </button>
-                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]" name="decision" type="submit" value="no_show">
+                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] hover:bg-[#f5f1e8] md:px-5 md:py-3 md:text-sm" name="decision" type="submit" value="no_show">
                             Visitor did not show
                           </button>
                           {booking.dogId ? (
-                            <button className="w-full rounded-full bg-[#3f7b35] px-5 py-3 text-sm font-semibold text-white hover:bg-[#356b2d]" name="decision" type="submit" value="adopted">
+                            <button className="w-full rounded-full bg-[#3f7b35] px-3 py-2 text-xs font-semibold text-white hover:bg-[#356b2d] md:px-5 md:py-3 md:text-sm" name="decision" type="submit" value="adopted">
                               Mark dog adopted
                             </button>
                           ) : null}
@@ -1729,14 +1731,14 @@ function ShelterBookingVisitList({
                     ) : null}
 
                     <Link
-                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
+                      className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-[#d6c8ad] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] hover:bg-[#f5f1e8] md:gap-2 md:px-5 md:py-3 md:text-sm"
                       href={withReturnTo(bookingWorkspaceVisitorHref({ appointmentId: booking.id, bookingListHref }), bookingListHref)}
                     >
                       <ExternalLink className="h-4 w-4" />
                       Open visitor profile
                     </Link>
                     <Link
-                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
+                      className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-[#d6c8ad] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] hover:bg-[#f5f1e8] md:gap-2 md:px-5 md:py-3 md:text-sm"
                       href={withReturnTo(bookingWorkspaceDetailHref({ appointmentId: booking.id, bookingListHref }), bookingListHref)}
                     >
                       <ExternalLink className="h-4 w-4" />
@@ -2350,7 +2352,7 @@ function ShelterWorkspace({
   return (
     <div className="space-y-6">
       <Section eyebrow={adminMode ? "Partner shelter workspace" : "My Shelter Workspace powered by PAWJAI"} title={shelter.name}>
-        <div className={`mt-5 grid gap-3 ${adminMode ? "md:grid-cols-6" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-6"}`}>
+        <div className={`mt-3 grid gap-2 md:mt-5 md:gap-3 ${adminMode ? "md:grid-cols-6" : "grid-cols-3 md:grid-cols-3 lg:grid-cols-6"}`}>
           <ShelterWorkspaceTabButton
             active={tab === "profile"}
             adminMode={adminMode}
@@ -3314,7 +3316,7 @@ export default function AdminReorgDraftPanel({
     : adminDraftDogEditHref(dog.id, draftShelterRole);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#f5f1e8] px-4 py-8 text-[#65584f]">
+    <main className={`relative min-h-screen overflow-hidden bg-[#f5f1e8] text-[#65584f] ${isShelterPortal ? "px-2 py-3 md:px-4 md:py-8" : "px-4 py-8"}`}>
       <div className="pointer-events-none absolute -right-10 top-16 hidden rotate-12 text-[#d6c8ad]/35 lg:block" aria-hidden="true">
         <Bone className="h-36 w-36" strokeWidth={1.3} />
       </div>
@@ -3322,41 +3324,43 @@ export default function AdminReorgDraftPanel({
         <PawPrint className="h-24 w-24" strokeWidth={1.4} />
       </div>
       <div className="relative mx-auto max-w-7xl">
-        <header className="mb-6 overflow-hidden rounded-[32px] border border-[#d6c8ad] bg-white/90 p-5 shadow-[0_18px_54px_rgba(101,88,79,0.10)] backdrop-blur md:p-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <header className={`overflow-hidden border border-[#d6c8ad] bg-white/90 shadow-[0_18px_54px_rgba(101,88,79,0.10)] backdrop-blur ${isShelterPortal ? "mb-3 rounded-[22px] p-3 md:mb-6 md:rounded-[32px] md:p-6" : "mb-6 rounded-[32px] p-5 md:p-6"}`}>
+          <div className={`flex flex-col lg:flex-row lg:items-start lg:justify-between ${isShelterPortal ? "gap-3 md:gap-5" : "gap-5"}`}>
+          <div className={`flex gap-3 sm:flex-row sm:items-start ${isShelterPortal ? "flex-row items-start md:gap-4" : "flex-col gap-4"}`}>
             <Link
-              className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[24px] bg-[#f5f1e8] shadow-[inset_0_0_0_1px_rgba(214,200,173,0.8)]"
+              className={`relative flex shrink-0 items-center justify-center overflow-hidden bg-[#f5f1e8] shadow-[inset_0_0_0_1px_rgba(214,200,173,0.8)] ${isShelterPortal ? "h-12 w-12 rounded-[16px] md:h-20 md:w-20 md:rounded-[24px]" : "h-20 w-20 rounded-[24px]"}`}
               href={isShelterPortal ? workspaceBaseHref : "/admin"}
             >
               <Image
                 alt="PawJai"
-                className="object-contain p-2"
+                className={isShelterPortal ? "object-contain p-1.5 md:p-2" : "object-contain p-2"}
                 fill
                 priority
-                sizes="80px"
+                sizes={isShelterPortal ? "(max-width: 767px) 48px, 80px" : "80px"}
                 src="/pawjai-logo-square.png"
               />
             </Link>
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#cd8188]">
+            <div className="min-w-0">
+              <p className={`font-semibold uppercase text-[#cd8188] ${isShelterPortal ? "text-[11px] tracking-[0.16em] md:text-sm md:tracking-[0.24em]" : "text-sm tracking-[0.24em]"}`}>
                 {isShelterPortal ? "PawJai Shelter Portal" : "PawJai Admin"}
               </p>
-              <h1 className="mt-2 text-4xl font-semibold text-[#65584f]">
+              <h1 className={`font-semibold text-[#65584f] ${isShelterPortal ? "mt-1 text-2xl leading-tight md:mt-2 md:text-4xl" : "mt-2 text-4xl"}`}>
                 {isShelterPortal ? "My shelter workspace" : "PawJai management workspace"}
               </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#65584f]/75">
+              <p className={`max-w-3xl text-[#65584f]/75 ${isShelterPortal ? "mt-1 text-xs leading-4 md:mt-2 md:text-sm md:leading-6" : "mt-2 text-sm leading-6"}`}>
                 {isShelterPortal
                   ? `${selectedShelter.name} can manage its own profile, dogs, bookings, donations, and messages here.`
                   : "Manage PawJai HQ, partner shelters, dogs, bookings, donations, ads, content, and platform activity from one workspace."}
               </p>
-              <div className={`mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold ${
+              <div className={`${isShelterPortal ? "mt-2 max-w-full px-3 py-1.5 text-[11px] md:mt-4 md:px-4 md:py-2 md:text-xs" : "mt-4 px-4 py-2 text-xs"} inline-flex items-center gap-2 rounded-full font-semibold ${
                 connected ? "bg-[#eaf6df] text-[#3f6f24]" : "bg-[#f8e8ea] text-[#65584f]"
               }`}>
-                <PawPrint className="h-4 w-4" />
-                {connected
-                  ? `Connected to Supabase: ${shelters.length} shelters, ${dogs.length} dogs, ${bookings.length} bookings, ${donations.length} donations`
-                  : `Using fallback workspace data${data?.error ? `: ${data.error}` : ""}`}
+                <PawPrint className="h-3.5 w-3.5 shrink-0 md:h-4 md:w-4" />
+                <span className="truncate">
+                  {connected
+                    ? `Connected to Supabase: ${shelters.length} shelters, ${dogs.length} dogs, ${bookings.length} bookings, ${donations.length} donations`
+                    : `Using fallback workspace data${data?.error ? `: ${data.error}` : ""}`}
+                </span>
               </div>
             </div>
           </div>
@@ -3364,14 +3368,14 @@ export default function AdminReorgDraftPanel({
             <div className="flex flex-wrap gap-2">
               <LanguageSwitcher />
               <Link
-                className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-2.5 text-sm font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
+                className="inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] transition hover:bg-[#f5f1e8] md:px-5 md:py-2.5 md:text-sm"
                 href={accountSettingsHref}
               >
                 Account settings
               </Link>
               <form action={signOutShelterPortalAction}>
                 <button
-                  className="inline-flex items-center justify-center rounded-full bg-[#65584f] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#65584f]"
+                  className="inline-flex items-center justify-center rounded-full bg-[#65584f] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#65584f] md:px-5 md:py-2.5 md:text-sm"
                   type="submit"
                 >
                   Sign out
@@ -3390,7 +3394,7 @@ export default function AdminReorgDraftPanel({
         </header>
 
         {initialMessage ? (
-          <div className={`mb-6 rounded-2xl border px-5 py-4 text-sm font-semibold ${/could not|choose|must|required|invalid|failed/i.test(initialMessage) ? "border-[#efc2be] bg-[#fff1f0] text-[#9a3129]" : "border-[#cfe2c5] bg-[#eef5ea] text-[#4f7847]"}`}>
+          <div className={`mb-3 rounded-2xl border px-4 py-3 text-xs font-semibold md:mb-6 md:px-5 md:py-4 md:text-sm ${/could not|choose|must|required|invalid|failed/i.test(initialMessage) ? "border-[#efc2be] bg-[#fff1f0] text-[#9a3129]" : "border-[#cfe2c5] bg-[#eef5ea] text-[#4f7847]"}`}>
             {initialMessage}
           </div>
         ) : null}
