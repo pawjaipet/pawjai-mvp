@@ -228,13 +228,13 @@ export default function SwipeDogCard({
       )}
 
       {/* Shelter logo overlay */}
-      <div className={`pointer-events-none absolute left-4 z-20 flex h-[66px] min-w-[90px] max-w-[156px] items-center justify-center overflow-hidden rounded-[20px] border border-white/60 bg-white/40 px-[12px] shadow-[0_10px_26px_rgba(0,0,0,0.16)] backdrop-blur-md ${orderedMedia.length > 1 ? "top-[30px]" : "top-4"}`}>
+      <div className={`pointer-events-none absolute left-4 z-20 flex h-[66px] min-w-[90px] max-w-[156px] items-center justify-center overflow-hidden rounded-[20px] border border-white/60 bg-white/40 px-[8px] shadow-[0_10px_26px_rgba(0,0,0,0.16)] backdrop-blur-md ${orderedMedia.length > 1 ? "top-[30px]" : "top-4"}`}>
         {dog.shelter_logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={dog.shelter_logo_url}
             alt={`${dog.shelter_name ?? "Shelter"} logo`}
-            className="max-h-[52px] max-w-[132px] object-contain mix-blend-multiply contrast-110 saturate-110"
+            className="max-h-[58px] max-w-[144px] object-contain mix-blend-multiply contrast-110 saturate-110"
             draggable={false}
           />
         ) : (
