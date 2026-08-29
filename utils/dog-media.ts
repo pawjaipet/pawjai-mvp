@@ -16,10 +16,27 @@ type MediaManifest = {
 
 export const DOG_MEDIA_PUBLIC_BASE_URL = "https://media.pawjaipet.com/file/pawjai";
 
+function getSupabaseDogPhotoStoragePath(url: string) {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.hostname.endsWith(".supabase.co")) return null;
+
+    const publicDogPhotosPrefix = "/storage/v1/object/public/dog-photos/";
+    if (!parsed.pathname.startsWith(publicDogPhotosPrefix)) return null;
+
+    return parsed.pathname.slice(publicDogPhotosPrefix.length).replace(/^\/+/, "") || null;
+  } catch {
+    return null;
+  }
+}
+
 export function normalizeDogMediaUrl(url: string | null | undefined, storagePath?: string | null) {
   const path = storagePath?.replace(/^\/+/, "");
   if (path) return `${DOG_MEDIA_PUBLIC_BASE_URL}/${path}`;
   if (!url) return null;
+
+  const supabaseDogPhotoPath = getSupabaseDogPhotoStoragePath(url);
+  if (supabaseDogPhotoPath) return `${DOG_MEDIA_PUBLIC_BASE_URL}/${supabaseDogPhotoPath}`;
 
   return url
     .replace(/^https?:\/\/media\.pawjai\.co\.th\/file\/pawjai/i, DOG_MEDIA_PUBLIC_BASE_URL)

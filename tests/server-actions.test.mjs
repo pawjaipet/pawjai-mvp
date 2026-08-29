@@ -11,6 +11,21 @@ test("documents server action file only exports async server actions", () => {
   assert.deepEqual(exportedValues, []);
 });
 
+test("admin dog media saves Backblaze CDN URLs instead of Supabase public URLs", () => {
+  const newDogSource = readFileSync(new URL("../app/admin/dogs/new/actions.ts", import.meta.url), "utf8");
+  const editDogSource = readFileSync(new URL("../app/admin/dogs/[id]/edit/actions.ts", import.meta.url), "utf8");
+
+  for (const source of [newDogSource, editDogSource]) {
+    assert.equal(source.includes("uploadBufferToBackblaze"), true);
+    assert.equal(source.includes(".storage.from(DOG_PHOTOS_BUCKET).upload"), true);
+    assert.equal(source.includes("public_url: uploaded.publicUrl"), true);
+    assert.equal(source.includes(".getPublicUrl("), false);
+  }
+
+  assert.equal(newDogSource.includes("trait_value: uploadedVideo.publicUrl"), true);
+  assert.equal(editDogSource.includes("trait_value: coverVideo.publicUrl"), true);
+});
+
 test("shelter message action is shelter scoped and writes shelter messages", () => {
   const source = readFileSync(new URL("../app/shelter/actions.ts", import.meta.url), "utf8");
 

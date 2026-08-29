@@ -17,6 +17,7 @@ function loadDogMediaModel() {
     exports: module.exports,
     module,
     JSON,
+    URL,
   });
   return module.exports;
 }
@@ -84,5 +85,16 @@ test("rewrites legacy ad media URLs to the new media CDN", () => {
   assert.equal(
     normalizeDogMediaUrl("https://media.pawjai.co.th/file/pawjai/ads/1778459342103-db9fdedb.jpg"),
     "https://media.pawjaipet.com/file/pawjai/ads/1778459342103-db9fdedb.jpg",
+  );
+});
+
+test("rewrites legacy Supabase dog photo URLs to the media CDN", () => {
+  const { normalizeDogMediaUrl } = loadDogMediaModel();
+
+  assert.equal(
+    normalizeDogMediaUrl(
+      "https://bdnyvcvkyepipdcygkvn.supabase.co/storage/v1/object/public/dog-photos/pawjaidogs/dog-3.jpg",
+    ),
+    "https://media.pawjaipet.com/file/pawjai/pawjaidogs/dog-3.jpg",
   );
 });
