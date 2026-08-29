@@ -108,6 +108,13 @@ const pawjaiHqDraft: AdminWorkspaceDraft = {
       path: "/admin/analytics",
       status: "new",
     },
+    {
+      description: "Read-only overview of appointment conversations across every partner shelter.",
+      globalOnly: true,
+      label: "Messages",
+      path: "/admin?view=messages",
+      status: "new",
+    },
   ],
 };
 

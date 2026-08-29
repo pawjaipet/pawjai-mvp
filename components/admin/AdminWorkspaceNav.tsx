@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Banknote, BarChart3, CalendarDays, FileText, Megaphone, PawPrint, ShieldCheck, Users } from "lucide-react";
+import { Banknote, BarChart3, CalendarDays, FileText, Megaphone, MessageCircle, PawPrint, ShieldCheck, Users } from "lucide-react";
 
 type AdminWorkspaceBasePath = "/admin" | "/admindraft";
-export type AdminWorkspaceNavItem = "home" | "dogs" | "bookings" | "donations" | "ads" | "about" | "accounts" | "audit" | "analytics";
+export type AdminWorkspaceNavItem = "home" | "dogs" | "bookings" | "donations" | "ads" | "about" | "accounts" | "audit" | "analytics" | "messages";
 
 const labels: Record<AdminWorkspaceNavItem, string> = {
   accounts: "Accounts",
@@ -15,6 +15,7 @@ const labels: Record<AdminWorkspaceNavItem, string> = {
   donations: "Donations",
   dogs: "Manage listings",
   home: "Create dog",
+  messages: "Messages",
 };
 
 function navLabel(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) {
@@ -47,6 +48,8 @@ function navHref(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) 
         return "/admin/audit";
       case "analytics":
         return "/admin/analytics";
+      case "messages":
+        return "/admin?view=messages";
     }
   }
 
@@ -69,6 +72,8 @@ function navHref(basePath: AdminWorkspaceBasePath, item: AdminWorkspaceNavItem) 
       return "/admin/audit";
     case "analytics":
       return "/admin/analytics";
+    case "messages":
+      return "/admin?view=messages";
   }
 }
 
@@ -90,6 +95,7 @@ const icons: Record<AdminWorkspaceNavItem, ReactNode> = {
   donations: <Banknote className="mr-2 h-4 w-4" />,
   dogs: <PawPrint className="mr-2 h-4 w-4" />,
   home: <PawPrint className="mr-2 h-4 w-4" />,
+  messages: <MessageCircle className="mr-2 h-4 w-4" />,
 };
 
 export function AdminWorkspaceNav({
@@ -114,7 +120,7 @@ export function AdminWorkspaceNav({
           : (["home", "dogs", "bookings"] as AdminWorkspaceNavItem[]))
       : []),
     ...(showAds ? (["ads"] as AdminWorkspaceNavItem[]) : []),
-    ...(showGlobalOnly ? (["about", "accounts", "audit", "analytics"] as AdminWorkspaceNavItem[]) : (["audit"] as AdminWorkspaceNavItem[])),
+    ...(showGlobalOnly ? (["about", "accounts", "audit", "analytics", "messages"] as AdminWorkspaceNavItem[]) : (["audit"] as AdminWorkspaceNavItem[])),
   ];
 
   return (

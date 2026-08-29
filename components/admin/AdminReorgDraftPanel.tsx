@@ -81,12 +81,13 @@ import type {
 } from "@/utils/admin-draft-data";
 
 type RoleView = "pawjai" | "shelter";
-type MainTab = "shelters" | "dogs" | "bookings" | "donations" | "ads" | "about";
+type MainTab = "shelters" | "dogs" | "bookings" | "donations" | "ads" | "about" | "messages";
 type ShelterTab = "profile" | "dogs" | "bookings" | "donations" | "messages";
 type DogRecordView = "current" | "adopted" | "all";
 type BookingWorkspaceView = "visits" | "calendar";
 type VisitBucket = "upcoming" | "past" | "history" | "adopted";
 type MessageFilter = "all" | "unread" | "upcoming" | "needs_reply";
+type MessageSort = "newest" | "oldest" | "unread";
 type AdStatusFilter = "all" | AdDisplayStatus;
 
 function ReturnInquiryAdminCard({
@@ -136,7 +137,7 @@ type AdminDraftMessageThread = AdminDraftData["messageThreads"][number];
 const ADMIN_RETURN_TO = "/admin";
 const ADMIN_ADS_RETURN_TO = "/admin?view=ads";
 const MESSAGE_THREAD_REFRESH_INTERVAL_MS = 12_000;
-const MAIN_TABS: MainTab[] = ["shelters", "dogs", "bookings", "donations", "ads", "about"];
+const MAIN_TABS: MainTab[] = ["shelters", "dogs", "bookings", "donations", "ads", "about", "messages"];
 const BOOKING_STATUS_OPTIONS = ["requested", "confirmed", "completed", "cancelled", "no_show"];
 const AD_STATUS_TABS: { label: string; value: AdStatusFilter }[] = [
   { label: "All", value: "all" },
@@ -1935,12 +1936,14 @@ function DonationLedger({
 
 function ShelterMessagesTab({
   adminMode,
+  globalShelters,
   messageThreads,
   messagesUnavailable,
   returnTo,
   shelter,
 }: {
   adminMode: boolean;
+  globalShelters?: AdminDraftShelter[];
   messageThreads: AdminDraftMessageThread[];
   messagesUnavailable: boolean;
   returnTo: string;
@@ -1949,10 +1952,29 @@ function ShelterMessagesTab({
   const router = useRouter();
   const [messageFilter, setMessageFilter] = useState<MessageFilter>("all");
   const [messageSearch, setMessageSearch] = useState("");
+  const [messageSort, setMessageSort] = useState<MessageSort>("newest");
   const [selectedThreadId, setSelectedThreadId] = useState("");
-  const shelterThreads = messageThreads.filter((thread) => thread.shelterId === shelter.id);
-  const filteredThreads = shelterThreads.filter((thread) => matchesMessageThread(thread, messageSearch, messageFilter));
+  const [shelterFilter, setShelterFilter] = useState("all");
+  const isGlobalOverview = Boolean(globalShelters);
+  const shelterThreads = messageThreads.filter((thread) => (
+    isGlobalOverview
+      ? shelterFilter === "all" || thread.shelterId === shelterFilter
+      : thread.shelterId === shelter.id
+  ));
+  const filteredThreads = shelterThreads
+    .filter((thread) => matchesMessageThread(thread, messageSearch, messageFilter))
+    .slice()
+    .sort((a, b) => {
+      const aActivity = a.latestMessage?.created_at ?? `${a.appointmentDate}T${a.appointmentTime}`;
+      const bActivity = b.latestMessage?.created_at ?? `${b.appointmentDate}T${b.appointmentTime}`;
+      if (messageSort === "oldest") return aActivity.localeCompare(bActivity);
+      if (messageSort === "unread") {
+        return b.unreadForShelterCount - a.unreadForShelterCount || bActivity.localeCompare(aActivity);
+      }
+      return bActivity.localeCompare(aActivity);
+    });
   const selectedThread = filteredThreads.find((thread) => thread.appointmentId === selectedThreadId) ?? filteredThreads[0] ?? null;
+  const unreadMessageCount = shelterThreads.reduce((total, thread) => total + thread.unreadForShelterCount, 0);
   const filterOptions: { label: string; value: MessageFilter }[] = [
     { label: "All", value: "all" },
     { label: "Unread", value: "unread" },
@@ -1981,9 +2003,19 @@ function ShelterMessagesTab({
     if (messagesUnavailable) return;
 
     const supabase = createBrowserSupabaseClient();
-    const channel = supabase
-      .channel(`shelter-messages:${shelter.id}`)
-      .on(
+    const channel = supabase.channel(isGlobalOverview ? "admin-all-messages" : `shelter-messages:${shelter.id}`);
+    const refresh = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+
+    if (isGlobalOverview) {
+      channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "appointment_messages" },
+        refresh,
+      );
+    } else {
+      channel.on(
         "postgres_changes",
         {
           event: "*",
@@ -1991,21 +2023,18 @@ function ShelterMessagesTab({
           schema: "public",
           table: "appointment_messages",
         },
-        () => {
-          if (document.visibilityState === "visible") {
-            router.refresh();
-          }
-        },
-      )
-      .subscribe();
+        refresh,
+      );
+    }
+    channel.subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [messagesUnavailable, router, shelter.id]);
+  }, [isGlobalOverview, messagesUnavailable, router, shelter.id]);
 
   return (
-    <Section eyebrow="Messaging" title="Visitor conversations">
+    <Section eyebrow={isGlobalOverview ? "Messages" : "Messaging"} title={isGlobalOverview ? "All shelter conversations" : "Visitor conversations"}>
       {adminMode ? (
         <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#d6c8ad] px-4 py-2 text-xs font-semibold text-[#65584f]">
           <ShieldCheck className="h-4 w-4" />
@@ -2022,10 +2051,37 @@ function ShelterMessagesTab({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="font-semibold text-[#65584f]">{shelterThreads.length} appointment threads</p>
-              <p className="mt-1 text-sm text-[#65584f]">{shelter.unreadMessageCount} unread adopter messages</p>
+              <p className="mt-1 text-sm text-[#65584f]">{unreadMessageCount} unread adopter messages</p>
             </div>
             <MessageCircle className="h-5 w-5 text-[#cd8188]" />
           </div>
+          {isGlobalOverview ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">
+                Shelter
+                <select
+                  className="rounded-2xl border border-[#d6c8ad] bg-white px-3 py-2.5 text-sm font-semibold normal-case tracking-[0] text-[#65584f] outline-none focus:border-[#cd8188]"
+                  onChange={(event) => setShelterFilter(event.target.value)}
+                  value={shelterFilter}
+                >
+                  <option value="all">All shelters</option>
+                  {globalShelters?.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">
+                Sort
+                <select
+                  className="rounded-2xl border border-[#d6c8ad] bg-white px-3 py-2.5 text-sm font-semibold normal-case tracking-[0] text-[#65584f] outline-none focus:border-[#cd8188]"
+                  onChange={(event) => setMessageSort(event.target.value as MessageSort)}
+                  value={messageSort}
+                >
+                  <option value="newest">Newest activity</option>
+                  <option value="oldest">Oldest activity</option>
+                  <option value="unread">Unread first</option>
+                </select>
+              </label>
+            </div>
+          ) : null}
           <label className="sr-only" htmlFor={`message-search-${shelter.id}`}>Search message threads</label>
           <input
             className="mt-4 w-full rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
@@ -2067,6 +2123,7 @@ function ShelterMessagesTab({
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-[#65584f]">{thread.adopterName}</p>
                     <p className="mt-1 truncate text-xs text-[#65584f]">{thread.dogName} · {thread.bookingCode}</p>
+                    {isGlobalOverview ? <p className="mt-1 truncate text-xs font-semibold text-[#b36f78]">{thread.shelterName}</p> : null}
                   </div>
                   {thread.unreadForShelterCount > 0 ? (
                     <span className="rounded-full bg-[#cd8188] px-2 py-0.5 text-xs font-semibold text-white">
@@ -2103,6 +2160,7 @@ function ShelterMessagesTab({
                   <p className="mt-1 text-sm text-[#65584f]">
                     {formatBookingDate(selectedThread.appointmentDate)} at {formatBookingTime(selectedThread.appointmentTime)} · {formatStatus(selectedThread.status)}
                   </p>
+                  {isGlobalOverview ? <p className="mt-1 text-sm font-semibold text-[#b36f78]">{selectedThread.shelterName}</p> : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Link
@@ -2145,7 +2203,7 @@ function ShelterMessagesTab({
                         isShelter ? "bg-[#65584f] text-white" : "bg-[#f8f0e5] text-[#65584f]"
                       }`}>
                         <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${isShelter ? "text-white/70" : "text-[#65584f]"}`}>
-                          {message.sender_role === "system" ? "PawJai/system" : message.sender_label ?? (isShelter ? shelter.name : selectedThread.adopterName)}
+                          {message.sender_role === "system" ? "PawJai/system" : message.sender_label ?? (isShelter ? selectedThread.shelterName : selectedThread.adopterName)}
                         </p>
                         {message.attachment_url && previewImage ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -3387,6 +3445,17 @@ export default function AdminReorgDraftPanel({
               <BarChart3 className="mr-2 inline h-4 w-4" />
               User analytics
             </Link>
+            <Link
+              className={`inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold transition ${
+                mainTab === "messages"
+                  ? "bg-[#cd8188] text-white shadow-[0_10px_24px_rgba(205,129,136,0.22)]"
+                  : "border border-[#d6c8ad] bg-white text-[#65584f] hover:bg-[#f5f1e8]"
+              }`}
+              href="/admin?view=messages"
+            >
+              <MessageCircle className="mr-2 inline h-4 w-4" />
+              Messages
+            </Link>
             <div className="ml-auto flex items-center gap-2 rounded-full bg-[#d6c8ad] px-4 py-2 text-xs font-semibold text-[#65584f]">
               <ShieldCheck className="h-4 w-4" />
               PawJai HQ only
@@ -3418,6 +3487,16 @@ export default function AdminReorgDraftPanel({
             adClicks={adClicks}
             ads={ads}
             creativeSettings={adCreativeSettings}
+          />
+        ) : null}
+        {isPawjai && mainTab === "messages" ? (
+          <ShelterMessagesTab
+            adminMode
+            globalShelters={shelters}
+            messageThreads={messageThreads}
+            messagesUnavailable={messagesUnavailable}
+            returnTo="/admin?view=messages"
+            shelter={selectedShelter}
           />
         ) : null}
         {isPawjai && mainTab === "about" ? <AboutTab about={about} /> : null}

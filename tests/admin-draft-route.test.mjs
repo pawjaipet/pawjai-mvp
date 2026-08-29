@@ -407,6 +407,11 @@ test("admin draft and shelter portal message tabs use real appointment threads",
   assert.equal(panelSource.includes("Read-only PawJai admin view"), true);
   assert.equal(panelSource.includes("messageFilter"), true);
   assert.equal(panelSource.includes("messageSearch"), true);
+  assert.equal(panelSource.includes('mainTab === "messages"'), true);
+  assert.equal(panelSource.includes('href="/admin?view=messages"'), true);
+  assert.equal(panelSource.includes("globalShelters={shelters}"), true);
+  assert.equal(panelSource.includes("All shelters"), true);
+  assert.equal(panelSource.includes("Unread first"), true);
   assert.equal(panelSource.includes("No conversation selected"), true);
   assert.equal(panelSource.includes("/visitor-profile"), true);
   assert.equal(panelSource.includes('name="attachment"'), true);

@@ -35,7 +35,7 @@ test("global admins see the PawJai HQ umbrella first", () => {
   assert.equal(draft.defaultPath, "/admin");
   assertArrayValues(
     draft.primarySections.map((section) => section.label),
-    ["Overview", "Shelters", "Dogs", "Bookings", "Donations", "Ads", "About content", "Accounts", "Audit", "User analytics"],
+    ["Overview", "Shelters", "Dogs", "Bookings", "Donations", "Ads", "About content", "Accounts", "Audit", "User analytics", "Messages"],
   );
 });
 
@@ -63,7 +63,7 @@ test("draft structure marks global-only sections", () => {
     .filter((section) => section.globalOnly)
     .map((section) => section.label);
 
-  assertArrayValues(globalOnly, ["Ads", "About content", "Accounts", "Audit", "User analytics"]);
+  assertArrayValues(globalOnly, ["Ads", "About content", "Accounts", "Audit", "User analytics", "Messages"]);
 });
 
 test("dog draft workflow includes current admin upload steps, filters, media controls, and booking actions", () => {
