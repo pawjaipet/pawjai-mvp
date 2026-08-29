@@ -89,6 +89,75 @@ export type AppointmentThreadMessage = {
   senderRole: "adopter" | "shelter" | "system";
 };
 
+function SecureAppointmentMessageAttachment({
+  fromMe,
+  message,
+}: {
+  fromMe: boolean;
+  message: AppointmentThreadMessage;
+}) {
+  const [failed, setFailed] = useState(false);
+  const hasAttachment = Boolean(message.attachmentName || message.attachmentType || message.attachmentUrl);
+
+  if (!hasAttachment) return null;
+
+  const attachmentUrl = message.attachmentUrl;
+  const unavailable = !attachmentUrl || failed;
+  const hintClass = fromMe ? "text-white/80" : "text-[#65584f]/65";
+
+  if (unavailable) {
+    return (
+      <p className={`mb-[8px] text-[12px] leading-[1.4] ${hintClass}`} role="status">
+        Attachment unavailable. Refresh this page to request a new secure link.
+      </p>
+    );
+  }
+
+  const previewImage = message.attachmentType === "image/jpeg"
+    || message.attachmentType === "image/png"
+    || message.attachmentType === "image/webp";
+  const previewVideo = message.attachmentType === "video/mp4"
+    || message.attachmentType === "video/quicktime";
+
+  return (
+    <div className="mb-[8px]">
+      {previewImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={attachmentUrl}
+          alt={message.attachmentName ?? "Appointment attachment"}
+          className="mb-[8px] max-h-[260px] w-full rounded-[12px] object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : null}
+      {previewVideo ? (
+        <video
+          className="mb-[8px] max-h-[260px] w-full rounded-[12px] bg-black"
+          controls
+          onError={() => setFailed(true)}
+          preload="metadata"
+        >
+          <source src={attachmentUrl} type={message.attachmentType ?? undefined} />
+          <a href={attachmentUrl} rel="noreferrer" target="_blank">View attachment</a>
+        </video>
+      ) : null}
+      {!previewImage && !previewVideo ? (
+        <a
+          className={`inline-flex text-[13px] font-semibold underline ${fromMe ? "text-white" : "text-[#9a6b2a]"}`}
+          href={attachmentUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {message.attachmentName ?? "View attachment"}
+        </a>
+      ) : null}
+      <p className={`mt-[4px] text-[10px] leading-[1.35] ${hintClass}`}>
+        Secure link expires after one hour. Refresh this page for a new link.
+      </p>
+    </div>
+  );
+}
+
 function ReturnInquiryThreadCard({
   createdAt,
   fromMe,
@@ -769,14 +838,6 @@ function MessagesTab({
     return new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   }
 
-  function isPreviewableImageAttachment(type: string | null | undefined) {
-    return type === "image/jpeg" || type === "image/png" || type === "image/webp";
-  }
-
-  function isVideoAttachment(type: string | null | undefined) {
-    return type === "video/mp4" || type === "video/quicktime";
-  }
-
   return (
     <div className="flex flex-col" style={{ minHeight: "calc(100dvh - 240px)" }}>
       {/* Hidden file input — single native picker (#4) */}
@@ -823,34 +884,8 @@ function MessagesTab({
                   color: fromMe ? "white" : "#65584f",
                 }}
               >
-                {msg.attachmentUrl && isPreviewableImageAttachment(msg.attachmentType) && (
-                  <img
-                    src={msg.attachmentUrl}
-                    alt={msg.attachmentName ?? "Appointment attachment"}
-                    className="mb-[10px] max-h-[260px] w-full rounded-[12px] object-cover"
-                  />
-                )}
-                {msg.attachmentUrl && isVideoAttachment(msg.attachmentType) && (
-                  <video
-                    className="mb-[10px] max-h-[260px] w-full rounded-[12px] bg-black"
-                    controls
-                    preload="metadata"
-                  >
-                    <source src={msg.attachmentUrl} type={msg.attachmentType ?? undefined} />
-                    <a href={msg.attachmentUrl} rel="noreferrer" target="_blank">View attachment</a>
-                  </video>
-                )}
+                <SecureAppointmentMessageAttachment fromMe={fromMe} message={msg} />
                 <p className="text-[14px] leading-[1.45]" style={{ fontFamily: M }}>{msg.body}</p>
-                {msg.attachmentUrl && !isPreviewableImageAttachment(msg.attachmentType) && !isVideoAttachment(msg.attachmentType) && (
-                  <a
-                    className={`mt-[10px] inline-flex text-[13px] font-semibold underline ${fromMe ? "text-white" : "text-[#9a6b2a]"}`}
-                    href={msg.attachmentUrl}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    View attachment
-                  </a>
-                )}
               </div>
               <p
                 className={`text-[11px] mt-[4px] ${fromMe ? "text-right" : ""}`}

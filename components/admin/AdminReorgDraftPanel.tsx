@@ -474,6 +474,71 @@ function isPreviewableMessageVideo(type: string | null | undefined) {
   return type === "video/mp4" || type === "video/quicktime";
 }
 
+function SecureAdminMessageAttachment({
+  adminMode,
+  isShelter,
+  message,
+}: {
+  adminMode: boolean;
+  isShelter: boolean;
+  message: AdminDraftMessageThread["messages"][number];
+}) {
+  const [failed, setFailed] = useState(false);
+  const hasAttachment = Boolean(message.attachment_name || message.attachment_type || message.attachment_url);
+
+  if (!hasAttachment) return null;
+
+  const hintClass = isShelter ? "text-white/70" : "text-[#65584f]/65";
+  if (!message.attachment_url || failed) {
+    return (
+      <p className={`mt-2 text-xs leading-5 ${hintClass}`} role="status">
+        Attachment unavailable. Refresh this page to request a new secure link.
+      </p>
+    );
+  }
+
+  const previewImage = !adminMode && isPreviewableMessageImage(message.attachment_type);
+  const previewVideo = !adminMode && isPreviewableMessageVideo(message.attachment_type);
+
+  return (
+    <div className="mt-2">
+      {previewImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          alt={message.attachment_name ?? "Appointment attachment"}
+          className="max-h-[260px] w-full rounded-xl object-cover"
+          onError={() => setFailed(true)}
+          src={message.attachment_url}
+        />
+      ) : null}
+      {previewVideo ? (
+        <video
+          className="max-h-[280px] w-full rounded-xl bg-black"
+          controls
+          onError={() => setFailed(true)}
+          preload="metadata"
+        >
+          <source src={message.attachment_url} type={message.attachment_type ?? undefined} />
+          <a href={message.attachment_url} rel="noreferrer" target="_blank">View attachment</a>
+        </video>
+      ) : null}
+      {adminMode || (!previewImage && !previewVideo) ? (
+        <a
+          className={`inline-flex text-xs font-semibold underline ${isShelter ? "text-white" : "text-[#65584f]"}`}
+          href={message.attachment_url}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {message.attachment_name ?? "View attachment"}
+        </a>
+      ) : null}
+      <p className={`mt-1 text-[10px] leading-4 ${hintClass}`}>
+        Secure link expires after one hour. Refresh this page for a new link.
+      </p>
+    </div>
+  );
+}
+
 function bookingStatusClass(status: string) {
   switch (status) {
     case "confirmed":
@@ -2185,9 +2250,6 @@ function ShelterMessagesTab({
                 {selectedThread.messages.length > 0 ? selectedThread.messages.map((message) => {
                   const isShelter = message.sender_role === "shelter";
                   const returnInquiry = parseReturnInquiryMessageBody(message.body);
-                  const previewImage = !adminMode && isPreviewableMessageImage(message.attachment_type);
-                  const previewVideo = !adminMode && isPreviewableMessageVideo(message.attachment_type);
-
                   if (returnInquiry) {
                     return (
                       <ReturnInquiryAdminCard
@@ -2207,35 +2269,8 @@ function ShelterMessagesTab({
                         <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${isShelter ? "text-white/70" : "text-[#65584f]"}`}>
                           {message.sender_role === "system" ? "PawJai/system" : message.sender_label ?? (isShelter ? selectedThread.shelterName : selectedThread.adopterName)}
                         </p>
-                        {message.attachment_url && previewImage ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            alt={message.attachment_name ?? "Appointment attachment"}
-                            className="mt-2 max-h-[260px] w-full rounded-xl object-cover"
-                            src={message.attachment_url}
-                          />
-                        ) : null}
-                        {message.attachment_url && previewVideo ? (
-                          <video
-                            className="mt-2 max-h-[280px] w-full rounded-xl bg-black"
-                            controls
-                            preload="metadata"
-                          >
-                            <source src={message.attachment_url} type={message.attachment_type ?? undefined} />
-                            <a href={message.attachment_url} rel="noreferrer" target="_blank">View attachment</a>
-                          </video>
-                        ) : null}
+                        <SecureAdminMessageAttachment adminMode={adminMode} isShelter={isShelter} message={message} />
                         <p className="mt-1 whitespace-pre-wrap" data-i18n-ignore>{message.body}</p>
-                        {message.attachment_url && (adminMode || (!previewImage && !previewVideo)) ? (
-                          <a
-                            className={`mt-2 inline-flex text-xs font-semibold underline ${isShelter ? "text-white" : "text-[#65584f]"}`}
-                            href={message.attachment_url}
-                            rel="noreferrer"
-                            target="_blank"
-                          >
-                            {message.attachment_name ?? "View attachment"}
-                          </a>
-                        ) : null}
                         <p className={`mt-2 text-[11px] ${isShelter ? "text-white/60" : "text-[#65584f]/70"}`}>
                           {formatMessageTime(message.created_at)}
                           {adminMode ? (

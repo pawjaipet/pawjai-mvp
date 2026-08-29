@@ -27,8 +27,9 @@ test("message views expose backend timestamps and attachment-friendly previews",
 
   assert.equal(adopterSource.includes("Backend timestamp"), false);
   assert.equal(adopterSource.includes("dateTime={msg.createdAt}"), false);
-  assert.equal(adopterSource.includes("isPreviewableImageAttachment"), true);
-  assert.equal(adopterSource.includes("isVideoAttachment"), true);
+  assert.equal(adopterSource.includes("SecureAppointmentMessageAttachment"), true);
+  assert.equal(adopterSource.includes('message.attachmentType === "image/jpeg"'), true);
+  assert.equal(adopterSource.includes('message.attachmentType === "video/mp4"'), true);
   assert.equal(adopterSource.includes("<video"), true);
   assert.equal(adminSource.includes("Backend timestamp"), true);
   assert.equal(adminSource.includes("dateTime={message.created_at}"), true);

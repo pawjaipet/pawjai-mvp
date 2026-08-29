@@ -23,5 +23,6 @@ test("adopter message timeline links non-image attachments", () => {
   const source = readFileSync(new URL("../components/appointments/AppointmentDetailClient.tsx", import.meta.url), "utf8");
 
   assert.equal(source.includes("View attachment"), true);
-  assert.equal(source.includes("!isPreviewableImageAttachment(msg.attachmentType) && !isVideoAttachment(msg.attachmentType)"), true);
+  assert.equal(source.includes("SecureAppointmentMessageAttachment"), true);
+  assert.equal(source.includes("!previewImage && !previewVideo"), true);
 });

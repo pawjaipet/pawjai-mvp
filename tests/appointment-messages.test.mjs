@@ -122,6 +122,16 @@ test("signs appointment message attachments from private storage paths", async (
   assert.equal(signedMessages[1].attachment_url, "https://legacy-public-url.example/file.pdf");
 });
 
+test("appointment and staff message UIs explain missing or expired secure links", () => {
+  const adopterSource = readFileSync(new URL("../components/appointments/AppointmentDetailClient.tsx", import.meta.url), "utf8");
+  const staffSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+
+  for (const source of [adopterSource, staffSource]) {
+    assert.match(source, /Attachment unavailable\. Refresh this page to request a new secure link\./);
+    assert.match(source, /Secure link expires after one hour\. Refresh this page for a new link\./);
+  }
+});
+
 function loadMessageThreads() {
   const source = readFileSync(new URL("../utils/message-threads.ts", import.meta.url), "utf8");
   const { outputText } = ts.transpileModule(source, {
