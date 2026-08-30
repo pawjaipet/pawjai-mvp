@@ -11,7 +11,6 @@ import {
 } from "@/utils/dog-preference-filter";
 import type { SwipeDog } from "@/components/SwipeDogCard";
 import SwipeFeed from "@/components/SwipeFeed";
-import { ANALYTICS_VISITOR_COOKIE } from "@/utils/product-analytics";
 import { shuffleFeedDogs } from "@/utils/swipe-feed-model";
 import {
   ANONYMOUS_DOG_VIEW_LIMIT,
@@ -237,13 +236,7 @@ export default async function DogFeedPage() {
   }
 
   if (!isLoggedIn) {
-    const visitorId = cookieStore.get(ANALYTICS_VISITOR_COOKIE)?.value;
-    if (visitorId) {
-      const dogViewsToday = await countUniqueDogViewsInWindow(createAdminClient(), { visitorId });
-      dailyDogViewsRemaining = Math.max(ANONYMOUS_DOG_VIEW_LIMIT - dogViewsToday, 0);
-    } else {
-      dailyDogViewsRemaining = ANONYMOUS_DOG_VIEW_LIMIT;
-    }
+    dailyDogViewsRemaining = ANONYMOUS_DOG_VIEW_LIMIT;
   }
 
   const limits = getSubscriptionLimits(subscriptionTier);
