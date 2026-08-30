@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/server";
 import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
 import AuthPromptButton from "@/components/auth/AuthPromptButton";
+import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import DogPhotoGallery from "@/components/dogs/DogPhotoGallery";
 import TreatButton from "@/components/donations/TreatButton";
 import MachineTranslatedText from "@/components/i18n/MachineTranslatedText";
@@ -117,6 +118,16 @@ export default async function DogProfilePage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (!user) {
+    const nextPath = autoOpenTreatCount ? `/dogs/${id}?treat=${autoOpenTreatCount}` : `/dogs/${id}`;
+    return (
+      <ProtectedRouteGate
+        nextPath={nextPath}
+        reason="Sign in or create an account to view this dog profile."
+      />
+    );
+  }
 
   const { data: dog } = await supabase.from("dogs").select("*").eq("id", id).single();
   if (!dog) notFound();

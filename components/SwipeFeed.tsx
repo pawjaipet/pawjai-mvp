@@ -5,12 +5,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import SwipeDogCard, { type SwipeDog } from "./SwipeDogCard";
 import AdCard from "./AdCard";
+import { useAuthModal } from "@/components/auth/AuthProvider";
 import SwipeFeedTutorial from "@/components/SwipeFeedTutorial";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import type { Ad } from "@/utils/ads";
 import { sendProductAnalyticsEvent } from "@/utils/product-analytics-client";
 import { buildSwipeFeed, isActiveDogFeedItem } from "@/utils/swipe-feed-model";
+import type { SubscriptionTier } from "@/utils/subscription-limits";
 
 const CARD_W = "min(370px, calc(100vw - 32px))";
 const CARD_H = "min(590px, calc(100dvh - 200px))";
@@ -23,10 +25,22 @@ interface Props {
   savedIds: string[];
   isLoggedIn: boolean;
   ads?: Ad[];
+  dailyDogViewLimit?: number | null;
+  dailyDogViewsRemaining?: number | null;
   showNoFilterResultsNotice?: boolean;
+  subscriptionTier?: SubscriptionTier;
 }
 
-export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNoFilterResultsNotice = false }: Props) {
+export default function SwipeFeed({
+  dogs,
+  savedIds,
+  isLoggedIn,
+  ads = [],
+  dailyDogViewLimit = null,
+  dailyDogViewsRemaining = null,
+  showNoFilterResultsNotice = false,
+  subscriptionTier = "free",
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeIndexRef = useRef(0);
   const backwardFeedSwipesRef = useRef(0);
@@ -37,7 +51,9 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNo
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const visitStartedAtRef = useRef<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [showDogViewLimit, setShowDogViewLimit] = useState(false);
   const [showFallbackNotice, setShowFallbackNotice] = useState(showNoFilterResultsNotice);
+  const { openAuthModal } = useAuthModal();
   const { t } = useLanguage();
 
   const feed = useMemo(() => buildSwipeFeed(dogs, ads, AD_EVERY), [ads, dogs]);
@@ -54,6 +70,13 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNo
 
     const feedVisitId = ensureFeedVisit();
     seenDogIdsRef.current.add(item.dog.id);
+    if (
+      dailyDogViewsRemaining !== null &&
+      dailyDogViewsRemaining > 0 &&
+      seenDogIdsRef.current.size >= dailyDogViewsRemaining
+    ) {
+      setShowDogViewLimit(true);
+    }
     sendProductAnalyticsEvent({
       dedupeKey: `feed-impression:${feedVisitId}:${item.dog.id}`,
       dogId: item.dog.id,
@@ -62,10 +85,11 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNo
         cardPosition: index + 1,
         dogPosition: item.dogIndex + 1,
         feedVisitId,
+        subscriptionTier,
         totalDogs: dogs.length,
       },
     });
-  }, [dogs.length, ensureFeedVisit, feed]);
+  }, [dailyDogViewsRemaining, dogs.length, ensureFeedVisit, feed, subscriptionTier]);
 
   const settleFeedIndex = useCallback((index: number) => {
     const previousIndex = settledIndexRef.current;
@@ -104,15 +128,30 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNo
         feedVisitId,
         forwardFeedSwipes: forwardFeedSwipesRef.current,
         reachedEnd,
+        subscriptionTier,
         totalFeedSwipes,
         totalDogs: dogs.length,
       },
     });
-  }, [dogs.length, ensureFeedVisit, feed.length, settleFeedIndex]);
+  }, [dogs.length, ensureFeedVisit, feed.length, settleFeedIndex, subscriptionTier]);
 
   useEffect(() => {
     setShowFallbackNotice(showNoFilterResultsNotice);
   }, [showNoFilterResultsNotice]);
+
+  useEffect(() => {
+    if (dailyDogViewLimit !== null && dailyDogViewsRemaining === 0) {
+      setShowDogViewLimit(true);
+    }
+  }, [dailyDogViewLimit, dailyDogViewsRemaining]);
+
+  function openFeedSignup() {
+    openAuthModal({
+      nextPath: "/swipe",
+      reason: t("Sign in or create a free account to view more dogs."),
+    });
+    setShowDogViewLimit(false);
+  }
 
   useEffect(() => {
     if (dogs.length === 0) return;
@@ -206,6 +245,72 @@ export default function SwipeFeed({ dogs, savedIds, isLoggedIn, ads = [], showNo
             >
               <X size={15} strokeWidth={2.4} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {showDogViewLimit && dailyDogViewLimit !== null && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 px-[18px]"
+          onClick={() => setShowDogViewLimit(false)}
+          style={{ paddingTop: "max(24px, env(safe-area-inset-top))", paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-[342px] rounded-[22px] bg-white px-[22px] py-[22px] text-center shadow-[0_20px_60px_rgba(0,0,0,0.24)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="text-[20px] font-extrabold text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>
+              {isLoggedIn ? t("Daily dog-view limit reached") : t("Create an account to keep browsing")}
+            </p>
+            <p className="mt-[10px] text-[14px] leading-[1.55] text-[#65584f]/70" style={{ fontFamily: "Montserrat, sans-serif" }}>
+              {isLoggedIn ? (
+                <>
+                  {t("Your current plan includes")}
+                  {" "}
+                  <strong className="font-bold text-[#65584f]">{dailyDogViewLimit}</strong>
+                  {" "}
+                  {t("dog views per day. Come back in 24 hours, or upgrade to keep browsing today.")}
+                </>
+              ) : (
+                <>
+                  {t("Visitors can preview")}
+                  {" "}
+                  <strong className="font-bold text-[#65584f]">{dailyDogViewLimit}</strong>
+                  {" "}
+                  {t("dogs. Sign in or create a free account to view more profiles and save favorites.")}
+                </>
+              )}
+            </p>
+            <div className="mt-[18px] flex flex-col gap-[10px]">
+              {isLoggedIn ? (
+                <Link
+                  href="/settings/subscription"
+                  className="rounded-[14px] bg-[#cd8188] py-[12px] text-[14px] font-bold text-white active:scale-[0.99] transition-transform"
+                  style={{ fontFamily: "Montserrat, sans-serif" }}
+                >
+                  {t("View plans")}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openFeedSignup}
+                  className="rounded-[14px] bg-[#cd8188] py-[12px] text-[14px] font-bold text-white active:scale-[0.99] transition-transform"
+                  style={{ fontFamily: "Montserrat, sans-serif" }}
+                >
+                  {t("Sign in / Create account")}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowDogViewLimit(false)}
+                className="rounded-[14px] py-[10px] text-[13px] font-bold text-[#65584f]/68"
+                style={{ fontFamily: "Montserrat, sans-serif" }}
+              >
+                {t("Maybe later")}
+              </button>
+            </div>
           </div>
         </div>
       )}

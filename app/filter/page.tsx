@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { CheckCircle2, PawPrint } from "lucide-react";
 import { getSavedFilterPreferences, saveFilterPreferences } from "@/app/actions/preferences";
 import ClientAuthGate from "@/components/auth/ClientAuthGate";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
@@ -303,10 +304,19 @@ export default function FilterPage() {
     }
   };
 
-  const resetFilter = () => {
+  const resetFilter = async () => {
     clearLocal();
     setSelectedAnswers({});
-    setAgeRange([2, 4]);
+    setAgeRange([0, 7]);
+    await saveFilterPreferences({
+      energyLevels: [],
+      fullAnswers: {},
+      goodWithCats: null,
+      goodWithDogs: null,
+      goodWithKids: null,
+      questionLabels: Object.fromEntries(questions.map((question, index) => [index, question.question])),
+      sizes: [],
+    });
   };
 
   const finishAndSave = () => {
@@ -321,8 +331,9 @@ export default function FilterPage() {
     saveToLocal(selectedAnswers, ageRange);
 
     startTransition(async () => {
+      const activeAgeRange = ageRange[0] === 0 && ageRange[1] >= 7 ? undefined : ageRange;
       await saveFilterPreferences({
-        ageRange,
+        ageRange: activeAgeRange,
         fullAnswers: selectedAnswers,
         sizes: sizeQ,
         energyLevels: energyQ,
@@ -370,7 +381,7 @@ interface ScrollFilterProps {
   sliderRef: React.RefObject<HTMLDivElement | null>;
   setIsDragging: (d: "min" | "max" | null) => void;
   onShowDogs: () => void;
-  onReset: () => void;
+  onReset: () => void | Promise<void>;
   getAgeLabel: (min: number, max: number) => string;
 }
 
@@ -388,6 +399,26 @@ function ScrollFilter({
   const minPercent = (ageRange[0] / 7) * 100;
   const maxPercent = (ageRange[1] / 7) * 100;
   const { language, t } = useLanguage();
+  const [isResetting, setIsResetting] = useState(false);
+  const [showResetNotice, setShowResetNotice] = useState(false);
+
+  useEffect(() => {
+    if (!showResetNotice) return;
+    const timer = window.setTimeout(() => setShowResetNotice(false), 2600);
+    return () => window.clearTimeout(timer);
+  }, [showResetNotice]);
+
+  async function handleReset() {
+    if (isResetting) return;
+    setIsResetting(true);
+    try {
+      await onReset();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setShowResetNotice(true);
+    } finally {
+      setIsResetting(false);
+    }
+  }
 
   return (
     <div
@@ -411,14 +442,26 @@ function ScrollFilter({
           <LanguageSwitcher compact />
           <button
             type="button"
-            onClick={onReset}
+            onClick={handleReset}
+            disabled={isResetting}
             className="rounded-full px-[14px] py-[6px] text-[12px] font-semibold border active:scale-95 transition-transform"
-            style={{ borderColor: "rgba(101,88,79,0.25)", color: "#65584f", background: "white", fontFamily: M }}
+            style={{ borderColor: "rgba(101,88,79,0.25)", color: "#65584f", background: "white", fontFamily: M, opacity: isResetting ? 0.65 : 1 }}
           >
-            {t("Reset")}
+            {t(isResetting ? "Resetting..." : "Reset")}
           </button>
         </div>
       </div>
+
+      {showResetNotice && (
+        <div
+          className="fixed left-1/2 top-[72px] z-40 flex -translate-x-1/2 items-center gap-[8px] rounded-full px-[16px] py-[10px] text-[12px] font-semibold shadow-[0_12px_30px_rgba(79,120,71,0.22)]"
+          style={{ width: "calc(100vw - 40px)", maxWidth: 362, background: "#eef5ea", color: "#4f7847", fontFamily: M }}
+          role="status"
+        >
+          <CheckCircle2 aria-hidden="true" size={16} strokeWidth={2.4} />
+          <span>{t("Filters reset. Showing all dogs.")}</span>
+        </div>
+      )}
 
       {/* Stacked questions */}
       <div className="px-[20px] pt-[18px]" style={{ paddingBottom: "150px" }}>
@@ -546,13 +589,11 @@ function ScrollFilter({
         <button
           type="button"
           onClick={onShowDogs}
-          className="w-full h-[52px] rounded-[12px] flex items-center justify-center gap-[8px] text-[15px] font-bold transition-all active:scale-[0.98]"
-          style={{ background: "#65584f", color: "white", pointerEvents: "auto", fontFamily: M }}
+          className="w-full h-[54px] rounded-[18px] flex items-center justify-center gap-[9px] text-[15px] font-bold transition-all active:scale-[0.98]"
+          style={{ background: "#cd8188", color: "white", pointerEvents: "auto", fontFamily: M, boxShadow: "0 8px 22px rgba(205,129,136,0.34)" }}
         >
-          {t("Show Dogs")}
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7" />
-          </svg>
+          <PawPrint aria-hidden="true" size={18} strokeWidth={2.4} />
+          {t("Show Dog Results")}
         </button>
       </div>
     </div>

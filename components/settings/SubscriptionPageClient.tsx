@@ -3,22 +3,26 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Check, X } from "lucide-react";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
+import {
+  formatSubscriptionLimit,
+  SUBSCRIPTION_TIERS,
+  type SubscriptionTier,
+} from "@/utils/subscription-limits";
 
 const M = "Montserrat, sans-serif";
 
-type Tier = "free" | "standard" | "premium";
-
 type TierConfig = {
-  id: Tier;
+  id: SubscriptionTier;
   name: string;
   price: number; // THB / month
   features: {
     preference: boolean;
     dogsPerDay: string; // display string
     wishlistCap: string;
-    priorityVisit: { included: boolean; label?: string };
+    priorityVisit: boolean;
     advancedMatching: boolean;
-    customerSupport: boolean;
+    adFree: boolean;
   };
   headerBg: string;
   headerFg: string;
@@ -31,14 +35,14 @@ const TIERS: TierConfig[] = [
   {
     id: "free",
     name: "Free Tier",
-    price: 0,
+    price: SUBSCRIPTION_TIERS.free.priceThbMonthly,
     features: {
       preference: true,
-      dogsPerDay: "25",
-      wishlistCap: "5",
-      priorityVisit: { included: false },
+      dogsPerDay: formatSubscriptionLimit(SUBSCRIPTION_TIERS.free.dogViewLimit),
+      wishlistCap: formatSubscriptionLimit(SUBSCRIPTION_TIERS.free.wishlistLimit),
+      priorityVisit: false,
       advancedMatching: false,
-      customerSupport: false,
+      adFree: false,
     },
     headerBg: "linear-gradient(135deg, #9c8f82 0%, #7c6f63 100%)",
     headerFg: "white",
@@ -48,14 +52,14 @@ const TIERS: TierConfig[] = [
   {
     id: "standard",
     name: "Standard",
-    price: 199,
+    price: SUBSCRIPTION_TIERS.standard.priceThbMonthly,
     features: {
       preference: true,
-      dogsPerDay: "100",
-      wishlistCap: "20",
-      priorityVisit: { included: true, label: "5" },
-      advancedMatching: true,
-      customerSupport: false,
+      dogsPerDay: formatSubscriptionLimit(SUBSCRIPTION_TIERS.standard.dogViewLimit),
+      wishlistCap: formatSubscriptionLimit(SUBSCRIPTION_TIERS.standard.wishlistLimit),
+      priorityVisit: true,
+      advancedMatching: false,
+      adFree: false,
     },
     headerBg: "linear-gradient(135deg, #e8d9bd 0%, #d6c8ad 100%)",
     headerFg: "#65584f",
@@ -66,14 +70,14 @@ const TIERS: TierConfig[] = [
   {
     id: "premium",
     name: "Premium",
-    price: 399,
+    price: SUBSCRIPTION_TIERS.premium.priceThbMonthly,
     features: {
       preference: true,
-      dogsPerDay: "Unlimited",
-      wishlistCap: "50",
-      priorityVisit: { included: true, label: "10" },
+      dogsPerDay: formatSubscriptionLimit(SUBSCRIPTION_TIERS.premium.dogViewLimit),
+      wishlistCap: formatSubscriptionLimit(SUBSCRIPTION_TIERS.premium.wishlistLimit),
+      priorityVisit: true,
       advancedMatching: true,
-      customerSupport: true,
+      adFree: true,
     },
     headerBg: "linear-gradient(135deg, #e89aa1 0%, #cd8188 100%)",
     headerFg: "white",
@@ -83,12 +87,13 @@ const TIERS: TierConfig[] = [
 ];
 
 interface Props {
-  currentTier: Tier;
+  currentTier: SubscriptionTier;
 }
 
 export default function SubscriptionPageClient({ currentTier }: Props) {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const current = TIERS.find((t) => t.id === currentTier)!;
+  const { t } = useLanguage();
 
   return (
     <div
@@ -118,7 +123,7 @@ export default function SubscriptionPageClient({ currentTier }: Props) {
           </svg>
         </Link>
         <h1 className="text-[18px] font-bold absolute left-1/2 -translate-x-1/2" style={{ color: "#65584f", fontFamily: M }}>
-          Your Current Plan
+          {t("Your Current Plan")}
         </h1>
         <div className="h-[40px] w-[40px]" />
       </div>
@@ -126,11 +131,11 @@ export default function SubscriptionPageClient({ currentTier }: Props) {
       {/* Current Plan card */}
       <div className="mx-[16px] mt-[16px] rounded-[20px] overflow-hidden" style={{ boxShadow: "0 4px 16px rgba(101,88,79,0.10)" }}>
         <div className="px-[20px] py-[20px]" style={{ background: current.headerBg }}>
-          <p className="text-[12px] font-semibold uppercase tracking-wide" style={{ color: current.headerFg, opacity: 0.75 }}>Current</p>
-          <p className="text-[26px] font-extrabold mt-[2px]" style={{ color: current.headerFg, fontFamily: M }}>{current.name}</p>
+          <p className="text-[12px] font-semibold uppercase tracking-wide" style={{ color: current.headerFg, opacity: 0.75 }}>{t("Current")}</p>
+          <p className="text-[26px] font-extrabold mt-[2px]" style={{ color: current.headerFg, fontFamily: M }}>{t(current.name)}</p>
           <p className="mt-[4px]" style={{ color: current.headerFg, fontFamily: M }}>
             <span className="text-[24px] font-bold">฿{current.price.toFixed(2)}</span>
-            <span className="text-[14px] opacity-80"> /Month</span>
+            <span className="text-[14px] opacity-80"> {t("/Month")}</span>
           </p>
         </div>
         <div className="bg-white p-[18px]">
@@ -141,16 +146,16 @@ export default function SubscriptionPageClient({ currentTier }: Props) {
             className="mt-[18px] w-full rounded-[12px] py-[12px] text-[14px] font-bold opacity-70 cursor-not-allowed"
             style={{ background: "#cd8188", color: "white", fontFamily: M }}
           >
-            Current Plan
+            {t("Current Plan")}
           </button>
         </div>
       </div>
 
       {/* Choose Your Plan */}
       <div className="px-[16px] mt-[32px]">
-        <h2 className="text-[22px] font-extrabold text-center" style={{ color: "#65584f", fontFamily: M }}>Choose Your Plan</h2>
+        <h2 className="text-[22px] font-extrabold text-center" style={{ color: "#65584f", fontFamily: M }}>{t("Choose Your Plan")}</h2>
         <p className="text-[13px] text-center mt-[6px] leading-[1.45]" style={{ color: "rgba(101,88,79,0.65)", fontFamily: M }}>
-          Find your perfect furry companion with our flexible subscription plans
+          {t("Find your perfect furry companion with our flexible subscription plans")}
         </p>
       </div>
 
@@ -166,7 +171,7 @@ export default function SubscriptionPageClient({ currentTier }: Props) {
       </div>
 
       <p className="px-[24px] mt-[28px] text-[12px] text-center leading-[1.5]" style={{ color: "rgba(101,88,79,0.6)", fontFamily: M }}>
-        All plans include our happiness guarantee. Cancel anytime.
+        {t("All plans include customer support. Upgrade when you want more browsing, more saved dogs, or premium matching.")}
       </p>
 
       {upgradeOpen && (
@@ -181,9 +186,9 @@ export default function SubscriptionPageClient({ currentTier }: Props) {
             className="w-full max-w-[340px] rounded-[20px] bg-white px-[22px] py-[22px] text-center shadow-[0_20px_60px_rgba(0,0,0,0.24)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-[20px] font-bold" style={{ color: "#65584f", fontFamily: M }}>Coming soon</p>
+            <p className="text-[20px] font-bold" style={{ color: "#65584f", fontFamily: M }}>{t("Coming soon")}</p>
             <p className="mt-[10px] text-[14px] leading-[1.55]" style={{ color: "rgba(101,88,79,0.7)", fontFamily: M }}>
-              Payment integration coming soon. We&apos;ll notify you when upgrades are available.
+              {t("Payment integration coming soon. We'll notify you when upgrades are available.")}
             </p>
             <button
               type="button"
@@ -191,7 +196,7 @@ export default function SubscriptionPageClient({ currentTier }: Props) {
               className="mt-[18px] w-full rounded-[14px] py-[12px] text-[14px] font-bold text-white"
               style={{ background: "#cd8188", fontFamily: M }}
             >
-              Got it
+              {t("Got it")}
             </button>
           </div>
         </div>
@@ -201,6 +206,7 @@ export default function SubscriptionPageClient({ currentTier }: Props) {
 }
 
 function TierCard({ tier, isCurrent, onUpgrade }: { tier: TierConfig; isCurrent: boolean; onUpgrade: () => void }) {
+  const { t } = useLanguage();
   return (
     <div className="relative rounded-[20px] overflow-hidden" style={{ boxShadow: "0 4px 16px rgba(101,88,79,0.10)" }}>
       {tier.popular && (
@@ -208,14 +214,14 @@ function TierCard({ tier, isCurrent, onUpgrade }: { tier: TierConfig; isCurrent:
           className="absolute top-0 right-0 z-10 rounded-bl-[12px] px-[12px] py-[6px] text-[10px] font-extrabold uppercase tracking-wide"
           style={{ background: "#65584f", color: "white", fontFamily: M, letterSpacing: "0.08em" }}
         >
-          Most Popular
+          {t("Most Popular")}
         </div>
       )}
       <div className="px-[20px] py-[20px]" style={{ background: tier.headerBg }}>
-        <p className="text-[22px] font-extrabold" style={{ color: tier.headerFg, fontFamily: M }}>{tier.name}</p>
+        <p className="text-[22px] font-extrabold" style={{ color: tier.headerFg, fontFamily: M }}>{t(tier.name)}</p>
         <p className="mt-[4px]" style={{ color: tier.headerFg, fontFamily: M }}>
           <span className="text-[28px] font-bold">฿{tier.price}</span>
-          <span className="text-[14px] opacity-80"> /Month</span>
+          <span className="text-[14px] opacity-80"> {t("/Month")}</span>
         </p>
       </div>
       <div className="bg-white p-[18px]">
@@ -227,7 +233,7 @@ function TierCard({ tier, isCurrent, onUpgrade }: { tier: TierConfig; isCurrent:
             className="mt-[18px] w-full rounded-[12px] py-[12px] text-[14px] font-bold opacity-70 cursor-not-allowed"
             style={{ background: "#cd8188", color: "white", fontFamily: M }}
           >
-            Current Plan
+            {t("Current Plan")}
           </button>
         ) : (
           <button
@@ -236,7 +242,7 @@ function TierCard({ tier, isCurrent, onUpgrade }: { tier: TierConfig; isCurrent:
             className="mt-[18px] w-full rounded-[12px] py-[12px] text-[14px] font-bold active:scale-[0.99] transition-transform"
             style={{ background: tier.ctaBg, color: tier.ctaFg, fontFamily: M }}
           >
-            Upgrade Now
+            {t("Upgrade Now")}
           </button>
         )}
       </div>
@@ -245,17 +251,14 @@ function TierCard({ tier, isCurrent, onUpgrade }: { tier: TierConfig; isCurrent:
 }
 
 function FeatureList({ tier }: { tier: TierConfig }) {
+  const { t } = useLanguage();
   const items: { label: string; included: boolean; note?: string }[] = [
     { label: "Preference", included: tier.features.preference },
     { label: "Dogs Viewed Per Day", included: true, note: tier.features.dogsPerDay },
     { label: "Wishlisted Dog", included: true, note: tier.features.wishlistCap },
-    {
-      label: "Priority Dog Visit",
-      included: tier.features.priorityVisit.included,
-      note: tier.features.priorityVisit.label,
-    },
+    { label: "Priority Dog Visit", included: tier.features.priorityVisit },
     { label: "Advanced Matching", included: tier.features.advancedMatching },
-    { label: "Customer Support", included: tier.features.customerSupport },
+    { label: "Ad-Free Browsing", included: tier.features.adFree },
   ];
   return (
     <ul className="space-y-[10px]">
@@ -267,8 +270,8 @@ function FeatureList({ tier }: { tier: TierConfig }) {
             <X size={18} className="shrink-0" style={{ color: "#b3565e" }} strokeWidth={2.6} />
           )}
           <span className="text-[13px]" style={{ color: it.included ? "#65584f" : "rgba(101,88,79,0.5)", fontFamily: M }}>
-            {it.label}
-            {it.included && it.note ? ` (${it.note})` : ""}
+            {t(it.label)}
+            {it.included && it.note ? ` (${t(it.note)})` : ""}
           </span>
         </li>
       ))}

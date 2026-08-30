@@ -1,6 +1,7 @@
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import { createClient } from "@/utils/supabase/server";
 import SubscriptionPageClient from "@/components/settings/SubscriptionPageClient";
+import { subscriptionTierFromAppMetadata } from "@/utils/subscription-limits";
 
 export default async function SubscriptionPage() {
   const supabase = await createClient();
@@ -15,9 +16,9 @@ export default async function SubscriptionPage() {
     );
   }
 
-  // TODO(backend): replace hardcoded tier with real subscription state once
-  // payment integration + subscriptions table land. For now every user is free.
-  const currentTier: "free" | "standard" | "premium" = "free";
+  // Billing is not live yet. Future payment webhooks should write the plan into
+  // user.app_metadata.pawjai_subscription_tier so UI and server limits agree.
+  const currentTier = subscriptionTierFromAppMetadata(user.app_metadata);
 
   return <SubscriptionPageClient currentTier={currentTier} />;
 }

@@ -21,6 +21,7 @@ import {
 } from "@/utils/product-analytics";
 import { assertRateLimit } from "@/utils/rate-limit";
 import { getShelterDaySlots } from "@/utils/shelter-availability";
+import { getSubscriptionLimits, subscriptionTierFromAppMetadata } from "@/utils/subscription-limits";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -78,6 +79,19 @@ export async function toggleWishlist(formData: FormData) {
   if (isSaved) {
     await admin.from("wishlists").delete().eq("adopter_id", adopter.id).eq("dog_id", dogId);
   } else {
+    const tier = subscriptionTierFromAppMetadata(user.app_metadata);
+    const { wishlistLimit } = getSubscriptionLimits(tier);
+    if (wishlistLimit !== null) {
+      const { count } = await admin
+        .from("wishlists")
+        .select("dog_id", { count: "exact", head: true })
+        .eq("adopter_id", adopter.id);
+
+      if ((count ?? 0) >= wishlistLimit) {
+        redirect(`/settings/subscription?message=${encodeURIComponent("Wishlist limit reached. Upgrade to save more dogs.")}`);
+      }
+    }
+
     await admin.from("wishlists").upsert({ adopter_id: adopter.id, dog_id: dogId });
   }
 

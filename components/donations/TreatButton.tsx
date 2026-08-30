@@ -4,7 +4,6 @@ import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Bone } from "lucide-react";
-import { useAuthModal } from "@/components/auth/AuthProvider";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { createDonationIntent } from "@/app/donations/actions";
 import TreatModal, { type TreatSelection } from "./TreatModal";
@@ -38,7 +37,6 @@ export default function TreatButton({
   size = "md",
 }: TreatButtonProps) {
   const router = useRouter();
-  const { openAuthModal } = useAuthModal();
   const { t } = useLanguage();
   const [open, setOpen] = useState(autoOpenCount != null);
   const [mounted, setMounted] = useState(false);
@@ -50,12 +48,8 @@ export default function TreatButton({
 
   function handleContinue({ treatCount, amountThb }: TreatSelection) {
     if (!isLoggedIn) {
-      // Preserve treat count + dog context across the sign-in round trip.
       setOpen(false);
-      openAuthModal({
-        nextPath: `/dogs/${dogId}?treat=${treatCount}`,
-        reason: t(`Sign in to send treats to ${dogName}.`),
-      });
+      router.push(`/dogs/${dogId}/donate?treat=${treatCount}&amount=${amountThb}`);
       return;
     }
 

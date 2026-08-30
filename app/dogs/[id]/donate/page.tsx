@@ -9,11 +9,19 @@ export default async function DonatePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ intent?: string }>;
+  searchParams: Promise<{ amount?: string; intent?: string; treat?: string }>;
 }) {
   const { id } = await params;
-  const { intent: intentParam } = await searchParams;
+  const { amount: amountParam, intent: intentParam, treat: treatParam } = await searchParams;
   const intentId = String(intentParam ?? "").trim() || null;
+  const queryTreatCount = Number(treatParam);
+  const queryAmountThb = Number(amountParam);
+  const fallbackTreatCount = Number.isInteger(queryTreatCount) && queryTreatCount > 0
+    ? queryTreatCount
+    : null;
+  const fallbackAmountThb = Number.isFinite(queryAmountThb) && queryAmountThb > 0
+    ? queryAmountThb
+    : null;
 
   const supabase = await createClient();
 
@@ -75,8 +83,8 @@ export default async function DonatePage({
       dogPhotoUrl={dogPhotoUrl}
       shelterName={shelter?.name ?? "this shelter"}
       intentId={intent?.id ?? null}
-      treatCount={intent?.treat_count ?? null}
-      amountThb={intent?.amount_thb ?? null}
+      treatCount={intent?.treat_count ?? fallbackTreatCount}
+      amountThb={intent?.amount_thb ?? fallbackAmountThb}
       intentStatus={intent?.status ?? null}
       proofOriginalFileName={intent?.proof_original_file_name ?? null}
       proofSubmittedAt={intent?.proof_submitted_at ?? null}

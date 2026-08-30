@@ -11,7 +11,14 @@ import {
 } from "@/utils/dog-preference-filter";
 import type { SwipeDog } from "@/components/SwipeDogCard";
 import SwipeFeed from "@/components/SwipeFeed";
+import { ANALYTICS_VISITOR_COOKIE } from "@/utils/product-analytics";
 import { shuffleFeedDogs } from "@/utils/swipe-feed-model";
+import {
+  ANONYMOUS_DOG_VIEW_LIMIT,
+  getSubscriptionLimits,
+  subscriptionTierFromAppMetadata,
+  type SubscriptionTier,
+} from "@/utils/subscription-limits";
 import type { Database } from "@/types/database";
 import { hasSupabaseAuthCookies } from "@/utils/supabase/auth-cookies";
 
@@ -165,10 +172,36 @@ async function getDogFeed(preference: PreferenceForDogFilter | null): Promise<Do
   };
 }
 
+function dogViewWindowStartIso() {
+  return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+}
+
+async function countUniqueDogViewsInWindow(
+  admin: ReturnType<typeof createAdminClient>,
+  identity: { userId: string } | { visitorId: string },
+) {
+  let query = admin
+    .from("product_analytics_events")
+    .select("dog_id")
+    .eq("event_name", "dog_feed_impression")
+    .gte("created_at", dogViewWindowStartIso());
+
+  query = "userId" in identity
+    ? query.eq("user_id", identity.userId)
+    : query.eq("visitor_id", identity.visitorId).is("user_id", null);
+
+  const { data } = await query;
+
+  return new Set((data ?? []).map((event) => event.dog_id).filter(Boolean)).size;
+}
+
 export default async function DogFeedPage() {
   let preference: PreferenceForDogFilter | null = null;
   let savedIds: string[] = [];
   let isLoggedIn = false;
+  let subscriptionTier: SubscriptionTier = "free";
+  let dailyDogViewsRemaining: number | null = null;
+  let dogViewLimit: number | null = ANONYMOUS_DOG_VIEW_LIMIT;
   const cookieStore = await cookies();
 
   if (hasSupabaseAuthCookies(cookieStore.getAll())) {
@@ -176,48 +209,64 @@ export default async function DogFeedPage() {
     const { data: { user } } = await supabase.auth.getUser();
 
     isLoggedIn = Boolean(user);
-    if (!user) {
-      const [{ dogs, showingAllBecauseNoMatches }, ads] = await Promise.all([getDogFeed(null), fetchActiveAds()]);
-
-      return (
-        <SwipeFeed
-          dogs={dogs}
-          savedIds={savedIds}
-          isLoggedIn={false}
-          ads={ads}
-          showNoFilterResultsNotice={showingAllBecauseNoMatches}
-        />
-      );
+    if (user) {
+      subscriptionTier = subscriptionTierFromAppMetadata(user.app_metadata);
+      const adopter = await ensureAdopterForUser(supabase, user);
+      const admin = createAdminClient();
+      const [{ data: wishlist }, { data: savedPreference }, dogViewsToday] = await Promise.all([
+        admin
+          .from("wishlists")
+          .select("dog_id")
+          .eq("adopter_id", adopter.id),
+        admin
+          .from("adopter_preferences")
+          .select("*")
+          .eq("adopter_id", adopter.id)
+          .maybeSingle(),
+        countUniqueDogViewsInWindow(admin, { userId: user.id }),
+      ]);
+      savedIds = (wishlist ?? []).map((w) => w.dog_id);
+      preference = hasActiveDogPreference(savedPreference as PreferenceForDogFilter | null)
+        ? savedPreference as PreferenceForDogFilter
+        : null;
+      dogViewLimit = getSubscriptionLimits(subscriptionTier).dogViewLimit;
+      dailyDogViewsRemaining = dogViewLimit === null
+        ? null
+        : Math.max(dogViewLimit - dogViewsToday, 0);
     }
-
-    const adopter = await ensureAdopterForUser(supabase, user);
-    const admin = createAdminClient();
-    const [{ data: wishlist }, { data: savedPreference }] = await Promise.all([
-      admin
-        .from("wishlists")
-        .select("dog_id")
-        .eq("adopter_id", adopter.id),
-      admin
-        .from("adopter_preferences")
-        .select("*")
-        .eq("adopter_id", adopter.id)
-        .maybeSingle(),
-    ]);
-    savedIds = (wishlist ?? []).map((w) => w.dog_id);
-    preference = hasActiveDogPreference(savedPreference as PreferenceForDogFilter | null)
-      ? savedPreference as PreferenceForDogFilter
-      : null;
   }
 
-  const [{ dogs, showingAllBecauseNoMatches }, ads] = await Promise.all([getDogFeed(preference), fetchActiveAds()]);
+  if (!isLoggedIn) {
+    const visitorId = cookieStore.get(ANALYTICS_VISITOR_COOKIE)?.value;
+    if (visitorId) {
+      const dogViewsToday = await countUniqueDogViewsInWindow(createAdminClient(), { visitorId });
+      dailyDogViewsRemaining = Math.max(ANONYMOUS_DOG_VIEW_LIMIT - dogViewsToday, 0);
+    } else {
+      dailyDogViewsRemaining = ANONYMOUS_DOG_VIEW_LIMIT;
+    }
+  }
+
+  const limits = getSubscriptionLimits(subscriptionTier);
+  const [{ dogs, showingAllBecauseNoMatches }, ads] = await Promise.all([
+    getDogFeed(preference),
+    limits.adFree ? Promise.resolve([]) : fetchActiveAds(),
+  ]);
+  const visibleDogs = isLoggedIn && dailyDogViewsRemaining !== null
+    ? dogs.slice(0, dailyDogViewsRemaining)
+    : !isLoggedIn && dailyDogViewsRemaining !== null
+      ? dogs.slice(0, dailyDogViewsRemaining)
+    : dogs;
 
   return (
     <SwipeFeed
-      dogs={dogs}
+      dogs={visibleDogs}
       savedIds={savedIds}
       isLoggedIn={isLoggedIn}
       ads={ads}
+      dailyDogViewLimit={dogViewLimit}
+      dailyDogViewsRemaining={dailyDogViewsRemaining}
       showNoFilterResultsNotice={showingAllBecauseNoMatches}
+      subscriptionTier={subscriptionTier}
     />
   );
 }
