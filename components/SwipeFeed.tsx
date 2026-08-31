@@ -15,7 +15,8 @@ import { buildSwipeFeed, isActiveDogFeedItem } from "@/utils/swipe-feed-model";
 import type { SubscriptionTier } from "@/utils/subscription-limits";
 
 const CARD_W = "min(370px, calc(100vw - 32px))";
-const CARD_H = "min(590px, calc(100dvh - 200px))";
+const FEED_VIEWPORT_HEIGHT = "100svh";
+const CARD_H = "min(590px, calc(100svh - 200px))";
 // Insert one live ad after every N dogs. The server shuffles active ads
 // daily so limited slots rotate fairly when ad inventory is larger.
 const AD_EVERY = 3;
@@ -140,6 +141,50 @@ export default function SwipeFeed({
   }, [showNoFilterResultsNotice]);
 
   useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const previous = {
+      htmlOverflow: html.style.overflow,
+      htmlOverscrollBehaviorY: html.style.overscrollBehaviorY,
+      htmlHeight: html.style.height,
+      bodyOverflow: body.style.overflow,
+      bodyOverscrollBehaviorY: body.style.overscrollBehaviorY,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyLeft: body.style.left,
+      bodyRight: body.style.right,
+      bodyWidth: body.style.width,
+    };
+    const scrollY = window.scrollY;
+
+    window.scrollTo(0, 0);
+    html.style.height = "100%";
+    html.style.overflow = "hidden";
+    html.style.overscrollBehaviorY = "none";
+    body.style.overflow = "hidden";
+    body.style.overscrollBehaviorY = "none";
+    body.style.position = "fixed";
+    body.style.top = "0";
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+
+    return () => {
+      html.style.overflow = previous.htmlOverflow;
+      html.style.overscrollBehaviorY = previous.htmlOverscrollBehaviorY;
+      html.style.height = previous.htmlHeight;
+      body.style.overflow = previous.bodyOverflow;
+      body.style.overscrollBehaviorY = previous.bodyOverscrollBehaviorY;
+      body.style.position = previous.bodyPosition;
+      body.style.top = previous.bodyTop;
+      body.style.left = previous.bodyLeft;
+      body.style.right = previous.bodyRight;
+      body.style.width = previous.bodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
+  useEffect(() => {
     if (dailyDogViewLimit !== null && dailyDogViewsRemaining === 0) {
       setShowDogViewLimit(true);
     }
@@ -196,7 +241,16 @@ export default function SwipeFeed({
   return (
     <div
       className="relative flex flex-col overflow-hidden"
-      style={{ width: 402, maxWidth: "100vw", margin: "0 auto", height: "100dvh", background: "#F5EEDD" }}
+      style={{
+        width: 402,
+        maxWidth: "100vw",
+        margin: "0 auto",
+        height: FEED_VIEWPORT_HEIGHT,
+        minHeight: FEED_VIEWPORT_HEIGHT,
+        maxHeight: FEED_VIEWPORT_HEIGHT,
+        background: "#F5EEDD",
+        overscrollBehavior: "none",
+      }}
     >
       {/* Solid header — push-down, card sits below */}
       <div
@@ -320,12 +374,12 @@ export default function SwipeFeed({
         ref={containerRef}
         onScroll={handleFeedScroll}
         className="flex-1 overflow-y-scroll overflow-x-hidden snap-y snap-mandatory"
-        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
+        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch", overscrollBehaviorY: "contain" }}
       >
         <style>{`.snap-mandatory::-webkit-scrollbar{display:none}`}</style>
 
         {dogs.length === 0 && (
-          <div className="snap-start flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ minHeight: "calc(100dvh - 134px)" }}>
+          <div className="snap-start flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ minHeight: "calc(100svh - 134px)" }}>
             <p className="text-6xl">🐾</p>
             <p className="text-xl font-bold text-[#65584f]">{t("No dogs available yet")}</p>
             <p className="text-sm text-[#65584f]/60">{t("Shelters are getting ready — check back soon!")}</p>
@@ -337,7 +391,7 @@ export default function SwipeFeed({
             <div
               key={item.key}
             className="snap-start flex items-start justify-center px-[16px] pt-[4px]"
-            style={{ minHeight: "calc(100dvh - 114px)", scrollSnapStop: "always" }}
+            style={{ minHeight: "calc(100svh - 114px)", scrollSnapStop: "always" }}
             >
               <AdCard ad={item.ad} cardWidth={CARD_W} cardHeight={CARD_H} />
             </div>
@@ -345,7 +399,7 @@ export default function SwipeFeed({
             <div
               key={item.dog.id}
               className="snap-start flex items-start justify-center px-[16px] pt-[4px]"
-              style={{ minHeight: "calc(100dvh - 114px)", scrollSnapStop: "always" }}
+              style={{ minHeight: "calc(100svh - 114px)", scrollSnapStop: "always" }}
             >
               <SwipeDogCard
                 dog={item.dog}
@@ -363,7 +417,7 @@ export default function SwipeFeed({
         {dogs.length > 0 && (
           <div
             className="snap-start flex flex-col items-center justify-center gap-5 px-6 text-center"
-            style={{ minHeight: "calc(100dvh - 114px)", scrollSnapStop: "always" }}
+            style={{ minHeight: "calc(100svh - 114px)", scrollSnapStop: "always" }}
           >
             <p className="font-['Montserrat',sans-serif] text-[18px] font-semibold text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>{t("You've seen them all!")}</p>
             <p className="text-[14px] text-[#65584f]/60" style={{ fontFamily: "Montserrat, sans-serif" }}>{t("All available dogs are shown above.")}</p>
