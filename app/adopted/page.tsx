@@ -1,38 +1,135 @@
-import Link from "next/link";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
-import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import AdoptedPetPassport, { type AdoptedPetPassportData } from "@/components/adopted/AdoptedPetPassport";
 import { ensureAdopterForUser } from "@/utils/adopter";
+import { canonicalizeBreedLabel } from "@/utils/dog-breeds";
 import { normalizeDogMediaUrl } from "@/utils/dog-media";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
+import type { DogPhoto, DogTrait, Dog, Shelter } from "@/types/database";
 
-const M = "Montserrat, sans-serif";
+type AdoptionAppointment = {
+  appointment_date: string;
+  appointment_time: string | null;
+  dog_id: string | null;
+  id: string;
+  shelter_id: string;
+};
 
-async function getAdoptedDogs(adopterId: string) {
+type DogPhotoPreview = Pick<DogPhoto, "dog_id" | "id" | "is_cover" | "public_url" | "sort_order" | "storage_path">;
+type DogTraitPreview = Pick<DogTrait, "dog_id" | "trait_type" | "trait_value">;
+type ShelterPreview = Pick<Shelter, "district" | "id" | "logo_url" | "name" | "province">;
+
+function pickCoverPhoto(dog: Dog, photos: DogPhotoPreview[]) {
+  const coverPhoto =
+    photos.find((photo) => photo.id === dog.cover_photo_id) ??
+    photos.find((photo) => photo.is_cover) ??
+    [...photos].sort((a, b) => a.sort_order - b.sort_order)[0];
+
+  return coverPhoto ? normalizeDogMediaUrl(coverPhoto.public_url, coverPhoto.storage_path) : null;
+}
+
+async function getAdoptedPets(adopterId: string): Promise<AdoptedPetPassportData[]> {
   const admin = createAdminClient();
-  const { data: appts } = await admin
+  const { data: completedAppointments } = await admin
     .from("appointments")
-    .select("dog_id, appointment_date, status")
+    .select("id, dog_id, shelter_id, appointment_date, appointment_time")
     .eq("adopter_id", adopterId)
     .eq("status", "completed")
-    .not("dog_id", "is", null);
+    .not("dog_id", "is", null)
+    .order("appointment_date", { ascending: false })
+    .order("appointment_time", { ascending: false });
 
-  const dogIds = [...new Set((appts ?? []).map((a) => a.dog_id))] as string[];
+  const appointmentMap = new Map<string, AdoptionAppointment>();
+  for (const appointment of (completedAppointments ?? []) as AdoptionAppointment[]) {
+    if (appointment.dog_id && !appointmentMap.has(appointment.dog_id)) {
+      appointmentMap.set(appointment.dog_id, appointment);
+    }
+  }
+
+  const dogIds = [...appointmentMap.keys()];
   if (dogIds.length === 0) return [];
 
-  const [{ data: dogs }, { data: photos }] = await Promise.all([
-    admin.from("dogs").select("id, name, breed, gender").in("id", dogIds).eq("adoption_status", "adopted"),
-    admin.from("dog_photos").select("dog_id, public_url, storage_path").in("dog_id", dogIds).eq("is_cover", true),
+  const { data: dogs } = await admin
+    .from("dogs")
+    .select("*")
+    .in("id", dogIds)
+    .eq("adoption_status", "adopted");
+
+  const adoptedDogs = (dogs ?? []) as Dog[];
+  if (adoptedDogs.length === 0) return [];
+
+  const adoptedDogIds = adoptedDogs.map((dog) => dog.id);
+  const shelterIds = [...new Set(adoptedDogs.map((dog) => dog.shelter_id))];
+
+  const [{ data: photos }, { data: traits }, { data: shelters }] = await Promise.all([
+    admin
+      .from("dog_photos")
+      .select("id, dog_id, public_url, storage_path, is_cover, sort_order")
+      .in("dog_id", adoptedDogIds)
+      .order("sort_order", { ascending: true }),
+    admin
+      .from("dog_traits")
+      .select("dog_id, trait_type, trait_value")
+      .in("dog_id", adoptedDogIds)
+      .order("created_at", { ascending: true }),
+    shelterIds.length
+      ? admin
+        .from("shelters")
+        .select("id, name, logo_url, district, province")
+        .in("id", shelterIds)
+      : Promise.resolve({ data: [] }),
   ]);
 
-  const coverMap = new Map((photos ?? []).map((p) => [p.dog_id, normalizeDogMediaUrl(p.public_url, p.storage_path)]));
-  return (dogs ?? []).map((d) => ({
-    id: d.id,
-    name: d.name,
-    breed: d.breed,
-    gender: d.gender,
-    coverUrl: coverMap.get(d.id) ?? null,
-  }));
+  const photosByDog = new Map<string, DogPhotoPreview[]>();
+  for (const photo of (photos ?? []) as DogPhotoPreview[]) {
+    const dogPhotos = photosByDog.get(photo.dog_id) ?? [];
+    dogPhotos.push(photo);
+    photosByDog.set(photo.dog_id, dogPhotos);
+  }
+
+  const traitsByDog = new Map<string, DogTraitPreview[]>();
+  for (const trait of (traits ?? []) as DogTraitPreview[]) {
+    const dogTraits = traitsByDog.get(trait.dog_id) ?? [];
+    dogTraits.push(trait);
+    traitsByDog.set(trait.dog_id, dogTraits);
+  }
+
+  const shelterMap = new Map(((shelters ?? []) as ShelterPreview[]).map((shelter) => [shelter.id, shelter]));
+  const dogMap = new Map(adoptedDogs.map((dog) => [dog.id, dog]));
+
+  return dogIds.flatMap((dogId) => {
+    const dog = dogMap.get(dogId);
+    if (!dog) return [];
+
+    const dogTraits = traitsByDog.get(dog.id) ?? [];
+    const shelter = shelterMap.get(dog.shelter_id) ?? null;
+    return [{
+      adoptionDate: appointmentMap.get(dog.id)?.appointment_date ?? null,
+      ageMonths: dog.age_months,
+      breed: canonicalizeBreedLabel(dog.breed),
+      coverUrl: pickCoverPhoto(dog, photosByDog.get(dog.id) ?? []),
+      gender: dog.gender,
+      id: dog.id,
+      medicalTags: dogTraits
+        .filter((trait) => trait.trait_type === "medical_needs")
+        .map((trait) => trait.trait_value),
+      name: dog.name,
+      personalityTags: dogTraits
+        .filter((trait) => trait.trait_type === "personality")
+        .map((trait) => trait.trait_value),
+      shelter: shelter ? {
+        district: shelter.district,
+        id: shelter.id,
+        logoUrl: shelter.logo_url,
+        name: shelter.name,
+        province: shelter.province,
+      } : null,
+      size: dog.size,
+      specialNeeds: dog.special_needs,
+      sterilized: dog.sterilized,
+      weightKg: dog.weight_kg,
+    }];
+  });
 }
 
 export default async function AdoptedPage() {
@@ -49,86 +146,7 @@ export default async function AdoptedPage() {
   }
 
   const adopter = await ensureAdopterForUser(supabase, user);
-  const pets = await getAdoptedDogs(adopter.id);
+  const pets = await getAdoptedPets(adopter.id);
 
-  return (
-    <div
-      className="relative overflow-y-auto"
-      style={{
-        width: "402px",
-        maxWidth: "100vw",
-        margin: "0 auto",
-        minHeight: "100dvh",
-        paddingBottom: "90px",
-        background: "#F5F1E8",
-        fontFamily: M,
-        scrollbarWidth: "none",
-      }}
-    >
-      <style>{`div::-webkit-scrollbar{display:none}`}</style>
-
-      {/* Beige header with logo + title */}
-      <div className="px-[16px] pt-[14px] pb-[24px]" style={{ background: "#d6c8ad" }}>
-        <div className="mb-[18px] flex items-start justify-between">
-          <Link href="/" className="block h-[60px] w-[60px] active:scale-95 transition-transform">
-            <img src="/pawjai-logo.png" alt="PawJai" className="h-full w-full object-contain object-left" />
-          </Link>
-          <LanguageSwitcher className="mt-[4px]" />
-        </div>
-        <h1 className="font-bold text-[34px] text-[#65584f] leading-[1.1]" style={{ fontFamily: M }}>My Adopted Pets</h1>
-        <p className="text-[14px] text-[#65584f]/75 mt-[4px]" style={{ fontFamily: M }}>Chat with your adopted companions</p>
-      </div>
-
-      {pets.length === 0 ? (
-        <div className="flex flex-col items-center justify-center px-[24px] py-[60px] text-center">
-          <div className="w-[88px] h-[88px] rounded-full flex items-center justify-center mb-[20px]" style={{ background: "rgba(205,129,136,0.14)" }}>
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="#cd8188">
-              <path d="M12 21s-7-4.35-9.5-9.5C.5 7 4 3 8 3c2 0 3.5 1 4 2 .5-1 2-2 4-2 4 0 7.5 4 5.5 8.5C19 16.65 12 21 12 21z" />
-            </svg>
-          </div>
-          <p className="text-[20px] font-bold text-[#65584f] mb-[8px]" style={{ fontFamily: M }}>
-            No adopted pets yet
-          </p>
-          <p className="text-[14px] text-[#65584f]/60 mb-[24px] max-w-[300px]" style={{ fontFamily: M }}>
-            Pets you complete an adoption with will show up here, where you can chat with shelters and keep updates flowing.
-          </p>
-          <Link
-            href="/"
-            className="rounded-full px-[32px] py-[14px] text-white text-[15px] font-bold active:scale-95 transition-transform"
-            style={{ background: "#cd8188", fontFamily: M }}
-          >
-            Find a companion
-          </Link>
-        </div>
-      ) : (
-        <div className="px-[16px] pt-[20px] space-y-[14px]">
-          {pets.map((pet) => (
-            <Link
-              key={pet.id}
-              href={`/dogs/${pet.id}`}
-              className="block rounded-[18px] overflow-hidden active:scale-[0.99] transition-transform"
-              style={{ background: "white", boxShadow: "0 2px 12px rgba(101,88,79,0.10)" }}
-            >
-              <div className="flex items-center gap-[14px] p-[14px]">
-                <div className="w-[72px] h-[72px] rounded-[14px] overflow-hidden flex-shrink-0 bg-[#d6c8ad]">
-                  {pet.coverUrl ? (
-                    <img src={pet.coverUrl} alt={pet.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-3xl">🐾</div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[20px] font-bold text-[#65584f] truncate" style={{ fontFamily: M }}>{pet.name}</p>
-                  {pet.breed && (
-                    <p className="text-[13px] text-[#65584f]/65 truncate" style={{ fontFamily: M }}>{pet.breed}</p>
-                  )}
-                </div>
-                <span className="text-[#cd8188] text-[24px] font-bold">›</span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  return <AdoptedPetPassport pets={pets} />;
 }
