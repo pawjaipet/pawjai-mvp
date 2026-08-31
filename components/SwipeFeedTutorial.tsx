@@ -64,7 +64,7 @@ export default function SwipeFeedTutorial({ enabled = true, isLoggedIn }: SwipeF
       <button
         type="button"
         onClick={() => setVisible(false)}
-        className="absolute right-[18px] top-[18px] z-20 flex h-[36px] w-[36px] items-center justify-center rounded-full bg-white/94 text-[#65584f] shadow-[0_8px_24px_rgba(0,0,0,0.2)] backdrop-blur transition-transform active:scale-95"
+        className="absolute right-[18px] top-[18px] z-20 flex h-[36px] w-[36px] items-center justify-center rounded-full bg-white/20 text-white shadow-[0_8px_24px_rgba(0,0,0,0.2)] ring-1 ring-white/30 backdrop-blur transition-transform active:scale-95"
         aria-label={t("Close tutorial")}
       >
         <X size={17} strokeWidth={2.4} />
@@ -73,7 +73,7 @@ export default function SwipeFeedTutorial({ enabled = true, isLoggedIn }: SwipeF
       <div className="absolute left-[24px] right-[24px] top-[126px] z-10 text-center">
         <p
           id="swipe-tutorial-title"
-          className="rounded-[26px] bg-white/94 px-[18px] py-[14px] text-[18px] font-extrabold leading-[1.28] text-[#65584f] shadow-[0_16px_38px_rgba(0,0,0,0.22)] backdrop-blur"
+          className="rounded-[26px] bg-white/20 px-[18px] py-[14px] text-[18px] font-extrabold leading-[1.28] text-white shadow-[0_16px_38px_rgba(0,0,0,0.22)] ring-1 ring-white/30 backdrop-blur"
         >
           {t("Scroll up to view dogs. Swipe left or right to see more photos.")}
         </p>
@@ -91,12 +91,12 @@ export default function SwipeFeedTutorial({ enabled = true, isLoggedIn }: SwipeF
           />
         </div>
 
-        <div className="relative flex h-[96px] w-[168px] items-center justify-center rounded-full bg-white/84 text-[#cd8188] shadow-[0_16px_36px_rgba(101,88,79,0.18)] backdrop-blur">
-          <ArrowLeftRight className="absolute opacity-40" size={76} strokeWidth={1.7} />
+        <div className="relative flex h-[96px] w-[168px] items-center justify-center rounded-full bg-white/20 text-white shadow-[0_16px_36px_rgba(101,88,79,0.18)] ring-1 ring-white/30 backdrop-blur">
+          <ArrowLeftRight className="absolute opacity-70" size={76} strokeWidth={1.7} />
           <Hand
             className="pawjai-gesture-side"
             size={38}
-            stroke="#cd8188"
+            stroke="white"
             strokeWidth={2.4}
             style={{ animation: "pawjai-tutorial-side 1.6s ease-in-out infinite" }}
           />
