@@ -39,6 +39,10 @@ export function normalizeStatus(raw: string | null | undefined): DisplayStatus {
 }
 
 interface Props {
+  adoptionContext: {
+    adoptionDate: string | null;
+    isAdopted: boolean;
+  } | null;
   appointmentId: string;
   bookingId: string;
   initialMessages: AppointmentThreadMessage[];
@@ -198,6 +202,7 @@ function ReturnInquiryThreadCard({
 }
 
 export default function AppointmentDetailClient({
+  adoptionContext,
   appointmentId,
   bookingId,
   dog,
@@ -324,6 +329,7 @@ export default function AppointmentDetailClient({
 
       {tab === "messages" && (
         <MessagesTab
+          adoptionContext={adoptionContext}
           appointmentId={appointmentId}
           dogName={dog?.name ?? "the shelter"}
           initialMessages={initialMessages}
@@ -728,12 +734,14 @@ function StatusBox({ status }: { status: DisplayStatus }) {
 }
 
 function MessagesTab({
+  adoptionContext,
   appointmentId,
   dogName,
   initialMessages,
   messagesUnavailable,
   shelter,
 }: {
+  adoptionContext: Props["adoptionContext"];
   appointmentId: string;
   dogName: string;
   initialMessages: AppointmentThreadMessage[];
@@ -813,6 +821,17 @@ function MessagesTab({
   }, [appointmentId, messagesUnavailable, router]);
 
   const chatMessages = [
+    ...(adoptionContext?.isAdopted
+      ? [
+          {
+            body: `Adoption completed for ${dogName}${adoptionContext.adoptionDate ? ` on ${adoptionContext.adoptionDate}` : ""}. This thread is now the care and shelter support chat for this adopted pet.`,
+            createdAt: adoptionContext.adoptionDate ? `${adoptionContext.adoptionDate}T00:00:00.000Z` : new Date().toISOString(),
+            id: "system-adoption-completed",
+            senderLabel: "PawJai",
+            senderRole: "system" as const,
+          },
+        ]
+      : []),
     ...(initialMessages.length > 0
       ? initialMessages
       : [

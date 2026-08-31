@@ -3,13 +3,18 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
   BadgeCheck,
+  Bell,
   CalendarClock,
   ChevronRight,
+  ClipboardList,
   FileText,
   HeartPulse,
   Home,
+  MessageCircle,
   PawPrint,
+  Pill,
   ShieldCheck,
   Stethoscope,
   Syringe,
@@ -27,12 +32,35 @@ const TAN = "#e6dcc4";
 export type AdoptedPetPassportData = {
   adoptionDate: string | null;
   ageMonths: number | null;
+  allergies: string | null;
   breed: string | null;
+  careTimeline: Array<{
+    createdAt: string;
+    description: string | null;
+    eventDate: string | null;
+    eventType: string;
+    id: string;
+    title: string;
+  }>;
   coverUrl: string | null;
+  documents: Array<{
+    documentType: string;
+    fileUrl: string | null;
+    id: string;
+    storagePath: string | null;
+    title: string;
+    uploadedAt: string;
+  }>;
   gender: string;
   id: string;
+  lastUpdatedAt: string | null;
+  lastVetCheckDate: string | null;
+  medicalNotes: string | null;
   medicalTags: string[];
+  medications: string | null;
+  messageHref: string | null;
   name: string;
+  nextVetCheckDueDate: string | null;
   personalityTags: string[];
   shelter: {
     district: string | null;
@@ -42,8 +70,20 @@ export type AdoptedPetPassportData = {
     province: string | null;
   } | null;
   size: string | null;
+  specialNeedsNotes: string | null;
   specialNeeds: string | null;
   sterilized: boolean;
+  vaccinationStatus: "unknown" | "not_started" | "partial" | "up_to_date" | "overdue";
+  vaccinations: Array<{
+    administeredOn: string | null;
+    dueOn: string | null;
+    id: string;
+    notes: string | null;
+    providerName: string | null;
+    updatedAt: string;
+    vaccineName: string;
+    verificationStatus: "verified" | "pending" | "unknown";
+  }>;
   weightKg: number | null;
 };
 
@@ -68,6 +108,47 @@ function formatDate(value: string | null, locale: "en" | "th") {
 
 function cleanValue(value: string | null | undefined) {
   return value?.replace(/_/g, " ").trim() || "Not recorded yet";
+}
+
+function displayDocumentType(value: string) {
+  return cleanValue(value).replace("proof", "proof").replace("record", "record");
+}
+
+function isOverdue(value: string | null) {
+  if (!value) return false;
+  const due = new Date(`${value}T00:00:00`).getTime();
+  return !Number.isNaN(due) && due < Date.now();
+}
+
+function isDueSoon(value: string | null) {
+  if (!value || isOverdue(value)) return false;
+  const due = new Date(`${value}T00:00:00`).getTime();
+  return !Number.isNaN(due) && due - Date.now() <= 1000 * 60 * 60 * 24 * 30;
+}
+
+function careStatusTone(status: string, dueDate?: string | null) {
+  if (isOverdue(dueDate ?? null) || status === "overdue") {
+    return { bg: "rgba(179,86,94,0.13)", color: "#9b3e48", label: "Overdue" };
+  }
+  if (isDueSoon(dueDate ?? null) || status === "pending" || status === "partial") {
+    return { bg: "rgba(217,164,77,0.16)", color: "#9a6b2a", label: status === "partial" ? "Partial" : "Due soon" };
+  }
+  if (status === "verified" || status === "up_to_date") {
+    return { bg: "rgba(68,139,85,0.13)", color: "#3f7d34", label: status === "verified" ? "Verified" : "Up to date" };
+  }
+  return { bg: "rgba(78,122,174,0.12)", color: "#3f6598", label: "Info" };
+}
+
+function CareStatusChip({ dueDate, status }: { dueDate?: string | null; status: string }) {
+  const tone = careStatusTone(status, dueDate);
+  return (
+    <span
+      className="shrink-0 rounded-full px-[10px] py-[5px] text-[11px] font-extrabold"
+      style={{ background: tone.bg, color: tone.color, fontFamily: M }}
+    >
+      <MachineTranslatedText text={tone.label} />
+    </span>
+  );
 }
 
 function Section({
@@ -270,6 +351,190 @@ function InsurancePlan({ label, price, recommended = false }: { label: string; p
   );
 }
 
+function DetailNote({
+  icon,
+  title,
+  value,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  value: string | null;
+}) {
+  return (
+    <div className="rounded-[18px] px-[14px] py-[13px]" style={{ background: "#F5F1E8" }}>
+      <div className="flex items-center gap-[8px]">
+        <span className="text-[#cd8188]">{icon}</span>
+        <p className="text-[12px] font-extrabold text-[#cd8188]" style={{ fontFamily: M }}>
+          <MachineTranslatedText text={title} />
+        </p>
+      </div>
+      <MachineTranslatedText
+        as="p"
+        text={value?.trim() || "Not recorded yet"}
+        className="mt-[7px] text-[13px] leading-[1.5] text-[#65584f]/70"
+        style={{ fontFamily: M }}
+      />
+    </div>
+  );
+}
+
+function VaccinationRows({
+  records,
+  locale,
+}: {
+  records: AdoptedPetPassportData["vaccinations"];
+  locale: "en" | "th";
+}) {
+  if (records.length === 0) {
+    return (
+      <div className="rounded-[18px] bg-[#F5F1E8] px-[14px] py-[14px]">
+        <p className="text-[14px] font-extrabold text-[#65584f]" style={{ fontFamily: M }}>
+          <MachineTranslatedText text="No vaccination records yet" />
+        </p>
+        <p className="mt-[4px] text-[12px] leading-[1.45] text-[#65584f]/58" style={{ fontFamily: M }}>
+          <MachineTranslatedText text="Ask the shelter to add vaccine history here so your vet has one clean view." />
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-[10px]">
+      {records.map((record) => (
+        <div key={record.id} className="rounded-[18px] bg-[#F5F1E8] px-[14px] py-[13px]">
+          <div className="flex items-start justify-between gap-[12px]">
+            <div className="min-w-0">
+              <p className="text-[14px] font-extrabold text-[#65584f]" style={{ fontFamily: M }}>
+                <MachineTranslatedText text={record.vaccineName} />
+              </p>
+              <p className="mt-[3px] text-[12px] text-[#65584f]/58" style={{ fontFamily: M }}>
+                <MachineTranslatedText text="Given" />: {formatDate(record.administeredOn, locale)}
+              </p>
+              <p className="mt-[2px] text-[12px] text-[#65584f]/58" style={{ fontFamily: M }}>
+                <MachineTranslatedText text="Next due" />: {formatDate(record.dueOn, locale)}
+              </p>
+            </div>
+            <CareStatusChip dueDate={record.dueOn} status={record.verificationStatus} />
+          </div>
+          {(record.providerName || record.notes) && (
+            <p className="mt-[8px] text-[12px] leading-[1.45] text-[#65584f]/62" style={{ fontFamily: M }}>
+              <MachineTranslatedText text={[record.providerName, record.notes].filter(Boolean).join(" · ")} />
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DocumentRows({ documents, locale }: { documents: AdoptedPetPassportData["documents"]; locale: "en" | "th" }) {
+  if (documents.length === 0) {
+    return (
+      <div className="rounded-[18px] bg-[#F5F1E8] px-[14px] py-[14px]">
+        <p className="text-[14px] font-extrabold text-[#65584f]" style={{ fontFamily: M }}>
+          <MachineTranslatedText text="No care documents yet" />
+        </p>
+        <p className="mt-[4px] text-[12px] leading-[1.45] text-[#65584f]/58" style={{ fontFamily: M }}>
+          <MachineTranslatedText text="Adoption forms, vaccine books, and medical files will appear here once uploaded." />
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-[10px]">
+      {documents.map((document) => {
+        const content = (
+          <>
+            <div className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full bg-white text-[#cd8188]">
+              <FileText size={20} strokeWidth={2.2} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[14px] font-extrabold text-[#65584f]" style={{ fontFamily: M }}>
+                <MachineTranslatedText text={document.title} />
+              </p>
+              <p className="mt-[3px] text-[12px] text-[#65584f]/58" style={{ fontFamily: M }}>
+                <MachineTranslatedText text={displayDocumentType(document.documentType)} /> · {formatDate(document.uploadedAt.slice(0, 10), locale)}
+              </p>
+            </div>
+          </>
+        );
+
+        if (document.fileUrl) {
+          return (
+            <a
+              key={document.id}
+              href={document.fileUrl}
+              rel="noreferrer"
+              target="_blank"
+              className="flex items-center gap-[12px] rounded-[18px] bg-[#F5F1E8] px-[14px] py-[13px] active:scale-[0.99]"
+            >
+              {content}
+              <ChevronRight size={18} stroke={PINK} strokeWidth={2.4} />
+            </a>
+          );
+        }
+
+        return (
+          <div key={document.id} className="flex items-center gap-[12px] rounded-[18px] bg-[#F5F1E8] px-[14px] py-[13px]">
+            {content}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ReminderRows({ pet, locale }: { pet: AdoptedPetPassportData; locale: "en" | "th" }) {
+  const reminders = [
+    pet.nextVetCheckDueDate
+      ? { status: "pending", title: "Next vet check", detail: formatDate(pet.nextVetCheckDueDate, locale), dueDate: pet.nextVetCheckDueDate }
+      : null,
+    pet.vaccinations.find((record) => record.dueOn)
+      ? {
+          status: pet.vaccinationStatus,
+          title: "Next vaccine due",
+          detail: formatDate(pet.vaccinations.find((record) => record.dueOn)?.dueOn ?? null, locale),
+          dueDate: pet.vaccinations.find((record) => record.dueOn)?.dueOn ?? null,
+        }
+      : null,
+    pet.medications
+      ? { status: "pending", title: "Medication reminder", detail: pet.medications, dueDate: null }
+      : null,
+  ].filter((item): item is { detail: string; dueDate: string | null; status: string; title: string } => Boolean(item));
+
+  if (reminders.length === 0) {
+    return (
+      <div className="rounded-[18px] bg-[#F5F1E8] px-[14px] py-[14px]">
+        <p className="text-[14px] font-extrabold text-[#65584f]" style={{ fontFamily: M }}>
+          <MachineTranslatedText text="No reminders yet" />
+        </p>
+        <p className="mt-[4px] text-[12px] leading-[1.45] text-[#65584f]/58" style={{ fontFamily: M }}>
+          <MachineTranslatedText text="Vaccine dates, vet checks, and medication reminders will appear when the shelter adds them." />
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-[10px]">
+      {reminders.map((reminder) => (
+        <div key={reminder.title} className="flex items-center justify-between gap-[12px] rounded-[18px] bg-[#F5F1E8] px-[14px] py-[13px]">
+          <div className="min-w-0">
+            <p className="text-[14px] font-extrabold text-[#65584f]" style={{ fontFamily: M }}>
+              <MachineTranslatedText text={reminder.title} />
+            </p>
+            <p className="mt-[3px] text-[12px] leading-[1.4] text-[#65584f]/58" style={{ fontFamily: M }}>
+              <MachineTranslatedText text={reminder.detail} />
+            </p>
+          </div>
+          <CareStatusChip dueDate={reminder.dueDate} status={reminder.status} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AdoptedPetPassport({ pets }: { pets: AdoptedPetPassportData[] }) {
   const { language } = useLanguage();
   const [activePetId, setActivePetId] = useState(pets[0]?.id ?? "");
@@ -343,6 +608,8 @@ export default function AdoptedPetPassport({ pets }: { pets: AdoptedPetPassportD
             <div className="grid grid-cols-2 gap-[10px] p-[16px]">
               <StatCard label="Adoption date" value={formatDate(activePet.adoptionDate, language)} />
               <StatCard ignoreValue={Boolean(activePet.shelter?.name)} label="Shelter" value={activePet.shelter?.name ?? "Not recorded yet"} />
+              <StatCard label="Last updated" value={formatDate(activePet.lastUpdatedAt?.slice(0, 10) ?? null, language)} />
+              <StatCard label="Vet card" value="Ready to show" />
             </div>
           </section>
 
@@ -354,17 +621,25 @@ export default function AdoptedPetPassport({ pets }: { pets: AdoptedPetPassportD
               <StatCard label="Weight" value={activePet.weightKg ? `${activePet.weightKg} Kg` : "Not recorded yet"} />
               <StatCard label="Breed" value={activePet.breed || "Breed not set"} />
               <StatCard label="Sterilized" value={activePet.sterilized ? "Yes" : "No"} />
+              <StatCard label="Vaccines" value={cleanValue(activePet.vaccinationStatus)} />
+              <StatCard label="Last vet check" value={formatDate(activePet.lastVetCheckDate, language)} />
             </div>
 
-            <div className="mt-[14px] rounded-[18px] px-[15px] py-[14px]" style={{ background: "rgba(205,129,136,0.10)" }}>
-              <p className="text-[12px] font-extrabold text-[#cd8188]" style={{ fontFamily: M }}>
-                <MachineTranslatedText text="Special needs / medical notes" />
-              </p>
-              <MachineTranslatedText
-                as="p"
-                text={activePet.specialNeeds?.trim() || "None"}
-                className="mt-[5px] text-[14px] leading-[1.55] text-[#65584f]/72"
-                style={{ fontFamily: M }}
+            <div className="mt-[14px] grid gap-[10px]">
+              <DetailNote
+                icon={<HeartPulse size={17} strokeWidth={2.3} />}
+                title="Medical notes"
+                value={activePet.medicalNotes}
+              />
+              <DetailNote
+                icon={<AlertTriangle size={17} strokeWidth={2.3} />}
+                title="Special needs"
+                value={activePet.specialNeedsNotes || activePet.specialNeeds || "None"}
+              />
+              <DetailNote
+                icon={<Pill size={17} strokeWidth={2.3} />}
+                title="Allergies / medication"
+                value={[activePet.allergies, activePet.medications].filter(Boolean).join(" · ") || null}
               />
             </div>
 
@@ -382,32 +657,14 @@ export default function AdoptedPetPassport({ pets }: { pets: AdoptedPetPassportD
           </Section>
 
           <Section icon={<Syringe size={21} strokeWidth={2.3} />} title="Vaccination & Documents">
-            <div className="space-y-[10px]">
-              <div className="flex items-center justify-between gap-[14px] rounded-[18px] bg-[#F5F1E8] px-[14px] py-[13px]">
-                <div className="min-w-0">
-                  <p className="text-[14px] font-extrabold text-[#65584f]" style={{ fontFamily: M }}>
-                    <MachineTranslatedText text="Vaccination history" />
-                  </p>
-                  <p className="mt-[3px] text-[12px] text-[#65584f]/58" style={{ fontFamily: M }}>
-                    <MachineTranslatedText text="Not recorded yet" />
-                  </p>
-                </div>
-                <span className="rounded-full bg-white px-[10px] py-[5px] text-[11px] font-bold text-[#cd8188]" style={{ fontFamily: M }}>
-                  <MachineTranslatedText text="Coming soon" />
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-[14px] rounded-[18px] bg-[#F5F1E8] px-[14px] py-[13px]">
-                <div className="min-w-0">
-                  <p className="text-[14px] font-extrabold text-[#65584f]" style={{ fontFamily: M }}>
-                    <MachineTranslatedText text="Adoption documents" />
-                  </p>
-                  <p className="mt-[3px] text-[12px] text-[#65584f]/58" style={{ fontFamily: M }}>
-                    <MachineTranslatedText text="Documents coming soon" />
-                  </p>
-                </div>
-                <FileText size={22} stroke={PINK} strokeWidth={2.2} />
-              </div>
-            </div>
+            <p className="mb-[10px] text-[13px] font-extrabold text-[#65584f]" style={{ fontFamily: M }}>
+              <MachineTranslatedText text="Vaccination records" />
+            </p>
+            <VaccinationRows records={activePet.vaccinations} locale={language} />
+            <p className="mb-[10px] mt-[16px] text-[13px] font-extrabold text-[#65584f]" style={{ fontFamily: M }}>
+              <MachineTranslatedText text="Care documents" />
+            </p>
+            <DocumentRows documents={activePet.documents} locale={language} />
           </Section>
 
           <Section icon={<HeartPulse size={21} strokeWidth={2.3} />} title="Insurance">
@@ -435,24 +692,48 @@ export default function AdoptedPetPassport({ pets }: { pets: AdoptedPetPassportD
             </button>
           </Section>
 
-          <Section icon={<CalendarClock size={21} strokeWidth={2.3} />} title="Care Timeline / Reminders">
+          <Section icon={<ClipboardList size={21} strokeWidth={2.3} />} title="Care Notes / Vet Notes">
+            {activePet.careTimeline.length > 0 ? (
+              activePet.careTimeline.map((event, index) => (
+                <TimelineItem
+                  key={event.id}
+                  active={index === 0}
+                  title={event.title}
+                  detail={[
+                    cleanValue(event.eventType),
+                    formatDate(event.eventDate ?? event.createdAt.slice(0, 10), language),
+                    event.description,
+                  ].filter(Boolean).join(" · ")}
+                />
+              ))
+            ) : (
+              <div className="rounded-[18px] bg-[#F5F1E8] px-[14px] py-[14px]">
+                <p className="text-[14px] font-extrabold text-[#65584f]" style={{ fontFamily: M }}>
+                  <MachineTranslatedText text="No care notes yet" />
+                </p>
+                <p className="mt-[4px] text-[12px] leading-[1.45] text-[#65584f]/58" style={{ fontFamily: M }}>
+                  <MachineTranslatedText text="Shelter notes, vet updates, and care history will appear here." />
+                </p>
+              </div>
+            )}
+          </Section>
+
+          <Section icon={<Bell size={21} strokeWidth={2.3} />} title="Reminders">
+            <ReminderRows pet={activePet} locale={language} />
+          </Section>
+
+          <Section icon={<CalendarClock size={21} strokeWidth={2.3} />} title="Care Timeline">
             <TimelineItem
               active
               title="Adoption completed"
               detail={formatDate(activePet.adoptionDate, language)}
             />
-            <TimelineItem
-              title="First vet check reminder"
-              detail="Not recorded yet"
-            />
-            <TimelineItem
-              title="Vaccine reminder"
-              detail="Coming soon"
-            />
-            <TimelineItem
-              title="Insurance reminder"
-              detail="Coming soon"
-            />
+            {activePet.lastVetCheckDate && (
+              <TimelineItem title="Last vet check" detail={formatDate(activePet.lastVetCheckDate, language)} />
+            )}
+            {activePet.nextVetCheckDueDate && (
+              <TimelineItem title="Next vet check" detail={formatDate(activePet.nextVetCheckDueDate, language)} />
+            )}
           </Section>
 
           <Section icon={<Home size={21} strokeWidth={2.3} />} kicker="Shelter origin" title="Adopted from">
@@ -488,6 +769,17 @@ export default function AdoptedPetPassport({ pets }: { pets: AdoptedPetPassportD
               </div>
             </div>
           </Section>
+
+          {activePet.messageHref ? (
+            <Link
+              href={activePet.messageHref}
+              className="flex items-center justify-center gap-[10px] rounded-full px-[24px] py-[15px] text-[15px] font-extrabold text-white active:scale-[0.98]"
+              style={{ background: PINK, boxShadow: "0 12px 28px rgba(205,129,136,0.32)", fontFamily: M }}
+            >
+              <MessageCircle size={19} strokeWidth={2.4} />
+              <MachineTranslatedText text="Message Shelter" />
+            </Link>
+          ) : null}
         </main>
       ) : (
         <EmptyState />

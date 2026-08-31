@@ -13,6 +13,10 @@ import { requireAdminWorkspace, requireShelterAccess } from "@/utils/admin-auth"
 import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { canonicalizeBreedLabel, isCanonicalDogBreed } from "@/utils/dog-breeds";
 import { buildDogMediaItems, parseDogMediaManifest } from "@/utils/dog-media";
+import {
+  linkDogCarePassportToAdopter,
+  saveDogCarePassportFromForm,
+} from "@/utils/dog-care-passport-actions";
 import { dedupePersonalityTags, personalityTagKey } from "@/utils/personality-tags";
 import { getShelterPortalTarget } from "@/utils/shelter-portal";
 import { slugify } from "@/utils/slug";
@@ -476,6 +480,26 @@ function getUniqueSubmittedOrder(values: string[]) {
   return order;
 }
 
+async function findLatestAdoptionAdopterId({
+  dogId,
+  supabase,
+}: {
+  dogId: string;
+  supabase: SupabaseAdminClient;
+}) {
+  const { data } = await supabase
+    .from("appointments")
+    .select("adopter_id")
+    .eq("dog_id", dogId)
+    .eq("status", "completed")
+    .order("appointment_date", { ascending: false })
+    .order("appointment_time", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data?.adopter_id ?? null;
+}
+
 async function updateDogMediaOrder({
   coverMediaId,
   dogId,
@@ -729,9 +753,13 @@ export async function updateDogProfileAction(
         : null);
   const careTags = getStringValues(formData, "care_tag").filter((tag) => tag !== "No medical needs");
   const specialNeeds = getOptionalString(formData, "special_needs") ?? (careTags.length > 0 ? careTags.join(", ") : null);
+  const adoptionStatus = getEnumValue(formData, "adoption_status", DOG_ADOPTION_STATUSES, "draft") ?? "draft";
+  const adoptedAdopterId = adoptionStatus === "adopted"
+    ? await findLatestAdoptionAdopterId({ dogId, supabase })
+    : null;
 
   const dogPayload: DogUpdate = {
-    adoption_status: getEnumValue(formData, "adoption_status", DOG_ADOPTION_STATUSES, "draft") ?? "draft",
+    adoption_status: adoptionStatus,
     age_months: ageMonths,
     animal_friendly: getBoolean(formData, "animal_friendly"),
     background: getOptionalString(formData, "background"),
@@ -840,6 +868,34 @@ export async function updateDogProfileAction(
     return {
       message: `Profile details were updated, but saving photo/video order failed: ${
         error instanceof Error ? error.message : "Unknown media order error"
+      }`,
+      status: "error",
+    };
+  }
+
+  try {
+    await saveDogCarePassportFromForm({
+      actorProfileId: adminContext.userId,
+      adopterId: adoptedAdopterId,
+      dogId,
+      formData,
+      shelterId,
+      supabase,
+    });
+
+    if (adoptedAdopterId) {
+      await linkDogCarePassportToAdopter({
+        actorProfileId: adminContext.userId,
+        adopterId: adoptedAdopterId,
+        dogId,
+        shelterId,
+        supabase,
+      });
+    }
+  } catch (error) {
+    return {
+      message: `Profile details were updated, but saving care passport details failed: ${
+        error instanceof Error ? error.message : "Unknown care passport error"
       }`,
       status: "error",
     };

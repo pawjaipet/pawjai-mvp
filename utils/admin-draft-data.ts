@@ -11,6 +11,16 @@ import {
   loadAppointmentMessageThreads,
   type AppointmentMessageThread,
 } from "@/utils/message-threads";
+import type {
+  DogCareDocument,
+  DogCareRecord,
+  DogCareTimelineEvent,
+  DogVaccinationRecord,
+} from "@/types/database";
+import {
+  buildDogCareCompleteness,
+  formatDogVaccinationStatus,
+} from "@/utils/dog-care-passport";
 
 export type AdminDraftShelter = {
   address: string;
@@ -68,6 +78,12 @@ export type AdminDraftDog = {
   adoptedByName: string | null;
   adoptedByPhoneNumber: string | null;
   breed: string | null;
+  careCompletenessPercent?: number;
+  careDocumentCount?: number;
+  careMissingCount?: number;
+  careMissingSummary?: string | null;
+  careUpdatedAt?: string | null;
+  careVaccinationRecordCount?: number;
   coverUrl: string | null;
   createdAt: string;
   energyLevel: string | null;
@@ -80,6 +96,7 @@ export type AdminDraftDog = {
   size: string | null;
   status: string;
   updatedAt: string;
+  vaccinationStatusLabel?: string | null;
 };
 
 export type AdminDraftBooking = {
@@ -230,6 +247,38 @@ function countJsonArray(value: unknown) {
   return Array.isArray(value) ? value.length : 0;
 }
 
+function isMissingOptionalCareTable(error: { code?: string; message?: string } | null | undefined) {
+  const message = (error?.message ?? "").toLowerCase();
+  return error?.code === "42P01"
+    || error?.code === "PGRST205"
+    || message.includes("schema cache")
+    || message.includes("could not find")
+    || message.includes("does not exist")
+    || message.includes("relation");
+}
+
+function logOptionalCareTableError(label: string, error: { code?: string; message?: string } | null | undefined) {
+  if (error && !isMissingOptionalCareTable(error)) {
+    console.error(`${label} failed to load`, error);
+  }
+}
+
+function groupRowsByDog<T extends { dog_id: string }>(rows: T[]) {
+  const grouped = new Map<string, T[]>();
+  for (const row of rows) {
+    const dogRows = grouped.get(row.dog_id) ?? [];
+    dogRows.push(row);
+    grouped.set(row.dog_id, dogRows);
+  }
+  return grouped;
+}
+
+function latestTimestamp(values: Array<string | null | undefined>) {
+  return values
+    .filter((value): value is string => Boolean(value))
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
+}
+
 export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}): Promise<AdminDraftData> {
   let supabase: ReturnType<typeof createAdminClient>;
 
@@ -239,7 +288,24 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     return fallbackData(error instanceof Error ? error.message : "Supabase admin client is unavailable.");
   }
 
-  const [sheltersResult, dogsResult, dogPhotosResult, bookingsResult, donationsResult, messageThreadsResult, adsResult, adClicksResult, aboutResult, availabilityResult, regularHoursResult, adCreativeSettingsResult] = await Promise.all([
+  const [
+    sheltersResult,
+    dogsResult,
+    dogPhotosResult,
+    bookingsResult,
+    donationsResult,
+    messageThreadsResult,
+    adsResult,
+    adClicksResult,
+    aboutResult,
+    availabilityResult,
+    regularHoursResult,
+    adCreativeSettingsResult,
+    careRecordsResult,
+    careVaccinationsResult,
+    careDocumentsResult,
+    careTimelineResult,
+  ] = await Promise.all([
     supabase
       .from("shelters")
       .select("id,name,phone_number,email,address_line,subdistrict,district,province,postal_code,description,website_url,facebook_url,instagram_url,logo_url,google_maps_url,meeting_instructions,promptpay_id,bank_name,bank_account_number,bank_account_name")
@@ -293,6 +359,22 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
       .select("value")
       .eq("key", "ads_creative_specs")
       .maybeSingle(),
+    supabase
+      .from("dog_care_records")
+      .select("*")
+      .limit(500),
+    supabase
+      .from("dog_vaccination_records")
+      .select("*")
+      .limit(1000),
+    supabase
+      .from("dog_care_documents")
+      .select("*")
+      .limit(1000),
+    supabase
+      .from("dog_care_timeline_events")
+      .select("*")
+      .limit(1000),
   ]);
 
   const firstError = sheltersResult.error ?? dogsResult.error ?? dogPhotosResult.error ?? bookingsResult.error ?? donationsResult.error ?? adsResult.error ?? aboutResult.error;
@@ -332,6 +414,22 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
   ));
   const rawRegularHours = (regularHoursResult.error ? [] : regularHoursResult.data ?? []).filter((hours) => (
     shouldScopeShelters ? returnedShelterIds.has(hours.shelter_id) : true
+  ));
+  logOptionalCareTableError("Dog care records", careRecordsResult.error);
+  logOptionalCareTableError("Dog vaccination records", careVaccinationsResult.error);
+  logOptionalCareTableError("Dog care documents", careDocumentsResult.error);
+  logOptionalCareTableError("Dog care timeline events", careTimelineResult.error);
+  const rawCareRecords = ((careRecordsResult.error ? [] : careRecordsResult.data ?? []) as DogCareRecord[]).filter((record) => (
+    visibleDogIds.has(record.dog_id)
+  ));
+  const rawCareVaccinations = ((careVaccinationsResult.error ? [] : careVaccinationsResult.data ?? []) as DogVaccinationRecord[]).filter((record) => (
+    visibleDogIds.has(record.dog_id)
+  ));
+  const rawCareDocuments = ((careDocumentsResult.error ? [] : careDocumentsResult.data ?? []) as DogCareDocument[]).filter((document) => (
+    visibleDogIds.has(document.dog_id)
+  ));
+  const rawCareTimeline = ((careTimelineResult.error ? [] : careTimelineResult.data ?? []) as DogCareTimelineEvent[]).filter((event) => (
+    visibleDogIds.has(event.dog_id)
   ));
   const bookingAdopterIds = [...new Set(rawBookings.map((booking) => booking.adopter_id).filter(Boolean))];
   const donationProfileIds = [...new Set(rawDonations.map((donation) => donation.user_id).filter(Boolean))];
@@ -381,6 +479,10 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
   const messagesByShelter = new Map<string, number>();
   const availabilityByShelter = new Map<string, AdminDraftShelterAvailability[]>();
   const regularHoursByShelter = new Map<string, AdminDraftShelterRegularHours[]>();
+  const careRecordByDog = new Map(rawCareRecords.map((record) => [record.dog_id, record]));
+  const careVaccinationsByDog = groupRowsByDog(rawCareVaccinations);
+  const careDocumentsByDog = groupRowsByDog(rawCareDocuments);
+  const careTimelineByDog = groupRowsByDog(rawCareTimeline);
   const adoptedBookingsByDog = new Map<string, {
     adoptedAt: string;
     adopterEmail: string | null;
@@ -586,6 +688,16 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     dogs: rawDogs.map((dog) => {
       const photoSummary = photoSummaryByDog.get(dog.id) ?? { coverUrl: null, photosCount: 0 };
       const adoptedBooking = adoptedBookingsByDog.get(dog.id) ?? null;
+      const careRecord = careRecordByDog.get(dog.id) ?? null;
+      const careVaccinations = careVaccinationsByDog.get(dog.id) ?? [];
+      const careDocuments = careDocumentsByDog.get(dog.id) ?? [];
+      const careTimeline = careTimelineByDog.get(dog.id) ?? [];
+      const careCompleteness = buildDogCareCompleteness({
+        careRecord,
+        documents: careDocuments,
+        timelineEvents: careTimeline,
+        vaccinations: careVaccinations,
+      });
 
       return {
         adoptedAppointmentId: adoptedBooking?.appointmentId ?? null,
@@ -595,6 +707,17 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
         adoptedByName: adoptedBooking?.adopterName ?? null,
         adoptedByPhoneNumber: adoptedBooking?.adopterPhoneNumber ?? null,
         breed: dog.breed,
+        careCompletenessPercent: careCompleteness.percent,
+        careDocumentCount: careDocuments.length,
+        careMissingCount: careCompleteness.missing.length,
+        careMissingSummary: careCompleteness.missing.slice(0, 3).join(", ") || null,
+        careUpdatedAt: latestTimestamp([
+          careRecord?.updated_at,
+          ...careVaccinations.map((record) => record.updated_at),
+          ...careDocuments.map((document) => document.uploaded_at),
+          ...careTimeline.map((event) => event.created_at),
+        ]),
+        careVaccinationRecordCount: careVaccinations.length,
         coverUrl: photoSummary.coverUrl,
         createdAt: dog.created_at,
         energyLevel: dog.energy_level,
@@ -607,6 +730,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
         size: dog.size,
         status: dog.adoption_status,
         updatedAt: dog.updated_at,
+        vaccinationStatusLabel: formatDogVaccinationStatus(careRecord?.vaccination_status),
       };
     }),
     error: null,

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Save } from "lucide-react";
+import DogCarePassportFields from "@/components/admin/DogCarePassportFields";
 import DogBreedPicker from "@/components/dogs/DogBreedPicker";
 import PersonalityTagPicker from "@/components/dogs/PersonalityTagPicker";
 import { createDogListingAction } from "./actions";
@@ -697,6 +698,8 @@ export default function DogListingForm({
           </div>
         </div>
       </Section>
+
+      <DogCarePassportFields mode="create" />
 
       <Section
         title="Photos and videos"

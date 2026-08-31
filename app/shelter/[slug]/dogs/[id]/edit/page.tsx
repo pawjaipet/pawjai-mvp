@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
 import { getAdminAuthContext } from "@/utils/admin-auth";
+import { loadDogCarePassportForDog } from "@/utils/dog-care-passport-queries";
 import { mergePersonalityTags } from "@/utils/personality-tags";
 import { getShelterByPortalSlug, getShelterPortalTarget } from "@/utils/shelter-portal";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -29,7 +30,14 @@ export default async function ShelterEditDogPage({
   }
 
   const supabase = createAdminClient();
-  const [{ data: dog }, { data: shelters }, { data: photos }, { data: traits }, { data: personalityTraitRows }] = await Promise.all([
+  const [
+    { data: dog },
+    { data: shelters },
+    { data: photos },
+    { data: traits },
+    { data: personalityTraitRows },
+    carePassport,
+  ] = await Promise.all([
     supabase.from("dogs").select("*").eq("id", id).single(),
     supabase.from("shelters").select("id, name").eq("id", shelter.id).order("name", { ascending: true }),
     supabase.from("dog_photos").select("*").eq("dog_id", id).order("sort_order"),
@@ -39,6 +47,7 @@ export default async function ShelterEditDogPage({
       .select("trait_value")
       .eq("trait_type", "personality")
       .order("trait_value", { ascending: true }),
+    loadDogCarePassportForDog(supabase, id),
   ]);
 
   if (!dog) notFound();
@@ -75,6 +84,9 @@ export default async function ShelterEditDogPage({
       title={`Edit ${dog.name}`}
     >
       <DogEditForm
+        careDocuments={carePassport.documents}
+        careRecord={carePassport.careRecord}
+        careTimelineEvents={carePassport.timelineEvents}
         deleteReturnTo={shelterListingsHref}
         dog={dog}
         personalityTags={mergePersonalityTags(
@@ -84,6 +96,7 @@ export default async function ShelterEditDogPage({
         returnTo={shelterListingsHref}
         shelters={shelters ?? []}
         traits={traits ?? []}
+        vaccinations={carePassport.vaccinations}
       />
     </PawjaiWorkspaceShell>
   );

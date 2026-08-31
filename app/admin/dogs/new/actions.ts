@@ -17,6 +17,7 @@ import { uploadBufferToBackblaze } from "@/utils/backblaze";
 import { canonicalizeBreedLabel, isCanonicalDogBreed } from "@/utils/dog-breeds";
 import { fetchRemoteAsset } from "@/utils/onedrive";
 import { dedupePersonalityTags } from "@/utils/personality-tags";
+import { saveDogCarePassportFromForm } from "@/utils/dog-care-passport-actions";
 import { getShelterPortalTarget } from "@/utils/shelter-portal";
 import { slugify } from "@/utils/slug";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -1329,6 +1330,24 @@ export async function createDogListingAction(
         status: "error",
       };
     }
+  }
+
+  try {
+    await saveDogCarePassportFromForm({
+      actorProfileId: adminContext.userId,
+      dogId: insertedDog.id,
+      formData,
+      shelterId,
+      supabase,
+    });
+  } catch (error) {
+    return {
+      dogId: insertedDog.id,
+      message: `The dog was created, but the care passport could not be saved: ${
+        error instanceof Error ? error.message : "Unknown care passport error"
+      }`,
+      status: "error",
+    };
   }
 
   revalidatePath("/");

@@ -81,6 +81,17 @@ Admin: `admin/dogs`, `admin/bookings`, `admin/ads`, `admin/listings`, `admin/acc
 
 Figma was the original design source but is **no longer central** — treat the live app and these docs as the source of truth for UX decisions. (The legacy design file key is `cfYww0U2M4xAkvHv3Gbvss` if ever needed; no Figma connector is required to do the work.)
 
+### Dog Profile vs. Adopted Pet Passport
+
+Keep these as separate lifecycle surfaces permanently:
+
+- The public dog profile is the pre-adoption listing. It should stay focused on discovery, emotional connection, shelter trust, booking an appointment, donations, and adoption conversion.
+- My Adopted Pets is the post-adoption passport/manual. It should stay focused on medical records, vaccination history, vet notes, care reminders, documents, shelter follow-up, and future insurance readiness.
+
+Do not merge passport care records into the public dog profile. For now, care records are manually maintained by shelters during onboarding/editing/adoption completion/post-adoption support, and only by adopters when a simple user-side edit fits current app patterns. Do not build a vet portal or assume vets log in.
+
+Passport status indicators should stay subtle and useful: green for verified/completed, amber for due soon/pending, red for overdue/urgent, and blue for medical/document information.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

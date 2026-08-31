@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
+import DogCarePassportFields from "@/components/admin/DogCarePassportFields";
 import DogBreedPicker from "@/components/dogs/DogBreedPicker";
 import PersonalityTagPicker from "@/components/dogs/PersonalityTagPicker";
-import type { Database, DogPhoto, DogTrait } from "@/types/database";
+import type { Database, DogCareDocument, DogCareRecord, DogCareTimelineEvent, DogPhoto, DogTrait, DogVaccinationRecord } from "@/types/database";
 import { buildDogMediaItems, type DogMediaItem } from "@/utils/dog-media";
 import { deleteDogProfileAction, updateDogProfileAction } from "./actions";
 import { initialEditDogProfileState } from "./form-state";
@@ -400,6 +401,10 @@ function MediaOrderEditor({ dogName, items }: { dogName: string; items: DogMedia
 export default function DogEditForm({
   deleteReturnTo,
   dog,
+  careDocuments = [],
+  careRecord = null,
+  careTimelineEvents = [],
+  vaccinations = [],
   personalityTags,
   photos,
   returnTo,
@@ -408,11 +413,15 @@ export default function DogEditForm({
 }: {
   deleteReturnTo?: string;
   dog: Dog;
+  careDocuments?: DogCareDocument[];
+  careRecord?: DogCareRecord | null;
+  careTimelineEvents?: DogCareTimelineEvent[];
   personalityTags: string[];
   photos: DogPhoto[];
   returnTo?: string;
   shelters: ShelterOption[];
   traits: DogTrait[];
+  vaccinations?: DogVaccinationRecord[];
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(
@@ -809,6 +818,14 @@ export default function DogEditForm({
             </div>
           </div>
         </Section>
+
+        <DogCarePassportFields
+          careRecord={careRecord}
+          documents={careDocuments}
+          mode="edit"
+          timelineEvents={careTimelineEvents}
+          vaccinations={vaccinations}
+        />
 
         <Section
           title="Photos and Video"

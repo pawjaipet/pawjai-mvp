@@ -5,7 +5,16 @@ import { canonicalizeBreedLabel } from "@/utils/dog-breeds";
 import { normalizeDogMediaUrl } from "@/utils/dog-media";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
-import type { DogPhoto, DogTrait, Dog, Shelter } from "@/types/database";
+import type {
+  DogCareDocument,
+  DogCareRecord,
+  DogCareTimelineEvent,
+  DogPhoto,
+  DogTrait,
+  Dog,
+  DogVaccinationRecord,
+  Shelter,
+} from "@/types/database";
 
 type AdoptionAppointment = {
   appointment_date: string;
@@ -18,6 +27,51 @@ type AdoptionAppointment = {
 type DogPhotoPreview = Pick<DogPhoto, "dog_id" | "id" | "is_cover" | "public_url" | "sort_order" | "storage_path">;
 type DogTraitPreview = Pick<DogTrait, "dog_id" | "trait_type" | "trait_value">;
 type ShelterPreview = Pick<Shelter, "district" | "id" | "logo_url" | "name" | "province">;
+type DogCareRecordPreview = Pick<
+  DogCareRecord,
+  | "adopter_id"
+  | "allergies"
+  | "dog_id"
+  | "last_vet_check_date"
+  | "medical_notes"
+  | "medications"
+  | "next_vet_check_due_date"
+  | "special_needs_notes"
+  | "updated_at"
+  | "vaccination_status"
+>;
+type DogVaccinationRecordPreview = Pick<
+  DogVaccinationRecord,
+  | "administered_on"
+  | "dog_id"
+  | "due_on"
+  | "id"
+  | "notes"
+  | "provider_name"
+  | "updated_at"
+  | "vaccine_name"
+  | "verification_status"
+>;
+type DogCareDocumentPreview = Pick<
+  DogCareDocument,
+  | "document_type"
+  | "dog_id"
+  | "bucket_id"
+  | "file_url"
+  | "id"
+  | "storage_path"
+  | "title"
+  | "uploaded_at"
+  | "visibility"
+>;
+type DogCareTimelineEventPreview = Pick<
+  DogCareTimelineEvent,
+  "created_at" | "description" | "dog_id" | "event_date" | "event_type" | "id" | "title"
+>;
+type OptionalRowsResult<T> = {
+  data: T[] | null;
+  error: { code?: string; message?: string } | null;
+};
 
 function pickCoverPhoto(dog: Dog, photos: DogPhotoPreview[]) {
   const coverPhoto =
@@ -26,6 +80,41 @@ function pickCoverPhoto(dog: Dog, photos: DogPhotoPreview[]) {
     [...photos].sort((a, b) => a.sort_order - b.sort_order)[0];
 
   return coverPhoto ? normalizeDogMediaUrl(coverPhoto.public_url, coverPhoto.storage_path) : null;
+}
+
+function isMissingCareTableError(error: { code?: string; message?: string } | null | undefined) {
+  const message = (error?.message ?? "").toLowerCase();
+  return error?.code === "42P01"
+    || error?.code === "PGRST205"
+    || message.includes("schema cache")
+    || message.includes("could not find")
+    || message.includes("does not exist")
+    || message.includes("relation");
+}
+
+async function loadOptionalRows<T>(label: string, query: PromiseLike<OptionalRowsResult<T>>): Promise<T[]> {
+  const { data, error } = await query;
+  if (!error) return data ?? [];
+  if (!isMissingCareTableError(error)) {
+    console.error(`${label} failed to load`, error);
+  }
+  return [];
+}
+
+function groupByDog<T extends { dog_id: string }>(rows: T[]) {
+  const grouped = new Map<string, T[]>();
+  for (const row of rows) {
+    const dogRows = grouped.get(row.dog_id) ?? [];
+    dogRows.push(row);
+    grouped.set(row.dog_id, dogRows);
+  }
+  return grouped;
+}
+
+function latestDate(values: Array<string | null | undefined>) {
+  return values
+    .filter((value): value is string => Boolean(value))
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
 }
 
 async function getAdoptedPets(adopterId: string): Promise<AdoptedPetPassportData[]> {
@@ -61,7 +150,7 @@ async function getAdoptedPets(adopterId: string): Promise<AdoptedPetPassportData
   const adoptedDogIds = adoptedDogs.map((dog) => dog.id);
   const shelterIds = [...new Set(adoptedDogs.map((dog) => dog.shelter_id))];
 
-  const [{ data: photos }, { data: traits }, { data: shelters }] = await Promise.all([
+  const [{ data: photos }, { data: traits }, { data: shelters }, careRecords, vaccinations, documents, timelineEvents] = await Promise.all([
     admin
       .from("dog_photos")
       .select("id, dog_id, public_url, storage_path, is_cover, sort_order")
@@ -78,6 +167,40 @@ async function getAdoptedPets(adopterId: string): Promise<AdoptedPetPassportData
         .select("id, name, logo_url, district, province")
         .in("id", shelterIds)
       : Promise.resolve({ data: [] }),
+    loadOptionalRows<DogCareRecordPreview>(
+      "Dog care records",
+      admin
+        .from("dog_care_records")
+        .select("adopter_id, allergies, dog_id, last_vet_check_date, medical_notes, medications, next_vet_check_due_date, special_needs_notes, updated_at, vaccination_status")
+        .in("dog_id", adoptedDogIds),
+    ),
+    loadOptionalRows<DogVaccinationRecordPreview>(
+      "Dog vaccination records",
+      admin
+        .from("dog_vaccination_records")
+        .select("administered_on, dog_id, due_on, id, notes, provider_name, updated_at, vaccine_name, verification_status")
+        .in("dog_id", adoptedDogIds)
+        .order("due_on", { ascending: true, nullsFirst: false })
+        .order("administered_on", { ascending: false, nullsFirst: false }),
+    ),
+    loadOptionalRows<DogCareDocumentPreview>(
+      "Dog care documents",
+      admin
+        .from("dog_care_documents")
+        .select("bucket_id, document_type, dog_id, file_url, id, storage_path, title, uploaded_at, visibility")
+        .in("dog_id", adoptedDogIds)
+        .neq("visibility", "shelter_only")
+        .order("uploaded_at", { ascending: false }),
+    ),
+    loadOptionalRows<DogCareTimelineEventPreview>(
+      "Dog care timeline events",
+      admin
+        .from("dog_care_timeline_events")
+        .select("created_at, description, dog_id, event_date, event_type, id, title")
+        .in("dog_id", adoptedDogIds)
+        .order("event_date", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false }),
+    ),
   ]);
 
   const photosByDog = new Map<string, DogPhotoPreview[]>();
@@ -96,6 +219,23 @@ async function getAdoptedPets(adopterId: string): Promise<AdoptedPetPassportData
 
   const shelterMap = new Map(((shelters ?? []) as ShelterPreview[]).map((shelter) => [shelter.id, shelter]));
   const dogMap = new Map(adoptedDogs.map((dog) => [dog.id, dog]));
+  const careRecordMap = new Map(careRecords
+    .filter((record) => !record.adopter_id || record.adopter_id === adopterId)
+    .map((record) => [record.dog_id, record]));
+  const vaccinationsByDog = groupByDog(vaccinations);
+  const documentsByDog = groupByDog(documents);
+  const timelineByDog = groupByDog(timelineEvents);
+  const signedDocumentUrls = new Map<string, string>();
+
+  await Promise.all(documents.map(async (document) => {
+    if (!document.bucket_id || !document.storage_path || document.file_url) return;
+    const { data, error } = await admin.storage
+      .from(document.bucket_id)
+      .createSignedUrl(document.storage_path, 60 * 60);
+    if (!error && data?.signedUrl) {
+      signedDocumentUrls.set(document.id, data.signedUrl);
+    }
+  }));
 
   return dogIds.flatMap((dogId) => {
     const dog = dogMap.get(dogId);
@@ -103,17 +243,51 @@ async function getAdoptedPets(adopterId: string): Promise<AdoptedPetPassportData
 
     const dogTraits = traitsByDog.get(dog.id) ?? [];
     const shelter = shelterMap.get(dog.shelter_id) ?? null;
+    const careRecord = careRecordMap.get(dog.id) ?? null;
+    const dogVaccinations = vaccinationsByDog.get(dog.id) ?? [];
+    const dogDocuments = documentsByDog.get(dog.id) ?? [];
+    const dogTimeline = timelineByDog.get(dog.id) ?? [];
+    const appointment = appointmentMap.get(dog.id);
     return [{
-      adoptionDate: appointmentMap.get(dog.id)?.appointment_date ?? null,
+      adoptionDate: appointment?.appointment_date ?? null,
       ageMonths: dog.age_months,
+      allergies: careRecord?.allergies ?? null,
       breed: canonicalizeBreedLabel(dog.breed),
+      careTimeline: dogTimeline.map((event) => ({
+        createdAt: event.created_at,
+        description: event.description,
+        eventDate: event.event_date,
+        eventType: event.event_type,
+        id: event.id,
+        title: event.title,
+      })),
       coverUrl: pickCoverPhoto(dog, photosByDog.get(dog.id) ?? []),
+      documents: dogDocuments.map((document) => ({
+        documentType: document.document_type,
+        fileUrl: document.file_url ?? signedDocumentUrls.get(document.id) ?? null,
+        id: document.id,
+        storagePath: document.storage_path,
+        title: document.title,
+        uploadedAt: document.uploaded_at,
+      })),
       gender: dog.gender,
       id: dog.id,
+      lastUpdatedAt: latestDate([
+        dog.updated_at,
+        careRecord?.updated_at,
+        ...dogVaccinations.map((vaccination) => vaccination.updated_at),
+        ...dogDocuments.map((document) => document.uploaded_at),
+        ...dogTimeline.map((event) => event.created_at),
+      ]),
+      lastVetCheckDate: careRecord?.last_vet_check_date ?? null,
+      medicalNotes: careRecord?.medical_notes ?? null,
       medicalTags: dogTraits
         .filter((trait) => trait.trait_type === "medical_needs")
         .map((trait) => trait.trait_value),
+      medications: careRecord?.medications ?? null,
+      messageHref: appointment ? `/appointments/${appointment.id}?tab=messages` : null,
       name: dog.name,
+      nextVetCheckDueDate: careRecord?.next_vet_check_due_date ?? null,
       personalityTags: dogTraits
         .filter((trait) => trait.trait_type === "personality")
         .map((trait) => trait.trait_value),
@@ -125,8 +299,20 @@ async function getAdoptedPets(adopterId: string): Promise<AdoptedPetPassportData
         province: shelter.province,
       } : null,
       size: dog.size,
+      specialNeedsNotes: careRecord?.special_needs_notes ?? null,
       specialNeeds: dog.special_needs,
       sterilized: dog.sterilized,
+      vaccinationStatus: careRecord?.vaccination_status ?? "unknown",
+      vaccinations: dogVaccinations.map((vaccination) => ({
+        administeredOn: vaccination.administered_on,
+        dueOn: vaccination.due_on,
+        id: vaccination.id,
+        notes: vaccination.notes,
+        providerName: vaccination.provider_name,
+        updatedAt: vaccination.updated_at,
+        vaccineName: vaccination.vaccine_name,
+        verificationStatus: vaccination.verification_status,
+      })),
       weightKg: dog.weight_kg,
     }];
   });

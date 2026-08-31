@@ -5,6 +5,7 @@ import { ArrowLeftRight, ChevronUp, Hand, X } from "lucide-react";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 const M = "Montserrat, sans-serif";
+const DISMISSED_KEY = "pawjai.swipeFeedTutorialDismissed";
 
 type SwipeFeedTutorialProps = {
   enabled?: boolean;
@@ -16,8 +17,26 @@ export default function SwipeFeedTutorial({ enabled = true, isLoggedIn }: SwipeF
   const { t } = useLanguage();
 
   useEffect(() => {
-    setVisible(Boolean(enabled && !isLoggedIn));
+    if (!enabled || isLoggedIn) {
+      setVisible(false);
+      return;
+    }
+
+    try {
+      setVisible(window.localStorage.getItem(DISMISSED_KEY) !== "true");
+    } catch {
+      setVisible(true);
+    }
   }, [enabled, isLoggedIn]);
+
+  function dismiss() {
+    setVisible(false);
+    try {
+      window.localStorage.setItem(DISMISSED_KEY, "true");
+    } catch {
+      // Tutorial dismissal is a comfort preference; ignore blocked storage.
+    }
+  }
 
   useEffect(() => {
     if (!visible) return;
@@ -63,7 +82,7 @@ export default function SwipeFeedTutorial({ enabled = true, isLoggedIn }: SwipeF
 
       <button
         type="button"
-        onClick={() => setVisible(false)}
+        onClick={dismiss}
         className="absolute right-[18px] top-[18px] z-20 flex h-[36px] w-[36px] items-center justify-center rounded-full bg-[#cd8188]/90 text-white shadow-[0_8px_24px_rgba(205,129,136,0.35)] ring-1 ring-white/35 backdrop-blur transition-transform active:scale-95"
         aria-label={t("Close tutorial")}
       >
@@ -105,7 +124,7 @@ export default function SwipeFeedTutorial({ enabled = true, isLoggedIn }: SwipeF
 
       <button
         type="button"
-        onClick={() => setVisible(false)}
+        onClick={dismiss}
         className="absolute bottom-[28px] left-[36px] right-[36px] z-20 flex h-[48px] items-center justify-center rounded-[24px] bg-[#cd8188] text-[15px] font-extrabold text-white shadow-[0_14px_32px_rgba(205,129,136,0.34)] transition-transform active:scale-[0.98]"
       >
         {t("Got it")}

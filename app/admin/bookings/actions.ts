@@ -13,6 +13,7 @@ import { buildLegacyRescheduleNote, isAppointmentTimeSlot, normalizeAppointmentT
 import { sendBookingNotificationForAppointment } from "@/utils/booking-email";
 import { getCheckInTokenSecret, hashCheckInToken, verifySignedCheckInToken } from "@/utils/booking";
 import { parseShelterDonationDetails } from "@/utils/donations";
+import { linkDogCarePassportToAdopter } from "@/utils/dog-care-passport-actions";
 import { requireAdminWorkspace, requireShelterAccess, type AdminAuthContext } from "@/utils/admin-auth";
 import { bookingWorkspaceDetailHref } from "@/utils/booking-workspace-routes";
 import { getShelterPortalTarget } from "@/utils/shelter-portal";
@@ -354,7 +355,7 @@ export async function decideBookingAction(formData: FormData) {
   const admin = createAdminClient();
   const { data: appointment } = await admin
     .from("appointments")
-    .select("id, dog_id, shelter_id")
+    .select("id, adopter_id, dog_id, shelter_id")
     .eq("id", appointmentId)
     .maybeSingle();
 
@@ -470,6 +471,12 @@ export async function decideBookingAction(formData: FormData) {
 
   if (decision === "adopted" && appointment?.dog_id) {
     const today = new Date().toISOString().slice(0, 10);
+    const { data: adoptedDog } = await admin
+      .from("dogs")
+      .select("name")
+      .eq("id", appointment.dog_id)
+      .maybeSingle();
+
     await admin
       .from("dogs")
       .update({
@@ -489,6 +496,39 @@ export async function decideBookingAction(formData: FormData) {
       .neq("id", appointmentId)
       .gte("appointment_date", today)
       .in("status", ["requested", "confirmed"]);
+
+    await linkDogCarePassportToAdopter({
+      actorProfileId: adminContext.userId,
+      adopterId: appointment.adopter_id,
+      dogId: appointment.dog_id,
+      shelterId: appointment.shelter_id,
+      supabase: admin,
+    });
+
+    const systemMessage = `Adoption completed for ${adoptedDog?.name ?? "this dog"} on ${today}. This chat can now be used for post-adoption follow-up.`;
+    const { data: existingSystemMessage } = await admin
+      .from("appointment_messages")
+      .select("id")
+      .eq("appointment_id", appointmentId)
+      .eq("sender_role", "system")
+      .eq("body", systemMessage)
+      .limit(1)
+      .maybeSingle();
+
+    if (!existingSystemMessage) {
+      const { error: systemMessageError } = await admin.from("appointment_messages").insert({
+        adopter_id: appointment.adopter_id,
+        appointment_id: appointmentId,
+        body: systemMessage,
+        sender_label: "PawJai/system",
+        sender_role: "system",
+        shelter_id: appointment.shelter_id,
+      });
+
+      if (systemMessageError && !isAppointmentMessagesUnavailableError(systemMessageError)) {
+        console.error("Could not create adoption system message", systemMessageError);
+      }
+    }
   }
 
   revalidatePath("/admin");
@@ -498,6 +538,7 @@ export async function decideBookingAction(formData: FormData) {
   revalidatePath(`/booking/${appointmentId}/visitor-profile`);
   revalidatePath("/appointments");
   revalidatePath(`/appointments/${appointmentId}`);
+  revalidatePath("/messages");
   await redirectAfterBookingDecision(
     formData,
     updateError ? "Booking decision could not be saved." : "Booking decision saved.",

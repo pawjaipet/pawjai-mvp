@@ -58,7 +58,7 @@ export default async function AppointmentDetailPage({
     appt.dog_id
       ? admin
           .from("dogs")
-          .select("id, name, breed")
+          .select("id, name, breed, adoption_status")
           .eq("id", appt.dog_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -186,6 +186,10 @@ export default async function AppointmentDetailPage({
       proposedTime={(appt as any).proposed_appointment_time ?? legacyReschedule?.proposedTime ?? null}
       rescheduleNote={(appt as any).reschedule_note ?? legacyReschedule?.note ?? null}
       isPast={isPast}
+      adoptionContext={dog ? {
+        adoptionDate: appt.status === "completed" ? appt.appointment_date : null,
+        isAdopted: dog.adoption_status === "adopted" && appt.status === "completed",
+      } : null}
       dog={dog ? { id: dog.id, name: dog.name, breed: dog.breed, coverUrl } : null}
       shelter={
         shelter

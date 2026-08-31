@@ -397,6 +397,102 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["appointment_messages"]["Insert"]>
         Relationships: []
       }
+      dog_care_documents: {
+        Row: {
+          adopter_id: string | null
+          bucket_id: string | null
+          document_type: Database["public"]["Enums"]["dog_care_document_type"]
+          dog_id: string
+          file_url: string | null
+          id: string
+          shelter_id: string
+          storage_path: string | null
+          title: string
+          uploaded_at: string
+          uploaded_by: string | null
+          visibility: Database["public"]["Enums"]["dog_care_document_visibility"]
+        }
+        Insert: {
+          adopter_id?: string | null
+          bucket_id?: string | null
+          document_type?: Database["public"]["Enums"]["dog_care_document_type"]
+          dog_id: string
+          file_url?: string | null
+          id?: string
+          shelter_id: string
+          storage_path?: string | null
+          title: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          visibility?: Database["public"]["Enums"]["dog_care_document_visibility"]
+        }
+        Update: Partial<Database["public"]["Tables"]["dog_care_documents"]["Insert"]>
+        Relationships: []
+      }
+      dog_care_records: {
+        Row: {
+          adopter_id: string | null
+          allergies: string | null
+          created_at: string
+          dog_id: string
+          id: string
+          last_updated_by: string | null
+          last_vet_check_date: string | null
+          medical_notes: string | null
+          medications: string | null
+          next_vet_check_due_date: string | null
+          shelter_id: string
+          special_needs_notes: string | null
+          updated_at: string
+          vaccination_status: Database["public"]["Enums"]["dog_vaccination_status"]
+        }
+        Insert: {
+          adopter_id?: string | null
+          allergies?: string | null
+          created_at?: string
+          dog_id: string
+          id?: string
+          last_updated_by?: string | null
+          last_vet_check_date?: string | null
+          medical_notes?: string | null
+          medications?: string | null
+          next_vet_check_due_date?: string | null
+          shelter_id: string
+          special_needs_notes?: string | null
+          updated_at?: string
+          vaccination_status?: Database["public"]["Enums"]["dog_vaccination_status"]
+        }
+        Update: Partial<Database["public"]["Tables"]["dog_care_records"]["Insert"]>
+        Relationships: []
+      }
+      dog_care_timeline_events: {
+        Row: {
+          adopter_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          dog_id: string
+          event_date: string | null
+          event_type: Database["public"]["Enums"]["dog_care_event_type"]
+          id: string
+          shelter_id: string
+          title: string
+        }
+        Insert: {
+          adopter_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          dog_id: string
+          event_date?: string | null
+          event_type?: Database["public"]["Enums"]["dog_care_event_type"]
+          id?: string
+          shelter_id: string
+          title: string
+        }
+        Update: Partial<Database["public"]["Tables"]["dog_care_timeline_events"]["Insert"]>
+        Relationships: []
+      }
       dog_photos: {
         Row: {
           created_at: string
@@ -435,6 +531,42 @@ export type Database = {
           trait_value: string
         }
         Update: Partial<Database["public"]["Tables"]["dog_traits"]["Insert"]>
+        Relationships: []
+      }
+      dog_vaccination_records: {
+        Row: {
+          administered_on: string | null
+          adopter_id: string | null
+          created_at: string
+          created_by: string | null
+          document_id: string | null
+          dog_id: string
+          due_on: string | null
+          id: string
+          notes: string | null
+          provider_name: string | null
+          shelter_id: string
+          updated_at: string
+          vaccine_name: string
+          verification_status: Database["public"]["Enums"]["dog_vaccination_verification_status"]
+        }
+        Insert: {
+          administered_on?: string | null
+          adopter_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          dog_id: string
+          due_on?: string | null
+          id?: string
+          notes?: string | null
+          provider_name?: string | null
+          shelter_id: string
+          updated_at?: string
+          vaccine_name: string
+          verification_status?: Database["public"]["Enums"]["dog_vaccination_verification_status"]
+        }
+        Update: Partial<Database["public"]["Tables"]["dog_vaccination_records"]["Insert"]>
         Relationships: []
       }
       dogs: {
@@ -882,9 +1014,14 @@ export type Database = {
       adopter_document_type: "id_copy" | "house_image" | "income_statement" | "other"
       adopter_verification_status: "not_started" | "submitted" | "approved" | "needs_updates"
       dog_adoption_status: "draft" | "available" | "reserved" | "adopted" | "unavailable"
+      dog_care_document_type: "adoption_document" | "vaccination_proof" | "medical_record" | "other"
+      dog_care_document_visibility: "adopter_visible" | "shelter_only"
+      dog_care_event_type: "medical" | "behavior" | "diet" | "follow_up" | "general" | "adoption"
       dog_energy_level: "low" | "medium" | "high"
       dog_gender: "male" | "female" | "unknown"
       dog_size: "small" | "medium" | "large" | "extra_large"
+      dog_vaccination_status: "unknown" | "not_started" | "partial" | "up_to_date" | "overdue"
+      dog_vaccination_verification_status: "verified" | "pending" | "unknown"
       shelter_membership_role: "owner" | "staff" | "viewer"
       application_status: "draft" | "submitted" | "under_review" | "approved" | "rejected" | "withdrawn"
       appointment_status: "requested" | "confirmed" | "completed" | "cancelled" | "no_show"
@@ -897,8 +1034,12 @@ export type Database = {
 }
 
 export type Dog = Database["public"]["Tables"]["dogs"]["Row"]
+export type DogCareRecord = Database["public"]["Tables"]["dog_care_records"]["Row"]
+export type DogCareDocument = Database["public"]["Tables"]["dog_care_documents"]["Row"]
+export type DogCareTimelineEvent = Database["public"]["Tables"]["dog_care_timeline_events"]["Row"]
 export type DogPhoto = Database["public"]["Tables"]["dog_photos"]["Row"]
 export type DogTrait = Database["public"]["Tables"]["dog_traits"]["Row"]
+export type DogVaccinationRecord = Database["public"]["Tables"]["dog_vaccination_records"]["Row"]
 export type AdminAuditEvent = Database["public"]["Tables"]["admin_audit_events"]["Row"]
 export type ProductAnalyticsEvent = Database["public"]["Tables"]["product_analytics_events"]["Row"]
 export type PawjaiProfile = Database["public"]["Tables"]["pawjai_profile"]["Row"]

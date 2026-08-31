@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import AdCard from "@/components/AdCard";
 import {
   Bone,
@@ -782,6 +782,13 @@ function formatAdoptionDate(value: string | null) {
   return formatShortDate(value.slice(0, 10));
 }
 
+function messageThreadHref(baseHref: string, appointmentId: string) {
+  const url = new URL(baseHref, "https://pawjai.local");
+  url.searchParams.set("view", "messages");
+  url.searchParams.set("thread", appointmentId);
+  return `${url.pathname}${url.search}`;
+}
+
 function AdminReturnFields({ returnTo = ADMIN_RETURN_TO, shelterId }: { returnTo?: string; shelterId: string }) {
   return (
     <>
@@ -815,6 +822,11 @@ function DogCard({
       bookingListHref: adoptionBookingListHref,
     }), adoptionBookingListHref)
     : null;
+  const messageHref = dog.adoptedAppointmentId && adoptionBookingListHref
+    ? messageThreadHref(adoptionBookingListHref, dog.adoptedAppointmentId)
+    : null;
+  const careCompletenessPercent = dog.careCompletenessPercent ?? 0;
+  const careMissingCount = dog.careMissingCount ?? 0;
 
   return (
     <article className={`overflow-hidden border border-[#d6c8ad] bg-white shadow-[0_10px_28px_rgba(101,88,79,0.08)] ${compactMobile ? "rounded-[14px] md:rounded-[20px]" : "rounded-[20px]"}`}>
@@ -843,6 +855,19 @@ function DogCard({
         {dog.size ? <span>{formatStatus(dog.size)}</span> : null}
         {dog.energyLevel ? <span>{formatStatus(dog.energyLevel)}</span> : null}
       </div>
+      <div className={`flex flex-wrap items-center gap-2 text-[#65584f] ${compactMobile ? "mt-2 text-[9px] md:mt-3 md:text-xs" : "mt-3 text-xs"}`}>
+        <span className="rounded-full bg-[#eef5ea] px-2.5 py-1 font-bold text-[#4f7847]">
+          Care passport {careCompletenessPercent}%
+        </span>
+        <span className="rounded-full bg-[#f5f1e8] px-2.5 py-1 font-semibold">
+          {dog.vaccinationStatusLabel ?? "Vaccines unknown"}
+        </span>
+        {careMissingCount > 0 ? (
+          <span className={compactMobile ? "hidden md:inline" : ""}>
+            {careMissingCount} fields missing
+          </span>
+        ) : null}
+      </div>
       {dog.status === "adopted" ? (
         <div className={`border border-[#d6c8ad] bg-[#fffaf5] ${compactMobile ? "mt-2 rounded-xl p-2 md:mt-4 md:rounded-2xl md:p-3" : "mt-4 rounded-2xl p-3"}`}>
           <p className={`font-semibold uppercase text-[#65584f] ${compactMobile ? "text-[9px] tracking-[0.1em] md:text-xs md:tracking-[0.16em]" : "text-xs tracking-[0.16em]"}`}>Adoption record</p>
@@ -855,7 +880,7 @@ function DogCard({
               {adoptedAt ? (
                 <p className={`mt-1 text-xs leading-5 text-[#65584f] ${compactMobile ? "hidden md:block" : ""}`}>Adoption visit: {adoptedAt}</p>
               ) : null}
-              {visitorHref || bookingHref ? (
+              {visitorHref || bookingHref || messageHref ? (
                 <div className={`mt-3 gap-2 sm:grid-cols-2 ${compactMobile ? "hidden md:grid" : "grid"}`}>
                   {visitorHref ? (
                     <Link
@@ -875,6 +900,15 @@ function DogCard({
                       Booking detail
                     </Link>
                   ) : null}
+                  {messageHref ? (
+                    <Link
+                      className="inline-flex items-center justify-center gap-1 rounded-full border border-[#d6c8ad] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] transition hover:bg-[#f5f1e8]"
+                      href={messageHref}
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      Message adopter
+                    </Link>
+                  ) : null}
                 </div>
               ) : null}
             </>
@@ -890,7 +924,7 @@ function DogCard({
           className={`inline-flex items-center justify-center rounded-full bg-[#cd8188] font-semibold text-white transition hover:bg-[#b87179] ${compactMobile ? "min-h-8 px-2 py-1.5 text-[11px] md:px-4 md:py-2 md:text-sm" : "px-4 py-2 text-sm"}`}
           href={editHref}
         >
-          Edit
+          {dog.status === "adopted" ? "Update care" : "Edit"}
         </Link>
         <Link
           className={`inline-flex items-center justify-center rounded-full border border-[#d6c8ad] bg-white font-semibold text-[#65584f] transition hover:bg-[#f5f1e8] ${compactMobile ? "min-h-8 px-2 py-1.5 text-[11px] md:px-4 md:py-2 md:text-sm" : "px-4 py-2 text-sm"}`}
@@ -2032,6 +2066,8 @@ function ShelterMessagesTab({
   shelter: AdminDraftShelter;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedThreadId = searchParams.get("thread") ?? "";
   const [messageFilter, setMessageFilter] = useState<MessageFilter>("all");
   const [messageSearch, setMessageSearch] = useState("");
   const [messageSort, setMessageSort] = useState<MessageSort>("newest");
@@ -2063,6 +2099,13 @@ function ShelterMessagesTab({
     { label: "Upcoming visits", value: "upcoming" },
     { label: "Needs reply", value: "needs_reply" },
   ];
+
+  useEffect(() => {
+    if (requestedThreadId && shelterThreads.some((thread) => thread.appointmentId === requestedThreadId)) {
+      setSelectedThreadId(requestedThreadId);
+      setMessageFilter("all");
+    }
+  }, [requestedThreadId, shelterThreads]);
 
   useEffect(() => {
     if (messagesUnavailable) return;

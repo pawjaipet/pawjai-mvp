@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
 import { requireGlobalAdmin, requireShelterAccess } from "@/utils/admin-auth";
+import { loadDogCarePassportForDog } from "@/utils/dog-care-passport-queries";
 import { mergePersonalityTags } from "@/utils/personality-tags";
 import { createAdminClient } from "@/utils/supabase/admin";
 import DogEditForm from "./DogEditForm";
@@ -26,7 +27,14 @@ export default async function EditAdminDogPage({
   await requireGlobalAdmin(gateReturnTo);
 
   const supabase = createAdminClient();
-  const [{ data: dog }, { data: shelters }, { data: photos }, { data: traits }, { data: personalityTraitRows }] = await Promise.all([
+  const [
+    { data: dog },
+    { data: shelters },
+    { data: photos },
+    { data: traits },
+    { data: personalityTraitRows },
+    carePassport,
+  ] = await Promise.all([
     supabase.from("dogs").select("*").eq("id", id).single(),
     supabase.from("shelters").select("id, name").order("name", { ascending: true }),
     supabase.from("dog_photos").select("*").eq("dog_id", id).order("sort_order"),
@@ -36,6 +44,7 @@ export default async function EditAdminDogPage({
       .select("trait_value")
       .eq("trait_type", "personality")
       .order("trait_value", { ascending: true }),
+    loadDogCarePassportForDog(supabase, id),
   ]);
 
   if (!dog) notFound();
@@ -74,6 +83,9 @@ export default async function EditAdminDogPage({
       title={`Edit ${dog.name}`}
     >
       <DogEditForm
+        careDocuments={carePassport.documents}
+        careRecord={carePassport.careRecord}
+        careTimelineEvents={carePassport.timelineEvents}
         deleteReturnTo={listingsHref}
         dog={dog}
         personalityTags={mergePersonalityTags(
@@ -83,6 +95,7 @@ export default async function EditAdminDogPage({
         returnTo={editHref}
         shelters={shelters ?? []}
         traits={traits ?? []}
+        vaccinations={carePassport.vaccinations}
       />
     </PawjaiWorkspaceShell>
   );
