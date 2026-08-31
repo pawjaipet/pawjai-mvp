@@ -49,10 +49,26 @@ test("subscription tiers match PawJai launch limits", () => {
 });
 
 test("subscription tier defaults to free from missing or unknown auth metadata", () => {
-  const { subscriptionTierFromAppMetadata } = loadSubscriptionLimits();
+  const {
+    launchPremiumGrantNumber,
+    paidSubscriptionTierFromAppMetadata,
+    subscriptionTierFromAppMetadata,
+  } = loadSubscriptionLimits();
 
   assert.equal(subscriptionTierFromAppMetadata(null), "free");
   assert.equal(subscriptionTierFromAppMetadata({ pawjai_subscription_tier: "standard" }), "standard");
-  assert.equal(subscriptionTierFromAppMetadata({ subscription_tier: "premium" }), "premium");
+  assert.equal(subscriptionTierFromAppMetadata({ subscription_tier: "premium" }), "free");
+  assert.equal(subscriptionTierFromAppMetadata({ pawjai_subscription_tier: "premium" }), "premium");
   assert.equal(subscriptionTierFromAppMetadata({ plan: "enterprise" }), "free");
+  assert.equal(subscriptionTierFromAppMetadata({
+    pawjai_launch_premium: true,
+    pawjai_subscription_tier: "free",
+  }), "premium");
+  assert.equal(paidSubscriptionTierFromAppMetadata({
+    pawjai_launch_premium: true,
+    pawjai_subscription_tier: "standard",
+  }), "standard");
+  assert.equal(launchPremiumGrantNumber({ pawjai_launch_premium_number: 1 }), 1);
+  assert.equal(launchPremiumGrantNumber({ pawjai_launch_premium_number: 200 }), 200);
+  assert.equal(launchPremiumGrantNumber({ pawjai_launch_premium_number: 201 }), null);
 });

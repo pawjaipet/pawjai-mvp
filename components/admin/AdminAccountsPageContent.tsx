@@ -4,8 +4,11 @@ import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import {
   Activity,
+  Bookmark,
   Building2,
   CalendarCheck2,
+  ChevronDown,
+  Crown,
   Eye,
   KeyRound,
   LogIn,
@@ -23,6 +26,12 @@ import {
   revokeShelterPortalAccountAction,
 } from "@/app/admin/accounts/shelter-actions";
 import { getAdminAuthContext, requireGlobalAdmin } from "@/utils/admin-auth";
+import {
+  hasLaunchPremiumGrant,
+  launchPremiumGrantNumber,
+  subscriptionTierFromAppMetadata,
+  type SubscriptionTier,
+} from "@/utils/subscription-limits";
 import { createAdminClient } from "@/utils/supabase/admin";
 import type { ProductAnalyticsEvent } from "@/types/database";
 
@@ -56,6 +65,23 @@ type DogSummary = {
   name: string;
 };
 
+type WishlistSummary = {
+  adopter_id: string;
+  created_at: string;
+  dog_id: string;
+};
+
+type LaunchGrantSummary = {
+  grant_number: number;
+  user_id: string;
+};
+
+type BillingSubscriptionSummary = {
+  status: string;
+  tier: SubscriptionTier;
+  user_id: string;
+};
+
 type ShelterSummary = {
   email: string | null;
   id: string;
@@ -76,11 +102,20 @@ type PortalAccount = {
 type UserActivity = {
   bookingFailures: number;
   bookingStarts: number;
+  dogShares: number;
   dogViews: number;
+  feedImpressions: number;
   lastActivityAt: string | null;
-  lastDogId: string | null;
   pageViews: number;
   total: number;
+  viewedDogCounts: Map<string, number>;
+};
+
+type UserPlan = {
+  detail: string;
+  isFounding: boolean;
+  label: string;
+  tier: SubscriptionTier;
 };
 
 function parseTab(value: string | undefined): AccountTab {
@@ -117,6 +152,61 @@ function displayName(user: User, profile?: ProfileSummary, adopter?: AdopterSumm
   if (adopterName) return adopterName;
   const metadataName = user.user_metadata?.full_name ?? user.user_metadata?.name;
   return typeof metadataName === "string" && metadataName.trim() ? metadataName.trim() : "Unnamed user";
+}
+
+function emptyUserActivity(): UserActivity {
+  return {
+    bookingFailures: 0,
+    bookingStarts: 0,
+    dogShares: 0,
+    dogViews: 0,
+    feedImpressions: 0,
+    lastActivityAt: null,
+    pageViews: 0,
+    total: 0,
+    viewedDogCounts: new Map<string, number>(),
+  };
+}
+
+function subscriptionPlanForUser(
+  user: User,
+  grant?: LaunchGrantSummary,
+  billing?: BillingSubscriptionSummary,
+): UserPlan {
+  const metadataGrantNumber = launchPremiumGrantNumber(user.app_metadata);
+  const grantNumber = grant?.grant_number ?? metadataGrantNumber;
+  const isFounding = Boolean(grant) || hasLaunchPremiumGrant(user.app_metadata);
+
+  if (isFounding) {
+    return {
+      detail: grantNumber ? `Founding member #${grantNumber} of 200` : "Free founding member access",
+      isFounding: true,
+      label: "Founding Premium",
+      tier: "premium",
+    };
+  }
+
+  const tier = subscriptionTierFromAppMetadata(user.app_metadata);
+  const label = tier === "premium" ? "Premium" : tier === "standard" ? "Standard" : "Free";
+  return {
+    detail: billing && billing.tier === tier ? `Billing ${billing.status.replaceAll("_", " ")}` : "Current account access",
+    isFounding: false,
+    label,
+    tier,
+  };
+}
+
+function planBadgeClass(plan: UserPlan) {
+  if (plan.isFounding) return "bg-[#f8e8ea] text-[#a85f69] ring-[#e6aeb4]";
+  if (plan.tier === "premium") return "bg-[#eee6f8] text-[#73518f] ring-[#cdb8df]";
+  if (plan.tier === "standard") return "bg-[#fff1dc] text-[#8a5d17] ring-[#e8ca99]";
+  return "bg-[#f2eee8] text-[#65584f] ring-[#d6c8ad]";
+}
+
+function verificationLabel(status: AdopterSummary["verification_status"] | undefined) {
+  if (!status || status === "not_started") return "Not started";
+  if (status === "needs_updates") return "Needs updates";
+  return status === "approved" ? "Approved" : "Submitted";
 }
 
 async function loadAllUsers() {
@@ -174,12 +264,25 @@ function MetricCard({
 
 async function UserAccountsTab({ basePath, query }: { basePath: string; query: string }) {
   const admin = createAdminClient();
-  const [users, profilesResult, adoptersResult, appointmentsResult, dogsResult, eventsResult] = await Promise.all([
+  const [
+    users,
+    profilesResult,
+    adoptersResult,
+    appointmentsResult,
+    dogsResult,
+    wishlistsResult,
+    grantsResult,
+    billingResult,
+    eventsResult,
+  ] = await Promise.all([
     loadAllUsers(),
     admin.from("profiles").select("id,full_name,role"),
     admin.from("adopters").select("id,profile_id,first_name,last_name,email,verification_status"),
     admin.from("appointments").select("id,adopter_id,dog_id,status,created_at"),
     admin.from("dogs").select("id,name"),
+    admin.from("wishlists").select("adopter_id,dog_id,created_at").order("created_at", { ascending: false }),
+    admin.from("subscription_launch_grants").select("user_id,grant_number"),
+    admin.from("billing_subscriptions").select("user_id,tier,status"),
     loadUserEvents(),
   ]);
 
@@ -187,30 +290,39 @@ async function UserAccountsTab({ basePath, query }: { basePath: string; query: s
   const adopters = (adoptersResult.data ?? []) as AdopterSummary[];
   const appointments = (appointmentsResult.data ?? []) as AppointmentSummary[];
   const dogs = (dogsResult.data ?? []) as DogSummary[];
+  const wishlists = (wishlistsResult.data ?? []) as WishlistSummary[];
+  const launchGrants = (grantsResult.data ?? []) as LaunchGrantSummary[];
+  const billingSubscriptions = (billingResult.data ?? []) as BillingSubscriptionSummary[];
   const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
   const adopterMap = new Map(adopters.map((adopter) => [adopter.profile_id, adopter]));
   const adopterProfileById = new Map(adopters.map((adopter) => [adopter.id, adopter.profile_id]));
   const dogMap = new Map(dogs.map((dog) => [dog.id, dog.name]));
+  const launchGrantMap = new Map(launchGrants.map((grant) => [grant.user_id, grant]));
+  const billingMap = new Map(billingSubscriptions.map((subscription) => [subscription.user_id, subscription]));
+  const wishlistsByUser = new Map<string, WishlistSummary[]>();
+  for (const wishlist of wishlists) {
+    const userId = adopterProfileById.get(wishlist.adopter_id);
+    if (!userId) continue;
+    const current = wishlistsByUser.get(userId) ?? [];
+    current.push(wishlist);
+    wishlistsByUser.set(userId, current);
+  }
   const activityByUser = new Map<string, UserActivity>();
 
   for (const event of eventsResult.events) {
     if (!event.user_id) continue;
-    const activity = activityByUser.get(event.user_id) ?? {
-      bookingFailures: 0,
-      bookingStarts: 0,
-      dogViews: 0,
-      lastActivityAt: null,
-      lastDogId: null,
-      pageViews: 0,
-      total: 0,
-    };
+    const activity = activityByUser.get(event.user_id) ?? emptyUserActivity();
     activity.total += 1;
-    if (!activity.lastActivityAt) activity.lastActivityAt = event.created_at;
+    if (!activity.lastActivityAt || event.created_at > activity.lastActivityAt) activity.lastActivityAt = event.created_at;
     if (event.event_name === "page_view") activity.pageViews += 1;
+    if (event.event_name === "dog_feed_impression") activity.feedImpressions += 1;
     if (event.event_name === "dog_profile_view") {
       activity.dogViews += 1;
-      if (!activity.lastDogId && event.dog_id) activity.lastDogId = event.dog_id;
+      if (event.dog_id) {
+        activity.viewedDogCounts.set(event.dog_id, (activity.viewedDogCounts.get(event.dog_id) ?? 0) + 1);
+      }
     }
+    if (event.event_name === "dog_shared") activity.dogShares += 1;
     if (event.event_name === "booking_started") activity.bookingStarts += 1;
     if (event.event_name === "booking_failed") activity.bookingFailures += 1;
     activityByUser.set(event.user_id, activity);
@@ -221,10 +333,11 @@ async function UserAccountsTab({ basePath, query }: { basePath: string; query: s
     const profileId = adopterProfileById.get(appointment.adopter_id);
     if (!profileId) continue;
     bookingsByUser.set(profileId, (bookingsByUser.get(profileId) ?? 0) + 1);
-    const activity = activityByUser.get(profileId);
-    if (activity && (!activity.lastActivityAt || appointment.created_at > activity.lastActivityAt)) {
+    const activity = activityByUser.get(profileId) ?? emptyUserActivity();
+    if (!activity.lastActivityAt || appointment.created_at > activity.lastActivityAt) {
       activity.lastActivityAt = appointment.created_at;
     }
+    activityByUser.set(profileId, activity);
   }
 
   const publicUsers = users.filter((user) => {
@@ -237,7 +350,13 @@ async function UserAccountsTab({ basePath, query }: { basePath: string; query: s
       if (!normalizedQuery) return true;
       const profile = profileMap.get(user.id);
       const adopter = adopterMap.get(user.id);
-      return [displayName(user, profile, adopter), accountName(user), user.email, adopter?.email]
+      const activity = activityByUser.get(user.id);
+      const plan = subscriptionPlanForUser(user, launchGrantMap.get(user.id), billingMap.get(user.id));
+      const dogNames = [
+        ...(wishlistsByUser.get(user.id) ?? []).map((item) => dogMap.get(item.dog_id)),
+        ...[...(activity?.viewedDogCounts.keys() ?? [])].map((dogId) => dogMap.get(dogId)),
+      ];
+      return [displayName(user, profile, adopter), accountName(user), user.email, adopter?.email, plan.label, ...dogNames]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalizedQuery));
     })
@@ -252,19 +371,22 @@ async function UserAccountsTab({ basePath, query }: { basePath: string; query: s
   const activeUsers = publicUsers.filter((user) => activityByUser.has(user.id) || bookingsByUser.has(user.id)).length;
   const createdIn30Days = publicUsers.filter((user) => Date.now() - new Date(user.created_at).getTime() <= 30 * 24 * 60 * 60 * 1000).length;
   const googleUsers = publicUsers.filter((user) => providerLabel(user) === "Google").length;
+  const premiumUsers = publicUsers.filter((user) => subscriptionPlanForUser(user, launchGrantMap.get(user.id), billingMap.get(user.id)).tier === "premium").length;
+  const detailsUnavailable = Boolean(wishlistsResult.error || grantsResult.error || billingResult.error);
 
   return (
     <>
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="User account totals">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5" aria-label="User account totals">
         <MetricCard detail={`${googleUsers} Google · ${publicUsers.length - googleUsers} email accounts`} icon={<Users className="h-5 w-5" />} label="User accounts" value={publicUsers.length} />
         <MetricCard detail={`${confirmedUsers} accounts have a confirmed email`} icon={<LogIn className="h-5 w-5" />} label="Have logged in" value={signedInUsers} />
         <MetricCard detail="Accounts with recorded page, dog, or booking activity" icon={<Activity className="h-5 w-5" />} label="Active users" value={activeUsers} />
         <MetricCard detail="Public adopter accounts created in the last 30 days" icon={<UserPlus className="h-5 w-5" />} label="New accounts" value={createdIn30Days} />
+        <MetricCard detail={`${launchGrants.length} of 200 Founding Premium places assigned`} icon={<Crown className="h-5 w-5" />} label="Premium access" value={premiumUsers} />
       </section>
 
-      {eventsResult.unavailable ? (
+      {eventsResult.unavailable || detailsUnavailable ? (
         <div className="mt-5 rounded-[22px] border border-[#efc2be] bg-[#fff1f0] px-5 py-4 text-sm text-[#9a3129]">
-          User accounts are live, but detailed interaction analytics is temporarily unavailable.
+          User accounts are live, but some interaction, wishlist, or subscription details are temporarily unavailable.
         </div>
       ) : null}
 
@@ -285,9 +407,9 @@ async function UserAccountsTab({ basePath, query }: { basePath: string; query: s
         </div>
 
         <div className="overflow-x-auto">
-          <div className="min-w-[1050px]">
-            <div className="grid grid-cols-[1.3fr_0.8fr_0.85fr_0.8fr_1.2fr_auto] gap-4 border-b border-[#eadfcd] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#65584f]/60">
-              <span>User</span><span>Sign-in</span><span>Verification</span><span>Bookings</span><span>Interactions</span><span>Last active</span>
+          <div className="min-w-[1120px]">
+            <div className="grid grid-cols-[1.4fr_1fr_1fr_1.25fr_1.15fr_auto] gap-4 border-b border-[#eadfcd] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#65584f]/60">
+              <span>User</span><span>Account status</span><span>Subscription</span><span>Dog activity</span><span>Wishlist</span><span>Last active</span>
             </div>
             {filteredUsers.length === 0 ? (
               <p className="px-5 py-8 text-sm text-[#65584f]/65">No public user accounts match this search.</p>
@@ -295,24 +417,86 @@ async function UserAccountsTab({ basePath, query }: { basePath: string; query: s
               const profile = profileMap.get(user.id);
               const adopter = adopterMap.get(user.id);
               const activity = activityByUser.get(user.id);
+              const wishlist = wishlistsByUser.get(user.id) ?? [];
+              const plan = subscriptionPlanForUser(user, launchGrantMap.get(user.id), billingMap.get(user.id));
+              const viewedDogs = [...(activity?.viewedDogCounts.entries() ?? [])]
+                .sort((a, b) => b[1] - a[1]);
+              const wishlistNames = wishlist.map((item) => dogMap.get(item.dog_id) ?? "Removed dog");
               const lastActive = activity?.lastActivityAt ?? user.last_sign_in_at;
               return (
-                <article className="grid grid-cols-[1.3fr_0.8fr_0.85fr_0.8fr_1.2fr_auto] items-center gap-4 border-b border-[#eadfcd] px-5 py-4 text-sm last:border-b-0" key={user.id}>
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-[#65584f]">{displayName(user, profile, adopter)}</p>
-                    <p className="mt-1 truncate text-xs text-[#65584f]/65">@{accountName(user)} · {user.email ?? adopter?.email ?? "No email"}</p>
-                    <p className="mt-1 text-[11px] text-[#65584f]/50">Joined {formatDateTime(user.created_at)}</p>
+                <details className="group border-b border-[#eadfcd] last:border-b-0" key={user.id}>
+                  <summary className="grid cursor-pointer list-none grid-cols-[1.4fr_1fr_1fr_1.25fr_1.15fr_auto] items-center gap-4 px-5 py-4 text-sm transition hover:bg-[#fffaf5] [&::-webkit-details-marker]:hidden">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-[#65584f]">{displayName(user, profile, adopter)}</p>
+                      <p className="mt-1 truncate text-xs text-[#65584f]/65">@{accountName(user)} · {user.email ?? adopter?.email ?? "No email"}</p>
+                      <p className="mt-1 text-[11px] text-[#65584f]/50">Joined {formatDateTime(user.created_at)}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#65584f]">{providerLabel(user)} · {user.email_confirmed_at ?? user.confirmed_at ? "Email confirmed" : "Email unconfirmed"}</p>
+                      <p className="mt-1 text-xs text-[#65584f]/60">Adopter verification: {verificationLabel(adopter?.verification_status)}</p>
+                    </div>
+                    <div>
+                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${planBadgeClass(plan)}`}>{plan.label}</span>
+                      <p className="mt-2 text-xs text-[#65584f]/60">{plan.detail}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#65584f]">{activity?.dogViews ?? 0} profile opens · {viewedDogs.length} dogs</p>
+                      <p className="mt-1 text-xs text-[#65584f]/60">{activity?.feedImpressions ?? 0} feed impressions · {activity?.dogShares ?? 0} shares</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#65584f]">{wishlist.length} saved dogs</p>
+                      <p className="mt-1 line-clamp-2 text-xs text-[#65584f]/60">{wishlistNames.length ? wishlistNames.slice(0, 3).join(", ") : "Wishlist is empty"}</p>
+                    </div>
+                    <div className="flex items-center justify-end gap-3">
+                      <time className="whitespace-nowrap text-xs text-[#65584f]/60">{formatDateTime(lastActive)}</time>
+                      <ChevronDown className="h-4 w-4 shrink-0 text-[#cd8188] transition group-open:rotate-180" aria-hidden="true" />
+                    </div>
+                  </summary>
+
+                  <div className="grid gap-0 border-t border-[#eadfcd] bg-[#fffaf5] lg:grid-cols-3">
+                    <section className="px-5 py-5 lg:border-r lg:border-[#eadfcd]" aria-label="Viewed dog profiles">
+                      <div className="flex items-center gap-2 text-[#65584f]"><Eye className="h-4 w-4 text-[#cd8188]" /><h4 className="font-semibold">Viewed dog profiles</h4></div>
+                      <p className="mt-1 text-xs text-[#65584f]/60">Profile opens are shown separately from feed impressions.</p>
+                      {viewedDogs.length ? (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {viewedDogs.slice(0, 12).map(([dogId, count]) => (
+                            <Link className="rounded-full border border-[#d6c8ad] bg-white px-3 py-1.5 text-xs font-medium text-[#65584f] hover:border-[#cd8188]" href={`/dogs/${dogId}`} key={dogId} target="_blank">
+                              {dogMap.get(dogId) ?? "Removed dog"} · {count}
+                            </Link>
+                          ))}
+                          {viewedDogs.length > 12 ? <span className="px-2 py-1.5 text-xs text-[#65584f]/60">+{viewedDogs.length - 12} more</span> : null}
+                        </div>
+                      ) : <p className="mt-4 text-sm text-[#65584f]/60">No tracked dog profile opens yet.</p>}
+                    </section>
+
+                    <section className="border-t border-[#eadfcd] px-5 py-5 lg:border-r lg:border-t-0 lg:border-[#eadfcd]" aria-label="Wishlist dogs">
+                      <div className="flex items-center gap-2 text-[#65584f]"><Bookmark className="h-4 w-4 text-[#cd8188]" /><h4 className="font-semibold">Wishlist dogs</h4></div>
+                      <p className="mt-1 text-xs text-[#65584f]/60">Current saved dogs, newest save first.</p>
+                      {wishlist.length ? (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {wishlist.map((item) => (
+                            <Link className="rounded-full border border-[#d6c8ad] bg-white px-3 py-1.5 text-xs font-medium text-[#65584f] hover:border-[#cd8188]" href={`/dogs/${item.dog_id}`} key={`${item.adopter_id}:${item.dog_id}`} target="_blank">
+                              {dogMap.get(item.dog_id) ?? "Removed dog"}
+                            </Link>
+                          ))}
+                        </div>
+                      ) : <p className="mt-4 text-sm text-[#65584f]/60">No dogs are currently saved.</p>}
+                    </section>
+
+                    <section className="border-t border-[#eadfcd] px-5 py-5 lg:border-t-0" aria-label="Account journey">
+                      <div className="flex items-center gap-2 text-[#65584f]"><Activity className="h-4 w-4 text-[#cd8188]" /><h4 className="font-semibold">Account journey</h4></div>
+                      <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+                        <div><dt className="text-[#65584f]/55">Page views</dt><dd className="mt-1 font-semibold text-[#65584f]">{activity?.pageViews ?? 0}</dd></div>
+                        <div><dt className="text-[#65584f]/55">Tracked events</dt><dd className="mt-1 font-semibold text-[#65584f]">{activity?.total ?? 0}</dd></div>
+                        <div><dt className="text-[#65584f]/55">Visit requests</dt><dd className="mt-1 font-semibold text-[#65584f]">{bookingsByUser.get(user.id) ?? 0}</dd></div>
+                        <div><dt className="text-[#65584f]/55">Booking starts</dt><dd className="mt-1 font-semibold text-[#65584f]">{activity?.bookingStarts ?? 0}</dd></div>
+                        <div><dt className="text-[#65584f]/55">Booking failures</dt><dd className={`mt-1 font-semibold ${activity?.bookingFailures ? "text-[#9a3129]" : "text-[#65584f]"}`}>{activity?.bookingFailures ?? 0}</dd></div>
+                        <div><dt className="text-[#65584f]/55">Last sign-in</dt><dd className="mt-1 font-semibold text-[#65584f]">{formatDateTime(user.last_sign_in_at)}</dd></div>
+                        <div><dt className="text-[#65584f]/55">Last activity</dt><dd className="mt-1 font-semibold text-[#65584f]">{formatDateTime(lastActive)}</dd></div>
+                      </dl>
+                    </section>
                   </div>
-                  <div><p className="font-semibold text-[#65584f]">{providerLabel(user)}</p><p className="mt-1 text-xs text-[#65584f]/60">{user.email_confirmed_at ?? user.confirmed_at ? "Confirmed" : "Unconfirmed"}</p></div>
-                  <div><p className="font-semibold capitalize text-[#65584f]">{adopter?.verification_status.replaceAll("_", " ") ?? "Not started"}</p></div>
-                  <div><p className="font-semibold text-[#65584f]">{bookingsByUser.get(user.id) ?? 0}</p><p className="mt-1 text-xs text-[#65584f]/60">visit requests</p></div>
-                  <div>
-                    <p className="font-semibold text-[#65584f]">{activity?.dogViews ?? 0} dog views · {activity?.pageViews ?? 0} page views</p>
-                    <p className="mt-1 text-xs text-[#65584f]/60">{activity?.lastDogId ? `Last viewed ${dogMap.get(activity.lastDogId) ?? "a removed dog"}` : "No dog views recorded"}</p>
-                    {activity?.bookingFailures ? <p className="mt-1 text-xs text-[#9a3129]">{activity.bookingFailures} booking failures</p> : null}
-                  </div>
-                  <time className="whitespace-nowrap text-xs text-[#65584f]/60">{formatDateTime(lastActive)}</time>
-                </article>
+                </details>
               );
             })}
           </div>

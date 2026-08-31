@@ -119,6 +119,17 @@ test("returns all dogs when there are no active preference filters", () => {
   assert.deepEqual(result.map((dog) => dog.id), ["match", "young", "unknown-age", "ridgeback", "thai-mix"]);
 });
 
+test("advanced matching ranks partial matches instead of excluding them", () => {
+  const { rankDogsByPreferenceMatch } = loadDogPreferenceFilter();
+  const result = rankDogsByPreferenceMatch(dogs, traits, {
+    preferred_breeds: ["Thai Bangkaew"],
+    preferred_energy_level: "high",
+    preferred_size: "medium",
+  });
+  assert.equal(result[0].id, "match");
+  assert.equal(result.length, dogs.length);
+});
+
 test("filters by age range and trait-backed preferences", () => {
   const { filterDogsByPreferences } = loadDogPreferenceFilter();
 

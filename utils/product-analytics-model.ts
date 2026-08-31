@@ -7,6 +7,8 @@ export const PRODUCT_ANALYTICS_EVENT_NAMES = [
   "booking_started",
   "booking_succeeded",
   "booking_failed",
+  "subscription_limit_prompt",
+  "subscription_changed",
 ] as const;
 
 export type ProductAnalyticsEventName = (typeof PRODUCT_ANALYTICS_EVENT_NAMES)[number];

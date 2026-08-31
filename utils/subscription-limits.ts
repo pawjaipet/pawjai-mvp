@@ -17,6 +17,7 @@ export type SubscriptionTierConfig = SubscriptionLimits & {
 const TIER_ORDER: SubscriptionTier[] = ["free", "standard", "premium"];
 
 export const ANONYMOUS_DOG_VIEW_LIMIT = 10;
+export const LAUNCH_PREMIUM_GRANT_LIMIT = 200;
 
 export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, SubscriptionTierConfig> = {
   free: {
@@ -59,15 +60,41 @@ export function normalizeSubscriptionTier(value: unknown): SubscriptionTier {
     : "free";
 }
 
-export function subscriptionTierFromAppMetadata(appMetadata: unknown): SubscriptionTier {
+export function hasLaunchPremiumGrant(appMetadata: unknown) {
+  if (!appMetadata || typeof appMetadata !== "object" || Array.isArray(appMetadata)) {
+    return false;
+  }
+
+  return (appMetadata as Record<string, unknown>).pawjai_launch_premium === true;
+}
+
+export function launchPremiumGrantNumber(appMetadata: unknown) {
+  if (!appMetadata || typeof appMetadata !== "object" || Array.isArray(appMetadata)) {
+    return null;
+  }
+
+  const value = (appMetadata as Record<string, unknown>).pawjai_launch_premium_number;
+  return typeof value === "number"
+    && Number.isInteger(value)
+    && value >= 1
+    && value <= LAUNCH_PREMIUM_GRANT_LIMIT
+    ? value
+    : null;
+}
+
+export function paidSubscriptionTierFromAppMetadata(appMetadata: unknown): SubscriptionTier {
   if (!appMetadata || typeof appMetadata !== "object" || Array.isArray(appMetadata)) {
     return "free";
   }
 
   const metadata = appMetadata as Record<string, unknown>;
-  return normalizeSubscriptionTier(
-    metadata.pawjai_subscription_tier ?? metadata.subscription_tier ?? metadata.plan,
-  );
+  return normalizeSubscriptionTier(metadata.pawjai_subscription_tier);
+}
+
+export function subscriptionTierFromAppMetadata(appMetadata: unknown): SubscriptionTier {
+  return hasLaunchPremiumGrant(appMetadata)
+    ? "premium"
+    : paidSubscriptionTierFromAppMetadata(appMetadata);
 }
 
 export function getSubscriptionLimits(tier: SubscriptionTier): SubscriptionLimits {

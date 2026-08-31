@@ -12,6 +12,21 @@ test("/admin is the canonical Supabase-backed PawJai workspace", () => {
   assert.equal(source.includes('dynamic = "force-dynamic"'), true);
 });
 
+test("PawJai admin can preview and switch between every shelter without entering the shelter portal", () => {
+  const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+  const editSource = readFileSync(new URL("../app/admin/dogs/[id]/edit/page.tsx", import.meta.url), "utf8");
+
+  assert.equal(panelSource.includes("AdminShelterPreviewSelector"), true);
+  assert.equal(panelSource.includes("Admin shelter preview"), true);
+  assert.equal(panelSource.includes("Select shelter ({shelters.length})"), true);
+  assert.equal(panelSource.includes('router.replace(adminDraftShelterWorkspaceHref(shelterId, shelterTab, "shelter")'), true);
+  assert.equal(panelSource.includes("workspaceTabHref={shelterWorkspaceTabHref}"), true);
+  assert.equal(panelSource.includes("setSelectedShelterId(initialShelterId)"), true);
+  assert.equal(panelSource.includes("shelterId) params.set(\"shelter\", shelterId)"), true);
+  assert.equal(editSource.includes('listingsParams.set("role", "shelter")'), true);
+  assert.equal(editSource.includes("gateReturnTo"), true);
+});
+
 test("/admin requires the PawJai Google admin session before loading data", () => {
   const pageSource = readFileSync(new URL("../app/admin/AdminWorkspacePage.tsx", import.meta.url), "utf8");
   const layoutSource = readFileSync(new URL("../app/admin/layout.tsx", import.meta.url), "utf8");

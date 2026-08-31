@@ -5,9 +5,10 @@ import { ensureAdopterForUser } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
 import {
   getSubscriptionLimits,
-  subscriptionTierFromAppMetadata,
   type SubscriptionTier,
 } from "@/utils/subscription-limits";
+import { recordProductAnalyticsEvent } from "@/utils/product-analytics";
+import { resolveSubscriptionEntitlementForUser } from "@/utils/subscription-entitlements";
 
 export type WishlistToggleResult = {
   error?: "not_authenticated" | "wishlist_limit_reached";
@@ -24,36 +25,24 @@ export async function toggleWishlistAction(dogId: string): Promise<WishlistToggl
   const adopter = await ensureAdopterForUser(supabase, user);
   const admin = createAdminClient();
 
-  const { data: existing } = await admin
-    .from("wishlists")
-    .select("dog_id")
-    .eq("adopter_id", adopter.id)
-    .eq("dog_id", dogId)
-    .maybeSingle();
-
-  if (existing) {
-    await admin.from("wishlists").delete().eq("adopter_id", adopter.id).eq("dog_id", dogId);
-    return { saved: false };
-  }
-
-  const tier = subscriptionTierFromAppMetadata(user.app_metadata);
+  const { tier } = await resolveSubscriptionEntitlementForUser(user);
   const { wishlistLimit } = getSubscriptionLimits(tier);
-  if (wishlistLimit !== null) {
-    const { count } = await admin
-      .from("wishlists")
-      .select("dog_id", { count: "exact", head: true })
-      .eq("adopter_id", adopter.id);
-
-    if ((count ?? 0) >= wishlistLimit) {
-      return {
-        error: "wishlist_limit_reached",
-        limit: wishlistLimit,
-        saved: false,
-        tier,
-      };
-    }
+  const { data, error } = await admin.rpc("toggle_subscription_wishlist_for_user", {
+    p_adopter_id: adopter.id,
+    p_dog_id: dogId,
+    p_tier: tier,
+    p_user_id: user.id,
+  });
+  if (error || !data?.[0]) throw error ?? new Error("Wishlist could not be updated.");
+  if (data[0].limit_reached) {
+    await recordProductAnalyticsEvent({
+      dogId,
+      eventName: "subscription_limit_prompt",
+      metadata: { limit: wishlistLimit, limitType: "wishlist", tier },
+      path: "/swipe",
+      userId: user.id,
+    });
+    return { error: "wishlist_limit_reached", limit: wishlistLimit ?? undefined, saved: false, tier };
   }
-
-  await admin.from("wishlists").insert({ adopter_id: adopter.id, dog_id: dogId });
-  return { saved: true };
+  return { saved: data[0].saved };
 }

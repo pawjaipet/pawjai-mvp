@@ -11,11 +11,19 @@ export const dynamic = "force-dynamic";
 
 export default async function EditAdminDogPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ role?: string; shelter?: string }>;
 }) {
   const { id } = await params;
-  await requireGlobalAdmin(`/admin/dogs/${id}/edit`);
+  const resolvedSearchParams = await searchParams;
+  const gateParams = new URLSearchParams();
+  if (resolvedSearchParams?.shelter) gateParams.set("shelter", resolvedSearchParams.shelter);
+  if (resolvedSearchParams?.role === "shelter") gateParams.set("role", "shelter");
+  const gateQuery = gateParams.toString();
+  const gateReturnTo = gateQuery ? `/admin/dogs/${id}/edit?${gateQuery}` : `/admin/dogs/${id}/edit`;
+  await requireGlobalAdmin(gateReturnTo);
 
   const supabase = createAdminClient();
   const [{ data: dog }, { data: shelters }, { data: photos }, { data: traits }, { data: personalityTraitRows }] = await Promise.all([
@@ -34,8 +42,11 @@ export default async function EditAdminDogPage({
   await requireShelterAccess(dog.shelter_id, `/admin/dogs/${id}/edit`);
 
   const listingsParams = new URLSearchParams({ shelter: dog.shelter_id, view: "dogs" });
+  if (resolvedSearchParams?.role === "shelter") listingsParams.set("role", "shelter");
   const listingsHref = `/admin?${listingsParams.toString()}`;
-  const editHref = `/admin/dogs/${dog.id}/edit`;
+  const editParams = new URLSearchParams({ shelter: dog.shelter_id });
+  if (resolvedSearchParams?.role === "shelter") editParams.set("role", "shelter");
+  const editHref = `/admin/dogs/${dog.id}/edit?${editParams.toString()}`;
 
   return (
     <PawjaiWorkspaceShell

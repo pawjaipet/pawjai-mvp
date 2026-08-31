@@ -182,3 +182,38 @@ export function filterDogsByPreferences<TDog extends DogForPreferenceFilter>(
     );
   });
 }
+
+export function rankDogsByPreferenceMatch<TDog extends DogForPreferenceFilter>(
+  dogs: TDog[],
+  traits: DogTraitForPreferenceFilter[],
+  preference: Nullable<PreferenceForDogFilter>,
+) {
+  if (!hasActiveDogPreference(preference)) return dogs;
+
+  const dimensions: PreferenceForDogFilter[] = [
+    { preferred_breeds: preference!.preferred_breeds },
+    { preferred_age_min_months: preference!.preferred_age_min_months, preferred_age_max_months: preference!.preferred_age_max_months },
+    { preferred_size: preference!.preferred_size },
+    { preferred_energy_level: preference!.preferred_energy_level },
+    { good_with_dogs: preference!.good_with_dogs },
+    { good_with_cats: preference!.good_with_cats },
+    { good_with_kids: preference!.good_with_kids },
+    { preferred_protectiveness: preference!.preferred_protectiveness },
+    { preferred_affection_styles: preference!.preferred_affection_styles },
+    { preferred_training_preferences: preference!.preferred_training_preferences },
+    { preferred_people_friendliness: preference!.preferred_people_friendliness },
+    { preferred_special_needs: preference!.preferred_special_needs },
+  ].filter(hasActiveDogPreference);
+
+  return dogs
+    .map((dog, index) => ({
+      dog,
+      index,
+      score: dimensions.reduce(
+        (score, dimension) => score + (filterDogsByPreferences([dog], traits, dimension).length ? 1 : 0),
+        0,
+      ),
+    }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map(({ dog }) => dog);
+}

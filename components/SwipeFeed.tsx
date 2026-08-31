@@ -45,6 +45,7 @@ export default function SwipeFeed({
   const containerRef = useRef<HTMLDivElement>(null);
   const activeIndexRef = useRef(0);
   const backwardFeedSwipesRef = useRef(0);
+  const checkingDogIdsRef = useRef(new Set<string>());
   const feedVisitIdRef = useRef<string | null>(null);
   const forwardFeedSwipesRef = useRef(0);
   const seenDogIdsRef = useRef(new Set<string>());
@@ -65,9 +66,36 @@ export default function SwipeFeed({
     return feedVisitIdRef.current;
   }, []);
 
-  const trackDogImpression = useCallback((index: number) => {
+  const trackDogImpression = useCallback(async (index: number) => {
     const item = feed[index];
-    if (!item || item.kind !== "dog" || seenDogIdsRef.current.has(item.dog.id)) return;
+    if (
+      !item
+      || item.kind !== "dog"
+      || seenDogIdsRef.current.has(item.dog.id)
+      || checkingDogIdsRef.current.has(item.dog.id)
+    ) return;
+
+    checkingDogIdsRef.current.add(item.dog.id);
+    if (isLoggedIn && subscriptionTier !== "premium") {
+      try {
+        const response = await fetch("/api/subscription/dog-view", {
+          body: JSON.stringify({ dogId: item.dog.id }),
+          headers: { "content-type": "application/json" },
+          method: "POST",
+        });
+        if (response.status === 429) {
+          setShowDogViewLimit(true);
+          return;
+        }
+        if (!response.ok) return;
+      } catch {
+        return;
+      } finally {
+        checkingDogIdsRef.current.delete(item.dog.id);
+      }
+    } else {
+      checkingDogIdsRef.current.delete(item.dog.id);
+    }
 
     const feedVisitId = ensureFeedVisit();
     seenDogIdsRef.current.add(item.dog.id);
@@ -90,7 +118,7 @@ export default function SwipeFeed({
         totalDogs: dogs.length,
       },
     });
-  }, [dailyDogViewsRemaining, dogs.length, ensureFeedVisit, feed, subscriptionTier]);
+  }, [dailyDogViewsRemaining, dogs.length, ensureFeedVisit, feed, isLoggedIn, subscriptionTier]);
 
   const settleFeedIndex = useCallback((index: number) => {
     const previousIndex = settledIndexRef.current;

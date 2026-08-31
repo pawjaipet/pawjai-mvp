@@ -102,12 +102,14 @@ export type AdminDraftBooking = {
   id: string;
   proposedAppointmentDate: string | null;
   proposedAppointmentTime: string | null;
+  priorityVisit: boolean;
   shelterDistrict: string | null;
   shelterId: string;
   shelterName: string;
   shelterNote: string | null;
   shelterProvince: string | null;
   status: string;
+  subscriptionTierAtBooking: "free" | "standard" | "premium";
   visitorNote: string | null;
 };
 
@@ -540,12 +542,14 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
         id: booking.id,
         proposedAppointmentDate: (booking as { proposed_appointment_date?: string | null }).proposed_appointment_date ?? null,
         proposedAppointmentTime: (booking as { proposed_appointment_time?: string | null }).proposed_appointment_time ?? null,
+        priorityVisit: booking.priority_visit,
         shelterDistrict: shelterSummary.get(booking.shelter_id)?.district ?? null,
         shelterId: booking.shelter_id,
         shelterName: shelterNames.get(booking.shelter_id) ?? "Unknown shelter",
         shelterNote: booking.shelter_note,
         shelterProvince: shelterSummary.get(booking.shelter_id)?.province ?? null,
         status: booking.status,
+        subscriptionTierAtBooking: booking.subscription_tier_at_booking,
         visitorNote: booking.visitor_note,
       };
     }),

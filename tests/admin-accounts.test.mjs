@@ -21,6 +21,19 @@ test("admin accounts separates public users from shelter portal access", () => {
   assert.equal(accountsSource.includes('href={`${basePath}/analytics`}'), true);
 });
 
+test("user accounts expose verification, dog activity, wishlists, and effective subscription access", () => {
+  assert.equal(accountsSource.includes('.from("wishlists")'), true);
+  assert.equal(accountsSource.includes('.from("subscription_launch_grants")'), true);
+  assert.equal(accountsSource.includes('.from("billing_subscriptions")'), true);
+  assert.equal(accountsSource.includes("Founding Premium"), true);
+  assert.equal(accountsSource.includes("Founding member #${grantNumber} of 200"), true);
+  assert.equal(accountsSource.includes("Viewed dog profiles"), true);
+  assert.equal(accountsSource.includes("Wishlist dogs"), true);
+  assert.equal(accountsSource.includes("profile opens"), true);
+  assert.equal(accountsSource.includes("Email confirmed"), true);
+  assert.equal(accountsSource.includes("Adopter verification"), true);
+});
+
 test("shelter account tab is portal-only and never exposes stored passwords", () => {
   assert.equal(accountsSource.includes("authorized only for their linked shelter portal"), true);
   assert.equal(accountsSource.includes("They are not PawJai admin accounts"), true);

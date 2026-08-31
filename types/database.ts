@@ -287,9 +287,11 @@ export type Database = {
           created_at: string
           dog_id: string | null
           id: string
+          priority_visit: boolean
           shelter_id: string
           shelter_note: string | null
           status: Database["public"]["Enums"]["appointment_status"]
+          subscription_tier_at_booking: "free" | "standard" | "premium"
           updated_at: string
           visitor_note: string | null
         }
@@ -306,13 +308,57 @@ export type Database = {
           created_at?: string
           dog_id?: string | null
           id?: string
+          priority_visit?: boolean
           shelter_id: string
           shelter_note?: string | null
           status?: Database["public"]["Enums"]["appointment_status"]
+          subscription_tier_at_booking?: "free" | "standard" | "premium"
           updated_at?: string
           visitor_note?: string | null
         }
         Update: Partial<Database["public"]["Tables"]["appointments"]["Insert"]>
+        Relationships: []
+      }
+      billing_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          last_payment_at: string | null
+          last_payment_failed_at: string | null
+          last_provider_event_created_at: string | null
+          latest_invoice_id: string | null
+          provider: "stripe"
+          provider_customer_id: string | null
+          provider_price_id: string | null
+          provider_subscription_id: string | null
+          status: string
+          tier: "free" | "standard" | "premium"
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          last_payment_at?: string | null
+          last_payment_failed_at?: string | null
+          last_provider_event_created_at?: string | null
+          latest_invoice_id?: string | null
+          provider?: "stripe"
+          provider_customer_id?: string | null
+          provider_price_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          tier?: "free" | "standard" | "premium"
+          updated_at?: string
+          user_id: string
+        }
+        Update: Partial<Database["public"]["Tables"]["billing_subscriptions"]["Insert"]>
         Relationships: []
       }
       appointment_messages: {
@@ -518,7 +564,7 @@ export type Database = {
           appointment_id: string | null
           created_at: string
           dog_id: string | null
-          event_name: "page_view" | "dog_profile_view" | "dog_feed_impression" | "dog_shared" | "feed_session_summary" | "booking_started" | "booking_succeeded" | "booking_failed"
+          event_name: "page_view" | "dog_profile_view" | "dog_feed_impression" | "dog_shared" | "feed_session_summary" | "booking_started" | "booking_succeeded" | "booking_failed" | "subscription_limit_prompt" | "subscription_changed"
           id: string
           metadata: Json
           path: string
@@ -530,7 +576,7 @@ export type Database = {
           appointment_id?: string | null
           created_at?: string
           dog_id?: string | null
-          event_name: "page_view" | "dog_profile_view" | "dog_feed_impression" | "dog_shared" | "feed_session_summary" | "booking_started" | "booking_succeeded" | "booking_failed"
+          event_name: "page_view" | "dog_profile_view" | "dog_feed_impression" | "dog_shared" | "feed_session_summary" | "booking_started" | "booking_succeeded" | "booking_failed" | "subscription_limit_prompt" | "subscription_changed"
           id?: string
           metadata?: Json
           path: string
@@ -539,6 +585,68 @@ export type Database = {
           visitor_id?: string | null
         }
         Update: Partial<Database["public"]["Tables"]["product_analytics_events"]["Insert"]>
+        Relationships: []
+      }
+      subscription_audit_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          new_tier: "free" | "standard" | "premium" | null
+          occurred_at: string
+          previous_tier: "free" | "standard" | "premium" | null
+          provider_event_id: string
+          subscription_status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          new_tier?: "free" | "standard" | "premium" | null
+          occurred_at: string
+          previous_tier?: "free" | "standard" | "premium" | null
+          provider_event_id: string
+          subscription_status?: string | null
+          user_id?: string | null
+        }
+        Update: Partial<Database["public"]["Tables"]["subscription_audit_events"]["Insert"]>
+        Relationships: []
+      }
+      subscription_dog_views: {
+        Row: {
+          dog_id: string
+          id: string
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          dog_id: string
+          id?: string
+          user_id: string
+          viewed_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["subscription_dog_views"]["Insert"]>
+        Relationships: []
+      }
+      subscription_launch_grants: {
+        Row: {
+          campaign: "founding_200"
+          grant_number: number
+          granted_at: string
+          tier: "premium"
+          user_id: string
+        }
+        Insert: {
+          campaign?: "founding_200"
+          grant_number: number
+          granted_at?: string
+          tier?: "premium"
+          user_id: string
+        }
+        Update: Partial<Database["public"]["Tables"]["subscription_launch_grants"]["Insert"]>
         Relationships: []
       }
       site_settings: {
@@ -741,7 +849,34 @@ export type Database = {
       }
     }
     Views: Record<never, never>
-    Functions: Record<never, never>
+    Functions: {
+      ensure_launch_premium_grant_for_user: {
+        Args: { p_user_id: string }
+        Returns: {
+          grant_number: number | null
+          granted: boolean
+        }[]
+      }
+      record_subscription_dog_view_for_user: {
+        Args: { p_dog_id: string; p_tier: string; p_user_id: string }
+        Returns: {
+          allowed: boolean
+          next_reset_at: string | null
+          unique_views: number
+          view_limit: number | null
+          was_new: boolean
+        }[]
+      }
+      toggle_subscription_wishlist_for_user: {
+        Args: { p_adopter_id: string; p_dog_id: string; p_tier: string; p_user_id: string }
+        Returns: {
+          limit_reached: boolean
+          saved: boolean
+          wishlist_count: number
+          wishlist_limit: number | null
+        }[]
+      }
+    }
     Enums: {
       app_role: "adopter" | "shelter_admin" | "admin"
       adopter_document_type: "id_copy" | "house_image" | "income_statement" | "other"

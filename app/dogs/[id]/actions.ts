@@ -21,7 +21,8 @@ import {
 } from "@/utils/product-analytics";
 import { assertRateLimit } from "@/utils/rate-limit";
 import { getShelterDaySlots } from "@/utils/shelter-availability";
-import { getSubscriptionLimits, subscriptionTierFromAppMetadata } from "@/utils/subscription-limits";
+import { getSubscriptionLimits } from "@/utils/subscription-limits";
+import { resolveSubscriptionEntitlementForUser } from "@/utils/subscription-entitlements";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
@@ -60,7 +61,6 @@ async function recordBookingOutcome({
 
 export async function toggleWishlist(formData: FormData) {
   const dogId = String(formData.get("dogId") ?? "");
-  const isSaved = formData.get("isSaved") === "true";
   const ctx = await getAdopter();
 
   if (!ctx) {
@@ -76,23 +76,24 @@ export async function toggleWishlist(formData: FormData) {
 
   const admin = createAdminClient();
 
-  if (isSaved) {
-    await admin.from("wishlists").delete().eq("adopter_id", adopter.id).eq("dog_id", dogId);
-  } else {
-    const tier = subscriptionTierFromAppMetadata(user.app_metadata);
-    const { wishlistLimit } = getSubscriptionLimits(tier);
-    if (wishlistLimit !== null) {
-      const { count } = await admin
-        .from("wishlists")
-        .select("dog_id", { count: "exact", head: true })
-        .eq("adopter_id", adopter.id);
-
-      if ((count ?? 0) >= wishlistLimit) {
-        redirect(`/settings/subscription?message=${encodeURIComponent("Wishlist limit reached. Upgrade to save more dogs.")}`);
-      }
-    }
-
-    await admin.from("wishlists").upsert({ adopter_id: adopter.id, dog_id: dogId });
+  const { tier } = await resolveSubscriptionEntitlementForUser(user);
+  const { wishlistLimit } = getSubscriptionLimits(tier);
+  const { data, error } = await admin.rpc("toggle_subscription_wishlist_for_user", {
+    p_adopter_id: adopter.id,
+    p_dog_id: dogId,
+    p_tier: tier,
+    p_user_id: user.id,
+  });
+  if (error || !data?.[0]) throw error ?? new Error("Wishlist could not be updated.");
+  if (data[0].limit_reached) {
+    await recordProductAnalyticsEvent({
+      dogId,
+      eventName: "subscription_limit_prompt",
+      metadata: { limit: wishlistLimit, limitType: "wishlist", tier },
+      path: `/dogs/${dogId}`,
+      userId: user.id,
+    });
+    redirect(`/settings/subscription?message=${encodeURIComponent("Wishlist limit reached. Upgrade to save more dogs.")}`);
   }
 
   revalidatePath(`/dogs/${dogId}`);
@@ -176,6 +177,8 @@ export async function bookAppointment(formData: FormData) {
   }
 
   const appointmentId = randomUUID();
+  const { tier: subscriptionTier } = await resolveSubscriptionEntitlementForUser(user);
+  const subscriptionLimits = getSubscriptionLimits(subscriptionTier);
   const checkInToken = createSignedCheckInToken({
     appointmentId,
     secret: getCheckInTokenSecret(),
@@ -195,6 +198,8 @@ export async function bookAppointment(formData: FormData) {
     ...appointmentPayload,
     booking_code: formatBookingCode(appointmentId),
     check_in_token_hash: hashCheckInToken(checkInToken),
+    priority_visit: subscriptionLimits.priorityVisits,
+    subscription_tier_at_booking: subscriptionTier,
   });
 
   if (error?.message.includes("Could not find") || error?.message.includes("column")) {

@@ -7,6 +7,7 @@ import { buildDogMediaItems } from "@/utils/dog-media";
 import {
   filterDogsByPreferences,
   hasActiveDogPreference,
+  rankDogsByPreferenceMatch,
   type PreferenceForDogFilter,
 } from "@/utils/dog-preference-filter";
 import type { SwipeDog } from "@/components/SwipeDogCard";
@@ -15,9 +16,9 @@ import { shuffleFeedDogs } from "@/utils/swipe-feed-model";
 import {
   ANONYMOUS_DOG_VIEW_LIMIT,
   getSubscriptionLimits,
-  subscriptionTierFromAppMetadata,
   type SubscriptionTier,
 } from "@/utils/subscription-limits";
+import { resolveSubscriptionEntitlementForUser } from "@/utils/subscription-entitlements";
 import type { Database } from "@/types/database";
 import { hasSupabaseAuthCookies } from "@/utils/supabase/auth-cookies";
 
@@ -43,7 +44,10 @@ function hasUploadedPhoto(dog: SwipeDog) {
   });
 }
 
-async function getMatchingDogs(preference: PreferenceForDogFilter | null): Promise<SwipeDog[]> {
+async function getMatchingDogs(
+  preference: PreferenceForDogFilter | null,
+  advancedMatching = false,
+): Promise<SwipeDog[]> {
   const supabase = await createClient();
 
   let dogQuery = supabase
@@ -52,19 +56,19 @@ async function getMatchingDogs(preference: PreferenceForDogFilter | null): Promi
     .eq("adoption_status", "available")
     .order("created_at", { ascending: false });
 
-  if (preference?.preferred_size) dogQuery = dogQuery.eq("size", preference.preferred_size as Database["public"]["Enums"]["dog_size"]);
-  if (preference?.preferred_energy_level) dogQuery = dogQuery.eq("energy_level", preference.preferred_energy_level as Database["public"]["Enums"]["dog_energy_level"]);
-  if (preference?.good_with_dogs !== null && preference?.good_with_dogs !== undefined) dogQuery = dogQuery.eq("good_with_dogs", preference.good_with_dogs);
-  if (preference?.good_with_cats !== null && preference?.good_with_cats !== undefined) dogQuery = dogQuery.eq("good_with_cats", preference.good_with_cats);
-  if (preference?.good_with_kids !== null && preference?.good_with_kids !== undefined) dogQuery = dogQuery.eq("good_with_kids", preference.good_with_kids);
-  if (preference?.preferred_age_min_months !== null && preference?.preferred_age_min_months !== undefined) {
+  if (!advancedMatching && preference?.preferred_size) dogQuery = dogQuery.eq("size", preference.preferred_size as Database["public"]["Enums"]["dog_size"]);
+  if (!advancedMatching && preference?.preferred_energy_level) dogQuery = dogQuery.eq("energy_level", preference.preferred_energy_level as Database["public"]["Enums"]["dog_energy_level"]);
+  if (!advancedMatching && preference?.good_with_dogs !== null && preference?.good_with_dogs !== undefined) dogQuery = dogQuery.eq("good_with_dogs", preference.good_with_dogs);
+  if (!advancedMatching && preference?.good_with_cats !== null && preference?.good_with_cats !== undefined) dogQuery = dogQuery.eq("good_with_cats", preference.good_with_cats);
+  if (!advancedMatching && preference?.good_with_kids !== null && preference?.good_with_kids !== undefined) dogQuery = dogQuery.eq("good_with_kids", preference.good_with_kids);
+  if (!advancedMatching && preference?.preferred_age_min_months !== null && preference?.preferred_age_min_months !== undefined) {
     dogQuery = dogQuery.gte("age_months", preference.preferred_age_min_months);
   }
-  if (preference?.preferred_age_max_months !== null && preference?.preferred_age_max_months !== undefined) {
+  if (!advancedMatching && preference?.preferred_age_max_months !== null && preference?.preferred_age_max_months !== undefined) {
     dogQuery = dogQuery.lte("age_months", preference.preferred_age_max_months);
   }
   if (
-    preference?.preferred_special_needs?.length === 1 &&
+    !advancedMatching && preference?.preferred_special_needs?.length === 1 &&
     preference.preferred_special_needs[0] === "No special needs preferred"
   ) {
     dogQuery = dogQuery.is("special_needs", null);
@@ -119,7 +123,15 @@ async function getMatchingDogs(preference: PreferenceForDogFilter | null): Promi
     });
   }
 
-  const matchingDogs = filterDogsByPreferences(
+  const matchingDogs = advancedMatching ? rankDogsByPreferenceMatch(
+    dogs,
+    (traits ?? []).map((trait) => ({
+      dog_id: trait.dog_id,
+      trait_type: trait.trait_type,
+      trait_value: trait.trait_value,
+    })),
+    preference,
+  ) : filterDogsByPreferences(
     dogs,
     (traits ?? []).map((trait) => ({
       dog_id: trait.dog_id,
@@ -128,6 +140,7 @@ async function getMatchingDogs(preference: PreferenceForDogFilter | null): Promi
     })),
     preference,
   );
+  const advancedOrder = new Map(matchingDogs.map((dog, index) => [dog.id, index]));
 
   const enrichedDogs = matchingDogs
     .map((d) => ({
@@ -143,6 +156,10 @@ async function getMatchingDogs(preference: PreferenceForDogFilter | null): Promi
       video: videoMap.get(d.id) ?? null,
     }))
     .sort((a, b) => {
+      if (advancedMatching) {
+        const rankOrder = (advancedOrder.get(a.id) ?? 0) - (advancedOrder.get(b.id) ?? 0);
+        if (rankOrder !== 0) return rankOrder;
+      }
       const aUploaded = hasUploadedPhoto(a);
       const bUploaded = hasUploadedPhoto(b);
       if (aUploaded !== bUploaded) return aUploaded ? -1 : 1;
@@ -152,14 +169,19 @@ async function getMatchingDogs(preference: PreferenceForDogFilter | null): Promi
   const dogsWithPhotos = enrichedDogs.filter(hasUploadedPhoto);
   const dogsWithoutPhotos = enrichedDogs.filter((dog) => !hasUploadedPhoto(dog));
 
+  if (advancedMatching) return enrichedDogs;
+
   return [
     ...shuffleFeedDogs(dogsWithPhotos),
     ...shuffleFeedDogs(dogsWithoutPhotos),
   ];
 }
 
-async function getDogFeed(preference: PreferenceForDogFilter | null): Promise<DogFeedResult> {
-  const dogs = await getMatchingDogs(preference);
+async function getDogFeed(
+  preference: PreferenceForDogFilter | null,
+  advancedMatching = false,
+): Promise<DogFeedResult> {
+  const dogs = await getMatchingDogs(preference, advancedMatching);
   if (!hasActiveDogPreference(preference) || dogs.length > 0) {
     return { dogs, showingAllBecauseNoMatches: false };
   }
@@ -175,30 +197,12 @@ function dogViewWindowStartIso() {
   return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 }
 
-async function countUniqueDogViewsInWindow(
-  admin: ReturnType<typeof createAdminClient>,
-  identity: { userId: string } | { visitorId: string },
-) {
-  let query = admin
-    .from("product_analytics_events")
-    .select("dog_id")
-    .eq("event_name", "dog_feed_impression")
-    .gte("created_at", dogViewWindowStartIso());
-
-  query = "userId" in identity
-    ? query.eq("user_id", identity.userId)
-    : query.eq("visitor_id", identity.visitorId).is("user_id", null);
-
-  const { data } = await query;
-
-  return new Set((data ?? []).map((event) => event.dog_id).filter(Boolean)).size;
-}
-
 export default async function DogFeedPage() {
   let preference: PreferenceForDogFilter | null = null;
   let savedIds: string[] = [];
   let isLoggedIn = false;
   let subscriptionTier: SubscriptionTier = "free";
+  let viewedDogIds = new Set<string>();
   let dailyDogViewsRemaining: number | null = null;
   let dogViewLimit: number | null = ANONYMOUS_DOG_VIEW_LIMIT;
   const cookieStore = await cookies();
@@ -209,10 +213,18 @@ export default async function DogFeedPage() {
 
     isLoggedIn = Boolean(user);
     if (user) {
-      subscriptionTier = subscriptionTierFromAppMetadata(user.app_metadata);
       const adopter = await ensureAdopterForUser(supabase, user);
+      ({ tier: subscriptionTier } = await resolveSubscriptionEntitlementForUser(user));
       const admin = createAdminClient();
-      const [{ data: wishlist }, { data: savedPreference }, dogViewsToday] = await Promise.all([
+      dogViewLimit = getSubscriptionLimits(subscriptionTier).dogViewLimit;
+      const dogViewsPromise = dogViewLimit === null
+        ? Promise.resolve({ data: [] as { dog_id: string }[] })
+        : admin
+          .from("subscription_dog_views")
+          .select("dog_id")
+          .eq("user_id", user.id)
+          .gt("viewed_at", dogViewWindowStartIso());
+      const [{ data: wishlist }, { data: savedPreference }, { data: dogViews }] = await Promise.all([
         admin
           .from("wishlists")
           .select("dog_id")
@@ -222,16 +234,16 @@ export default async function DogFeedPage() {
           .select("*")
           .eq("adopter_id", adopter.id)
           .maybeSingle(),
-        countUniqueDogViewsInWindow(admin, { userId: user.id }),
+        dogViewsPromise,
       ]);
       savedIds = (wishlist ?? []).map((w) => w.dog_id);
       preference = hasActiveDogPreference(savedPreference as PreferenceForDogFilter | null)
         ? savedPreference as PreferenceForDogFilter
         : null;
-      dogViewLimit = getSubscriptionLimits(subscriptionTier).dogViewLimit;
+      viewedDogIds = new Set((dogViews ?? []).map((view) => view.dog_id));
       dailyDogViewsRemaining = dogViewLimit === null
         ? null
-        : Math.max(dogViewLimit - dogViewsToday, 0);
+        : Math.max(dogViewLimit - viewedDogIds.size, 0);
     }
   }
 
@@ -241,11 +253,12 @@ export default async function DogFeedPage() {
 
   const limits = getSubscriptionLimits(subscriptionTier);
   const [{ dogs, showingAllBecauseNoMatches }, ads] = await Promise.all([
-    getDogFeed(preference),
+    getDogFeed(preference, limits.advancedMatching),
     limits.adFree ? Promise.resolve([]) : fetchActiveAds(),
   ]);
   const visibleDogs = isLoggedIn && dailyDogViewsRemaining !== null
-    ? dogs.slice(0, dailyDogViewsRemaining)
+    ? dogs.filter((dog) => viewedDogIds.has(dog.id))
+      .concat(dogs.filter((dog) => !viewedDogIds.has(dog.id)).slice(0, dailyDogViewsRemaining))
     : !isLoggedIn && dailyDogViewsRemaining !== null
       ? dogs.slice(0, dailyDogViewsRemaining)
     : dogs;

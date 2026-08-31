@@ -1,6 +1,6 @@
 # Codex Session Merge Ledger
 
-Last updated: 2026-07-20 20:22 +07; actions applied 2026-07-20
+Last updated: 2026-08-29 +07; actions applied 2026-07-20 and 2026-08-29
 
 Purpose: reduce the visible Codex task clutter for the PAWJAI project without losing context. This ledger records which sidebar sessions should be treated as merged, what each source session contributed, and what should remain findable before any task is renamed or archived.
 
@@ -33,6 +33,13 @@ Additional sidebar cleanup applied for the third requested batch:
 - Archived redundant source task: `FILTER PAGE UXUI & BACKEND logic`.
 - No application code, environment variables, production services, or external connections were changed during this cleanup.
 
+Additional sidebar cleanup applied for the fourth requested batch:
+
+- Renamed survivor `Migrate to new domain` to `Domain, DNS, and media infrastructure`.
+- Posted a merge-summary note into `Domain, DNS, and media infrastructure`.
+- Archived redundant source task: `Cloudflare CDN for Backblaze`.
+- No application code, environment variables, production services, DNS records, Vercel settings, Supabase settings, Cloudflare settings, or Backblaze data were changed during this cleanup.
+
 ## Final Old-to-New Merge Map
 
 | New Survivor Task | Merged From |
@@ -41,13 +48,14 @@ Additional sidebar cleanup applied for the third requested batch:
 | `Supabase access and MCP setup` | `Connect to Supabase`, `Check Supabase MCP access` |
 | `BACKEND related` | `Build booking system`, `Fix appointment chat backend`, `Dog import workflow`, `Fix appointment chat`, `Add Python bin to PATH`, `FILTER PAGE UXUI & BACKEND logic` |
 | `UXUI User Frontend design` | `UXUI frontend user`, `Apply adopter profiles migration` |
+| `Domain, DNS, and media infrastructure` | `Migrate to new domain`, `Cloudflare CDN for Backblaze` |
 
 ## Current Visible Survivor Buckets
 
 | Survivor task name | Owns / should be used for | Merged source tasks already archived |
 |---|---|---|
 | `Map session responsibilities` | This cleanup/map task and the merge ledger. | None. |
-| `Migrate to new domain` | Immediate domain purchase, DNS, Vercel domain setup, and production recovery. | None yet; kept separate because it is active action work. |
+| `Domain, DNS, and media infrastructure` | Domain purchase/recovery, Cloudflare DNS, Vercel domain setup, Backblaze B2 media delivery, Cloudflare CDN, media URL normalization, old-domain redirects/brand protection, and infrastructure verification. | `Cloudflare CDN for Backblaze`. |
 | `Production, audit, and and launch safety` | Production checks, launch readiness, security hardening, audit work, SEO/domain-indexing strategy. | `Audit security gaps`, `Implement reel strategy`. |
 | `Supabase access and MCP setup` | Supabase CLI/env/MCP connection history and migration-access setup. | `Check Supabase MCP access`. |
 | `BACKEND related` | Booking system, appointment messaging, return inquiries, dog import/media tooling, B2/photo ops, adopter preference filtering, and backend dog-feed matching. | `Fix appointment chat backend`, `Dog import workflow`, `Fix appointment chat`, `Add Python bin to PATH`, `FILTER PAGE UXUI & BACKEND logic`. |
@@ -59,7 +67,6 @@ Additional sidebar cleanup applied for the third requested batch:
 | `RESEND automation email` | Resend setup/testing and automated email delivery work. | None; keep unmerged. |
 | `OAUTH n Emails` | Auth account creation, email/password login, saved preferences/wishlist, appointment-email context. | None; keep unmerged. |
 | `Donation Backend Schema` | Donation schema, shelter payment fields, donation intent backend/admin setup. | None; keep unmerged. |
-| `Cloudflare CDN for Backblaze` | Backblaze B2 media CDN setup through Cloudflare. | None; keep unmerged. |
 | `[Image]` | Image-only reference task; needs review before assigning or merging. | None; keep unmerged. |
 
 ## Keep Unmerged For Now
@@ -73,7 +80,6 @@ These are intentionally left as their own sidebar tasks after the current cleanu
 | `RESEND automation email` | Email delivery setup can later merge with auth/email work, but stays separate for now. |
 | `OAUTH n Emails` | Auth and account email flow remain separate until we intentionally consolidate email/auth. |
 | `Donation Backend Schema` | Donation backend and shelter payment schema remain separate until donation migrations/payment flow are handled deliberately. |
-| `Cloudflare CDN for Backblaze` | Media CDN/Cloudflare work remains separate from app backend logic because it touches DNS/CDN/media infrastructure. |
 | `[Image]` | Not enough context yet; leave untouched until reviewed. |
 
 ## Merge Group 1: Production / Audit / Launch Safety
@@ -101,10 +107,10 @@ Merged responsibility:
 
 Suggested cleanup action after review:
 
-- Keep `Migrate to new domain` active for the immediate domain purchase/migration work.
+- Domain/media infrastructure work has now moved to `Domain, DNS, and media infrastructure`.
 - Survivor task is now renamed to `Production, audit, and and launch safety`.
 - Archived after summary preservation: `Audit security gaps`, `Implement reel strategy`.
-- Not archived: `Migrate to new domain`, because it remains the active immediate domain work.
+- Keep this production/audit bucket separate from the domain/media infrastructure bucket because it owns readiness, security, SEO, and launch judgment rather than DNS/CDN mechanics.
 
 ## Merge Group 2: Supabase Access Setup
 
@@ -185,9 +191,32 @@ Suggested cleanup action after review:
 - Survivor task is now renamed to `UXUI User Frontend design`.
 - Archived after summary preservation: `Apply adopter profiles migration`.
 
+## Merge Group 5: Domain, DNS, and Media Infrastructure
+
+Requested merge:
+
+- `Migrate to new domain` + `Cloudflare CDN for Backblaze`
+
+Current surviving bucket name: `Domain, DNS, and media infrastructure`
+
+| Source sidebar session | Thread id | Preserve from this session | Completion / current status | Do not lose |
+|---|---|---|---|---|
+| `Migrate to new domain` | `019f7e60-e15b-7452-8860-f5e5725cec3f` | Production domain recovery after old `pawjai.co.th` expiry, new domain purchase flow, Cloudflare DNS, Vercel domain binding, Supabase Auth URL changes, Google OAuth/domain guidance, env/code URL update list, production verification path. | Survivor task renamed to `Domain, DNS, and media infrastructure` on 2026-08-29. | Old `pawjai.co.th` expired on 2026-07-10 and was a registrar/DNS outage, not an app/Supabase outage. Current canonical public URL is `https://www.pawjaipet.com`. Old domain can be recovered later for redirects/brand protection only. |
+| `Cloudflare CDN for Backblaze` | `019e6647-de53-7423-b152-2446cd7acbf9` | Backblaze B2 bucket/CDN setup, media host checks, admin dog media CDN hardening, DB/media URL cleanup, ad image URL normalization, live bucket/file checks. | Archived on 2026-08-29 after summary preservation. Latest final state said CDN dog-media path was hardened and `npm run verify` passed. | Backblaze bucket `pawjai`; public media base `https://media.pawjaipet.com/file/pawjai`; expected B2 folders `ads/`, `pawjaidogs/`, `rescue-dog-thailand/`; app key worked but had broader permissions than ideal. |
+
+Merged responsibility:
+
+- Domain, DNS, Vercel production hostname, Cloudflare zone ownership, Backblaze media origin, Cloudflare CDN, media URL normalization, old-domain recovery/redirects, and infrastructure verification.
+- Keep Supabase data/migrations, donation schema, admin/shelter UX, and auth/email automation in their own buckets unless the user explicitly merges them later.
+
+Cleanup action applied:
+
+- Survivor task is now renamed to `Domain, DNS, and media infrastructure`.
+- Archived after summary preservation: `Cloudflare CDN for Backblaze`.
+
 ## Open Follow-Up After This Cleanup
 
-- Decide whether `Migrate to new domain` stays separate from `Production, audit, and and launch safety`. Recommended: yes, because it is active and action-oriented.
+- Decide whether `Domain, DNS, and media infrastructure` stays separate from `Production, audit, and and launch safety`. Recommended: yes, because the first owns infrastructure/domain/media mechanics while the second owns readiness, audit, and go/no-go judgment.
 - Decide whether `MESSAGES` should later merge into Group 3, or remain a separate current feature thread. Recommended: merge later after this first batch.
 - Decide whether `Plan admin reorg` should remain its own master thread. Recommended: yes, it is still the clearest umbrella for admin/shelter portal architecture.
 - Decide whether `RESEND automation email` and `OAUTH n Emails` should merge into one auth/email bucket next.

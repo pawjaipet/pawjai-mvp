@@ -180,8 +180,9 @@ function adminDraftShelterCreateDogHref(shelterId: string, roleView?: RoleView) 
   return `/admin/dogs/new?${params.toString()}`;
 }
 
-function adminDraftDogEditHref(dogId: string, roleView?: RoleView) {
+function adminDraftDogEditHref(dogId: string, shelterId?: string, roleView?: RoleView) {
   const params = new URLSearchParams();
+  if (shelterId) params.set("shelter", shelterId);
   if (roleView === "shelter") params.set("role", "shelter");
   const query = params.toString();
   return query ? `/admin/dogs/${dogId}/edit?${query}` : `/admin/dogs/${dogId}/edit`;
@@ -281,12 +282,14 @@ const fallbackBookings: AdminDraftBooking[] = [
     id: "booking-1",
     proposedAppointmentDate: null,
     proposedAppointmentTime: null,
+    priorityVisit: false,
     shelterDistrict: "Bangkok",
     shelterId: "voice",
     shelterName: "The Voice Foundation",
     shelterNote: null,
     shelterProvince: "Bangkok",
     status: "confirmed",
+    subscriptionTierAtBooking: "free",
     visitorNote: "Tester",
   },
   {
@@ -309,12 +312,14 @@ const fallbackBookings: AdminDraftBooking[] = [
     id: "booking-2",
     proposedAppointmentDate: "2026-07-30",
     proposedAppointmentTime: "11:00",
+    priorityVisit: true,
     shelterDistrict: "Bangkok",
     shelterId: "voice",
     shelterName: "The Voice Foundation",
     shelterNote: null,
     shelterProvince: "Bangkok",
     status: "requested",
+    subscriptionTierAtBooking: "premium",
     visitorNote: null,
   },
 ];
@@ -1499,7 +1504,11 @@ function ShelterBookingVisitList({
       search: bookingSearch,
       status: bookingStatusFilter,
       visitBucket,
-    })),
+    })).sort((a, b) => {
+      const dateOrder = `${a.appointmentDate}T${a.appointmentTime}`.localeCompare(`${b.appointmentDate}T${b.appointmentTime}`);
+      if (dateOrder !== 0) return dateOrder;
+      return Number(b.priorityVisit) - Number(a.priorityVisit);
+    }),
     [bookingDateFilter, bookingSearch, bookingStatusFilter, bookings, visitBucket],
   );
 
@@ -1636,6 +1645,11 @@ function ShelterBookingVisitList({
                         <span className="inline-flex items-center gap-1 rounded-full bg-[#eaf6df] px-2 py-0.5 text-[9px] font-bold text-[#3f6f24] md:px-3 md:py-1 md:text-xs">
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           Checked in
+                        </span>
+                      ) : null}
+                      {booking.priorityVisit ? (
+                        <span className="inline-flex items-center rounded-full bg-[#fff0cf] px-2 py-0.5 text-[9px] font-bold text-[#9a6215] md:px-3 md:py-1 md:text-xs">
+                          Priority visit
                         </span>
                       ) : null}
                       <span className="inline-flex items-center gap-1 rounded-full bg-[#f7ecda] px-2 py-0.5 text-[9px] font-bold text-[#65584f] md:px-3 md:py-1 md:text-xs">
@@ -2365,6 +2379,7 @@ function ShelterWorkspace({
   tab,
   setTab,
   workspaceBaseHref,
+  workspaceTabHref,
 }: {
   adminMode: boolean;
   bookingListHref: string;
@@ -2384,7 +2399,13 @@ function ShelterWorkspace({
   tab: ShelterTab;
   setTab: (tab: ShelterTab) => void;
   workspaceBaseHref?: string;
+  workspaceTabHref?: (tab: ShelterTab) => string;
 }) {
+  const tabHref = (nextTab: ShelterTab) => (
+    workspaceTabHref?.(nextTab)
+      ?? (workspaceBaseHref ? `${workspaceBaseHref}?view=${nextTab}` : undefined)
+  );
+
   return (
     <div className="space-y-6">
       <Section eyebrow={adminMode ? "Partner shelter workspace" : "My Shelter Workspace powered by PAWJAI"} title={shelter.name}>
@@ -2392,7 +2413,7 @@ function ShelterWorkspace({
           <ShelterWorkspaceTabButton
             active={tab === "profile"}
             adminMode={adminMode}
-            href={workspaceBaseHref ? `${workspaceBaseHref}?view=profile` : undefined}
+            href={tabHref("profile")}
             icon={<Building2 className="h-5 w-5" />}
             meta="Identity"
             onClick={() => setTab("profile")}
@@ -2402,7 +2423,7 @@ function ShelterWorkspace({
           <ShelterWorkspaceTabButton
             active={tab === "dogs"}
             adminMode={adminMode}
-            href={workspaceBaseHref ? `${workspaceBaseHref}?view=dogs` : undefined}
+            href={tabHref("dogs")}
             icon={<PawPrint className="h-5 w-5" />}
             meta={`${dogs.length} dogs`}
             onClick={() => setTab("dogs")}
@@ -2420,7 +2441,7 @@ function ShelterWorkspace({
           <ShelterWorkspaceTabButton
             active={tab === "bookings"}
             adminMode={adminMode}
-            href={workspaceBaseHref ? `${workspaceBaseHref}?view=bookings` : undefined}
+            href={tabHref("bookings")}
             icon={<CalendarDays className="h-5 w-5" />}
             meta={`${bookings.length} visits`}
             onClick={() => setTab("bookings")}
@@ -2430,7 +2451,7 @@ function ShelterWorkspace({
           <ShelterWorkspaceTabButton
             active={tab === "donations"}
             adminMode={adminMode}
-            href={workspaceBaseHref ? `${workspaceBaseHref}?view=donations` : undefined}
+            href={tabHref("donations")}
             icon={<Banknote className="h-5 w-5" />}
             meta={`${donations.length} records`}
             onClick={() => setTab("donations")}
@@ -2440,7 +2461,7 @@ function ShelterWorkspace({
           <ShelterWorkspaceTabButton
             active={tab === "messages"}
             adminMode={adminMode}
-            href={workspaceBaseHref ? `${workspaceBaseHref}?view=messages` : undefined}
+            href={tabHref("messages")}
             icon={<MessageCircle className="h-5 w-5" />}
             meta={`${shelter.unreadMessageCount} messages`}
             onClick={() => setTab("messages")}
@@ -2477,6 +2498,53 @@ function ShelterWorkspace({
         />
       ) : null}
     </div>
+  );
+}
+
+function AdminShelterPreviewSelector({
+  onSelect,
+  selectedShelterId,
+  shelters,
+}: {
+  onSelect: (shelterId: string) => void;
+  selectedShelterId: string;
+  shelters: AdminDraftShelter[];
+}) {
+  const selectedShelter = shelters.find((shelter) => shelter.id === selectedShelterId) ?? shelters[0];
+
+  return (
+    <section className="mb-6 flex flex-col gap-4 rounded-[28px] border border-[#d6c8ad] bg-[#fffaf5] p-4 shadow-[0_14px_42px_rgba(101,88,79,0.08)] md:flex-row md:items-center md:justify-between md:p-5">
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#f8e8ea] text-[#cd8188]">
+          <Building2 className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#cd8188]">Admin shelter preview</p>
+          <h2 className="mt-1 truncate text-lg font-semibold text-[#65584f]">
+            Viewing {selectedShelter?.name ?? "partner shelter"}
+          </h2>
+          <p className="mt-1 text-sm text-[#65584f]/75">
+            Switch shelters here. This remains inside PawJai admin and does not sign in to the shelter portal.
+          </p>
+        </div>
+      </div>
+      <label className="block w-full shrink-0 md:w-[340px]">
+        <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-[#65584f]">
+          Select shelter ({shelters.length})
+        </span>
+        <select
+          className="w-full rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm font-semibold text-[#65584f] outline-none transition focus:border-[#cd8188] focus:ring-2 focus:ring-[#cd8188]/20"
+          onChange={(event) => onSelect(event.target.value)}
+          value={selectedShelterId}
+        >
+          {shelters.map((shelter) => (
+            <option key={shelter.id} value={shelter.id}>
+              {shelter.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    </section>
   );
 }
 
@@ -3294,6 +3362,7 @@ export default function AdminReorgDraftPanel({
   lockRoleView?: boolean;
   workspaceBaseHref?: string;
 }) {
+  const router = useRouter();
   const shelters = data?.shelters.length ? data.shelters : fallbackShelters;
   const dogs = data?.dogs.length ? data.dogs : fallbackDogs;
   const bookings = data?.bookings.length ? data.bookings : fallbackBookings;
@@ -3324,6 +3393,16 @@ export default function AdminReorgDraftPanel({
     }
   }, [initialShelterTab]);
 
+  useEffect(() => {
+    if (initialShelterId && shelters.some((shelter) => shelter.id === initialShelterId)) {
+      setSelectedShelterId(initialShelterId);
+    }
+  }, [initialShelterId, shelters]);
+
+  useEffect(() => {
+    setRole(initialRoleView);
+  }, [initialRoleView]);
+
   const isPawjai = role === "pawjai";
   const selectedShelter = shelters.find((shelter) => shelter.id === selectedShelterId) ?? shelters[0] ?? fallbackShelters[0];
   const selectedShelterDogs = dogs.filter((dog) => dog.shelterId === selectedShelter.id);
@@ -3349,7 +3428,25 @@ export default function AdminReorgDraftPanel({
     : adminDraftShelterCreateDogHref(selectedShelter.id, draftShelterRole);
   const shelterWorkspaceDogEditHref = (dog: AdminDraftDog) => isShelterPortal
     ? `${workspaceBaseHref}/dogs/${dog.id}/edit`
-    : adminDraftDogEditHref(dog.id, draftShelterRole);
+    : adminDraftDogEditHref(dog.id, selectedShelter.id, draftShelterRole);
+  const shelterWorkspaceTabHref = (nextTab: ShelterTab) => isShelterPortal
+    ? `${workspaceBaseHref}?view=${nextTab}`
+    : adminDraftShelterWorkspaceHref(selectedShelter.id, nextTab, draftShelterRole);
+  const selectAdminShelterPreview = (shelterId: string) => {
+    setSelectedShelterId(shelterId);
+    router.replace(adminDraftShelterWorkspaceHref(shelterId, shelterTab, "shelter"), { scroll: false });
+  };
+  const selectRoleView = (nextRole: RoleView) => {
+    setRole(nextRole);
+    router.push(
+      adminDraftShelterWorkspaceHref(
+        selectedShelter.id,
+        shelterTab,
+        nextRole === "shelter" ? "shelter" : undefined,
+      ),
+      { scroll: false },
+    );
+  };
 
   return (
     <main className={`relative min-h-screen overflow-hidden bg-[#f5f1e8] text-[#65584f] ${isShelterPortal ? "px-2 py-3 md:px-4 md:py-8" : "px-4 py-8"}`}>
@@ -3422,8 +3519,8 @@ export default function AdminReorgDraftPanel({
             null
           ) : (
             <div className="flex flex-wrap gap-2">
-              <PillButton active={role === "pawjai"} onClick={() => setRole("pawjai")}>View as PawJai</PillButton>
-              <PillButton active={role === "shelter"} onClick={() => setRole("shelter")}>View as shelter</PillButton>
+              <PillButton active={role === "pawjai"} onClick={() => selectRoleView("pawjai")}>View as PawJai</PillButton>
+              <PillButton active={role === "shelter"} onClick={() => selectRoleView("shelter")}>View as shelter</PillButton>
             </div>
           )}
           </div>
@@ -3542,26 +3639,36 @@ export default function AdminReorgDraftPanel({
         {isPawjai && mainTab === "about" ? <AboutTab about={about} /> : null}
 
         {!isPawjai ? (
-          <ShelterWorkspace
-            adminMode={false}
-            bookingListHref={shelterWorkspaceBookingsHref}
-            bookings={selectedShelterBookings}
-            calendarReturnTo={shelterWorkspaceCalendarReturnTo}
-            checkInHref={withReturnTo(bookingWorkspaceCheckInHref(shelterWorkspaceBookingsHref), shelterWorkspaceBookingsHref)}
-            createDogHref={shelterWorkspaceCreateDogHref}
-            dogEditHref={shelterWorkspaceDogEditHref}
-            dogs={selectedShelterDogs}
-            donationReturnTo={shelterWorkspaceDonationReturnTo}
-            donations={selectedShelterDonations}
-            initialBookingView={bookingWorkspaceView}
-            messageThreads={messageThreads}
-            messagesUnavailable={messagesUnavailable}
-            profileReturnTo={isShelterPortal ? `${workspaceBaseHref}?view=profile` : adminDraftShelterWorkspaceHref(selectedShelter.id, "profile", draftShelterRole)}
-            shelter={selectedShelter}
-            tab={shelterTab}
-            setTab={setShelterTab}
-            workspaceBaseHref={isShelterPortal ? workspaceBaseHref : undefined}
-          />
+          <>
+            {!isShelterPortal ? (
+              <AdminShelterPreviewSelector
+                onSelect={selectAdminShelterPreview}
+                selectedShelterId={selectedShelter.id}
+                shelters={shelters}
+              />
+            ) : null}
+            <ShelterWorkspace
+              adminMode={false}
+              bookingListHref={shelterWorkspaceBookingsHref}
+              bookings={selectedShelterBookings}
+              calendarReturnTo={shelterWorkspaceCalendarReturnTo}
+              checkInHref={withReturnTo(bookingWorkspaceCheckInHref(shelterWorkspaceBookingsHref), shelterWorkspaceBookingsHref)}
+              createDogHref={shelterWorkspaceCreateDogHref}
+              dogEditHref={shelterWorkspaceDogEditHref}
+              dogs={selectedShelterDogs}
+              donationReturnTo={shelterWorkspaceDonationReturnTo}
+              donations={selectedShelterDonations}
+              initialBookingView={bookingWorkspaceView}
+              messageThreads={messageThreads}
+              messagesUnavailable={messagesUnavailable}
+              profileReturnTo={isShelterPortal ? `${workspaceBaseHref}?view=profile` : adminDraftShelterWorkspaceHref(selectedShelter.id, "profile", draftShelterRole)}
+              shelter={selectedShelter}
+              tab={shelterTab}
+              setTab={setShelterTab}
+              workspaceBaseHref={isShelterPortal ? workspaceBaseHref : undefined}
+              workspaceTabHref={shelterWorkspaceTabHref}
+            />
+          </>
         ) : null}
 
         <footer className="mt-6 rounded-[24px] border border-[#d6c8ad] bg-white p-4 text-sm leading-6 text-[#65584f]">

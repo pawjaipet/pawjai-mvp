@@ -1,6 +1,7 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { AdopterDocument, AdopterProfile, Database } from "@/types/database";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { resolveSubscriptionEntitlementForUser } from "@/utils/subscription-entitlements";
 
 type PawjaiClient = SupabaseClient<Database>;
 type VerificationStatus = Database["public"]["Enums"]["adopter_verification_status"];
@@ -121,6 +122,7 @@ export async function ensureAdopterForUser(supabase: PawjaiClient, user: User) {
     throw new Error(error.message);
   }
 
+  await resolveSubscriptionEntitlementForUser(user);
   return adopter;
 }
 
