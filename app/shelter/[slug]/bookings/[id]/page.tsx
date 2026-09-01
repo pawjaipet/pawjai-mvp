@@ -13,7 +13,7 @@ export default async function ShelterBookingDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string; slug: string }>;
-  searchParams?: Promise<{ checkedIn?: string; token?: string }>;
+  searchParams?: Promise<{ checkedIn?: string; returnTo?: string; token?: string }>;
 }) {
   const [{ id, slug }, resolvedSearchParams] = await Promise.all([
     params,
@@ -30,7 +30,7 @@ export default async function ShelterBookingDetailPage({
     params: Promise.resolve({ id }),
     searchParams: Promise.resolve({
       ...resolvedSearchParams,
-      returnTo: `/shelter/${slug}?view=bookings`,
+      returnTo: resolvedSearchParams?.returnTo ?? `/shelter/${slug}?view=bookings`,
     }),
     shelterPortalSlug: slug,
   });

@@ -10,10 +10,12 @@ export const dynamic = "force-dynamic";
 
 export default async function ShelterVisitorProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; slug: string }>;
+  searchParams?: Promise<{ returnTo?: string }>;
 }) {
-  const { id, slug } = await params;
+  const [{ id, slug }, resolvedSearchParams] = await Promise.all([params, searchParams]);
   const context = await getAdminAuthContext({ includePhraseGate: false });
 
   if (!context || context.isGlobalAdmin) redirect("/shelter");
@@ -24,7 +26,7 @@ export default async function ShelterVisitorProfilePage({
   return renderVisitorProfilePage({
     params: Promise.resolve({ id }),
     searchParams: Promise.resolve({
-      returnTo: `/shelter/${slug}?view=bookings`,
+      returnTo: resolvedSearchParams?.returnTo ?? `/shelter/${slug}?view=bookings`,
     }),
     shelterPortalSlug: slug,
   });

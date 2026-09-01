@@ -39,6 +39,7 @@ import {
 import {
   bookingWorkspaceCheckInHref,
   bookingWorkspaceDetailHref,
+  bookingWorkspaceMessageHref,
   bookingWorkspaceVisitorHref,
 } from "@/utils/booking-workspace-routes";
 import {
@@ -782,13 +783,6 @@ function formatAdoptionDate(value: string | null) {
   return formatShortDate(value.slice(0, 10));
 }
 
-function messageThreadHref(baseHref: string, appointmentId: string) {
-  const url = new URL(baseHref, "https://pawjai.local");
-  url.searchParams.set("view", "messages");
-  url.searchParams.set("thread", appointmentId);
-  return `${url.pathname}${url.search}`;
-}
-
 function AdminReturnFields({ returnTo = ADMIN_RETURN_TO, shelterId }: { returnTo?: string; shelterId: string }) {
   return (
     <>
@@ -823,7 +817,10 @@ function DogCard({
     }), adoptionBookingListHref)
     : null;
   const messageHref = dog.adoptedAppointmentId && adoptionBookingListHref
-    ? messageThreadHref(adoptionBookingListHref, dog.adoptedAppointmentId)
+    ? bookingWorkspaceMessageHref({
+        appointmentId: dog.adoptedAppointmentId,
+        bookingListHref: adoptionBookingListHref,
+      })
     : null;
   const careCompletenessPercent = dog.careCompletenessPercent ?? 0;
   const careMissingCount = dog.careMissingCount ?? 0;
@@ -1857,6 +1854,13 @@ function ShelterBookingVisitList({
                       <ExternalLink className="h-4 w-4" />
                       Open booking detail
                     </Link>
+                    <Link
+                      className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[#cd8188] px-3 py-2 text-xs font-semibold text-white hover:bg-[#b87179] md:gap-2 md:px-5 md:py-3 md:text-sm"
+                      href={bookingWorkspaceMessageHref({ appointmentId: booking.id, bookingListHref })}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Message adopter
+                    </Link>
                   </form>
                 </div>
               </section>
@@ -2092,6 +2096,12 @@ function ShelterMessagesTab({
       return bActivity.localeCompare(aActivity);
     });
   const selectedThread = filteredThreads.find((thread) => thread.appointmentId === selectedThreadId) ?? filteredThreads[0] ?? null;
+  const selectedThreadReturnTo = selectedThread
+    ? bookingWorkspaceMessageHref({
+        appointmentId: selectedThread.appointmentId,
+        bookingListHref: returnTo,
+      })
+    : returnTo;
   const unreadMessageCount = shelterThreads.reduce((total, thread) => total + thread.unreadForShelterCount, 0);
   const filterOptions: { label: string; value: MessageFilter }[] = [
     { label: "All", value: "all" },
@@ -2288,17 +2298,17 @@ function ShelterMessagesTab({
                   {isGlobalOverview ? <p className="mt-1 text-sm font-semibold text-[#b36f78]">{selectedThread.shelterName}</p> : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Link
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-[#fffaf5] px-4 py-2 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
-                    href={withReturnTo(`/booking/${selectedThread.appointmentId}`, returnTo)}
-                  >
+	                  <Link
+	                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-[#fffaf5] px-4 py-2 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
+	                    href={withReturnTo(`/booking/${selectedThread.appointmentId}`, selectedThreadReturnTo)}
+	                  >
                     <ExternalLink className="h-4 w-4" />
                     Booking
                   </Link>
-                  <Link
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-[#fffaf5] px-4 py-2 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
-                    href={withReturnTo(`/booking/${selectedThread.appointmentId}/visitor-profile`, returnTo)}
-                  >
+	                  <Link
+	                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d6c8ad] bg-[#fffaf5] px-4 py-2 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
+	                    href={withReturnTo(`/booking/${selectedThread.appointmentId}/visitor-profile`, selectedThreadReturnTo)}
+	                  >
                     <Users className="h-4 w-4" />
                     Visitor profile
                   </Link>
@@ -2354,9 +2364,9 @@ function ShelterMessagesTab({
                   Read-only PawJai admin view. Admin can review this conversation but cannot reply, edit, or mark shelter messages read.
                 </div>
               ) : (
-                <form action={sendShelterAppointmentMessageAction} className="mt-4 grid gap-2" encType="multipart/form-data">
-                  <input name="appointmentId" type="hidden" value={selectedThread.appointmentId} />
-                  <input name="returnTo" type="hidden" value={returnTo} />
+	                <form action={sendShelterAppointmentMessageAction} className="mt-4 grid gap-2" encType="multipart/form-data">
+	                  <input name="appointmentId" type="hidden" value={selectedThread.appointmentId} />
+	                  <input name="returnTo" type="hidden" value={selectedThreadReturnTo} />
                   <label className="sr-only" htmlFor={`message-body-${selectedThread.appointmentId}`}>Write a shelter reply</label>
                   <div className="flex gap-2">
                     <textarea

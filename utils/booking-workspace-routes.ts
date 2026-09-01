@@ -29,6 +29,19 @@ export function bookingWorkspaceVisitorHref({
   return `${bookingWorkspaceDetailHref({ appointmentId, bookingListHref })}/visitor-profile`;
 }
 
+export function bookingWorkspaceMessageHref({
+  appointmentId,
+  bookingListHref,
+}: {
+  appointmentId: string;
+  bookingListHref: string;
+}) {
+  const url = new URL(bookingListHref, "https://pawjai.local");
+  url.searchParams.set("view", "messages");
+  url.searchParams.set("thread", appointmentId);
+  return `${url.pathname}${url.search}`;
+}
+
 export function bookingWorkspaceCheckInHref(bookingListHref: string) {
   const shelterBase = shelterWorkspaceBaseFromBookingListHref(bookingListHref);
   return shelterBase ? `${shelterBase}/bookings/check-in` : "/admin/bookings/check-in";

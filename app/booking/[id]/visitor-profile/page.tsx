@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { ArrowLeft, CalendarDays, FileText, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, CalendarDays, FileText, MessageCircle, ShieldCheck, UserRound } from "lucide-react";
 import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
 import type { Database, Json } from "@/types/database";
 import { formatBookingCode } from "@/utils/booking";
-import { bookingWorkspaceDetailHref } from "@/utils/booking-workspace-routes";
+import { bookingWorkspaceDetailHref, bookingWorkspaceMessageHref } from "@/utils/booking-workspace-routes";
 import { canAccessShelter } from "@/utils/admin-authorization";
 import { getAdminAuthContext, type AdminAuthContext } from "@/utils/admin-auth";
 import { getShelterPortalTarget, slugifyShelterName } from "@/utils/shelter-portal";
@@ -112,6 +112,14 @@ function safeBookingReturnTo({
   }
 
   return fallback;
+}
+
+function isMessagesReturnHref(href: string) {
+  try {
+    return new URL(href, "https://pawjai.local").searchParams.get("view") === "messages";
+  } catch {
+    return false;
+  }
 }
 
 function fullName(adopter: Adopter | null) {
@@ -314,7 +322,12 @@ export async function renderVisitorProfilePage({
 
     if (!portalTarget) redirect("/shelter");
 
-    const bookingListHref = `${portalTarget}?view=bookings`;
+    const bookingListHref = safeBookingReturnTo({
+      context,
+      requestedReturnTo: resolvedSearchParams?.returnTo,
+      shelter: typedShelter,
+      shelterId: typedAppointment.shelter_id,
+    });
     redirect(withReturnTo(
       `${portalTarget}/bookings/${typedAppointment.id}/visitor-profile`,
       bookingListHref,
@@ -374,19 +387,28 @@ export async function renderVisitorProfilePage({
     bookingWorkspaceDetailHref({ appointmentId: typedAppointment.id, bookingListHref }),
     bookingListHref,
   );
+  const messageHref = bookingWorkspaceMessageHref({
+    appointmentId: typedAppointment.id,
+    bookingListHref,
+  });
+  const backToMessages = isMessagesReturnHref(bookingListHref);
 
   return (
     <PawjaiWorkspaceShell
       actions={(
         <div className="flex flex-wrap gap-2">
-            <Link className="inline-flex items-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]" href={bookingDetailHref}>
-              <ArrowLeft className="h-4 w-4" />
-              Back to booking detail
-            </Link>
-            <Link className="inline-flex items-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]" href={bookingListHref}>
-              <CalendarDays className="h-4 w-4" />
-              Back to booking list
-            </Link>
+          <Link className="inline-flex items-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]" href={bookingListHref}>
+            {backToMessages ? <MessageCircle className="h-4 w-4" /> : <CalendarDays className="h-4 w-4" />}
+            {backToMessages ? "Back to messages" : "Back to booking list"}
+          </Link>
+          <Link className="inline-flex items-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]" href={bookingDetailHref}>
+            <ArrowLeft className="h-4 w-4" />
+            {backToMessages ? "Open booking detail" : "Back to booking detail"}
+          </Link>
+          <Link className="inline-flex items-center gap-2 rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#b87179]" href={messageHref}>
+            <MessageCircle className="h-4 w-4" />
+            Message adopter
+          </Link>
         </div>
       )}
       description={`${typedAdopter?.email ?? "No email"} · ${typedAdopter?.phone_number ?? "No phone"}`}

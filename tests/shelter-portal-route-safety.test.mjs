@@ -121,15 +121,39 @@ test("shelter booking routes remain under the portal for detail, visitor, and QR
   const portalCheckIn = source("../app/shelter/[slug]/bookings/check-in/page.tsx");
 
   assert.ok(routeHelper.includes("`${shelterBase}/bookings/${appointmentId}`"));
+  assert.match(routeHelper, /bookingWorkspaceMessageHref/);
+  assert.match(routeHelper, /url\.searchParams\.set\("view", "messages"\)/);
+  assert.match(routeHelper, /url\.searchParams\.set\("thread", appointmentId\)/);
   for (const page of [sharedDetail, sharedVisitor, sharedCheckIn]) {
     assert.match(page, /!context\.isGlobalAdmin/);
     assert.match(page, /getShelterPortalTarget/);
   }
-  for (const page of [portalDetail, portalVisitor, portalCheckIn]) {
+  for (const page of [portalDetail, portalVisitor]) {
+    assert.match(page, /includePhraseGate: false/);
+    assert.match(page, /getShelterByPortalSlug/);
+    assert.match(page, /resolvedSearchParams\?\.returnTo \?\? `\/shelter\/\$\{slug\}\?view=bookings`/);
+  }
+  for (const page of [portalCheckIn]) {
     assert.match(page, /includePhraseGate: false/);
     assert.match(page, /getShelterByPortalSlug/);
     assert.match(page, /`\/shelter\/\$\{slug\}\?view=bookings`/);
   }
+});
+
+test("booking and message workspace links preserve the active message thread", () => {
+  const panel = source("../components/admin/AdminReorgDraftPanel.tsx");
+  const sharedDetail = source("../app/booking/[id]/page.tsx");
+  const sharedVisitor = source("../app/booking/[id]/visitor-profile/page.tsx");
+
+  assert.match(panel, /Message adopter/);
+  assert.match(panel, /bookingWorkspaceMessageHref\(\{ appointmentId: booking\.id, bookingListHref \}\)/);
+  assert.match(panel, /selectedThreadReturnTo/);
+  assert.match(panel, /href=\{withReturnTo\(`\/booking\/\$\{selectedThread\.appointmentId\}`, selectedThreadReturnTo\)\}/);
+  assert.match(panel, /href=\{withReturnTo\(`\/booking\/\$\{selectedThread\.appointmentId\}\/visitor-profile`, selectedThreadReturnTo\)\}/);
+  assert.match(sharedDetail, /Back to messages/);
+  assert.match(sharedDetail, /Message adopter/);
+  assert.match(sharedVisitor, /Back to messages/);
+  assert.match(sharedVisitor, /Open booking detail/);
 });
 
 test("shelter form mutations cannot honor an admin return destination", () => {

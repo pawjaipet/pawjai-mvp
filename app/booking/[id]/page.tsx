@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, CheckCircle2, ExternalLink, QrCode, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ExternalLink, MessageCircle, QrCode, ShieldCheck } from "lucide-react";
 import PawjaiWorkspaceShell from "@/components/admin/PawjaiWorkspaceShell";
 import type { Database } from "@/types/database";
 import { APPOINTMENT_TIME_SLOTS, appointmentFollowUpDue, normalizeAppointmentTime } from "@/utils/appointments-model";
 import { formatBookingCode } from "@/utils/booking";
 import {
   bookingWorkspaceDetailHref,
+  bookingWorkspaceMessageHref,
   bookingWorkspaceVisitorHref,
 } from "@/utils/booking-workspace-routes";
 import { canAccessShelter } from "@/utils/admin-authorization";
@@ -83,6 +84,14 @@ function safeBookingReturnTo({
   }
 
   return fallback;
+}
+
+function isMessagesReturnHref(href: string) {
+  try {
+    return new URL(href, "https://pawjai.local").searchParams.get("view") === "messages";
+  } catch {
+    return false;
+  }
 }
 
 function formatDate(date: string) {
@@ -214,7 +223,12 @@ export async function renderBookingDetailPage({
 
     if (!portalTarget) redirect("/shelter");
 
-    const bookingListHref = `${portalTarget}?view=bookings`;
+    const bookingListHref = safeBookingReturnTo({
+      context,
+      requestedReturnTo: resolvedSearchParams?.returnTo,
+      shelter: typedShelter,
+      shelterId: typedAppointment.shelter_id,
+    });
     redirect(withReturnTo(`${portalTarget}/bookings/${typedAppointment.id}`, bookingListHref));
   }
 
@@ -242,17 +256,31 @@ export async function renderBookingDetailPage({
     bookingWorkspaceVisitorHref({ appointmentId: typedAppointment.id, bookingListHref }),
     bookingListHref,
   );
+  const messageHref = bookingWorkspaceMessageHref({
+    appointmentId: typedAppointment.id,
+    bookingListHref,
+  });
+  const backToMessages = isMessagesReturnHref(bookingListHref);
 
   return (
     <PawjaiWorkspaceShell
       actions={(
-        <Link
-          className="inline-flex items-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]"
-          href={bookingListHref}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {context.isGlobalAdmin ? "Back to all bookings" : "Back to shelter bookings"}
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            className="inline-flex items-center gap-2 rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:border-[#cd8188] hover:bg-[#f8e8ea]"
+            href={bookingListHref}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {backToMessages ? "Back to messages" : context.isGlobalAdmin ? "Back to all bookings" : "Back to shelter bookings"}
+          </Link>
+          <Link
+            className="inline-flex items-center gap-2 rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#b87179]"
+            href={messageHref}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Message adopter
+          </Link>
+        </div>
       )}
       description={`${bookingCode} · ${formatDate(typedAppointment.appointment_date)} at ${formatTime(typedAppointment.appointment_time)}`}
       eyebrow={context.isGlobalAdmin ? "PawJai Booking Workspace" : "Shelter Booking Workspace"}
@@ -425,6 +453,13 @@ export async function renderBookingDetailPage({
               >
                 <ExternalLink size={16} />
                 Open visitor profile
+              </Link>
+              <Link
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#cd8188] px-5 py-3 text-sm font-semibold text-white hover:bg-[#b87179]"
+                href={messageHref}
+              >
+                <MessageCircle size={16} />
+                Message adopter
               </Link>
             </div>
           </div>
