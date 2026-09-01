@@ -393,6 +393,13 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
     scrollFormToTop();
   }
 
+  function jumpToSection(nextSection: Exclude<Section, "done">) {
+    if (nextSection === section || isSubmitting) return;
+    submitCurrentForm("draft");
+    setSection(nextSection);
+    scrollFormToTop();
+  }
+
   function saveAndExit() {
     submitCurrentForm("draft");
     setShowExitWarning(false);
@@ -511,12 +518,18 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
             const done = i < sectionIdx;
             return (
               <div key={s} className="flex flex-col items-center gap-[4px]">
-                <div
+                <button
+                  type="button"
+                  aria-label={`Go to verification section ${s}`}
+                  aria-current={active ? "step" : undefined}
+                  disabled={isSubmitting}
+                  onClick={() => jumpToSection(s)}
                   className="flex h-[36px] w-[36px] items-center justify-center rounded-full text-[13px] font-bold transition-all"
                   style={{
                     background: active ? "#cd8188" : done ? "rgba(205,129,136,0.25)" : "rgba(101,88,79,0.12)",
                     color: active ? "white" : done ? "#cd8188" : "rgba(101,88,79,0.4)",
                     border: done ? "2px solid rgba(205,129,136,0.4)" : "2px solid transparent",
+                    cursor: isSubmitting ? "default" : "pointer",
                   }}
                 >
                   {done ? (
@@ -524,7 +537,7 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   ) : s}
-                </div>
+                </button>
               </div>
             );
           })}

@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { acceptRescheduleRequestAction, cancelAppointmentFromListAction } from "@/app/appointments/actions";
 import { cancelAppointmentAction, sendAppointmentMessageAction, submitReturnInquiryAction } from "@/app/appointments/[id]/actions";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import MachineTranslatedText from "@/components/i18n/MachineTranslatedText";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { parseReturnInquiryMessageBody } from "@/utils/appointment-messages";
 import { createClient as createBrowserSupabaseClient } from "@/utils/supabase/client";
 
@@ -58,6 +60,7 @@ interface Props {
   dog: {
     id: string;
     name: string;
+    nameTh: string | null;
     breed: string | null;
     coverUrl: string | null;
   } | null;
@@ -67,11 +70,13 @@ interface Props {
     phone: string | null;
     email: string | null;
     addressLines: string[];
+    addressLinesTh: string[];
     googleMapsUrl: string | null;
     latitude: number | null;
     logoUrl: string | null;
     longitude: number | null;
     meetingInstructions: string | null;
+    meetingInstructionsTh: string | null;
   } | null;
   time: {
     weekday: string;
@@ -330,6 +335,8 @@ export default function AppointmentDetailClient({
 }: Props) {
   const displayStatus = normalizeStatus(status);
   const [tab, setTab] = useState<Tab>(initialTab);
+  const { language } = useLanguage();
+  const dogDisplayName = dog ? language === "th" && dog.nameTh ? dog.nameTh : dog.name : "Visit";
 
   const mapsHref = shelter
     ? shelter.googleMapsUrl
@@ -382,8 +389,10 @@ export default function AppointmentDetailClient({
           </div>
 
           <div className="flex-1 min-w-0">
-            <p className="text-[16px] font-bold text-white truncate" style={{ fontFamily: M }}>Appointment</p>
-            <p className="text-[13px] text-white/75 truncate" style={{ fontFamily: M }}>{dog?.name ?? "Visit"}</p>
+            <p className="text-[16px] font-bold text-white truncate" style={{ fontFamily: M }}>
+              <MachineTranslatedText text="Appointment" />
+            </p>
+            <p className="text-[13px] text-white/75 truncate" style={{ fontFamily: M }}>{dogDisplayName}</p>
           </div>
         </div>
       </div>
@@ -413,7 +422,7 @@ export default function AppointmentDetailClient({
                 fontFamily: M,
               }}
             >
-              {label}
+              <MachineTranslatedText text={label} />
             </button>
           );
         })}
@@ -425,6 +434,7 @@ export default function AppointmentDetailClient({
           appointmentId={appointmentId}
           bookingId={bookingId}
           dog={dog}
+          dogDisplayName={dogDisplayName}
           qrSvg={qrSvg}
           proposedDate={proposedDate}
           proposedTime={proposedTime}
@@ -441,7 +451,7 @@ export default function AppointmentDetailClient({
         <MessagesTab
           adoptionContext={adoptionContext}
           appointmentId={appointmentId}
-          dogName={dog?.name ?? "the shelter"}
+          dogName={dogDisplayName}
           initialMessages={initialMessages}
           messagesUnavailable={messagesUnavailable}
           shelter={shelter}
@@ -457,6 +467,7 @@ function DetailsTab({
   appointmentId,
   bookingId,
   dog,
+  dogDisplayName,
   qrSvg,
   proposedDate,
   proposedTime,
@@ -470,6 +481,7 @@ function DetailsTab({
   appointmentId: string;
   bookingId: string;
   dog: Props["dog"];
+  dogDisplayName: string;
   qrSvg: string;
   proposedDate: string | null;
   proposedTime: string | null;
@@ -480,16 +492,22 @@ function DetailsTab({
   time: Props["time"];
   mapsHref: string | null;
 }) {
+  const { language } = useLanguage();
+  const addressLines = language === "th" && shelter?.addressLinesTh.length ? shelter.addressLinesTh : shelter?.addressLines ?? [];
+  const meetingInstructions = language === "th" && shelter?.meetingInstructionsTh
+    ? shelter.meetingInstructionsTh
+    : shelter?.meetingInstructions ?? null;
+
   return (
     <div className="px-[18px] pt-[24px] pb-[40px] space-y-[28px]">
       {/* Time range */}
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[14px] text-[#65584f]/60" style={{ fontFamily: M }}>
-            {time.weekday}, {time.monthDay}
+            <MachineTranslatedText text={`${time.weekday}, ${time.monthDay}`} />
           </p>
           <p className="font-bold text-[28px] text-[#65584f] leading-[1.1]" style={{ fontFamily: M }}>
-            {time.start || "—"}
+            <MachineTranslatedText text={time.start || "—"} />
           </p>
         </div>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#65584f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -497,10 +515,10 @@ function DetailsTab({
         </svg>
         <div className="text-right">
           <p className="text-[14px] text-[#65584f]/60" style={{ fontFamily: M }}>
-            {time.weekday}, {time.monthDay}
+            <MachineTranslatedText text={`${time.weekday}, ${time.monthDay}`} />
           </p>
           <p className="font-bold text-[28px] text-[#65584f] leading-[1.1]" style={{ fontFamily: M }}>
-            {time.end || "—"}
+            <MachineTranslatedText text={time.end || "—"} />
           </p>
         </div>
       </div>
@@ -521,7 +539,7 @@ function DetailsTab({
       {shelter && (
         <section>
           <p className="text-[11px] font-bold tracking-[0.18em] text-[#65584f]/65 mb-[10px]" style={{ fontFamily: M }}>
-            MEETING AT
+            <MachineTranslatedText text="MEETING AT" />
           </p>
           <div className="rounded-[14px] p-[18px]" style={{ background: "#f5f0e8" }}>
             <div className="flex items-center gap-[12px]">
@@ -532,14 +550,14 @@ function DetailsTab({
                 {shelter.nameTh ?? shelter.name}
               </p>
             </div>
-            {shelter.addressLines.length > 0 && (
+            {addressLines.length > 0 && (
               <p className="text-[14px] text-[#65584f] mt-[8px] leading-[1.45]" style={{ fontFamily: M }}>
-                {shelter.addressLines.join(", ")}
+                {addressLines.join(", ")}
               </p>
             )}
-            {shelter.meetingInstructions && (
+            {meetingInstructions && (
               <p className="text-[13px] text-[#65584f]/70 mt-[8px] leading-[1.45]" style={{ fontFamily: M }}>
-                {shelter.meetingInstructions}
+                <MachineTranslatedText text={meetingInstructions} />
               </p>
             )}
             {mapsHref && (
@@ -550,7 +568,7 @@ function DetailsTab({
                 className="block mt-[14px] text-[14px] font-bold"
                 style={{ color: "#cd8188", fontFamily: M }}
               >
-                Click to access Google Maps
+                <MachineTranslatedText text="Click to access Google Maps" />
               </a>
             )}
           </div>
@@ -561,7 +579,7 @@ function DetailsTab({
       {dog && (
         <section>
           <p className="text-[11px] font-bold tracking-[0.18em] text-[#65584f]/65 mb-[10px]" style={{ fontFamily: M }}>
-            DOG INFORMATION
+            <MachineTranslatedText text="DOG INFORMATION" />
           </p>
           <Link
             href={`/dogs/${dog.id}`}
@@ -576,9 +594,11 @@ function DetailsTab({
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[18px] font-bold text-[#65584f] truncate" style={{ fontFamily: M }}>{dog.name}</p>
+              <p className="text-[18px] font-bold text-[#65584f] truncate" style={{ fontFamily: M }}>{dogDisplayName}</p>
               {dog.breed && (
-                <p className="text-[14px] text-[#65584f]/65 truncate" style={{ fontFamily: M }}>{dog.breed}</p>
+                <p className="text-[14px] text-[#65584f]/65 truncate" style={{ fontFamily: M }}>
+                  <MachineTranslatedText text={dog.breed} />
+                </p>
               )}
             </div>
             <span className="text-[#cd8188] text-[22px] font-bold">›</span>
@@ -590,7 +610,7 @@ function DetailsTab({
       {shelter && (
         <section>
           <p className="text-[11px] font-bold tracking-[0.18em] text-[#65584f]/65 mb-[10px]" style={{ fontFamily: M }}>
-            SHELTER CONTACT
+            <MachineTranslatedText text="SHELTER CONTACT" />
           </p>
           <div className="rounded-[14px] p-[18px]" style={{ background: "#f5f0e8" }}>
             <div className="flex items-center gap-[12px]">
@@ -624,8 +644,8 @@ function DetailsTab({
 
       {/* QR check-in */}
       <section>
-        <p className="text-[11px] font-bold tracking-[0.18em] text-[#65584f]/65 mb-[10px]" style={{ fontFamily: M }}>
-          CHECK-IN QR CODE
+          <p className="text-[11px] font-bold tracking-[0.18em] text-[#65584f]/65 mb-[10px]" style={{ fontFamily: M }}>
+          <MachineTranslatedText text="CHECK-IN QR CODE" />
         </p>
         <div className="rounded-[14px] p-[24px] flex flex-col items-center" style={{ border: "1.5px solid rgba(101,88,79,0.18)" }}>
           <div
@@ -635,7 +655,7 @@ function DetailsTab({
           />
 
           <p className="mt-[20px] text-[11px] tracking-[0.16em] font-semibold text-[#65584f]/55" style={{ fontFamily: M }}>
-            BOOKING ID
+            <MachineTranslatedText text="BOOKING ID" />
           </p>
           <p className="mt-[2px] text-[22px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
             {bookingId}
@@ -643,15 +663,15 @@ function DetailsTab({
 
           <div className="mt-[18px] w-full rounded-[10px] px-[16px] py-[12px]" style={{ background: "#f5f0e8" }}>
             <p className="text-[13px] text-[#65584f]/65" style={{ fontFamily: M }}>
-              {time.weekday}, {time.monthDay}
+              <MachineTranslatedText text={`${time.weekday}, ${time.monthDay}`} />
             </p>
             <p className="font-bold text-[20px] text-[#65584f]" style={{ fontFamily: M }}>
-              {time.start || "—"}
+              <MachineTranslatedText text={time.start || "—"} />
             </p>
           </div>
 
           <p className="mt-[14px] text-[13px] text-[#65584f]/55 text-center" style={{ fontFamily: M }}>
-            Show this QR code at the shelter entrance
+            <MachineTranslatedText text="Show this QR code at the shelter entrance" />
           </p>
         </div>
       </section>
@@ -687,7 +707,7 @@ function CancelAppointmentButton({ appointmentId }: { appointmentId: string }) {
           border: "1.5px solid rgba(179,86,94,0.4)",
         }}
       >
-        Cancel Appointment
+        <MachineTranslatedText text="Cancel Appointment" />
       </button>
 
       {confirmOpen && (
@@ -702,9 +722,11 @@ function CancelAppointmentButton({ appointmentId }: { appointmentId: string }) {
             className="w-full max-w-[362px] rounded-[20px] bg-white px-[20px] py-[22px] shadow-[0_20px_60px_rgba(0,0,0,0.24)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-[20px] font-bold text-[#65584f]" style={{ fontFamily: M }}>Cancel this appointment?</p>
+            <p className="text-[20px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
+              <MachineTranslatedText text="Cancel this appointment?" />
+            </p>
             <p className="mt-[10px] text-[14px] leading-[1.55] text-[#65584f]/70" style={{ fontFamily: M }}>
-              The shelter will be notified. You can book another time anytime.
+              <MachineTranslatedText text="The shelter will be notified. You can book another time anytime." />
             </p>
             <div className="mt-[20px] flex gap-[10px]">
               <button
@@ -714,7 +736,7 @@ function CancelAppointmentButton({ appointmentId }: { appointmentId: string }) {
                 className="h-[48px] flex-1 rounded-[14px] text-[14px] font-bold disabled:opacity-60"
                 style={{ background: "rgba(101,88,79,0.1)", color: "#65584f", fontFamily: M }}
               >
-                Keep
+                <MachineTranslatedText text="Keep" />
               </button>
               <button
                 type="button"
@@ -723,7 +745,7 @@ function CancelAppointmentButton({ appointmentId }: { appointmentId: string }) {
                 className="flex h-[48px] flex-1 items-center justify-center rounded-[14px] text-[14px] font-bold text-white disabled:opacity-60"
                 style={{ background: "#b3565e", fontFamily: M }}
               >
-                {isPending ? "Cancelling..." : "Yes, cancel"}
+                <MachineTranslatedText text={isPending ? "Cancelling..." : "Yes, cancel"} />
               </button>
             </div>
           </div>
@@ -758,21 +780,21 @@ function RescheduleRequestPanel({
   return (
     <section className="rounded-[14px] border border-[#eadfce] bg-[#fffaf2] p-[16px]">
       <p className="text-[11px] font-bold tracking-[0.18em] text-[#8d7f72]" style={{ fontFamily: M }}>
-        DATE CHANGE REQUEST
+        <MachineTranslatedText text="DATE CHANGE REQUEST" />
       </p>
       <p className="mt-[8px] text-[18px] font-bold leading-[1.35] text-[#65584f]" style={{ fontFamily: M }}>
-        {dateLabel} at {timeLabel}
+        <MachineTranslatedText text={`${dateLabel} at ${timeLabel}`} />
       </p>
       {note ? (
         <p className="mt-[6px] text-[13px] leading-[1.5] text-[#65584f]/70" style={{ fontFamily: M }}>
-          {note}
+          <MachineTranslatedText text={note} />
         </p>
       ) : null}
       <div className="mt-[14px] grid grid-cols-3 gap-[8px]">
         <form action={acceptRescheduleRequestAction}>
           <input name="appointmentId" type="hidden" value={appointmentId} />
           <button className="h-[42px] w-full rounded-full bg-[#3f7d34] px-[10px] text-[12px] font-bold text-white active:scale-[0.98]" style={{ fontFamily: M }} type="submit">
-            Accept
+            <MachineTranslatedText text="Accept" />
           </button>
         </form>
         <Link
@@ -780,12 +802,12 @@ function RescheduleRequestPanel({
           href={`/appointments?edit=${appointmentId}`}
           style={{ fontFamily: M }}
         >
-          Different
+          <MachineTranslatedText text="Different" />
         </Link>
         <form action={cancelAppointmentFromListAction}>
           <input name="appointmentId" type="hidden" value={appointmentId} />
           <button className="h-[42px] w-full rounded-full bg-[#c46f75] px-[10px] text-[12px] font-bold text-white active:scale-[0.98]" style={{ fontFamily: M }} type="submit">
-            Cancel
+            <MachineTranslatedText text="Cancel" />
           </button>
         </form>
       </div>
@@ -836,8 +858,12 @@ function StatusBox({ status }: { status: DisplayStatus }) {
     <div className="rounded-[14px] px-[16px] py-[14px] flex items-center gap-[12px]" style={{ background: c.bg, fontFamily: M }}>
       <span className="inline-block w-[10px] h-[10px] rounded-full shrink-0" style={{ background: c.dot }} />
       <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-bold leading-[1.1]" style={{ color: c.fg }}>{c.label}</p>
-        <p className="text-[13px] mt-[2px] leading-[1.35]" style={{ color: c.fg, opacity: 0.78 }}>{c.explain}</p>
+        <p className="text-[15px] font-bold leading-[1.1]" style={{ color: c.fg }}>
+          <MachineTranslatedText text={c.label} />
+        </p>
+        <p className="text-[13px] mt-[2px] leading-[1.35]" style={{ color: c.fg, opacity: 0.78 }}>
+          <MachineTranslatedText text={c.explain} />
+        </p>
       </div>
     </div>
   );
@@ -1241,16 +1267,18 @@ function HelpTab() {
   return (
     <div className="px-[16px] pt-[20px]">
       <div className="rounded-[14px] px-[20px] py-[24px]" style={{ background: "#f5f0e8" }}>
-        <p className="text-[24px] font-bold text-[#65584f]" style={{ fontFamily: M }}>Get help</p>
+        <p className="text-[24px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
+          <MachineTranslatedText text="Get help" />
+        </p>
         <p className="mt-[6px] text-[14px] text-[#65584f]/65" style={{ fontFamily: M }}>
-          Help center and contact support
+          <MachineTranslatedText text="Help center and contact support" />
         </p>
         <Link
           href="/more"
           className="mt-[18px] block w-full rounded-full py-[16px] text-center text-[15px] font-bold text-white active:scale-[0.98] transition-transform"
           style={{ background: "#cd8188", fontFamily: M }}
         >
-          Get help
+          <MachineTranslatedText text="Get help" />
         </Link>
       </div>
     </div>

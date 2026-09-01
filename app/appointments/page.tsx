@@ -240,11 +240,11 @@ export default async function AppointmentsPage({
                     <p className="mb-[10px] text-[11px] font-bold uppercase tracking-[0.16em] text-[#8d7f72]" style={{ fontFamily: M }}>
                       Modify date and time
                     </p>
-                    <div className="grid grid-cols-[1fr_112px] gap-[10px]">
-                      <label className="block">
+                    <div className="grid grid-cols-2 gap-[8px]">
+                      <label className="block min-w-0">
                         <span className="mb-[5px] block text-[11px] font-semibold text-[#65584f]/60" style={{ fontFamily: M }}>Date</span>
                         <input
-                          className="h-[42px] w-full rounded-[12px] border border-[#eadfce] bg-white px-[12px] text-[13px] font-semibold text-[#65584f] outline-none"
+                          className="h-[40px] min-w-0 w-full rounded-[11px] border border-[#eadfce] bg-white px-[9px] text-[12px] font-semibold text-[#65584f] outline-none"
                           defaultValue={appt.appointment_date}
                           min={today}
                           name="appointmentDate"
@@ -252,10 +252,10 @@ export default async function AppointmentsPage({
                           style={{ fontFamily: M }}
                         />
                       </label>
-                      <label className="block">
+                      <label className="block min-w-0">
                         <span className="mb-[5px] block text-[11px] font-semibold text-[#65584f]/60" style={{ fontFamily: M }}>Time</span>
                         <select
-                          className="h-[42px] w-full rounded-[12px] border border-[#eadfce] bg-white px-[10px] text-[13px] font-semibold text-[#65584f] outline-none"
+                          className="h-[40px] min-w-0 w-full rounded-[11px] border border-[#eadfce] bg-white px-[9px] text-[12px] font-semibold text-[#65584f] outline-none"
                           defaultValue={currentTime}
                           name="appointmentTime"
                           style={{ fontFamily: M }}

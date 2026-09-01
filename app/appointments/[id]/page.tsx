@@ -68,15 +68,31 @@ export default async function AppointmentDetailPage({
       .eq("id", appt.shelter_id)
       .maybeSingle(),
   ]);
-  const { data: shelterExtended } = await (admin as any)
-    .from("shelters")
-    .select("id, logo_url, google_maps_url, meeting_instructions")
-    .eq("id", appt.shelter_id)
-    .maybeSingle();
+  const [{ data: shelterExtended }, { data: shelterLocale }, { data: dogLocalizedTraits }] = await Promise.all([
+    (admin as any)
+      .from("shelters")
+      .select("id, logo_url, google_maps_url, meeting_instructions")
+      .eq("id", appt.shelter_id)
+      .maybeSingle(),
+    (admin as any)
+      .from("shelters")
+      .select("id, name_th, address_line_th, subdistrict_th, district_th, province_th, meeting_instructions_th")
+      .eq("id", appt.shelter_id)
+      .maybeSingle()
+      .then((result: { data: unknown; error: unknown }) => (result.error ? { data: null } : result)),
+    appt.dog_id
+      ? admin
+          .from("dog_traits")
+          .select("trait_type, trait_value")
+          .eq("dog_id", appt.dog_id)
+          .eq("trait_type", "localized_name_th")
+      : Promise.resolve({ data: [] }),
+  ]);
   const shelter = shelterBase
     ? {
         ...shelterBase,
         ...(shelterExtended ?? {}),
+        ...(shelterLocale ?? {}),
       }
     : null;
   const { data: messageRows, error: messageRowsError } = await admin
@@ -150,6 +166,21 @@ export default async function AppointmentDetailPage({
         [shelter.province, shelter.postal_code].filter(Boolean).join(" "),
       ].filter(Boolean) as string[]
     : [];
+  // TODO(codex): Replace these fallbacks with first-class Thai address columns once the shelter profile schema exposes them everywhere.
+  const addressLinesTh = shelter
+    ? [
+        (shelter as unknown as { address_line_th?: string | null }).address_line_th,
+        [
+          (shelter as unknown as { subdistrict_th?: string | null }).subdistrict_th,
+          (shelter as unknown as { district_th?: string | null }).district_th,
+        ].filter(Boolean).join(", "),
+        [
+          (shelter as unknown as { province_th?: string | null }).province_th,
+          shelter.postal_code,
+        ].filter(Boolean).join(" "),
+      ].filter(Boolean) as string[]
+    : [];
+  const dogNameTh = (dogLocalizedTraits ?? []).find((trait) => trait.trait_value?.trim())?.trait_value?.trim() ?? null;
 
   // Compute whether slot has passed (start time + 1hr <= now)
   const slotStart = new Date(`${appt.appointment_date}T${appt.appointment_time}`);
@@ -190,21 +221,22 @@ export default async function AppointmentDetailPage({
         adoptionDate: appt.status === "completed" ? appt.appointment_date : null,
         isAdopted: dog.adoption_status === "adopted" && appt.status === "completed",
       } : null}
-      dog={dog ? { id: dog.id, name: dog.name, breed: dog.breed, coverUrl } : null}
+      dog={dog ? { id: dog.id, name: dog.name, nameTh: dogNameTh, breed: dog.breed, coverUrl } : null}
       shelter={
         shelter
           ? {
               name: shelter.name,
-              // TODO(codex): wire when name_th column exists
               nameTh: (shelter as unknown as { name_th?: string | null }).name_th ?? null,
               phone: shelter.phone_number,
               email: shelter.email,
               addressLines,
+              addressLinesTh,
               googleMapsUrl: shelter.google_maps_url,
               latitude: (shelter as unknown as { latitude?: number | null }).latitude ?? null,
               logoUrl: shelter.logo_url,
               longitude: (shelter as unknown as { longitude?: number | null }).longitude ?? null,
               meetingInstructions: shelter.meeting_instructions,
+              meetingInstructionsTh: (shelter as unknown as { meeting_instructions_th?: string | null }).meeting_instructions_th ?? null,
             }
           : null
       }
