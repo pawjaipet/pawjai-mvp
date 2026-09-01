@@ -11,6 +11,7 @@ import { createClient as createBrowserSupabaseClient } from "@/utils/supabase/cl
 
 const M = "Montserrat, sans-serif";
 const MESSAGE_THREAD_REFRESH_INTERVAL_MS = 12_000;
+const APPOINTMENT_MESSAGE_ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov,application/pdf,image/heic,image/heif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime";
 
 type Tab = "details" | "messages" | "help";
 
@@ -93,6 +94,118 @@ export type AppointmentThreadMessage = {
   senderRole: "adopter" | "shelter" | "system";
 };
 
+type DraftMessageAttachment = {
+  kind: "file" | "image" | "video";
+  name: string;
+  previewUrl: string | null;
+  sizeLabel: string;
+  typeLabel: string;
+};
+
+function isPreviewableMessageImage(type: string | null | undefined, name = "") {
+  return type === "image/jpeg"
+    || type === "image/png"
+    || type === "image/webp"
+    || /\.(jpe?g|png|webp)$/i.test(name);
+}
+
+function isPreviewableMessageVideo(type: string | null | undefined, name = "") {
+  return type === "video/mp4"
+    || type === "video/quicktime"
+    || /\.(mp4|mov)$/i.test(name);
+}
+
+function formatAttachmentSize(bytes: number) {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+}
+
+function attachmentTypeLabel(file: File) {
+  const name = file.name.toLowerCase();
+  const type = file.type.toLowerCase();
+  if (type === "application/pdf" || name.endsWith(".pdf")) return "PDF";
+  if (type === "image/heic" || name.endsWith(".heic")) return "HEIC image";
+  if (type === "image/heif" || name.endsWith(".heif")) return "HEIF image";
+  if (type.startsWith("image/") || /\.(jpe?g|png|webp)$/i.test(name)) return "Image";
+  if (type.startsWith("video/") || /\.(mp4|mov)$/i.test(name)) return "Video";
+  return "File";
+}
+
+function createDraftMessageAttachment(file: File): DraftMessageAttachment {
+  const type = file.type.toLowerCase();
+  const previewImage = isPreviewableMessageImage(type, file.name);
+  const previewVideo = isPreviewableMessageVideo(type, file.name);
+  const kind = previewImage ? "image" : previewVideo ? "video" : "file";
+
+  return {
+    kind,
+    name: file.name,
+    previewUrl: kind === "file" ? null : URL.createObjectURL(file),
+    sizeLabel: formatAttachmentSize(file.size),
+    typeLabel: attachmentTypeLabel(file),
+  };
+}
+
+function isGeneratedAttachmentBody(body: string, attachmentName: string | null | undefined) {
+  if (!attachmentName) return false;
+  const text = body.trim();
+  return text === `Attachment: ${attachmentName}` || text === `Photo attached: ${attachmentName}`;
+}
+
+function DraftAttachmentPreview({
+  attachment,
+  onRemove,
+}: {
+  attachment: DraftMessageAttachment;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="mx-[14px] mb-[12px] flex items-center gap-[10px] overflow-hidden rounded-[16px] border border-[#eadfce] bg-[#fffaf5] p-[10px]">
+      <div className="relative h-[58px] w-[58px] shrink-0 overflow-hidden rounded-[12px] bg-[#f5f0e8]">
+        {attachment.kind === "image" && attachment.previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img alt={attachment.name} className="h-full w-full object-cover" src={attachment.previewUrl} />
+        ) : null}
+        {attachment.kind === "video" && attachment.previewUrl ? (
+          <video className="h-full w-full object-cover" muted preload="metadata" src={attachment.previewUrl} />
+        ) : null}
+        {attachment.kind === "file" ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#cd8188]" style={{ fontFamily: M }}>
+              {attachment.typeLabel}
+            </span>
+          </div>
+        ) : null}
+        <span className="absolute right-[5px] top-[5px] flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#cd8188]">
+          <svg aria-hidden="true" height="12" viewBox="0 0 24 24" width="12">
+            <path d="M20 6 9 17l-5-5" fill="none" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+          </svg>
+        </span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#cd8188]" style={{ fontFamily: M }}>
+          Ready to send
+        </p>
+        <p className="mt-[2px] truncate text-[14px] font-bold text-[#65584f]" data-i18n-ignore style={{ fontFamily: M }}>
+          {attachment.name}
+        </p>
+        <p className="mt-[1px] text-[12px] text-[#65584f]/60" style={{ fontFamily: M }}>
+          {attachment.typeLabel} - {attachment.sizeLabel}
+        </p>
+      </div>
+      <button
+        aria-label={`Remove ${attachment.name}`}
+        className="rounded-full px-[10px] py-[8px] text-[12px] font-bold text-[#65584f]/70 active:scale-95"
+        onClick={onRemove}
+        type="button"
+      >
+        Remove
+      </button>
+    </div>
+  );
+}
+
 function SecureAppointmentMessageAttachment({
   fromMe,
   message,
@@ -117,11 +230,8 @@ function SecureAppointmentMessageAttachment({
     );
   }
 
-  const previewImage = message.attachmentType === "image/jpeg"
-    || message.attachmentType === "image/png"
-    || message.attachmentType === "image/webp";
-  const previewVideo = message.attachmentType === "video/mp4"
-    || message.attachmentType === "video/quicktime";
+  const previewImage = isPreviewableMessageImage(message.attachmentType, message.attachmentName ?? "");
+  const previewVideo = isPreviewableMessageVideo(message.attachmentType, message.attachmentName ?? "");
 
   return (
     <div className="mb-[8px]">
@@ -754,17 +864,26 @@ function MessagesTab({
   const [draft, setDraft] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [selectedAttachment, setSelectedAttachment] = useState<DraftMessageAttachment | null>(null);
 
-  function prefillDraft(text: string, opts?: { attach?: boolean }) {
-    setDraft(text);
-    if (opts?.attach) attachRef.current?.click();
+  function clearSelectedAttachment() {
+    setSelectedAttachment(null);
+    if (attachRef.current) attachRef.current.value = "";
+  }
+
+  function focusDraft() {
     requestAnimationFrame(() => {
       const el = bodyRef.current;
       if (!el) return;
       el.focus();
-      el.setSelectionRange(text.length, text.length);
     });
   }
+
+  useEffect(() => {
+    return () => {
+      if (selectedAttachment?.previewUrl) URL.revokeObjectURL(selectedAttachment.previewUrl);
+    };
+  }, [selectedAttachment?.previewUrl]);
 
   useEffect(() => {
     if (!returnOpen && !helpOpen) return;
@@ -820,7 +939,7 @@ function MessagesTab({
     };
   }, [appointmentId, messagesUnavailable, router]);
 
-  const chatMessages = [
+  const chatMessages: AppointmentThreadMessage[] = [
     ...(adoptionContext?.isAdopted
       ? [
           {
@@ -846,11 +965,15 @@ function MessagesTab({
   ];
 
   function handleAttachment(files: FileList | null) {
-    if (!files?.length) return;
-    const file = files[0];
-    if (!draft.trim()) {
-      prefillDraft(file.type.startsWith("image/") ? `Photo attached: ${file.name}` : `Attachment: ${file.name}`);
+    if (!files?.length) {
+      clearSelectedAttachment();
+      return;
     }
+    const file = files[0];
+    setSelectedAttachment(createDraftMessageAttachment(file));
+    setHelpOpen(false);
+    setReturnOpen(false);
+    focusDraft();
   }
 
   function formatMessageTime(value: string) {
@@ -864,7 +987,7 @@ function MessagesTab({
         ref={attachRef}
         name="attachment"
         type="file"
-        accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov,application/pdf,image/heic,image/heif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
+        accept={APPOINTMENT_MESSAGE_ATTACHMENT_ACCEPT}
         className="hidden"
         onChange={(e) => handleAttachment(e.target.files)}
       />
@@ -904,7 +1027,9 @@ function MessagesTab({
                 }}
               >
                 <SecureAppointmentMessageAttachment fromMe={fromMe} message={msg} />
-                <p className="text-[14px] leading-[1.45]" style={{ fontFamily: M }}>{msg.body}</p>
+                {!isGeneratedAttachmentBody(msg.body, msg.attachmentName) ? (
+                  <p className="text-[14px] leading-[1.45]" style={{ fontFamily: M }}>{msg.body}</p>
+                ) : null}
               </div>
               <p
                 className={`text-[11px] mt-[4px] ${fromMe ? "text-right" : ""}`}
@@ -928,9 +1053,10 @@ function MessagesTab({
             }
             await sendAppointmentMessageAction(formData);
             setDraft("");
-            if (attachRef.current) attachRef.current.value = "";
+            clearSelectedAttachment();
           }}
           className="flex items-center gap-[10px] px-[14px] py-[12px]"
+          encType="multipart/form-data"
         >
           <input name="appointmentId" type="hidden" value={appointmentId} />
           <button
@@ -961,7 +1087,7 @@ function MessagesTab({
             aria-label="Send message"
             className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full active:scale-95 disabled:opacity-55"
             style={{ background: "#cd8188" }}
-            disabled={messagesUnavailable}
+            disabled={messagesUnavailable || (!draft.trim() && !selectedAttachment)}
             type="submit"
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -970,26 +1096,30 @@ function MessagesTab({
             </svg>
           </button>
         </form>
-        <div className="grid grid-cols-2 gap-[8px] px-[14px] pb-[12px]">
-          <button
-            className="rounded-full px-[12px] py-[10px] text-[13px] font-bold active:scale-95 disabled:opacity-55"
-            disabled={messagesUnavailable}
-            onClick={() => setHelpOpen(true)}
-            style={{ background: "#f5f0e8", color: "#65584f", fontFamily: M }}
-            type="button"
-          >
-            SOS I need help
-          </button>
-          <button
-            className="rounded-full px-[12px] py-[10px] text-[13px] font-bold text-white active:scale-95 disabled:opacity-55"
-            disabled={messagesUnavailable}
-            onClick={() => setReturnOpen(true)}
-            style={{ background: "#cd8188", fontFamily: M }}
-            type="button"
-          >
-            Return inquiry
-          </button>
-        </div>
+        {selectedAttachment ? (
+          <DraftAttachmentPreview attachment={selectedAttachment} onRemove={clearSelectedAttachment} />
+        ) : (
+          <div className="grid grid-cols-2 gap-[8px] px-[14px] pb-[12px]">
+            <button
+              className="rounded-full px-[12px] py-[10px] text-[13px] font-bold active:scale-95 disabled:opacity-55"
+              disabled={messagesUnavailable}
+              onClick={() => setHelpOpen(true)}
+              style={{ background: "#f5f0e8", color: "#65584f", fontFamily: M }}
+              type="button"
+            >
+              SOS I need help
+            </button>
+            <button
+              className="rounded-full px-[12px] py-[10px] text-[13px] font-bold text-white active:scale-95 disabled:opacity-55"
+              disabled={messagesUnavailable}
+              onClick={() => setReturnOpen(true)}
+              style={{ background: "#cd8188", fontFamily: M }}
+              type="button"
+            >
+              Return inquiry
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Return Inquiry modal */}

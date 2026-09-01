@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AdCard from "@/components/AdCard";
 import {
@@ -30,6 +30,7 @@ import {
   ShieldCheck,
   Trash2,
   Users,
+  Video,
 } from "lucide-react";
 import {
   APPOINTMENT_TIME_SLOTS,
@@ -126,17 +127,28 @@ function ReturnInquiryAdminCard({
   );
 }
 
-function formatAdminMessagePreview(body: string | null | undefined) {
+function formatAdminMessagePreview(body: string | null | undefined, attachmentName?: string | null) {
   if (!body) return "";
   const returnInquiry = parseReturnInquiryMessageBody(body);
   if (returnInquiry) return `Return inquiry requested: ${returnInquiry.reason}`;
+  if (isGeneratedAttachmentBody(body, attachmentName)) return attachmentName ? `Attachment shared: ${attachmentName}` : "Attachment shared";
   return body;
 }
+
 type AdWorkspaceView = "review" | "analytics";
 type AdminDraftMessageThread = AdminDraftData["messageThreads"][number];
 
+type DraftAdminMessageAttachment = {
+  kind: "file" | "image" | "video";
+  name: string;
+  previewUrl: string | null;
+  sizeLabel: string;
+  typeLabel: string;
+};
+
 const ADMIN_RETURN_TO = "/admin";
 const ADMIN_ADS_RETURN_TO = "/admin?view=ads";
+const APPOINTMENT_MESSAGE_ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov,application/pdf,image/heic,image/heif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime";
 const MESSAGE_THREAD_REFRESH_INTERVAL_MS = 12_000;
 const MAIN_TABS: MainTab[] = ["shelters", "dogs", "bookings", "donations", "ads", "about", "messages"];
 const BOOKING_STATUS_OPTIONS = ["requested", "confirmed", "completed", "cancelled", "no_show"];
@@ -478,6 +490,88 @@ function isPreviewableMessageImage(type: string | null | undefined) {
 
 function isPreviewableMessageVideo(type: string | null | undefined) {
   return type === "video/mp4" || type === "video/quicktime";
+}
+
+function formatAttachmentSize(bytes: number) {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+}
+
+function attachmentTypeLabel(file: File) {
+  const name = file.name.toLowerCase();
+  const type = file.type.toLowerCase();
+  if (type === "application/pdf" || name.endsWith(".pdf")) return "PDF";
+  if (type === "image/heic" || name.endsWith(".heic")) return "HEIC image";
+  if (type === "image/heif" || name.endsWith(".heif")) return "HEIF image";
+  if (type.startsWith("image/") || /\.(jpe?g|png|webp)$/i.test(name)) return "Image";
+  if (type.startsWith("video/") || /\.(mp4|mov)$/i.test(name)) return "Video";
+  return "File";
+}
+
+function createDraftAdminMessageAttachment(file: File): DraftAdminMessageAttachment {
+  const type = file.type.toLowerCase();
+  const previewImage = isPreviewableMessageImage(type) || /\.(jpe?g|png|webp)$/i.test(file.name);
+  const previewVideo = isPreviewableMessageVideo(type) || /\.(mp4|mov)$/i.test(file.name);
+  const kind = previewImage ? "image" : previewVideo ? "video" : "file";
+
+  return {
+    kind,
+    name: file.name,
+    previewUrl: kind === "file" ? null : URL.createObjectURL(file),
+    sizeLabel: formatAttachmentSize(file.size),
+    typeLabel: attachmentTypeLabel(file),
+  };
+}
+
+function isGeneratedAttachmentBody(body: string, attachmentName: string | null | undefined) {
+  if (!attachmentName) return false;
+  const text = body.trim();
+  return text === `Attachment: ${attachmentName}` || text === `Photo attached: ${attachmentName}`;
+}
+
+function DraftAdminAttachmentPreview({
+  attachment,
+  onRemove,
+}: {
+  attachment: DraftAdminMessageAttachment;
+  onRemove: () => void;
+}) {
+  const Icon = attachment.kind === "image" ? ImageIcon : attachment.kind === "video" ? Video : FileText;
+
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-3">
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white">
+        {attachment.kind === "image" && attachment.previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img alt={attachment.name} className="h-full w-full object-cover" src={attachment.previewUrl} />
+        ) : null}
+        {attachment.kind === "video" && attachment.previewUrl ? (
+          <video className="h-full w-full object-cover" muted preload="metadata" src={attachment.previewUrl} />
+        ) : null}
+        {attachment.kind === "file" ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <Icon className="h-7 w-7 text-[#cd8188]" />
+          </div>
+        ) : null}
+        <span className="absolute right-1.5 top-1.5 rounded-full bg-[#cd8188] p-0.5 text-white">
+          <CheckCircle2 className="h-4 w-4" />
+        </span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#cd8188]">Ready to send</p>
+        <p className="mt-1 truncate text-sm font-semibold text-[#65584f]" data-i18n-ignore>{attachment.name}</p>
+        <p className="mt-0.5 text-xs text-[#8d7f72]">{attachment.typeLabel} - {attachment.sizeLabel}</p>
+      </div>
+      <button
+        className="rounded-full border border-[#d6c8ad] bg-white px-3 py-1.5 text-xs font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
+        onClick={onRemove}
+        type="button"
+      >
+        Remove
+      </button>
+    </div>
+  );
 }
 
 function SecureAdminMessageAttachment({
@@ -2072,18 +2166,20 @@ function ShelterMessagesTab({
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedThreadId = searchParams.get("thread") ?? "";
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [messageFilter, setMessageFilter] = useState<MessageFilter>("all");
   const [messageSearch, setMessageSearch] = useState("");
   const [messageSort, setMessageSort] = useState<MessageSort>("newest");
-  const [selectedThreadId, setSelectedThreadId] = useState("");
+  const [selectedThreadId, setSelectedThreadId] = useState(requestedThreadId);
+  const [replyAttachment, setReplyAttachment] = useState<DraftAdminMessageAttachment | null>(null);
   const [shelterFilter, setShelterFilter] = useState("all");
   const isGlobalOverview = Boolean(globalShelters);
-  const shelterThreads = messageThreads.filter((thread) => (
+  const shelterThreads = useMemo(() => messageThreads.filter((thread) => (
     isGlobalOverview
       ? shelterFilter === "all" || thread.shelterId === shelterFilter
       : thread.shelterId === shelter.id
-  ));
-  const filteredThreads = shelterThreads
+  )), [isGlobalOverview, messageThreads, shelter.id, shelterFilter]);
+  const filteredThreads = useMemo(() => shelterThreads
     .filter((thread) => matchesMessageThread(thread, messageSearch, messageFilter))
     .slice()
     .sort((a, b) => {
@@ -2094,8 +2190,10 @@ function ShelterMessagesTab({
         return b.unreadForShelterCount - a.unreadForShelterCount || bActivity.localeCompare(aActivity);
       }
       return bActivity.localeCompare(aActivity);
-    });
-  const selectedThread = filteredThreads.find((thread) => thread.appointmentId === selectedThreadId) ?? filteredThreads[0] ?? null;
+    }), [messageFilter, messageSearch, messageSort, shelterThreads]);
+  const selectedThread = (selectedThreadId
+    ? shelterThreads.find((thread) => thread.appointmentId === selectedThreadId)
+    : null) ?? filteredThreads[0] ?? null;
   const selectedThreadReturnTo = selectedThread
     ? bookingWorkspaceMessageHref({
         appointmentId: selectedThread.appointmentId,
@@ -2110,12 +2208,48 @@ function ShelterMessagesTab({
     { label: "Needs reply", value: "needs_reply" },
   ];
 
+  function clearReplyAttachment() {
+    setReplyAttachment(null);
+    if (attachmentInputRef.current) attachmentInputRef.current.value = "";
+  }
+
+  function handleReplyAttachment(files: FileList | null) {
+    if (!files?.length) {
+      clearReplyAttachment();
+      return;
+    }
+    setReplyAttachment(createDraftAdminMessageAttachment(files[0]));
+  }
+
+  function selectMessageThread(threadId: string) {
+    setSelectedThreadId(threadId);
+    clearReplyAttachment();
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("view", "messages");
+    nextUrl.searchParams.set("thread", threadId);
+    window.history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (replyAttachment?.previewUrl) URL.revokeObjectURL(replyAttachment.previewUrl);
+    };
+  }, [replyAttachment?.previewUrl]);
+
   useEffect(() => {
     if (requestedThreadId && shelterThreads.some((thread) => thread.appointmentId === requestedThreadId)) {
       setSelectedThreadId(requestedThreadId);
       setMessageFilter("all");
+      return;
     }
-  }, [requestedThreadId, shelterThreads]);
+    if (selectedThreadId && !shelterThreads.some((thread) => thread.appointmentId === selectedThreadId)) {
+      setSelectedThreadId(filteredThreads[0]?.appointmentId ?? "");
+      return;
+    }
+    if (!selectedThreadId && filteredThreads[0]) {
+      setSelectedThreadId(filteredThreads[0].appointmentId);
+    }
+  }, [filteredThreads, requestedThreadId, selectedThreadId, shelterThreads]);
 
   useEffect(() => {
     if (messagesUnavailable) return;
@@ -2251,7 +2385,7 @@ function ShelterMessagesTab({
                     : "border-[#d6c8ad] bg-white hover:bg-[#f5f1e8]"
                 }`}
                 key={thread.appointmentId}
-                onClick={() => setSelectedThreadId(thread.appointmentId)}
+                onClick={() => selectMessageThread(thread.appointmentId)}
                 type="button"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -2268,7 +2402,7 @@ function ShelterMessagesTab({
                 </div>
                 <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#65584f]">
                   {thread.latestMessage?.body ? (
-                    <span data-i18n-ignore>{formatAdminMessagePreview(thread.latestMessage.body)}</span>
+                    <span data-i18n-ignore>{formatAdminMessagePreview(thread.latestMessage.body, thread.latestMessage.attachment_name)}</span>
                   ) : (
                     "No messages yet. Conversation opens after a booked visit."
                   )}
@@ -2318,6 +2452,7 @@ function ShelterMessagesTab({
                 {selectedThread.messages.length > 0 ? selectedThread.messages.map((message) => {
                   const isShelter = message.sender_role === "shelter";
                   const returnInquiry = parseReturnInquiryMessageBody(message.body);
+                  const showMessageBody = !isGeneratedAttachmentBody(message.body, message.attachment_name);
                   if (returnInquiry) {
                     return (
                       <ReturnInquiryAdminCard
@@ -2338,7 +2473,9 @@ function ShelterMessagesTab({
                           {message.sender_role === "system" ? "PawJai/system" : message.sender_label ?? (isShelter ? selectedThread.shelterName : selectedThread.adopterName)}
                         </p>
                         <SecureAdminMessageAttachment adminMode={adminMode} isShelter={isShelter} message={message} />
-                        <p className="mt-1 whitespace-pre-wrap" data-i18n-ignore>{message.body}</p>
+                        {showMessageBody ? (
+                          <p className="mt-1 whitespace-pre-wrap" data-i18n-ignore>{message.body}</p>
+                        ) : null}
                         <p className={`mt-2 text-[11px] ${isShelter ? "text-white/60" : "text-[#65584f]/70"}`}>
                           {formatMessageTime(message.created_at)}
                           {adminMode ? (
@@ -2364,9 +2501,21 @@ function ShelterMessagesTab({
                   Read-only PawJai admin view. Admin can review this conversation but cannot reply, edit, or mark shelter messages read.
                 </div>
               ) : (
-	                <form action={sendShelterAppointmentMessageAction} className="mt-4 grid gap-2" encType="multipart/form-data">
-	                  <input name="appointmentId" type="hidden" value={selectedThread.appointmentId} />
-	                  <input name="returnTo" type="hidden" value={selectedThreadReturnTo} />
+                <form
+                  action={async (formData) => {
+                    const attachment = attachmentInputRef.current?.files?.[0];
+                    if (attachment) {
+                      formData.set("attachment", attachment);
+                    }
+                    await sendShelterAppointmentMessageAction(formData);
+                    clearReplyAttachment();
+                  }}
+                  className="mt-4 grid gap-3"
+                  encType="multipart/form-data"
+                  key={selectedThread.appointmentId}
+                >
+                  <input name="appointmentId" type="hidden" value={selectedThread.appointmentId} />
+                  <input name="returnTo" type="hidden" value={selectedThreadReturnTo} />
                   <label className="sr-only" htmlFor={`message-body-${selectedThread.appointmentId}`}>Write a shelter reply</label>
                   <div className="flex gap-2">
                     <textarea
@@ -2384,6 +2533,9 @@ function ShelterMessagesTab({
                       Send
                     </button>
                   </div>
+                  {replyAttachment ? (
+                    <DraftAdminAttachmentPreview attachment={replyAttachment} onRemove={clearReplyAttachment} />
+                  ) : null}
                   <label
                     className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-[#d6c8ad] bg-[#fffaf5] px-4 py-2 text-sm font-semibold text-[#65584f] hover:bg-[#f5f1e8]"
                     htmlFor={`shelter-attachment-${selectedThread.appointmentId}`}
@@ -2392,11 +2544,13 @@ function ShelterMessagesTab({
                     Attach file
                   </label>
                   <input
-                    accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov,application/pdf,image/heic,image/heif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
+                    accept={APPOINTMENT_MESSAGE_ATTACHMENT_ACCEPT}
                     className="sr-only"
                     disabled={messagesUnavailable}
                     id={`shelter-attachment-${selectedThread.appointmentId}`}
                     name="attachment"
+                    onChange={(event) => handleReplyAttachment(event.target.files)}
+                    ref={attachmentInputRef}
                     type="file"
                   />
                 </form>
