@@ -56,6 +56,7 @@ test("profile and donation settings are separate shelter mutations", () => {
 
 test("adopted dogs have a dedicated archive while unavailable records stay manageable", () => {
   const panel = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+  const actions = readFileSync(new URL("../app/admin/bookings/actions.ts", import.meta.url), "utf8");
 
   assert.equal(panel.includes('const currentStatuses = new Set(["available", "draft", "reserved", "unavailable"])'), true);
   assert.equal(panel.includes('const adoptedStatuses = new Set(["adopted"])'), true);
@@ -67,6 +68,11 @@ test("adopted dogs have a dedicated archive while unavailable records stay manag
   assert.equal(panel.includes("Visitor profile"), true);
   assert.equal(panel.includes("Booking detail"), true);
   assert.equal(panel.includes("adoptedAppointmentId"), true);
+  assert.equal(panel.includes('import { useFormStatus } from "react-dom";'), true);
+  assert.equal(panel.includes("BookingDecisionSubmitButton"), true);
+  assert.equal(panel.includes("Marking dog as adopted..."), true);
+  assert.equal(actions.includes('return "Dog marked as adopted.";'), true);
+  assert.equal(actions.includes('url.searchParams.set("visitBucket", visitBucket)'), true);
 });
 
 test("shelter lane enables English and Thai without translating admin lanes", () => {

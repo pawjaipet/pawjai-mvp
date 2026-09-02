@@ -91,6 +91,29 @@ function addBookingRedirectMessage(path: string, message: string) {
   return `${url.pathname}${url.search}`;
 }
 
+function visitBucketForDecision(decision: BookingDecision) {
+  if (decision === "adopted") return "adopted";
+  if (decision === "complete" || decision === "no_show") return "history";
+  return null;
+}
+
+function successMessageForDecision(decision: BookingDecision) {
+  switch (decision) {
+    case "accept":
+      return "Booking accepted.";
+    case "deny":
+      return "Booking denied.";
+    case "request_change":
+      return "Date/time change request sent.";
+    case "complete":
+      return "Visit moved to History.";
+    case "no_show":
+      return "Visitor no-show recorded.";
+    case "adopted":
+      return "Dog marked as adopted.";
+  }
+}
+
 async function safeBookingMutationReturnTo({ appointmentId, context, requestedReturnTo, shelterId }: {
   appointmentId: string;
   context: AdminAuthContext;
@@ -133,10 +156,18 @@ async function redirectAfterBookingDecision(
   context: AdminAuthContext,
   appointmentId: string,
   shelterId: string,
+  decision: BookingDecision,
 ) {
   const returnTo = String(formData.get("returnTo") ?? "");
   const safeTarget = await safeBookingMutationReturnTo({ appointmentId, context, requestedReturnTo: returnTo, shelterId });
-  redirect(addBookingRedirectMessage(safeTarget.returnTo, message));
+  const url = new URL(addBookingRedirectMessage(safeTarget.returnTo, message), "https://pawjai.local");
+  const visitBucket = visitBucketForDecision(decision);
+  if (visitBucket) {
+    url.searchParams.set("view", "bookings");
+    url.searchParams.set("bookingView", "visits");
+    url.searchParams.set("visitBucket", visitBucket);
+  }
+  redirect(`${url.pathname}${url.search}`);
 }
 
 async function redirectAfterCheckIn(
@@ -536,15 +567,20 @@ export async function decideBookingAction(formData: FormData) {
   revalidatePath(`/admin/bookings/${appointmentId}/visitor-profile`);
   revalidatePath(`/booking/${appointmentId}`);
   revalidatePath(`/booking/${appointmentId}/visitor-profile`);
+  if (appointment.dog_id) {
+    revalidatePath(`/dogs/${appointment.dog_id}`);
+  }
+  revalidatePath("/adopted");
   revalidatePath("/appointments");
   revalidatePath(`/appointments/${appointmentId}`);
   revalidatePath("/messages");
   await redirectAfterBookingDecision(
     formData,
-    updateError ? "Booking decision could not be saved." : "Booking decision saved.",
+    updateError ? "Booking decision could not be saved." : successMessageForDecision(decision),
     adminContext,
     appointmentId,
     appointment.shelter_id,
+    decision,
   );
 }
 

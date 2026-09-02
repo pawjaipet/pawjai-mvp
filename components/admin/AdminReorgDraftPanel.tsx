@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import AdCard from "@/components/AdCard";
 import {
@@ -1555,6 +1556,7 @@ function ShelterBookingsTab({
   calendarReturnTo,
   checkInHref,
   initialView = "visits",
+  initialVisitBucket,
   shelter,
 }: {
   bookingListHref: string;
@@ -1562,6 +1564,7 @@ function ShelterBookingsTab({
   calendarReturnTo: string;
   checkInHref: string;
   initialView?: BookingWorkspaceView;
+  initialVisitBucket?: VisitBucket;
   shelter: AdminDraftShelter;
 }) {
   const workspaceView = initialView;
@@ -1586,10 +1589,70 @@ function ShelterBookingsTab({
       </div>
 
       {workspaceView === "visits" ? (
-        <ShelterBookingVisitList bookingListHref={bookingListHref} bookings={bookings} checkInHref={checkInHref} />
+        <ShelterBookingVisitList bookingListHref={bookingListHref} bookings={bookings} checkInHref={checkInHref} initialVisitBucket={initialVisitBucket} />
       ) : (
         <ShelterCalendar returnTo={calendarReturnTo} shelter={shelter} />
       )}
+    </div>
+  );
+}
+
+type BookingDecisionButtonProps = {
+  className: string;
+  label: string;
+  pendingLabel: string;
+  value: string;
+};
+
+function BookingDecisionSubmitButton({
+  className,
+  label,
+  pendingLabel,
+  value,
+}: BookingDecisionButtonProps) {
+  const status = useFormStatus();
+  const activeDecision = status.pending ? String(status.data.get("decision") ?? "") : "";
+  const isActiveDecision = activeDecision === value;
+
+  return (
+    <button
+      className={`${className} disabled:cursor-wait disabled:opacity-75`}
+      disabled={status.pending}
+      name="decision"
+      type="submit"
+      value={value}
+    >
+      {isActiveDecision ? pendingLabel : label}
+    </button>
+  );
+}
+
+function BookingDecisionPendingNotice() {
+  const status = useFormStatus();
+  if (!status.pending) return null;
+
+  const decision = String(status.data.get("decision") ?? "");
+  const pendingMessage = {
+    accept: "Saving booking acceptance...",
+    adopted: "Marking dog as adopted...",
+    complete: "Moving visit to History...",
+    deny: "Saving booking denial...",
+    no_show: "Recording visitor no-show...",
+    request_change: "Sending date/time change request...",
+  }[decision] ?? "Saving booking update...";
+
+  const isAdoption = decision === "adopted";
+
+  return (
+    <div
+      aria-live="polite"
+      className={`mt-3 rounded-2xl border px-3 py-2 text-xs font-semibold md:px-4 md:py-3 md:text-sm ${
+        isAdoption
+          ? "border-[#b8d8ad] bg-[#eaf6df] text-[#3f6f24]"
+          : "border-[#d6c8ad] bg-white text-[#65584f]"
+      }`}
+    >
+      {pendingMessage}
     </div>
   );
 }
@@ -1598,15 +1661,21 @@ function ShelterBookingVisitList({
   bookingListHref,
   bookings,
   checkInHref,
+  initialVisitBucket = "upcoming",
 }: {
   bookingListHref: string;
   bookings: AdminDraftBooking[];
   checkInHref: string;
+  initialVisitBucket?: VisitBucket;
 }) {
-  const [visitBucket, setVisitBucket] = useState<VisitBucket>("upcoming");
+  const [visitBucket, setVisitBucket] = useState<VisitBucket>(initialVisitBucket);
   const [bookingDateFilter, setBookingDateFilter] = useState("");
   const [bookingStatusFilter, setBookingStatusFilter] = useState("all");
   const [bookingSearch, setBookingSearch] = useState("");
+
+  useEffect(() => {
+    setVisitBucket(initialVisitBucket);
+  }, [initialVisitBucket]);
   const today = new Date().toISOString().slice(0, 10);
   const todayCount = bookings.filter((booking) => booking.appointmentDate === today).length;
   const checkedInCount = bookings.filter((booking) => booking.checkedIn).length;
@@ -1902,15 +1971,24 @@ function ShelterBookingVisitList({
                               </select>
                             </label>
                           </div>
-                          <button className="w-full rounded-full bg-[#3f7b35] px-3 py-2 text-xs font-semibold text-white hover:bg-[#356b2d] md:px-5 md:py-3 md:text-sm" name="decision" type="submit" value="accept">
-                            {booking.status === "requested" ? "Accept booking" : "Mark accepted"}
-                          </button>
-                          <button className="w-full rounded-full bg-[#c46f75] px-3 py-2 text-xs font-semibold text-white hover:bg-[#ae5e64] md:px-5 md:py-3 md:text-sm" name="decision" type="submit" value="deny">
-                            {booking.status === "requested" ? "Deny booking" : "Mark denied"}
-                          </button>
-                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] hover:bg-[#f5f1e8] md:px-5 md:py-3 md:text-sm" name="decision" type="submit" value="request_change">
-                            Ask to change date/time
-                          </button>
+                          <BookingDecisionSubmitButton
+                            className="w-full rounded-full bg-[#3f7b35] px-3 py-2 text-xs font-semibold text-white hover:bg-[#356b2d] md:px-5 md:py-3 md:text-sm"
+                            label={booking.status === "requested" ? "Accept booking" : "Mark accepted"}
+                            pendingLabel="Saving acceptance..."
+                            value="accept"
+                          />
+                          <BookingDecisionSubmitButton
+                            className="w-full rounded-full bg-[#c46f75] px-3 py-2 text-xs font-semibold text-white hover:bg-[#ae5e64] md:px-5 md:py-3 md:text-sm"
+                            label={booking.status === "requested" ? "Deny booking" : "Mark denied"}
+                            pendingLabel="Saving denial..."
+                            value="deny"
+                          />
+                          <BookingDecisionSubmitButton
+                            className="w-full rounded-full border border-[#d8c7ab] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] hover:bg-[#f5f1e8] md:px-5 md:py-3 md:text-sm"
+                            label="Ask to change date/time"
+                            pendingLabel="Sending request..."
+                            value="request_change"
+                          />
                         </div>
                       </details>
                     ) : null}
@@ -1919,20 +1997,31 @@ function ShelterBookingVisitList({
                       <div className="mt-3 rounded-2xl border border-[#d6c8ad] bg-white p-3">
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#65584f]">Post-visit outcome</p>
                         <div className="mt-3 grid gap-2">
-                          <button className="w-full rounded-full bg-[#65584f] px-3 py-2 text-xs font-semibold text-white hover:bg-[#50443b] md:px-5 md:py-3 md:text-sm" name="decision" type="submit" value="complete">
-                            Mark visit completed
-                          </button>
-                          <button className="w-full rounded-full border border-[#d8c7ab] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] hover:bg-[#f5f1e8] md:px-5 md:py-3 md:text-sm" name="decision" type="submit" value="no_show">
-                            Visitor did not show
-                          </button>
+                          <BookingDecisionSubmitButton
+                            className="w-full rounded-full bg-[#65584f] px-3 py-2 text-xs font-semibold text-white hover:bg-[#50443b] md:px-5 md:py-3 md:text-sm"
+                            label="Mark visit completed"
+                            pendingLabel="Moving to History..."
+                            value="complete"
+                          />
+                          <BookingDecisionSubmitButton
+                            className="w-full rounded-full border border-[#d8c7ab] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] hover:bg-[#f5f1e8] md:px-5 md:py-3 md:text-sm"
+                            label="Visitor did not show"
+                            pendingLabel="Recording no-show..."
+                            value="no_show"
+                          />
                           {booking.dogId ? (
-                            <button className="w-full rounded-full bg-[#3f7b35] px-3 py-2 text-xs font-semibold text-white hover:bg-[#356b2d] md:px-5 md:py-3 md:text-sm" name="decision" type="submit" value="adopted">
-                              Mark dog adopted
-                            </button>
+                            <BookingDecisionSubmitButton
+                              className="w-full rounded-full bg-[#3f7b35] px-3 py-2 text-xs font-semibold text-white hover:bg-[#356b2d] md:px-5 md:py-3 md:text-sm"
+                              label="Mark dog adopted"
+                              pendingLabel="Marking dog adopted..."
+                              value="adopted"
+                            />
                           ) : null}
                         </div>
                       </div>
                     ) : null}
+
+                    <BookingDecisionPendingNotice />
 
                     <Link
                       className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-[#d6c8ad] bg-white px-3 py-2 text-xs font-semibold text-[#65584f] hover:bg-[#f5f1e8] md:gap-2 md:px-5 md:py-3 md:text-sm"
@@ -2579,6 +2668,7 @@ function ShelterWorkspace({
   donationReturnTo,
   donations,
   initialBookingView,
+  initialVisitBucket,
   messageThreads,
   messagesUnavailable,
   profileReturnTo,
@@ -2599,6 +2689,7 @@ function ShelterWorkspace({
   donationReturnTo: string;
   donations: AdminDraftDonation[];
   initialBookingView?: BookingWorkspaceView;
+  initialVisitBucket?: VisitBucket;
   messageThreads: AdminDraftMessageThread[];
   messagesUnavailable: boolean;
   profileReturnTo: string;
@@ -2686,6 +2777,7 @@ function ShelterWorkspace({
           calendarReturnTo={calendarReturnTo}
           checkInHref={checkInHref}
           initialView={initialBookingView}
+          initialVisitBucket={initialVisitBucket}
           shelter={shelter}
         />
       ) : null}
@@ -3546,11 +3638,16 @@ function isBookingWorkspaceView(value: string | undefined): value is BookingWork
   return value === "visits" || value === "calendar";
 }
 
+function isVisitBucket(value: string | undefined): value is VisitBucket {
+  return value === "upcoming" || value === "past" || value === "history" || value === "adopted";
+}
+
 export default function AdminReorgDraftPanel({
   accountSettingsHref,
   data,
   initialMainTab,
   initialBookingWorkspaceView,
+  initialVisitBucket,
   initialMessage,
   initialRoleView = "pawjai",
   initialShelterId,
@@ -3561,6 +3658,7 @@ export default function AdminReorgDraftPanel({
   accountSettingsHref?: string;
   data?: AdminDraftData;
   initialBookingWorkspaceView?: string;
+  initialVisitBucket?: string;
   initialMainTab?: string;
   initialMessage?: string;
   initialRoleView?: RoleView;
@@ -3866,6 +3964,7 @@ export default function AdminReorgDraftPanel({
               donationReturnTo={shelterWorkspaceDonationReturnTo}
               donations={selectedShelterDonations}
               initialBookingView={bookingWorkspaceView}
+              initialVisitBucket={isVisitBucket(initialVisitBucket) ? initialVisitBucket : undefined}
               messageThreads={messageThreads}
               messagesUnavailable={messagesUnavailable}
               profileReturnTo={isShelterPortal ? `${workspaceBaseHref}?view=profile` : adminDraftShelterWorkspaceHref(selectedShelter.id, "profile", draftShelterRole)}

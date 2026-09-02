@@ -150,6 +150,8 @@ test("booking and message workspace links preserve the active message thread", (
   assert.match(panel, /selectedThreadReturnTo/);
   assert.match(panel, /href=\{withReturnTo\(`\/booking\/\$\{selectedThread\.appointmentId\}`, selectedThreadReturnTo\)\}/);
   assert.match(panel, /href=\{withReturnTo\(`\/booking\/\$\{selectedThread\.appointmentId\}\/visitor-profile`, selectedThreadReturnTo\)\}/);
+  assert.match(panel, /initialVisitBucket/);
+  assert.match(panel, /isVisitBucket\(initialVisitBucket\)/);
   assert.match(sharedDetail, /Back to messages/);
   assert.match(sharedDetail, /Message adopter/);
   assert.match(sharedVisitor, /Back to messages/);

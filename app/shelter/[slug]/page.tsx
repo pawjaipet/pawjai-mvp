@@ -14,7 +14,7 @@ export default async function ShelterPortalPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ bookingView?: string; message?: string; view?: string }>;
+  searchParams?: Promise<{ bookingView?: string; message?: string; view?: string; visitBucket?: string }>;
 }) {
   const [{ slug }, resolvedSearchParams] = await Promise.all([params, searchParams]);
   const context = await getAdminAuthContext({ includePhraseGate: false });
@@ -36,6 +36,7 @@ export default async function ShelterPortalPage({
       accountSettingsHref={`/shelter/${slug}/settings`}
       data={data}
       initialBookingWorkspaceView={resolvedSearchParams?.bookingView}
+      initialVisitBucket={resolvedSearchParams?.visitBucket}
       initialMessage={resolvedSearchParams?.message}
       initialRoleView="shelter"
       initialShelterId={shelter.id}

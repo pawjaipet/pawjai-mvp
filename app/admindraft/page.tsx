@@ -5,12 +5,13 @@ import { loadAdminDraftData } from "@/utils/admin-draft-data";
 
 export const dynamic = "force-dynamic";
 
-function buildAdminDraftReturnTo(searchParams?: { bookingView?: string; role?: string; shelter?: string; view?: string }) {
+function buildAdminDraftReturnTo(searchParams?: { bookingView?: string; role?: string; shelter?: string; view?: string; visitBucket?: string }) {
   const params = new URLSearchParams();
 
   if (searchParams?.shelter) params.set("shelter", searchParams.shelter);
   if (searchParams?.view && searchParams.view !== "about") params.set("view", searchParams.view);
   if (searchParams?.bookingView) params.set("bookingView", searchParams.bookingView);
+  if (searchParams?.visitBucket) params.set("visitBucket", searchParams.visitBucket);
   if (searchParams?.role === "shelter") params.set("role", "shelter");
 
   const query = params.toString();
@@ -20,7 +21,7 @@ function buildAdminDraftReturnTo(searchParams?: { bookingView?: string; role?: s
 export default async function AdminDraftPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ bookingView?: string; message?: string; role?: string; shelter?: string; unlock?: string; view?: string }>;
+  searchParams?: Promise<{ bookingView?: string; message?: string; role?: string; shelter?: string; unlock?: string; view?: string; visitBucket?: string }>;
 }) {
   const resolvedSearchParams = await searchParams;
   await requireGlobalAdmin(buildAdminDraftReturnTo(resolvedSearchParams));
@@ -35,6 +36,7 @@ export default async function AdminDraftPage({
     <AdminReorgDraftPanel
       data={data}
       initialBookingWorkspaceView={resolvedSearchParams?.bookingView}
+      initialVisitBucket={resolvedSearchParams?.visitBucket}
       initialMainTab={resolvedSearchParams?.view}
       initialMessage={resolvedSearchParams?.message}
       initialRoleView={resolvedSearchParams?.role === "shelter" ? "shelter" : "pawjai"}
