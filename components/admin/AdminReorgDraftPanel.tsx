@@ -640,19 +640,69 @@ function SecureAdminMessageAttachment({
   );
 }
 
-function bookingStatusClass(status: string) {
+function bookingHasChangeRequest({
+  proposedAppointmentDate,
+  proposedAppointmentTime,
+  status,
+}: {
+  proposedAppointmentDate?: string | null;
+  proposedAppointmentTime?: string | null;
+  status: string;
+}) {
+  return status === "requested" && Boolean(proposedAppointmentDate && proposedAppointmentTime);
+}
+
+function bookingStatusTone(status: string, hasChangeRequest = false) {
+  if (hasChangeRequest) {
+    return {
+      label: "Change requested",
+      pillClass: "bg-[#fff0cf] text-[#9a6215]",
+      panelClass: "border-[#efc979] bg-[#fff7e6] text-[#8a5b00]",
+      proposedClass: "bg-[#ffe9bc] text-[#8a5b00]",
+    };
+  }
+
   switch (status) {
     case "confirmed":
-      return "bg-[#eaf6df] text-[#3f6f24]";
+      return {
+        label: "Accepted",
+        pillClass: "bg-[#eaf6df] text-[#3f6f24]",
+        panelClass: "border-[#cfe4c5] bg-[#f2faee] text-[#3f6f24]",
+        proposedClass: "bg-[#e2f2dc] text-[#3f6f24]",
+      };
     case "completed":
-      return "bg-[#e9f2ff] text-[#285f9d]";
+      return {
+        label: "Completed",
+        pillClass: "bg-[#e9f2ff] text-[#285f9d]",
+        panelClass: "border-[#d4e2f5] bg-[#eef6ff] text-[#285f9d]",
+        proposedClass: "bg-[#dcecff] text-[#285f9d]",
+      };
     case "cancelled":
-      return "bg-[#f7e3e1] text-[#9a3129]";
+      return {
+        label: "Denied",
+        pillClass: "bg-[#f7e3e1] text-[#9a3129]",
+        panelClass: "border-[#efc9c5] bg-[#fff1ee] text-[#9a3129]",
+        proposedClass: "bg-[#f8e2e4] text-[#9a3129]",
+      };
     case "no_show":
-      return "bg-[#f1e7db] text-[#65584f]";
+      return {
+        label: "No show",
+        pillClass: "bg-[#f1e7db] text-[#65584f]",
+        panelClass: "border-[#d6c8ad] bg-[#f5f1e8] text-[#65584f]",
+        proposedClass: "bg-[#eee6d7] text-[#65584f]",
+      };
     default:
-      return "bg-[#f8e8ea] text-[#cd8188]";
+      return {
+        label: "Awaiting decision",
+        pillClass: "bg-[#fff0cf] text-[#9a6215]",
+        panelClass: "border-[#efc979] bg-[#fff7e6] text-[#8a5b00]",
+        proposedClass: "bg-[#ffe9bc] text-[#8a5b00]",
+      };
   }
+}
+
+function bookingStatusClass(status: string, hasChangeRequest = false) {
+  return bookingStatusTone(status, hasChangeRequest).pillClass;
 }
 
 function adStatusClass(status: AdDisplayStatus) {
@@ -670,19 +720,8 @@ function adStatusClass(status: AdDisplayStatus) {
   }
 }
 
-function bookingDecisionLabel(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "Accepted";
-    case "cancelled":
-      return "Denied";
-    case "completed":
-      return "Completed";
-    case "no_show":
-      return "No show";
-    default:
-      return "Awaiting decision";
-  }
+function bookingDecisionLabel(status: string, hasChangeRequest = false) {
+  return bookingStatusTone(status, hasChangeRequest).label;
 }
 
 function bookingDogLabel(booking: AdminDraftBooking) {
@@ -1822,7 +1861,9 @@ function ShelterBookingVisitList({
             const canEditPreVisitDecision = bucket === "upcoming" && (booking.status === "requested" || booking.status === "confirmed");
             const canRecordPostVisitOutcome = bucket === "past";
             const dogProfileFacts = bookingDogProfileFacts(booking);
+            const hasChangeRequest = bookingHasChangeRequest(booking);
             const isAdoptedRecord = bucket === "adopted";
+            const statusTone = bookingStatusTone(booking.status, hasChangeRequest);
 
             return (
               <section
@@ -1832,8 +1873,8 @@ function ShelterBookingVisitList({
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] md:px-3 md:py-1 md:text-xs md:tracking-[0.12em] ${bookingStatusClass(booking.status)}`}>
-                        {booking.status.replace("_", " ")}
+                      <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] md:px-3 md:py-1 md:text-xs md:tracking-[0.12em] ${bookingStatusClass(booking.status, hasChangeRequest)}`}>
+                        {statusTone.label}
                       </span>
                       {booking.checkedIn ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-[#eaf6df] px-2 py-0.5 text-[9px] font-bold text-[#3f6f24] md:px-3 md:py-1 md:text-xs">
@@ -1916,14 +1957,14 @@ function ShelterBookingVisitList({
                   <form action={decideBookingAction} className="rounded-xl border border-[#d6c8ad] bg-[#fffaf5] p-2 md:rounded-2xl md:p-4">
                     <input name="appointmentId" type="hidden" value={booking.id} />
                     <input name="returnTo" type="hidden" value={bookingListHref} />
-                    <div className="rounded-xl bg-white px-3 py-2 md:rounded-2xl md:px-4 md:py-3">
-                      <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#65584f] md:text-xs md:tracking-[0.16em]">Status</p>
-                      <p className="mt-0.5 text-xs font-semibold text-[#65584f] md:mt-1 md:text-lg">{bookingDecisionLabel(booking.status)}</p>
+                    <div className={`rounded-xl border px-3 py-2 md:rounded-2xl md:px-4 md:py-3 ${statusTone.panelClass}`}>
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.12em] opacity-80 md:text-xs md:tracking-[0.16em]">Status</p>
+                      <p className="mt-0.5 text-xs font-semibold md:mt-1 md:text-lg">{bookingDecisionLabel(booking.status, hasChangeRequest)}</p>
                       {booking.shelterNote ? (
-                        <p className="mt-2 hidden text-sm leading-6 text-[#65584f] md:block">{booking.shelterNote}</p>
+                        <p className="mt-2 hidden text-sm leading-6 opacity-85 md:block">{booking.shelterNote}</p>
                       ) : null}
                       {booking.proposedAppointmentDate && booking.proposedAppointmentTime ? (
-                        <p className="mt-2 rounded-xl bg-[#f8e8ea] px-3 py-2 text-xs font-semibold text-[#65584f]">
+                        <p className={`mt-2 rounded-xl px-3 py-2 text-xs font-semibold ${statusTone.proposedClass}`}>
                           Proposed: {formatBookingDate(booking.proposedAppointmentDate)} at {formatBookingTime(booking.proposedAppointmentTime)}
                         </p>
                       ) : null}

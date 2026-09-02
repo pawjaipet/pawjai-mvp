@@ -114,34 +114,73 @@ function fullName(adopter: Adopter | null) {
   return [adopter?.first_name, adopter?.last_name].filter(Boolean).join(" ") || "Unknown adopter";
 }
 
-function statusClass(status: string) {
+function bookingHasChangeRequest({
+  proposedAppointmentDate,
+  proposedAppointmentTime,
+  status,
+}: {
+  proposedAppointmentDate?: string | null;
+  proposedAppointmentTime?: string | null;
+  status: string;
+}) {
+  return status === "requested" && Boolean(proposedAppointmentDate && proposedAppointmentTime);
+}
+
+function bookingStatusTone(status: string, hasChangeRequest = false) {
+  if (hasChangeRequest) {
+    return {
+      label: "Change requested",
+      pillClass: "bg-[#fff0cf] text-[#9a6215]",
+      panelClass: "border-[#efc979] bg-[#fff7e6] text-[#8a5b00]",
+      proposedClass: "bg-[#ffe9bc] text-[#8a5b00]",
+    };
+  }
+
   switch (status) {
     case "confirmed":
-      return "bg-[#eaf6df] text-[#3f6f24]";
+      return {
+        label: "Accepted",
+        pillClass: "bg-[#eaf6df] text-[#3f6f24]",
+        panelClass: "border-[#cfe4c5] bg-[#f2faee] text-[#3f6f24]",
+        proposedClass: "bg-[#e2f2dc] text-[#3f6f24]",
+      };
     case "completed":
-      return "bg-[#e9f2ff] text-[#285f9d]";
+      return {
+        label: "Completed",
+        pillClass: "bg-[#e9f2ff] text-[#285f9d]",
+        panelClass: "border-[#d4e2f5] bg-[#eef6ff] text-[#285f9d]",
+        proposedClass: "bg-[#dcecff] text-[#285f9d]",
+      };
     case "cancelled":
-      return "bg-[#f7e3e1] text-[#9a3129]";
+      return {
+        label: "Denied",
+        pillClass: "bg-[#f7e3e1] text-[#9a3129]",
+        panelClass: "border-[#efc9c5] bg-[#fff1ee] text-[#9a3129]",
+        proposedClass: "bg-[#f8e2e4] text-[#9a3129]",
+      };
     case "no_show":
-      return "bg-[#f1e7db] text-[#65584f]";
+      return {
+        label: "No show",
+        pillClass: "bg-[#f1e7db] text-[#65584f]",
+        panelClass: "border-[#d6c8ad] bg-[#f5f1e8] text-[#65584f]",
+        proposedClass: "bg-[#eee6d7] text-[#65584f]",
+      };
     default:
-      return "bg-[#fff1dc] text-[#a86a1f]";
+      return {
+        label: "Awaiting decision",
+        pillClass: "bg-[#fff0cf] text-[#9a6215]",
+        panelClass: "border-[#efc979] bg-[#fff7e6] text-[#8a5b00]",
+        proposedClass: "bg-[#ffe9bc] text-[#8a5b00]",
+      };
   }
 }
 
-function decisionLabel(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "Accepted";
-    case "cancelled":
-      return "Denied";
-    case "completed":
-      return "Completed";
-    case "no_show":
-      return "No show";
-    default:
-      return "Awaiting decision";
-  }
+function statusClass(status: string, hasChangeRequest = false) {
+  return bookingStatusTone(status, hasChangeRequest).pillClass;
+}
+
+function decisionLabel(status: string, hasChangeRequest = false) {
+  return bookingStatusTone(status, hasChangeRequest).label;
 }
 
 function InfoBlock({
@@ -261,6 +300,14 @@ export async function renderBookingDetailPage({
     bookingListHref,
   });
   const backToMessages = isMessagesReturnHref(bookingListHref);
+  const proposedAppointmentDate = (typedAppointment as { proposed_appointment_date?: string | null }).proposed_appointment_date ?? null;
+  const proposedAppointmentTime = (typedAppointment as { proposed_appointment_time?: string | null }).proposed_appointment_time ?? null;
+  const hasChangeRequest = bookingHasChangeRequest({
+    proposedAppointmentDate,
+    proposedAppointmentTime,
+    status: typedAppointment.status,
+  });
+  const statusTone = bookingStatusTone(typedAppointment.status, hasChangeRequest);
 
   return (
     <PawjaiWorkspaceShell
@@ -301,8 +348,8 @@ export async function renderBookingDetailPage({
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] ${statusClass(typedAppointment.status)}`}>
-                  {typedAppointment.status.replace("_", " ")}
+                <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] ${statusClass(typedAppointment.status, hasChangeRequest)}`}>
+                  {statusTone.label}
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#f8e8ea] px-3 py-1 text-xs font-bold text-[#65584f]">
                   <QrCode size={14} />
@@ -340,15 +387,15 @@ export async function renderBookingDetailPage({
               <form action={decideBookingAction}>
                 <input name="appointmentId" type="hidden" value={typedAppointment.id} />
                 <input name="returnTo" type="hidden" value={currentBookingHref} />
-                <div className="rounded-2xl bg-white px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7f72]">Status</p>
-                  <p className="mt-1 text-lg font-semibold text-[#65584f]">{decisionLabel(typedAppointment.status)}</p>
+                <div className={`rounded-2xl border px-4 py-3 ${statusTone.panelClass}`}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] opacity-80">Status</p>
+                  <p className="mt-1 text-lg font-semibold">{decisionLabel(typedAppointment.status, hasChangeRequest)}</p>
                   {typedAppointment.shelter_note ? (
-                    <p className="mt-2 text-sm leading-6 text-[#65584f]">{typedAppointment.shelter_note}</p>
+                    <p className="mt-2 text-sm leading-6 opacity-85">{typedAppointment.shelter_note}</p>
                   ) : null}
-                  {(typedAppointment as any).proposed_appointment_date && (typedAppointment as any).proposed_appointment_time ? (
-                    <p className="mt-2 rounded-xl bg-[#fff1dc] px-3 py-2 text-xs font-semibold text-[#65584f]">
-                      Proposed: {formatDate((typedAppointment as any).proposed_appointment_date)} at {formatTime(normalizeAppointmentTime((typedAppointment as any).proposed_appointment_time))}
+                  {proposedAppointmentDate && proposedAppointmentTime ? (
+                    <p className={`mt-2 rounded-xl px-3 py-2 text-xs font-semibold ${statusTone.proposedClass}`}>
+                      Proposed: {formatDate(proposedAppointmentDate)} at {formatTime(normalizeAppointmentTime(proposedAppointmentTime))}
                     </p>
                   ) : null}
                 </div>
@@ -376,7 +423,7 @@ export async function renderBookingDetailPage({
                           <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New date</span>
                           <input
                             className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
-                            defaultValue={(typedAppointment as any).proposed_appointment_date ?? typedAppointment.appointment_date}
+                            defaultValue={proposedAppointmentDate ?? typedAppointment.appointment_date}
                             min={new Date().toISOString().slice(0, 10)}
                             name="proposedAppointmentDate"
                             type="date"
@@ -386,7 +433,7 @@ export async function renderBookingDetailPage({
                           <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7f72]">New time</span>
                           <select
                             className="h-11 w-full rounded-xl border border-[#d6c8ad] bg-white px-3 text-sm text-[#65584f] outline-none focus:border-[#cd8188]"
-                            defaultValue={normalizeAppointmentTime((typedAppointment as any).proposed_appointment_time ?? typedAppointment.appointment_time)}
+                            defaultValue={normalizeAppointmentTime(proposedAppointmentTime ?? typedAppointment.appointment_time)}
                             name="proposedAppointmentTime"
                           >
                             {APPOINTMENT_TIME_SLOTS.map((slot) => (

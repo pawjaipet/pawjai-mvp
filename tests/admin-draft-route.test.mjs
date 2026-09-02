@@ -411,6 +411,23 @@ test("admin draft booking tab duplicates the low-friction old booking workspace 
   assert.equal(panelSource.includes("bookingWorkspaceVisitorHref"), true);
 });
 
+test("booking workspace highlights decision status with distinct tones", () => {
+  const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
+  const sharedDetailSource = readFileSync(new URL("../app/booking/[id]/page.tsx", import.meta.url), "utf8");
+  const legacyDetailSource = readFileSync(new URL("../app/admindraft/bookings/[id]/page.tsx", import.meta.url), "utf8");
+
+  for (const source of [panelSource, sharedDetailSource, legacyDetailSource]) {
+    assert.equal(source.includes("bookingStatusTone"), true);
+    assert.equal(source.includes("Change requested"), true);
+    assert.equal(source.includes("Accepted"), true);
+    assert.equal(source.includes("Denied"), true);
+    assert.equal(source.includes("bg-[#eaf6df] text-[#3f6f24]"), true);
+    assert.equal(source.includes("bg-[#f7e3e1] text-[#9a3129]"), true);
+    assert.equal(source.includes("bg-[#fff0cf] text-[#9a6215]"), true);
+    assert.equal(source.includes("panelClass"), true);
+  }
+});
+
 test("admin draft and shelter portal message tabs use real appointment threads", () => {
   const panelSource = readFileSync(new URL("../components/admin/AdminReorgDraftPanel.tsx", import.meta.url), "utf8");
   const dataSource = readFileSync(new URL("../utils/admin-draft-data.ts", import.meta.url), "utf8");
