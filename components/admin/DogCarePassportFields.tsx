@@ -1,9 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { FileText, HeartPulse, Syringe } from "lucide-react";
 import type { DogCareDocument, DogCareRecord, DogCareTimelineEvent, DogVaccinationRecord } from "@/types/database";
 import {
-  DOG_VACCINATION_VERIFICATION_OPTIONS,
   buildDogCareCompleteness,
   isCareDateOverdue,
 } from "@/utils/dog-care-passport";
@@ -17,7 +17,6 @@ type DogCarePassportFieldsProps = {
 };
 
 const DOG_CARE_DOCUMENT_TYPE_OPTIONS = [
-  { label: "Adoption document", value: "adoption_document" },
   { label: "Vaccination proof", value: "vaccination_proof" },
   { label: "Medical record", value: "medical_record" },
   { label: "Other", value: "other" },
@@ -61,7 +60,17 @@ function formatDate(value: string | null | undefined) {
   });
 }
 
-function VaccineRow({ record }: { record?: DogVaccinationRecord }) {
+function VaccineRow({
+  documents,
+  record,
+}: {
+  documents: DogCareDocument[];
+  record?: DogVaccinationRecord;
+}) {
+  const linkedDocument = record?.document_id
+    ? documents.find((document) => document.id === record.document_id)
+    : null;
+
   return (
     <div className="grid gap-3 rounded-3xl border border-[#f0e6d7] bg-white p-4 md:grid-cols-2">
       <input name="vaccine_record_id" type="hidden" value={record?.id ?? ""} />
@@ -77,18 +86,29 @@ function VaccineRow({ record }: { record?: DogVaccinationRecord }) {
       <Field label="Next due date">
         <input name="vaccine_due_on" className={inputClass()} defaultValue={record?.due_on ?? ""} type="date" />
       </Field>
-      <Field label="Verification status">
-        <select name="vaccine_verification_status" className={inputClass()} defaultValue={record?.verification_status ?? "unknown"}>
-          {DOG_VACCINATION_VERIFICATION_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
+      <Field
+        hint="Upload a care document below, save, then link it to this vaccination if needed."
+        label="Linked document"
+      >
+        <select name="vaccine_document_id" className={inputClass()} defaultValue={record?.document_id ?? ""}>
+          <option value="">No linked document</option>
+          {documents.map((document) => (
+            <option key={document.id} value={document.id}>{document.title}</option>
           ))}
         </select>
       </Field>
-      <Field label="Linked document">
-        <select name="vaccine_document_id" className={inputClass()} defaultValue={record?.document_id ?? ""} disabled>
-          <option value="">Document upload coming soon</option>
-        </select>
-      </Field>
+      {linkedDocument?.file_url ? (
+        <div className="flex items-end">
+          <a
+            className="inline-flex min-h-[46px] w-full items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-4 py-3 text-sm font-semibold text-[#65584f] transition hover:bg-[#fff4f5]"
+            href={linkedDocument.file_url}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Open linked document
+          </a>
+        </div>
+      ) : null}
       <div className="md:col-span-2">
         <Field label="Vaccine notes">
           <textarea name="vaccine_notes" rows={2} className={inputClass()} defaultValue={record?.notes ?? ""} placeholder="Batch, reaction, reminder, or proof details." />
@@ -105,6 +125,7 @@ export default function DogCarePassportFields({
   timelineEvents = [],
   vaccinations = [],
 }: DogCarePassportFieldsProps) {
+  const [blankVaccineRows, setBlankVaccineRows] = useState(1);
   const completeness = buildDogCareCompleteness({
     careRecord,
     documents,
@@ -162,17 +183,15 @@ export default function DogCarePassportFields({
           <Field label="Current medication">
             <textarea name="care_medications" rows={3} className={inputClass()} defaultValue={careRecord?.medications ?? ""} placeholder="None, or medication name, dose, schedule." />
           </Field>
-          <Field label="Allergies">
-            <textarea name="care_allergies" rows={3} className={inputClass()} defaultValue={careRecord?.allergies ?? ""} placeholder="None known, food sensitivity, medicine allergy." />
-          </Field>
           <Field label="Special needs notes">
             <textarea name="care_special_needs_notes" rows={3} className={inputClass()} defaultValue={careRecord?.special_needs_notes ?? ""} placeholder="Mobility, recovery, diet, behavior support." />
           </Field>
-          <div className="md:col-span-2">
-            <Field label="Medical notes">
-              <textarea name="care_medical_notes" rows={4} className={inputClass()} defaultValue={careRecord?.medical_notes ?? ""} placeholder="Vet summary, health history, treatment context, and follow-up instructions." />
-            </Field>
-          </div>
+          <Field label="Allergies">
+            <textarea name="care_allergies" rows={3} className={inputClass()} defaultValue={careRecord?.allergies ?? ""} placeholder="None known, food sensitivity, medicine allergy." />
+          </Field>
+          <Field label="Medical notes">
+            <textarea name="care_medical_notes" rows={3} className={inputClass()} defaultValue={careRecord?.medical_notes ?? ""} placeholder="Vet summary, health history, treatment context, and follow-up instructions." />
+          </Field>
         </div>
 
         <div className="mt-7 rounded-3xl border border-[#f0e6d7] bg-[#fffaf5] p-5">
@@ -180,29 +199,36 @@ export default function DogCarePassportFields({
             <Syringe className="h-5 w-5 text-[#cd8188]" />
             <div>
               <h3 className="font-semibold text-[#65584f]">Vaccination records</h3>
-              <p className="text-sm text-[#65584f]/70">Edit existing records or fill the blank row to add one.</p>
+              <p className="text-sm text-[#65584f]/70">Edit existing records or add as many vaccine rows as needed.</p>
             </div>
           </div>
           <div className="space-y-4">
             {vaccinations.map((record) => (
-              <VaccineRow key={record.id} record={record} />
+              <VaccineRow documents={documents} key={record.id} record={record} />
             ))}
-            <VaccineRow />
+            {Array.from({ length: blankVaccineRows }, (_, index) => (
+              <VaccineRow documents={documents} key={`new-vaccine-${index}`} />
+            ))}
+            <button
+              className="inline-flex min-h-[46px] items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-5 py-3 text-sm font-semibold text-[#65584f] transition hover:bg-[#fff4f5]"
+              onClick={() => setBlankVaccineRows((count) => count + 1)}
+              type="button"
+            >
+              Add another vaccination
+            </button>
           </div>
-        </div>
 
-        <div className="mt-7">
-          <div className="rounded-3xl border border-[#f0e6d7] bg-[#fffaf5] p-5">
+          <div className="mt-5 rounded-3xl border border-[#f0e6d7] bg-white p-4">
             <div className="flex items-center gap-3">
               <FileText className="h-5 w-5 text-[#cd8188]" />
               <div>
-                <h3 className="font-semibold text-[#65584f]">Care documents</h3>
-                <p className="text-sm text-[#65584f]/70">Upload adoption documents, vaccine proof, or medical records.</p>
+                <h3 className="font-semibold text-[#65584f]">Vaccination proof / medical record</h3>
+                <p className="text-sm text-[#65584f]/70">Attach one care file, save, then link it to a vaccine row above if needed.</p>
               </div>
             </div>
             <div className="mt-4 grid gap-3">
               <Field label="Document title">
-                <input name="care_document_title" className={inputClass()} placeholder="Rabies vaccine card, adoption agreement" />
+                <input name="care_document_title" className={inputClass()} placeholder="Rabies vaccine card, medical record" />
               </Field>
               <div className="grid gap-3 md:grid-cols-2">
                 <Field label="Document type">

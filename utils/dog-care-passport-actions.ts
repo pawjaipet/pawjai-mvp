@@ -1,7 +1,6 @@
 import "server-only";
 
 import type { Database } from "@/types/database";
-import type { DogVaccinationVerificationStatus } from "@/utils/dog-care-passport";
 import type { createAdminClient } from "@/utils/supabase/admin";
 
 type SupabaseAdminClient = ReturnType<typeof createAdminClient>;
@@ -13,7 +12,6 @@ const DOG_CARE_DOCUMENT_MIME_TYPES = new Set([
   "image/webp",
 ]);
 const DOG_CARE_DOCUMENT_TYPES = new Set<Database["public"]["Enums"]["dog_care_document_type"]>([
-  "adoption_document",
   "vaccination_proof",
   "medical_record",
   "other",
@@ -23,12 +21,6 @@ const DOG_CARE_DOCUMENT_VISIBILITIES = new Set<Database["public"]["Enums"]["dog_
   "shelter_only",
 ]);
 const MAX_DOG_CARE_DOCUMENT_BYTES = 15 * 1024 * 1024;
-
-const DOG_VACCINATION_VERIFICATION_STATUSES = new Set<DogVaccinationVerificationStatus>([
-  "verified",
-  "pending",
-  "unknown",
-]);
 
 function getString(formData: FormData, name: string) {
   const value = formData.get(name);
@@ -112,7 +104,6 @@ export async function saveDogCarePassportFromForm({
   const dueDates = getStringValues(formData, "vaccine_due_on");
   const providers = getStringValues(formData, "vaccine_provider_name");
   const notes = getStringValues(formData, "vaccine_notes");
-  const verificationStatuses = getStringValues(formData, "vaccine_verification_status");
   const documentIds = getStringValues(formData, "vaccine_document_id");
   const rowCount = Math.max(
     ids.length,
@@ -121,7 +112,6 @@ export async function saveDogCarePassportFromForm({
     dueDates.length,
     providers.length,
     notes.length,
-    verificationStatuses.length,
     documentIds.length,
   );
 
@@ -154,11 +144,6 @@ export async function saveDogCarePassportFromForm({
       shelter_id: shelterId,
       updated_at: new Date().toISOString(),
       vaccine_name: vaccineName,
-      verification_status: enumValue(
-        verificationStatuses[index] ?? "",
-        DOG_VACCINATION_VERIFICATION_STATUSES,
-        "unknown",
-      ),
     };
 
     const { error } = id
