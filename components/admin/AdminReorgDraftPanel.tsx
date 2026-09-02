@@ -1533,7 +1533,7 @@ function ShelterDonationSettings({ returnTo, shelter }: { returnTo: string; shel
       <p className="mt-2 text-sm leading-6 text-[#65584f]">
         Add the shelter PromptPay or bank details shown to donors. Donation records and uploaded transfer slips stay in the ledger below.
       </p>
-      <form action={updateShelterDonationDetailsAction} className="mt-5">
+      <form action={updateShelterDonationDetailsAction} className="mt-5" key={shelter.id}>
         <AdminReturnFields returnTo={returnTo} shelterId={shelter.id} />
         <DonationDetailsFields
           bankAccountName={shelter.bankAccountName ?? null}

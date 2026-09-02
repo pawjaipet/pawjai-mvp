@@ -47,6 +47,7 @@ test("profile and donation settings are separate shelter mutations", () => {
 
   assert.equal(panel.includes("Internal profile note"), false);
   assert.equal(panel.includes("updateShelterDonationDetailsAction"), true);
+  assert.equal(panel.includes('key={shelter.id}'), true);
   assert.equal(panel.includes('view="donations"'), false);
   assert.equal(profileAction.includes('description: cleanText(formData.get("description"))'), false);
   assert.equal(profileAction.includes("parseShelterDonationDetails"), false);
