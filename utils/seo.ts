@@ -2,6 +2,16 @@ import type { Metadata } from "next";
 
 export const SITE_URL = "https://www.pawjaipet.com";
 
+export const BRAND_SEARCH_ALIASES = [
+  "PawJai",
+  "PawJai Pet",
+  "PawJai Thailand",
+  "PawJai dog adoption",
+  "Project Pet",
+  "Project Pet Thailand",
+  "Project Pet shelter",
+] as const;
+
 export const PUBLIC_SITEMAP_PATHS = ["/", "/about", "/dogs", "/shelter"] as const;
 
 export const ROBOTS_DISALLOW_PATHS = [

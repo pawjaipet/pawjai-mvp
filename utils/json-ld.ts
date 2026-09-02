@@ -1,4 +1,4 @@
-import { canonicalUrl, SITE_URL } from "@/utils/seo";
+import { BRAND_SEARCH_ALIASES, canonicalUrl, SITE_URL } from "@/utils/seo";
 
 export function jsonLdScriptValue(value: unknown) {
   return JSON.stringify(value).replace(/</g, "\\u003c");
@@ -10,9 +10,10 @@ export function pawjaiOrganizationJsonLd() {
     "@type": "Organization",
     "@id": `${SITE_URL}/#organization`,
     name: "PawJai",
+    alternateName: BRAND_SEARCH_ALIASES,
     url: SITE_URL,
     logo: canonicalUrl("/pawjai-logo-square.png"),
-    description: "PawJai helps people in Thailand discover, match with, and adopt dogs from shelter partners.",
+    description: "PawJai Pet, a Thai dog adoption and shelter-matching platform, helps people discover, match with, and adopt dogs from shelter partners.",
   };
 }
 
@@ -22,7 +23,7 @@ export function pawjaiWebsiteJsonLd() {
     "@type": "WebSite",
     "@id": `${SITE_URL}/#website`,
     name: "PawJai",
-    alternateName: ["PawJai Pet", "PawJai Thailand", "PawJai dog adoption"],
+    alternateName: BRAND_SEARCH_ALIASES,
     url: SITE_URL,
     publisher: {
       "@id": `${SITE_URL}/#organization`,

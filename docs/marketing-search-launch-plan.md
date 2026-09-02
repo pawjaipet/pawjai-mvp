@@ -2,6 +2,27 @@
 
 Production domain: `https://www.pawjaipet.com`
 
+## Current Search Visibility Snapshot
+
+Checked on 2026-09-02.
+
+- `pawjaipet`: PawJai is discoverable, though business-directory results may appear too.
+- `PawJai`: PawJai appears, but the query has competition from other Pawjai/Paw Jai pet businesses and apps.
+- `Project Pet`: PawJai does not reliably appear because this phrase already belongs to other domains and organizations.
+- `Project Pet shelter`: PawJai does not reliably appear yet; existing "Project Pet" and shelter-project results compete for this phrase.
+
+Code-side search signals now include these brand aliases in metadata and JSON-LD:
+
+- PawJai
+- PawJai Pet
+- PawJai Thailand
+- PawJai dog adoption
+- Project Pet
+- Project Pet Thailand
+- Project Pet shelter
+
+Organic ranking for `Project Pet` cannot be guaranteed because Google ranks by relevance, authority, history, and user behavior. For immediate first-page visibility on that exact phrase, run a small Google Search campaign using exact/phrase match keywords.
+
 ## Search Console
 
 1. Verify the domain property for `pawjaipet.com`.
@@ -44,7 +65,10 @@ Starter exact/phrase keywords:
 - `dog adoption bangkok`
 - `rescue dog thailand`
 - `shelter dog adoption thailand`
-- `project pet` only if users keep mishearing or mistyping PawJai Pet
+- `project pet`
+- `project pet shelter`
+- `project pet thailand`
+- `project pet dog adoption`
 
 Suggested negative keywords:
 

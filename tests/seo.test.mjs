@@ -58,12 +58,14 @@ function loadJsonLdModel() {
 }
 
 test("canonical URLs always use the PawJai www production domain", () => {
-  const { SITE_URL, canonicalUrl } = loadSeoModel();
+  const { BRAND_SEARCH_ALIASES, SITE_URL, canonicalUrl } = loadSeoModel();
 
   assert.equal(SITE_URL, "https://www.pawjaipet.com");
   assert.equal(canonicalUrl("/dogs"), "https://www.pawjaipet.com/dogs");
   assert.equal(canonicalUrl("dogs/dog-1"), "https://www.pawjaipet.com/dogs/dog-1");
   assert.equal(canonicalUrl("/dogs/dog-1?from=swipe"), "https://www.pawjaipet.com/dogs/dog-1");
+  assert.equal(BRAND_SEARCH_ALIASES.includes("Project Pet"), true);
+  assert.equal(BRAND_SEARCH_ALIASES.includes("Project Pet shelter"), true);
 });
 
 test("/dogs renders the public dog feed directly instead of importing the swipe redirect", () => {
@@ -98,6 +100,7 @@ test("structured data uses production URLs and escapes HTML-sensitive characters
 
   assert.equal(jsonLdScriptValue({ name: "<PawJai>" }), "{\"name\":\"\\u003cPawJai>\"}");
   assert.equal(pawjaiWebsiteJsonLd().url, "https://www.pawjaipet.com");
+  assert.equal(pawjaiWebsiteJsonLd().alternateName.includes("Project Pet"), true);
   assert.equal(webPageJsonLd({ description: "Shelter sign in", name: "Shelter", path: "/shelter" }).url, "https://www.pawjaipet.com/shelter");
 });
 

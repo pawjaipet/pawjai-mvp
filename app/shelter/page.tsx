@@ -12,13 +12,13 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Shelter Portal",
-  description: "Sign in to PawJai's shelter portal to manage dog listings, appointments, and adoption workflows.",
+  description: "PawJai Pet shelter portal for partner shelters managing dog listings, appointments, and adoption workflows.",
   alternates: {
     canonical: "/shelter",
   },
   openGraph: {
     title: "PawJai Shelter Portal",
-    description: "Partner shelter sign-in for managing PawJai dog listings and adoption appointments.",
+    description: "Partner shelter sign-in for managing PawJai Pet dog listings and adoption appointments.",
     url: canonicalUrl("/shelter"),
     type: "website",
   },
@@ -41,7 +41,7 @@ export default async function ShelterLoginPage({
     <main className="min-h-screen bg-[#f5f1e8] px-4 py-16 text-[#65584f]">
       <JsonLd
         data={webPageJsonLd({
-          description: "Sign in to PawJai's shelter portal to manage dog listings, appointments, and adoption workflows.",
+          description: "PawJai Pet shelter portal for partner shelters managing dog listings, appointments, and adoption workflows.",
           name: "PawJai Shelter Portal",
           path: "/shelter",
         })}
