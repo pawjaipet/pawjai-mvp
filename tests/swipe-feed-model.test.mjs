@@ -56,6 +56,23 @@ test("shuffles dog profiles without mutating the filtered result", () => {
   assert.deepEqual(Array.from(shuffled, (dog) => dog.id), ["dog-3", "dog-5", "dog-1", "dog-4", "dog-2"]);
 });
 
+test("spreads dog profiles across shelters when the feed has multiple shelters", () => {
+  const { spreadDogsAcrossShelters } = loadSwipeFeedModel();
+  const dogs = [
+    { id: "a-1", shelter_id: "shelter-a" },
+    { id: "a-2", shelter_id: "shelter-a" },
+    { id: "a-3", shelter_id: "shelter-a" },
+    { id: "b-1", shelter_id: "shelter-b" },
+    { id: "b-2", shelter_id: "shelter-b" },
+    { id: "c-1", shelter_id: "shelter-c" },
+  ];
+
+  const mixed = spreadDogsAcrossShelters(dogs);
+
+  assert.deepEqual(Array.from(mixed, (dog) => dog.id), ["a-1", "b-1", "a-2", "b-2", "a-3", "c-1"]);
+  assert.equal(mixed.some((dog, index) => index > 0 && dog.shelter_id === mixed[index - 1].shelter_id), false);
+});
+
 test("marks dog cards active by feed index after ad insertion", () => {
   const { buildSwipeFeed, isActiveDogFeedItem } = loadSwipeFeedModel();
   const dogs = Array.from({ length: 6 }, (_, index) => ({ id: `dog-${index + 1}` }));

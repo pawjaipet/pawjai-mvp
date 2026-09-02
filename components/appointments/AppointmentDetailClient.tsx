@@ -190,13 +190,13 @@ function DraftAttachmentPreview({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#cd8188]" style={{ fontFamily: M }}>
-          Ready to send
+          <MachineTranslatedText text="Ready to send" />
         </p>
         <p className="mt-[2px] truncate text-[14px] font-bold text-[#65584f]" data-i18n-ignore style={{ fontFamily: M }}>
           {attachment.name}
         </p>
         <p className="mt-[1px] text-[12px] text-[#65584f]/60" style={{ fontFamily: M }}>
-          {attachment.typeLabel} - {attachment.sizeLabel}
+          <MachineTranslatedText text={attachment.typeLabel} /> - {attachment.sizeLabel}
         </p>
       </div>
       <button
@@ -205,7 +205,7 @@ function DraftAttachmentPreview({
         onClick={onRemove}
         type="button"
       >
-        Remove
+        <MachineTranslatedText text="Remove" />
       </button>
     </div>
   );
@@ -230,7 +230,7 @@ function SecureAppointmentMessageAttachment({
   if (unavailable) {
     return (
       <p className={`mb-[8px] text-[12px] leading-[1.4] ${hintClass}`} role="status">
-        Attachment unavailable. Refresh this page to request a new secure link.
+        <MachineTranslatedText text="Attachment unavailable. Refresh this page to request a new secure link." />
       </p>
     );
   }
@@ -267,11 +267,11 @@ function SecureAppointmentMessageAttachment({
           rel="noreferrer"
           target="_blank"
         >
-          {message.attachmentName ?? "View attachment"}
+          {message.attachmentName ?? <MachineTranslatedText text="View attachment" />}
         </a>
       ) : null}
       <p className={`mt-[4px] text-[10px] leading-[1.35] ${hintClass}`}>
-        Secure link expires after one hour. Refresh this page for a new link.
+        <MachineTranslatedText text="Secure link expires after one hour. Refresh this page for a new link." />
       </p>
     </div>
   );
@@ -291,25 +291,25 @@ function ReturnInquiryThreadCard({
       <div className="max-w-[88%] rounded-[20px] border border-[#e7c6ca] bg-[#fff7f8] px-[16px] py-[14px] shadow-[0_10px_28px_rgba(101,88,79,0.10)]">
         <div className="flex items-center justify-between gap-[10px]">
           <span className="rounded-full bg-[#cd8188] px-[10px] py-[4px] text-[10px] font-extrabold uppercase tracking-[0.14em] text-white" style={{ fontFamily: M }}>
-            Return request
+            <MachineTranslatedText text="Return request" />
           </span>
           <span className="text-[11px] text-[#65584f]/50" style={{ fontFamily: M }}>
             {new Date(createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
           </span>
         </div>
         <p className="mt-[10px] text-[15px] font-extrabold leading-[1.25] text-[#65584f]" style={{ fontFamily: M }}>
-          {fromMe ? "Return inquiry sent" : "Return inquiry received"}
+          <MachineTranslatedText text={fromMe ? "Return inquiry sent" : "Return inquiry received"} />
         </p>
         <div className="mt-[10px] rounded-[16px] bg-white px-[12px] py-[10px]">
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#cd8188]" style={{ fontFamily: M }}>
-            Reason
+            <MachineTranslatedText text="Reason" />
           </p>
           <p className="mt-[4px] whitespace-pre-wrap text-[14px] leading-[1.45] text-[#65584f]" style={{ fontFamily: M }}>
-            {reason}
+            <MachineTranslatedText text={reason} />
           </p>
         </div>
         <p className="mt-[10px] text-[12px] leading-[1.45] text-[#65584f]/70" style={{ fontFamily: M }}>
-          The shelter can reply here, and PawJai support can review this request if help is needed.
+          <MachineTranslatedText text="The shelter can reply here, and PawJai support can review this request if help is needed." />
         </p>
       </div>
     </div>
@@ -494,6 +494,7 @@ function DetailsTab({
 }) {
   const { language } = useLanguage();
   const addressLines = language === "th" && shelter?.addressLinesTh.length ? shelter.addressLinesTh : shelter?.addressLines ?? [];
+  const shelterDisplayName = language === "th" && shelter?.nameTh ? shelter.nameTh : shelter?.name;
   const meetingInstructions = language === "th" && shelter?.meetingInstructionsTh
     ? shelter.meetingInstructionsTh
     : shelter?.meetingInstructions ?? null;
@@ -547,7 +548,7 @@ function DetailsTab({
                 <img src={shelter.logoUrl} alt={`${shelter.name} logo`} className="h-[42px] w-[42px] rounded-[10px] object-cover" />
               )}
               <p className="text-[18px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
-                {shelter.nameTh ?? shelter.name}
+                {shelterDisplayName}
               </p>
             </div>
             {addressLines.length > 0 && (
@@ -618,7 +619,7 @@ function DetailsTab({
                 <img src={shelter.logoUrl} alt={`${shelter.name} logo`} className="h-[42px] w-[42px] rounded-[10px] object-cover" />
               )}
               <p className="text-[18px] font-bold text-[#65584f]" style={{ fontFamily: M }}>
-                {shelter.nameTh ?? shelter.name}
+                {shelterDisplayName}
               </p>
             </div>
             {shelter.phone && (
@@ -885,6 +886,7 @@ function MessagesTab({
   shelter: Props["shelter"];
 }) {
   const router = useRouter();
+  const { language } = useLanguage();
   const attachRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState("");
@@ -1022,7 +1024,7 @@ function MessagesTab({
         {messagesUnavailable && (
           <div className="rounded-[14px] border border-[#eadfce] bg-[#fffaf2] px-[14px] py-[12px]">
             <p className="text-[13px] leading-[1.45] text-[#65584f]" style={{ fontFamily: M }}>
-              Messages are temporarily unavailable. Please try again soon.
+              <MachineTranslatedText text="Messages are temporarily unavailable. Please try again soon." />
             </p>
           </div>
         )}
@@ -1054,7 +1056,9 @@ function MessagesTab({
               >
                 <SecureAppointmentMessageAttachment fromMe={fromMe} message={msg} />
                 {!isGeneratedAttachmentBody(msg.body, msg.attachmentName) ? (
-                  <p className="text-[14px] leading-[1.45]" style={{ fontFamily: M }}>{msg.body}</p>
+                  <p className="text-[14px] leading-[1.45]" style={{ fontFamily: M }}>
+                    <MachineTranslatedText text={msg.body} />
+                  </p>
                 ) : null}
               </div>
               <p
@@ -1104,7 +1108,7 @@ function MessagesTab({
             name="body"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Write your message here"
+            placeholder={language === "th" ? "เขียนข้อความของคุณที่นี่" : "Write your message here"}
             disabled={messagesUnavailable}
             className="flex-1 rounded-full px-[18px] py-[12px] text-[14px] outline-none"
             style={{ background: "#f5f0e8", color: "#65584f", fontFamily: M }}
@@ -1133,7 +1137,7 @@ function MessagesTab({
               style={{ background: "#f5f0e8", color: "#65584f", fontFamily: M }}
               type="button"
             >
-              SOS I need help
+              <MachineTranslatedText text="SOS I need help" />
             </button>
             <button
               className="rounded-full px-[12px] py-[10px] text-[13px] font-bold text-white active:scale-95 disabled:opacity-55"
@@ -1142,7 +1146,7 @@ function MessagesTab({
               style={{ background: "#cd8188", fontFamily: M }}
               type="button"
             >
-              Return inquiry
+              <MachineTranslatedText text="Return inquiry" />
             </button>
           </div>
         )}
@@ -1165,19 +1169,19 @@ function MessagesTab({
           >
             <input name="appointmentId" type="hidden" value={appointmentId} />
             <p className="text-[21px] font-bold leading-[1.2] text-[#65584f]" style={{ fontFamily: M }}>
-              Return inquiry for {dogName}
+              <MachineTranslatedText text="Return inquiry for" /> {dogName}
             </p>
             <p className="mt-[10px] text-[14px] leading-[1.5] text-[#65584f]/75" style={{ fontFamily: M }}>
-              Share what is happening so the shelter and PawJai team can respond in this conversation.
+              <MachineTranslatedText text="Share what is happening so the shelter and PawJai team can respond in this conversation." />
             </p>
             <label className="mt-[18px] block text-[12px] font-bold uppercase tracking-[0.14em] text-[#65584f]/60" htmlFor="returnReason" style={{ fontFamily: M }}>
-              Reason
+              <MachineTranslatedText text="Reason" />
             </label>
             <textarea
               className="mt-[8px] min-h-[118px] w-full rounded-[16px] border border-[#eadfce] bg-[#fffdfa] px-[14px] py-[12px] text-[14px] text-[#65584f] outline-none focus:border-[#cd8188]"
               id="returnReason"
               name="returnReason"
-              placeholder="Tell us why you need to return"
+              placeholder={language === "th" ? "บอกเราว่าทำไมคุณต้องการส่งน้องกลับ" : "Tell us why you need to return"}
               style={{ fontFamily: M }}
             />
             {shelter?.phone && (
@@ -1186,7 +1190,7 @@ function MessagesTab({
                 href={`tel:${shelter.phone}`}
                 style={{ fontFamily: M }}
               >
-                Call shelter employee
+                <MachineTranslatedText text="Call shelter employee" />
               </a>
             )}
             <button
@@ -1194,7 +1198,7 @@ function MessagesTab({
               style={{ background: "#cd8188", fontFamily: M }}
               type="submit"
             >
-              Send return inquiry
+              <MachineTranslatedText text="Send return inquiry" />
             </button>
             <button
               type="button"
@@ -1202,7 +1206,7 @@ function MessagesTab({
               className="mt-[14px] w-full text-center text-[14px] text-[#65584f]/60 active:opacity-70"
               style={{ fontFamily: M }}
             >
-              Not right now
+              <MachineTranslatedText text="Not right now" />
             </button>
           </form>
         </div>
@@ -1223,10 +1227,10 @@ function MessagesTab({
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-[21px] font-bold leading-[1.2] text-[#65584f]" style={{ fontFamily: M }}>
-              SOS I need help
+              <MachineTranslatedText text="SOS I need help" />
             </p>
             <p className="mt-[10px] text-[14px] leading-[1.5] text-[#65584f]/75" style={{ fontFamily: M }}>
-              Contact the shelter for urgent visit or adoption details, or reach PawJai for platform support.
+              <MachineTranslatedText text="Contact the shelter for urgent visit or adoption details, or reach PawJai for platform support." />
             </p>
             {shelter?.phone ? (
               <a
@@ -1234,11 +1238,11 @@ function MessagesTab({
                 href={`tel:${shelter.phone}`}
                 style={{ fontFamily: M }}
               >
-                Call shelter employee
+                <MachineTranslatedText text="Call shelter employee" />
               </a>
             ) : (
               <p className="mt-[18px] rounded-[14px] bg-[#f5f0e8] px-[14px] py-[12px] text-[13px] leading-[1.45] text-[#65584f]/75" style={{ fontFamily: M }}>
-                This shelter has not added a phone number yet.
+                <MachineTranslatedText text="This shelter has not added a phone number yet." />
               </p>
             )}
             <a
@@ -1246,7 +1250,7 @@ function MessagesTab({
               href="mailto:support@pawjaipet.com"
               style={{ fontFamily: M }}
             >
-              Contact PawJai admin
+              <MachineTranslatedText text="Contact PawJai admin" />
             </a>
             <button
               type="button"
@@ -1254,7 +1258,7 @@ function MessagesTab({
               className="mt-[14px] w-full text-center text-[14px] text-[#65584f]/60 active:opacity-70"
               style={{ fontFamily: M }}
             >
-              Close
+              <MachineTranslatedText text="Close" />
             </button>
           </div>
         </div>

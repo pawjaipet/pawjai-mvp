@@ -3,6 +3,7 @@ import { Pencil } from "lucide-react";
 import { acceptRescheduleRequestAction, cancelAppointmentFromListAction, updateAppointmentDateTimeAction } from "@/app/appointments/actions";
 import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import MachineTranslatedText from "@/components/i18n/MachineTranslatedText";
 import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adopter";
 import {
   APPOINTMENT_TIME_SLOTS,
@@ -199,21 +200,21 @@ export default async function AppointmentsPage({
                 {hasRescheduleRequest && (
                   <div className="border-t border-[#eadfce] bg-[#fffaf2] px-[14px] py-[14px]">
                     <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8d7f72]" style={{ fontFamily: M }}>
-                      Shelter requested a new time
+                      <MachineTranslatedText text="Shelter requested a new time" />
                     </p>
                     <p className="mt-[6px] text-[14px] font-bold leading-[1.4] text-[#65584f]" style={{ fontFamily: M }}>
-                      {proposedDate} at {proposedTime}
+                      <MachineTranslatedText text={`${proposedDate} at ${proposedTime}`} />
                     </p>
                     {rescheduleNote ? (
                       <p className="mt-[5px] text-[12px] leading-[1.5] text-[#65584f]/65" style={{ fontFamily: M }}>
-                        {rescheduleNote}
+                        <MachineTranslatedText text={rescheduleNote} />
                       </p>
                     ) : null}
                     <div className="mt-[12px] grid grid-cols-3 gap-[8px]">
                       <form action={acceptRescheduleRequestAction}>
                         <input name="appointmentId" type="hidden" value={appt.id} />
                         <button className="h-[40px] w-full rounded-full bg-[#3f7d34] px-[10px] text-[12px] font-bold text-white active:scale-[0.98]" style={{ fontFamily: M }} type="submit">
-                          Accept
+                          <MachineTranslatedText text="Accept" />
                         </button>
                       </form>
                       <Link
@@ -222,12 +223,12 @@ export default async function AppointmentsPage({
                         replace
                         style={{ fontFamily: M }}
                       >
-                        Different
+                        <MachineTranslatedText text="Different" />
                       </Link>
                       <form action={cancelAppointmentFromListAction}>
                         <input name="appointmentId" type="hidden" value={appt.id} />
                         <button className="h-[40px] w-full rounded-full bg-[#c46f75] px-[10px] text-[12px] font-bold text-white active:scale-[0.98]" style={{ fontFamily: M }} type="submit">
-                          Cancel
+                          <MachineTranslatedText text="Cancel" />
                         </button>
                       </form>
                     </div>
@@ -238,13 +239,15 @@ export default async function AppointmentsPage({
                   <form action={updateAppointmentDateTimeAction} className="border-t border-[#eadfce] bg-[#fffaf2] px-[14px] py-[14px]">
                     <input type="hidden" name="appointmentId" value={appt.id} />
                     <p className="mb-[10px] text-[11px] font-bold uppercase tracking-[0.16em] text-[#8d7f72]" style={{ fontFamily: M }}>
-                      Modify date and time
+                      <MachineTranslatedText text="Modify date and time" />
                     </p>
-                    <div className="grid grid-cols-2 gap-[8px]">
+                    <div className="grid grid-cols-1 gap-[8px] min-[380px]:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)]">
                       <label className="block min-w-0">
-                        <span className="mb-[5px] block text-[11px] font-semibold text-[#65584f]/60" style={{ fontFamily: M }}>Date</span>
+                        <span className="mb-[5px] block text-[11px] font-semibold text-[#65584f]/60" style={{ fontFamily: M }}>
+                          <MachineTranslatedText text="Date" />
+                        </span>
                         <input
-                          className="h-[40px] min-w-0 w-full rounded-[11px] border border-[#eadfce] bg-white px-[9px] text-[12px] font-semibold text-[#65584f] outline-none"
+                          className="h-[40px] min-w-0 w-full rounded-[11px] border border-[#eadfce] bg-white px-[8px] text-[12px] font-semibold text-[#65584f] outline-none"
                           defaultValue={appt.appointment_date}
                           min={today}
                           name="appointmentDate"
@@ -253,9 +256,11 @@ export default async function AppointmentsPage({
                         />
                       </label>
                       <label className="block min-w-0">
-                        <span className="mb-[5px] block text-[11px] font-semibold text-[#65584f]/60" style={{ fontFamily: M }}>Time</span>
+                        <span className="mb-[5px] block text-[11px] font-semibold text-[#65584f]/60" style={{ fontFamily: M }}>
+                          <MachineTranslatedText text="Time" />
+                        </span>
                         <select
-                          className="h-[40px] min-w-0 w-full rounded-[11px] border border-[#eadfce] bg-white px-[9px] text-[12px] font-semibold text-[#65584f] outline-none"
+                          className="h-[40px] min-w-0 w-full rounded-[11px] border border-[#eadfce] bg-white px-[8px] text-[12px] font-semibold text-[#65584f] outline-none"
                           defaultValue={currentTime}
                           name="appointmentTime"
                           style={{ fontFamily: M }}
@@ -272,7 +277,7 @@ export default async function AppointmentsPage({
                         style={{ fontFamily: M }}
                         type="submit"
                       >
-                        Request update
+                        <MachineTranslatedText text="Request update" />
                       </button>
                       <Link
                         className="rounded-full border border-[#eadfce] bg-white px-[14px] py-[10px] text-[13px] font-bold text-[#65584f]"
@@ -280,7 +285,7 @@ export default async function AppointmentsPage({
                         replace
                         style={{ fontFamily: M }}
                       >
-                        Cancel
+                        <MachineTranslatedText text="Cancel" />
                       </Link>
                     </div>
                   </form>
@@ -329,8 +334,12 @@ function PageShell({
           </Link>
           <LanguageSwitcher className="mt-[4px]" />
         </div>
-        <h1 className="font-bold text-[34px] text-[#65584f] leading-[1.1]" style={{ fontFamily: M }}>Appointments</h1>
-        <p className="text-[14px] text-[#65584f]/75 mt-[4px]" style={{ fontFamily: M }}>Your upcoming shelter visits</p>
+        <h1 className="font-bold text-[34px] text-[#65584f] leading-[1.1]" style={{ fontFamily: M }}>
+          <MachineTranslatedText text="Appointments" />
+        </h1>
+        <p className="text-[14px] text-[#65584f]/75 mt-[4px]" style={{ fontFamily: M }}>
+          <MachineTranslatedText text="Your upcoming shelter visits" />
+        </p>
       </div>
 
       {/* UPCOMING / PAST tabs */}
@@ -345,7 +354,7 @@ function PageShell({
             fontFamily: M,
           }}
         >
-          UPCOMING{typeof upcomingCount === "number" && upcomingCount > 0 ? ` (${upcomingCount})` : ""}
+          <MachineTranslatedText text="UPCOMING" />{typeof upcomingCount === "number" && upcomingCount > 0 ? ` (${upcomingCount})` : ""}
         </Link>
         <Link
           href="/appointments?tab=past"
@@ -357,7 +366,7 @@ function PageShell({
             fontFamily: M,
           }}
         >
-          PAST{typeof pastCount === "number" && pastCount > 0 ? ` (${pastCount})` : ""}
+          <MachineTranslatedText text="PAST" />{typeof pastCount === "number" && pastCount > 0 ? ` (${pastCount})` : ""}
         </Link>
       </div>
 
@@ -372,7 +381,7 @@ function PageShell({
               <line x1="16" y1="17" x2="8" y2="17" />
             </svg>
             <p className="text-[18px] font-bold text-white" style={{ fontFamily: M }}>
-              Your Documents
+              <MachineTranslatedText text="Your Documents" />
             </p>
           </div>
           <svg width="9" height="15" viewBox="0 0 8 14" fill="none">
@@ -381,7 +390,7 @@ function PageShell({
         </Link>
         {!canBook && (
           <p className="mt-[8px] text-[12px] font-semibold text-center" style={{ color: "#cd8188", fontFamily: M }}>
-            Complete verification to unlock bookings · status: {verificationStatus.replace("_", " ")}
+            <MachineTranslatedText text="Complete verification to unlock bookings" /> · <MachineTranslatedText text="status" />: <MachineTranslatedText text={verificationStatus.replace("_", " ")} />
           </p>
         )}
       </div>
@@ -420,17 +429,17 @@ function EmptyState({ tab }: { tab: "upcoming" | "past" }) {
         </svg>
       </div>
       <p className="text-[18px] font-semibold text-[#65584f] text-center mb-[8px]" style={{ fontFamily: M }}>
-        {isPast ? "No past visits yet" : "No appointments yet"}
+        <MachineTranslatedText text={isPast ? "No past visits yet" : "No appointments yet"} />
       </p>
       <p className="text-[14px] text-[#65584f]/60 text-center mb-[24px]" style={{ fontFamily: M }}>
-        {isPast ? "Visits you completed or missed will appear here" : "Book a shelter visit to meet your future companion"}
+        <MachineTranslatedText text={isPast ? "Visits you completed or missed will appear here" : "Book a shelter visit to meet your future companion"} />
       </p>
       <Link
         href={isPast ? "/appointments?tab=upcoming" : "/"}
         className="rounded-full px-[32px] py-[12px] text-white text-[14px] font-semibold"
         style={{ background: "#cd8188", fontFamily: M }}
       >
-        {isPast ? "See upcoming" : "Browse Dogs"}
+        <MachineTranslatedText text={isPast ? "See upcoming" : "Browse Dogs"} />
       </Link>
     </div>
   );
@@ -448,16 +457,18 @@ function GuestView() {
             <line x1="3" y1="10" x2="21" y2="10" />
           </svg>
         </div>
-        <p className="text-[18px] font-semibold text-[#65584f] text-center mb-[8px]" style={{ fontFamily: M }}>Your appointments</p>
+        <p className="text-[18px] font-semibold text-[#65584f] text-center mb-[8px]" style={{ fontFamily: M }}>
+          <MachineTranslatedText text="Your appointments" />
+        </p>
         <p className="text-[14px] text-[#65584f]/60 text-center mb-[24px]" style={{ fontFamily: M }}>
-          Sign in to view and book shelter visits
+          <MachineTranslatedText text="Sign in to view and book shelter visits" />
         </p>
         <Link
           href="/auth"
           className="rounded-full px-[32px] py-[12px] text-white text-[15px] font-semibold"
           style={{ background: "#cd8188", fontFamily: M }}
         >
-          Sign in
+          <MachineTranslatedText text="Sign in" />
         </Link>
       </div>
     </PageShell>

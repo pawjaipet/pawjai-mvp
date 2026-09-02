@@ -12,7 +12,7 @@ import {
 } from "@/utils/dog-preference-filter";
 import type { SwipeDog } from "@/components/SwipeDogCard";
 import SwipeFeed from "@/components/SwipeFeed";
-import { shuffleFeedDogs } from "@/utils/swipe-feed-model";
+import { shuffleFeedDogs, spreadDogsAcrossShelters } from "@/utils/swipe-feed-model";
 import {
   ANONYMOUS_DOG_VIEW_LIMIT,
   getSubscriptionLimits,
@@ -183,7 +183,7 @@ async function getMatchingDogs(
   const dogsWithPhotos = enrichedDogs.filter(hasUploadedPhoto);
   const dogsWithoutPhotos = enrichedDogs.filter((dog) => !hasUploadedPhoto(dog));
 
-  if (advancedMatching) return enrichedDogs;
+  if (advancedMatching) return spreadDogsAcrossShelters(enrichedDogs);
 
   return [
     ...shuffleFeedDogs(dogsWithPhotos),

@@ -37,7 +37,7 @@ test("appointment detail uses stored Thai dog and shelter location fields when a
 });
 
 test("appointments modify date and time controls are compact mobile columns", () => {
-  assert.equal(appointmentPageSource.includes("grid grid-cols-2 gap-[8px]"), true);
+  assert.equal(appointmentPageSource.includes("grid grid-cols-1 gap-[8px] min-[380px]:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)]"), true);
   assert.equal(appointmentPageSource.includes("h-[40px] min-w-0 w-full rounded-[11px]"), true);
 });
 
