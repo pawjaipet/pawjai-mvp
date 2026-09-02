@@ -6,7 +6,9 @@ import {
   pawjaiContactIcon,
 } from "@/utils/pawjai-profile";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import JsonLd from "@/components/seo/JsonLd";
 import { createClient } from "@/utils/supabase/server";
+import { webPageJsonLd } from "@/utils/json-ld";
 import { canonicalUrl } from "@/utils/seo";
 
 const M = "Montserrat, sans-serif";
@@ -40,6 +42,13 @@ export default async function AboutPage() {
       className="relative overflow-y-auto overflow-x-hidden"
       style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", minHeight: "100vh", paddingBottom: "90px", background: "#F5F1E8", scrollbarWidth: "none", fontFamily: M }}
     >
+      <JsonLd
+        data={webPageJsonLd({
+          description: "Learn how PawJai helps people in Thailand discover, match with, and adopt dogs from shelter partners.",
+          name: "About PawJai",
+          path: "/about",
+        })}
+      />
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
       {/* Hero */}

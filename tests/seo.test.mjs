@@ -37,6 +37,26 @@ function loadAuthCookiesModel() {
   return module.exports;
 }
 
+function loadJsonLdModel() {
+  const source = readFileSync(new URL("../utils/json-ld.ts", import.meta.url), "utf8");
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  });
+  const module = { exports: {} };
+  new Script(outputText).runInNewContext({
+    exports: module.exports,
+    module,
+    require(id) {
+      if (id === "@/utils/seo") return loadSeoModel();
+      throw new Error(`Unexpected require: ${id}`);
+    },
+  });
+  return module.exports;
+}
+
 test("canonical URLs always use the PawJai www production domain", () => {
   const { SITE_URL, canonicalUrl } = loadSeoModel();
 
@@ -53,6 +73,17 @@ test("/dogs renders the public dog feed directly instead of importing the swipe 
   assert.doesNotMatch(source, /swipe\/page/);
 });
 
+test("dog profiles are publicly readable while booking and saving stay gated", () => {
+  const source = readFileSync(new URL("../app/dogs/[id]/page.tsx", import.meta.url), "utf8");
+  const cardSource = readFileSync(new URL("../components/SwipeDogCard.tsx", import.meta.url), "utf8");
+
+  assert.doesNotMatch(source, /ProtectedRouteGate/);
+  assert.doesNotMatch(cardSource, /view this dog profile/);
+  assert.match(source, /Sign in to book a visit/);
+  assert.match(source, /user &&/);
+  assert.match(cardSource, /book this shelter visit/);
+});
+
 test("anonymous requests can skip Supabase auth refresh when no auth cookies exist", () => {
   const { hasSupabaseAuthCookies } = loadAuthCookiesModel();
 
@@ -60,6 +91,14 @@ test("anonymous requests can skip Supabase auth refresh when no auth cookies exi
   assert.equal(hasSupabaseAuthCookies([{ name: "NEXT_LOCALE" }]), false);
   assert.equal(hasSupabaseAuthCookies([{ name: "sb-bdnyvcvkyepipdcygkvn-auth-token" }]), true);
   assert.equal(hasSupabaseAuthCookies([{ name: "sb-bdnyvcvkyepipdcygkvn-auth-token.0" }]), true);
+});
+
+test("structured data uses production URLs and escapes HTML-sensitive characters", () => {
+  const { jsonLdScriptValue, pawjaiWebsiteJsonLd, webPageJsonLd } = loadJsonLdModel();
+
+  assert.equal(jsonLdScriptValue({ name: "<PawJai>" }), "{\"name\":\"\\u003cPawJai>\"}");
+  assert.equal(pawjaiWebsiteJsonLd().url, "https://www.pawjaipet.com");
+  assert.equal(webPageJsonLd({ description: "Shelter sign in", name: "Shelter", path: "/shelter" }).url, "https://www.pawjaipet.com/shelter");
 });
 
 test("sitemap entries include stable public pages and available dog profiles only", () => {

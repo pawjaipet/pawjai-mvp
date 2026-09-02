@@ -150,15 +150,6 @@ export default function SwipeDogCard({
     }
   }
 
-  function requireAuthForProfile(event: MouseEvent<HTMLAnchorElement>) {
-    if (isLoggedIn) return;
-    event.preventDefault();
-    openAuthModal({
-      nextPath: `/dogs/${dog.id}`,
-      reason: t("Sign in or create an account to view this dog profile."),
-    });
-  }
-
   function requireAuthForBooking(event: MouseEvent<HTMLAnchorElement>) {
     if (isLoggedIn) return;
     event.preventDefault();
@@ -205,7 +196,7 @@ export default function SwipeDogCard({
         style={{ width: cardWidth, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
       >
         {orderedMedia.map((item, i) => (
-          <Link key={item.id} href={`/dogs/${dog.id}`} onClick={requireAuthForProfile} className="snap-center block flex-shrink-0" style={{ width: cardWidth }}>
+          <Link key={item.id} href={`/dogs/${dog.id}`} className="snap-center block flex-shrink-0" style={{ width: cardWidth }}>
             <div className="rounded-[22px] overflow-hidden bg-[#d6c8ad]" style={{ height: cardHeight, width: cardWidth }}>
               {item.type === "video" && item.publicUrl ? (
                 <DogVideoFrame
@@ -289,7 +280,6 @@ export default function SwipeDogCard({
           ))}
           <Link
             href={`/dogs/${dog.id}`}
-            onClick={requireAuthForProfile}
             className={`${TAG_ROSE} flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full active:scale-95 transition-transform`}
             aria-label={t("View dog details")}
           >

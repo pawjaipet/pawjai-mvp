@@ -4,6 +4,8 @@ import { getAdminAuthContext } from "@/utils/admin-auth";
 import { getShelterPortalTarget } from "@/utils/shelter-portal";
 import { signInShelterPortalAction } from "./actions";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import JsonLd from "@/components/seo/JsonLd";
+import { webPageJsonLd } from "@/utils/json-ld";
 import { canonicalUrl } from "@/utils/seo";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +39,13 @@ export default async function ShelterLoginPage({
 
   return (
     <main className="min-h-screen bg-[#f5f1e8] px-4 py-16 text-[#65584f]">
+      <JsonLd
+        data={webPageJsonLd({
+          description: "Sign in to PawJai's shelter portal to manage dog listings, appointments, and adoption workflows.",
+          name: "PawJai Shelter Portal",
+          path: "/shelter",
+        })}
+      />
       <section className="mx-auto max-w-4xl rounded-[36px] bg-[#f3cbd0] p-5 shadow-[0_24px_80px_rgba(101,88,79,0.12)] sm:p-10">
         <div className="rounded-[28px] bg-white/95 px-6 py-10 shadow-[inset_0_0_0_1px_rgba(234,223,206,0.75)] sm:px-12">
           <div className="mb-6 flex justify-end">

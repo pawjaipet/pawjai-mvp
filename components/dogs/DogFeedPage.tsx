@@ -3,7 +3,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { fetchActiveAds } from "@/utils/ads";
-import { buildDogMediaItems } from "@/utils/dog-media";
+import { buildDogMediaItems, normalizeDogMediaUrl } from "@/utils/dog-media";
 import {
   filterDogsByPreferences,
   hasActiveDogPreference,
@@ -143,18 +143,32 @@ async function getMatchingDogs(
   const advancedOrder = new Map(matchingDogs.map((dog, index) => [dog.id, index]));
 
   const enrichedDogs = matchingDogs
-    .map((d) => ({
-      ...d,
-      shelter_logo_url: shelterMap.get(d.shelter_id)?.logo_url ?? null,
-      shelter_name: shelterMap.get(d.shelter_id)?.name ?? null,
-      photos: photoMap.get(d.id) ?? [],
-      traits: traitMap.get(d.id) ?? [],
-      media: buildDogMediaItems({
-        photos: photoMap.get(d.id) ?? [],
-        traits: traitMap.get(d.id) ?? [],
-      }),
-      video: videoMap.get(d.id) ?? null,
-    }))
+    .map((d) => {
+      const photosForDog = (photoMap.get(d.id) ?? []).map((photo) => ({
+        ...photo,
+        public_url: normalizeDogMediaUrl(photo.public_url, photo.storage_path),
+      }));
+      const traitsForDog = traitMap.get(d.id) ?? [];
+      const videoForDog = videoMap.get(d.id);
+
+      return {
+        ...d,
+        shelter_logo_url: shelterMap.get(d.shelter_id)?.logo_url ?? null,
+        shelter_name: shelterMap.get(d.shelter_id)?.name ?? null,
+        photos: photosForDog,
+        traits: [],
+        media: buildDogMediaItems({
+          photos: photosForDog,
+          traits: traitsForDog,
+        }),
+        video: videoForDog
+          ? {
+            public_url: normalizeDogMediaUrl(videoForDog.public_url) ?? videoForDog.public_url,
+            poster_url: normalizeDogMediaUrl(videoForDog.poster_url),
+          }
+          : null,
+      };
+    })
     .sort((a, b) => {
       if (advancedMatching) {
         const rankOrder = (advancedOrder.get(a.id) ?? 0) - (advancedOrder.get(b.id) ?? 0);

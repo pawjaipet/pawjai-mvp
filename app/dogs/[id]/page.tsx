@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Calendar, ShieldCheck, Bookmark } from "lucide-react";
@@ -6,14 +7,16 @@ import { createClient } from "@/utils/supabase/server";
 import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
 import AuthPromptButton from "@/components/auth/AuthPromptButton";
-import ProtectedRouteGate from "@/components/auth/ProtectedRouteGate";
 import DogPhotoGallery from "@/components/dogs/DogPhotoGallery";
 import TreatButton from "@/components/donations/TreatButton";
 import MachineTranslatedText from "@/components/i18n/MachineTranslatedText";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import JsonLd from "@/components/seo/JsonLd";
 import type { DogPhoto, DogTrait } from "@/types/database";
 import { canonicalizeBreedLabel } from "@/utils/dog-breeds";
 import { buildDogMediaItems, normalizeDogMediaUrl } from "@/utils/dog-media";
+import { dogProfileJsonLd } from "@/utils/json-ld";
+import { hasSupabaseAuthCookies } from "@/utils/supabase/auth-cookies";
 import { NOINDEX_ROBOTS, canonicalUrl } from "@/utils/seo";
 import { toggleWishlist } from "./actions";
 
@@ -115,18 +118,12 @@ export default async function DogProfilePage({
     return Number.isInteger(n) && n > 0 ? n : null;
   })();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
+  const cookieStore = await cookies();
 
-  if (!user) {
-    const nextPath = autoOpenTreatCount ? `/dogs/${id}?treat=${autoOpenTreatCount}` : `/dogs/${id}`;
-    return (
-      <ProtectedRouteGate
-        nextPath={nextPath}
-        reason="Sign in or create an account to view this dog profile."
-      />
-    );
+  if (hasSupabaseAuthCookies(cookieStore.getAll())) {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
   }
 
   const { data: dog } = await supabase.from("dogs").select("*").eq("id", id).single();
@@ -156,6 +153,10 @@ export default async function DogProfilePage({
     if (aCover !== bCover) return aCover - bCover;
     return a.sort_order - b.sort_order;
   });
+  const normalizedOrderedPhotos = orderedPhotos.map((photo) => ({
+    id: photo.id,
+    public_url: normalizeDogMediaUrl(photo.public_url, photo.storage_path),
+  }));
   const primaryDogPhotoUrl = normalizeDogMediaUrl(orderedPhotos[0]?.public_url, orderedPhotos[0]?.storage_path);
 
   const personalityTraits = traits
@@ -202,6 +203,7 @@ export default async function DogProfilePage({
 
   const genderLabel = dog.gender === "unknown" ? "Unknown" : dog.gender === "male" ? "Male" : "Female";
   const sizeLabel = dog.size ? dog.size.replace("_", " ") : "Unknown";
+  const dogDescription = dog.background?.trim() || `${dog.name}${breedLabel ? `, a ${breedLabel}` : ""}, is available for adoption through PawJai.`;
 
   return (
     <div
@@ -217,16 +219,28 @@ export default async function DogProfilePage({
         fontFamily: M,
       }}
     >
+      <JsonLd
+        data={dogProfileJsonLd({
+          age: ageLabel(dog.age_months),
+          breed: breedLabel,
+          description: dogDescription,
+          gender: genderLabel,
+          image: primaryDogPhotoUrl,
+          name: dog.name,
+          path: `/dogs/${dog.id}`,
+          shelterName: shelter?.name ?? null,
+        })}
+      />
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
       {/* Hero photo carousel */}
       <div className="relative">
         <DogPhotoGallery
-          photos={orderedPhotos.map((p) => ({ id: p.id, public_url: p.public_url }))}
+          photos={normalizedOrderedPhotos}
           dogName={dog.name}
           media={mediaItems}
-          videoUrl={coverVideoUrl}
-          videoPosterUrl={coverVideoPosterUrl}
+          videoUrl={normalizeDogMediaUrl(coverVideoUrl)}
+          videoPosterUrl={normalizeDogMediaUrl(coverVideoPosterUrl)}
         />
 
         {/* Back to home — floating top-left, matches save button style */}

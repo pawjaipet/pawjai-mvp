@@ -6,6 +6,8 @@ import ProductAnalyticsTracker from "@/components/analytics/ProductAnalyticsTrac
 import BottomNavBar from "@/components/BottomNavBar";
 import NavigationFeedback from "@/components/NavigationFeedback";
 import { LanguageProvider } from "@/components/i18n/LanguageProvider";
+import JsonLd from "@/components/seo/JsonLd";
+import { pawjaiOrganizationJsonLd, pawjaiWebsiteJsonLd } from "@/utils/json-ld";
 import { SITE_URL } from "@/utils/seo";
 
 const montserrat = Montserrat({
@@ -40,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={montserrat.variable}>
       <body className="bg-[#f5f0e8] text-[#65584f] antialiased font-[family-name:var(--font-montserrat)]">
+        <JsonLd data={[pawjaiOrganizationJsonLd(), pawjaiWebsiteJsonLd()]} />
         <LanguageProvider>
           <AuthProvider>
             <ProductAnalyticsTracker />
