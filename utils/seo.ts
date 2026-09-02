@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const SITE_URL = "https://www.pawjaipet.com";
 
-export const PUBLIC_SITEMAP_PATHS = ["/", "/about", "/dogs"] as const;
+export const PUBLIC_SITEMAP_PATHS = ["/", "/about", "/dogs", "/shelter"] as const;
 
 export const ROBOTS_DISALLOW_PATHS = [
   "/admin",
@@ -22,7 +22,7 @@ export const ROBOTS_DISALLOW_PATHS = [
   "/profile",
   "/schedule",
   "/settings",
-  "/shelter",
+  "/shelter/",
 ] as const;
 
 const NOINDEX_PREFIXES = [
@@ -44,7 +44,6 @@ const NOINDEX_PREFIXES = [
   "/profile",
   "/schedule",
   "/settings",
-  "/shelter",
   "/swipe",
 ] as const;
 
@@ -78,6 +77,7 @@ export function isNoindexPath(path: string) {
   const pathname = normalizePath(path);
 
   if (/^\/dogs\/[^/]+\/donate$/.test(pathname)) return true;
+  if (pathname.startsWith("/shelter/")) return true;
 
   return NOINDEX_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),

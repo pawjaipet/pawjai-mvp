@@ -76,6 +76,7 @@ test("sitemap entries include stable public pages and available dog profiles onl
       "https://www.pawjaipet.com/",
       "https://www.pawjaipet.com/about",
       "https://www.pawjaipet.com/dogs",
+      "https://www.pawjaipet.com/shelter",
       "https://www.pawjaipet.com/dogs/available-dog",
     ]),
   );
@@ -103,14 +104,13 @@ test("private, auth, admin, and transactional paths are noindex", () => {
     "/profile",
     "/schedule/dog-1",
     "/settings/subscription",
-    "/shelter",
     "/shelter/thevoicefoundation",
     "/swipe",
   ]) {
     assert.equal(isNoindexPath(path), true, path);
   }
 
-  for (const path of ["/", "/about", "/dogs", "/dogs/dog-1"]) {
+  for (const path of ["/", "/about", "/dogs", "/dogs/dog-1", "/shelter"]) {
     assert.equal(isNoindexPath(path), false, path);
   }
 });

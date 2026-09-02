@@ -1,10 +1,26 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAdminAuthContext } from "@/utils/admin-auth";
 import { getShelterPortalTarget } from "@/utils/shelter-portal";
 import { signInShelterPortalAction } from "./actions";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import { canonicalUrl } from "@/utils/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Shelter Portal",
+  description: "Sign in to PawJai's shelter portal to manage dog listings, appointments, and adoption workflows.",
+  alternates: {
+    canonical: "/shelter",
+  },
+  openGraph: {
+    title: "PawJai Shelter Portal",
+    description: "Partner shelter sign-in for managing PawJai dog listings and adoption appointments.",
+    url: canonicalUrl("/shelter"),
+    type: "website",
+  },
+};
 
 export default async function ShelterLoginPage({
   searchParams,
