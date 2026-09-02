@@ -63,6 +63,12 @@ test("shelter dog forms do not create adopter-visible care notes", () => {
   assert.equal(dogCareActionSource.includes("Care note could not be saved"), false);
 });
 
+test("shelter dog forms do not edit manual vaccination summary status", () => {
+  assert.equal(dogCareFieldSource.includes("Vaccination status"), false);
+  assert.equal(dogCareFieldSource.includes("care_vaccination_status"), false);
+  assert.equal(dogCareActionSource.includes("care_vaccination_status"), false);
+});
+
 test("adopted passport fixed copy is translated for Thai mode", () => {
   for (const label of [
     "Post-adoption care",

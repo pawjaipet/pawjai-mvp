@@ -49,10 +49,6 @@ export const DOG_CARE_NOTE_TYPE_OPTIONS: { label: string; value: DogCareEventTyp
 
 const CARE_COMPLETENESS_FIELDS = [
   {
-    isComplete: (passport: DogCarePassport) => Boolean(passport.careRecord && passport.careRecord.vaccination_status !== "unknown"),
-    label: "Vaccination status",
-  },
-  {
     isComplete: (passport: DogCarePassport) => passport.vaccinations.length > 0,
     label: "Vaccine records",
   },

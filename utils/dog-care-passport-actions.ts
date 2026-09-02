@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Database } from "@/types/database";
-import type { DogVaccinationStatus, DogVaccinationVerificationStatus } from "@/utils/dog-care-passport";
+import type { DogVaccinationVerificationStatus } from "@/utils/dog-care-passport";
 import type { createAdminClient } from "@/utils/supabase/admin";
 
 type SupabaseAdminClient = ReturnType<typeof createAdminClient>;
@@ -23,14 +23,6 @@ const DOG_CARE_DOCUMENT_VISIBILITIES = new Set<Database["public"]["Enums"]["dog_
   "shelter_only",
 ]);
 const MAX_DOG_CARE_DOCUMENT_BYTES = 15 * 1024 * 1024;
-
-const DOG_VACCINATION_STATUSES = new Set<DogVaccinationStatus>([
-  "unknown",
-  "not_started",
-  "partial",
-  "up_to_date",
-  "overdue",
-]);
 
 const DOG_VACCINATION_VERIFICATION_STATUSES = new Set<DogVaccinationVerificationStatus>([
   "verified",
@@ -103,11 +95,6 @@ export async function saveDogCarePassportFromForm({
     shelter_id: shelterId,
     special_needs_notes: optionalText(getString(formData, "care_special_needs_notes")),
     updated_at: new Date().toISOString(),
-    vaccination_status: enumValue(
-      getString(formData, "care_vaccination_status"),
-      DOG_VACCINATION_STATUSES,
-      "unknown",
-    ),
   };
 
   const { error: careError } = await supabase

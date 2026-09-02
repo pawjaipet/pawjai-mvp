@@ -3,7 +3,6 @@
 import { FileText, HeartPulse, Syringe } from "lucide-react";
 import type { DogCareDocument, DogCareRecord, DogCareTimelineEvent, DogVaccinationRecord } from "@/types/database";
 import {
-  DOG_VACCINATION_STATUS_OPTIONS,
   DOG_VACCINATION_VERIFICATION_OPTIONS,
   buildDogCareCompleteness,
   isCareDateOverdue,
@@ -154,13 +153,6 @@ export default function DogCarePassportFields({
         ) : null}
 
         <div className="grid gap-5 md:grid-cols-2">
-          <Field label="Vaccination status">
-            <select name="care_vaccination_status" className={inputClass()} defaultValue={careRecord?.vaccination_status ?? "unknown"}>
-              {DOG_VACCINATION_STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </Field>
           <Field label="Last vet check date">
             <input name="care_last_vet_check_date" className={inputClass()} defaultValue={careRecord?.last_vet_check_date ?? ""} type="date" />
           </Field>
