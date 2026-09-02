@@ -3,11 +3,9 @@
 import { FileText, HeartPulse, Syringe } from "lucide-react";
 import type { DogCareDocument, DogCareRecord, DogCareTimelineEvent, DogVaccinationRecord } from "@/types/database";
 import {
-  DOG_CARE_NOTE_TYPE_OPTIONS,
   DOG_VACCINATION_STATUS_OPTIONS,
   DOG_VACCINATION_VERIFICATION_OPTIONS,
   buildDogCareCompleteness,
-  formatDogCareEventType,
   isCareDateOverdue,
 } from "@/utils/dog-care-passport";
 
@@ -130,7 +128,7 @@ export default function DogCarePassportFields({
             <div>
               <h2 className="text-xl font-semibold text-[#65584f]">Care Passport</h2>
               <p className="mt-1 text-sm leading-6 text-[#65584f]">
-                Health, vaccines, reminders, and adopter-visible care notes.
+                Health, vaccines, reminders, and care documents.
               </p>
             </div>
           </div>
@@ -201,38 +199,7 @@ export default function DogCarePassportFields({
           </div>
         </div>
 
-        <div className="mt-7 grid gap-5 lg:grid-cols-2">
-          <div className="rounded-3xl border border-[#f0e6d7] bg-[#fffaf5] p-5">
-            <h3 className="font-semibold text-[#65584f]">Add adopter-visible care note</h3>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <Field label="Note type">
-                <select name="care_note_type" className={inputClass()} defaultValue="general">
-                  {DOG_CARE_NOTE_TYPE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Note date">
-                <input name="care_note_date" className={inputClass()} type="date" />
-              </Field>
-              <div className="md:col-span-2">
-                <Field label="Note body">
-                  <textarea name="care_note_body" rows={4} className={inputClass()} placeholder="This note will appear in the adopter's care passport timeline." />
-                </Field>
-              </div>
-            </div>
-            {timelineEvents.length > 0 ? (
-              <div className="mt-5 space-y-3">
-                {timelineEvents.slice(0, 4).map((event) => (
-                  <div key={event.id} className="rounded-2xl bg-white px-4 py-3 text-sm text-[#65584f]">
-                    <p className="font-semibold">{event.title}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[#cd8188]">{formatDogCareEventType(event.event_type)} · {formatDate(event.event_date)}</p>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
+        <div className="mt-7">
           <div className="rounded-3xl border border-[#f0e6d7] bg-[#fffaf5] p-5">
             <div className="flex items-center gap-3">
               <FileText className="h-5 w-5 text-[#cd8188]" />

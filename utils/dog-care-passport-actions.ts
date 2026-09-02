@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Database } from "@/types/database";
-import type { DogCareEventType, DogVaccinationStatus, DogVaccinationVerificationStatus } from "@/utils/dog-care-passport";
+import type { DogVaccinationStatus, DogVaccinationVerificationStatus } from "@/utils/dog-care-passport";
 import type { createAdminClient } from "@/utils/supabase/admin";
 
 type SupabaseAdminClient = ReturnType<typeof createAdminClient>;
@@ -36,15 +36,6 @@ const DOG_VACCINATION_VERIFICATION_STATUSES = new Set<DogVaccinationVerification
   "verified",
   "pending",
   "unknown",
-]);
-
-const DOG_CARE_EVENT_TYPES = new Set<DogCareEventType>([
-  "medical",
-  "behavior",
-  "diet",
-  "follow_up",
-  "general",
-  "adoption",
 ]);
 
 function getString(formData: FormData, name: string) {
@@ -196,27 +187,6 @@ export async function saveDogCarePassportFromForm({
     if (error) {
       if (isMissingCareTableError(error)) return;
       throw new Error(`Vaccination record could not be saved: ${error.message}`);
-    }
-  }
-
-  const noteBody = optionalText(getString(formData, "care_note_body"));
-  if (noteBody) {
-    const eventType = enumValue(getString(formData, "care_note_type"), DOG_CARE_EVENT_TYPES, "general");
-    const title = `${eventType.replaceAll("_", " ")} note`.replace(/^\w/, (letter) => letter.toUpperCase());
-    const { error } = await supabase.from("dog_care_timeline_events").insert({
-      adopter_id: adopterId,
-      created_by: actorProfileId,
-      description: noteBody,
-      dog_id: dogId,
-      event_date: optionalDate(getString(formData, "care_note_date")) ?? new Date().toISOString().slice(0, 10),
-      event_type: eventType,
-      shelter_id: shelterId,
-      title,
-    });
-
-    if (error) {
-      if (isMissingCareTableError(error)) return;
-      throw new Error(`Care note could not be saved: ${error.message}`);
     }
   }
 
