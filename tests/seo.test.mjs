@@ -101,6 +101,18 @@ test("structured data uses production URLs and escapes HTML-sensitive characters
   assert.equal(webPageJsonLd({ description: "Shelter sign in", name: "Shelter", path: "/shelter" }).url, "https://www.pawjaipet.com/shelter");
 });
 
+test("swipe feed media only loads active dog images eagerly", () => {
+  const cardSource = readFileSync(new URL("../components/SwipeDogCard.tsx", import.meta.url), "utf8");
+  const feedSource = readFileSync(new URL("../components/SwipeFeed.tsx", import.meta.url), "utf8");
+  const videoSource = readFileSync(new URL("../components/dogs/DogVideoFrame.tsx", import.meta.url), "utf8");
+
+  assert.match(feedSource, /const shouldRenderContent = Math\.abs\(idx - activeIndex\) <= 1/);
+  assert.match(cardSource, /loading=\{isActive && i === 0 \? "eager" : "lazy"\}/);
+  assert.match(cardSource, /fetchPriority=\{isActive && i === 0 \? "high" : "low"\}/);
+  assert.match(videoSource, /loading="lazy"/);
+  assert.match(videoSource, /fetchPriority="low"/);
+});
+
 test("sitemap entries include stable public pages and available dog profiles only", () => {
   const { buildSitemapEntries } = loadSeoModel();
 

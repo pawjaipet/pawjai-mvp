@@ -212,7 +212,10 @@ export default function SwipeDogCard({
                   src={item.publicUrl}
                   alt={dog.name}
                   className="w-full h-full object-cover"
+                  decoding="async"
                   draggable={false}
+                  fetchPriority={isActive && i === 0 ? "high" : "low"}
+                  loading={isActive && i === 0 ? "eager" : "lazy"}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-6xl select-none">🐾</div>
@@ -250,7 +253,9 @@ export default function SwipeDogCard({
             src={dog.shelter_logo_url}
             alt={`${dog.shelter_name ?? "Shelter"} logo`}
             className="max-h-[58px] max-w-[144px] object-contain mix-blend-multiply contrast-110 saturate-110"
+            decoding="async"
             draggable={false}
+            loading={isActive ? "eager" : "lazy"}
           />
         ) : (
           <PawPrint aria-hidden="true" size={25} stroke="#cd8188" strokeWidth={2.4} />

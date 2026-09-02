@@ -414,14 +414,16 @@ export default function SwipeFeed({
           </div>
         )}
 
-        {feed.map((item, idx) =>
-          item.kind === "ad" ? (
+        {feed.map((item, idx) => {
+          const shouldRenderContent = Math.abs(idx - activeIndex) <= 1;
+
+          return item.kind === "ad" ? (
             <div
               key={item.key}
-            className="snap-start flex items-start justify-center px-[16px] pt-[4px]"
-            style={{ minHeight: "calc(100svh - 114px)", scrollSnapStop: "always" }}
+              className="snap-start flex items-start justify-center px-[16px] pt-[4px]"
+              style={{ minHeight: "calc(100svh - 114px)", scrollSnapStop: "always" }}
             >
-              <AdCard ad={item.ad} cardWidth={CARD_W} cardHeight={CARD_H} />
+              {shouldRenderContent ? <AdCard ad={item.ad} cardWidth={CARD_W} cardHeight={CARD_H} /> : null}
             </div>
           ) : (
             <div
@@ -429,17 +431,19 @@ export default function SwipeFeed({
               className="snap-start flex items-start justify-center px-[16px] pt-[4px]"
               style={{ minHeight: "calc(100svh - 114px)", scrollSnapStop: "always" }}
             >
-              <SwipeDogCard
-                dog={item.dog}
-                initialSaved={savedIds.includes(item.dog.id)}
-                isActive={isActiveDogFeedItem(item, idx, activeIndex)}
-                isLoggedIn={isLoggedIn}
-                cardWidth={CARD_W}
-                cardHeight={CARD_H}
-              />
+              {shouldRenderContent ? (
+                <SwipeDogCard
+                  dog={item.dog}
+                  initialSaved={savedIds.includes(item.dog.id)}
+                  isActive={isActiveDogFeedItem(item, idx, activeIndex)}
+                  isLoggedIn={isLoggedIn}
+                  cardWidth={CARD_W}
+                  cardHeight={CARD_H}
+                />
+              ) : null}
             </div>
-          )
-        )}
+          );
+        })}
 
         {/* End of feed */}
         {dogs.length > 0 && (

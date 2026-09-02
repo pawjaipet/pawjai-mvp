@@ -60,7 +60,10 @@ export default function DogVideoFrame({
           src={posterUrl}
           alt={alt}
           className={className}
+          decoding="async"
           draggable={false}
+          fetchPriority="low"
+          loading="lazy"
           style={{ filter: "brightness(0.75)" }}
         />
       ) : (
