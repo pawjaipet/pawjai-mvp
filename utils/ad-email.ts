@@ -1,4 +1,5 @@
 import { getResendClient } from "@/lib/resend";
+import { getNotificationFrom } from "@/utils/notification-email";
 
 type AdSubmissionEmailDetails = {
   clickUrl: string;
@@ -12,7 +13,6 @@ type AdSubmissionEmailDetails = {
   submissionCode: string;
 };
 
-const DEFAULT_FROM = "PawJai <onboarding@resend.dev>";
 const PAWJAI_CONTACT_EMAIL = "pawjaipet@gmail.com";
 const PAWJAI_ADS_NOTIFICATION_EMAIL = process.env.PAWJAI_ADS_NOTIFICATION_EMAIL ?? PAWJAI_CONTACT_EMAIL;
 const BLOCKED_NOTIFICATION_DOMAINS = new Set([
@@ -74,7 +74,7 @@ export function buildAdSubmissionConfirmationEmail(details: AdSubmissionEmailDet
   `;
 
   return {
-    from: process.env.PAWJAI_EMAIL_FROM ?? DEFAULT_FROM,
+    from: getNotificationFrom(),
     html,
     subject: `PawJai ad submission confirmed: ${details.submissionCode}`,
     text: [
@@ -120,7 +120,7 @@ export function buildPawjaiAdSubmissionNotificationEmail(details: AdSubmissionEm
 
   const htmlLines = lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
   return {
-    from: process.env.PAWJAI_EMAIL_FROM ?? DEFAULT_FROM,
+    from: getNotificationFrom(),
     html: `
       <div style="font-family:Arial,sans-serif;line-height:1.6;color:#4f4338">
         <h2 style="margin:0 0 12px">New PawJai ad submission</h2>

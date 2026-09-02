@@ -4,7 +4,25 @@ import { Script } from "node:vm";
 import test from "node:test";
 import ts from "typescript";
 
-function loadBookingEmail() {
+function loadNotificationEmail(env) {
+  const source = readFileSync(new URL("../utils/notification-email.ts", import.meta.url), "utf8");
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  });
+  const module = { exports: {} };
+
+  new Script(outputText).runInNewContext({
+    exports: module.exports,
+    module,
+    process: { env },
+  });
+  return module.exports;
+}
+
+function loadBookingEmail({ env = {} } = {}) {
   const source = readFileSync(new URL("../utils/booking-email.ts", import.meta.url), "utf8");
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: {
@@ -16,19 +34,20 @@ function loadBookingEmail() {
 
   function require(name) {
     if (name === "@/lib/resend") return { getResendClient() {} };
+    if (name === "@/utils/notification-email") return loadNotificationEmail(env);
     throw new Error(`Unexpected require: ${name}`);
   }
 
   new Script(outputText).runInNewContext({
     exports: module.exports,
     module,
-    process: { env: {} },
+    process: { env },
     require,
   });
   return module.exports;
 }
 
-function loadBookingEmailWithSentMessages(sentMessages) {
+function loadBookingEmailWithSentMessages(sentMessages, { env = {} } = {}) {
   const source = readFileSync(new URL("../utils/booking-email.ts", import.meta.url), "utf8");
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: {
@@ -53,6 +72,7 @@ function loadBookingEmailWithSentMessages(sentMessages) {
         },
       };
     }
+    if (name === "@/utils/notification-email") return loadNotificationEmail(env);
     throw new Error(`Unexpected require: ${name}`);
   }
 
@@ -60,7 +80,7 @@ function loadBookingEmailWithSentMessages(sentMessages) {
     console,
     exports: module.exports,
     module,
-    process: { env: {} },
+    process: { env },
     require,
   });
   return module.exports;
@@ -152,12 +172,35 @@ test("builds a pending adopter email with booking number, contact, location, and
   const email = buildBookingNotificationEmail(details);
 
   assert.equal(email.to, "adopter@pawjai.pet");
+  assert.equal(email.from, "PawJai <notifications@pawjaipet.com>");
   assert.equal(email.subject, "PawJai booking APT-5F1A2 is pending");
   assert.match(email.text, /Booking number: APT-5F1A2/);
   assert.match(email.text, /Status: Pending/);
   assert.match(email.text, /Visit: 2026-05-30 at 13:00/);
   assert.match(email.text, /Shelter contact: Bangkok Dog Shelter, shelter@pawjai.pet, 02-123-4567/);
   assert.match(email.text, /Shelter location: 123 Happy Road, Khlong Tan Nuea, Watthana, Bangkok, 10110/);
+});
+
+test("falls back to the verified root sender when the sender env uses an unverified domain", () => {
+  const { buildBookingNotificationEmail } = loadBookingEmail({
+    env: {
+      PAWJAI_EMAIL_FROM: "PawJai <notifications@mail.pawjaipet.com>",
+    },
+  });
+  const email = buildBookingNotificationEmail(details);
+
+  assert.equal(email.from, "PawJai <notifications@pawjaipet.com>");
+});
+
+test("uses a configured sender when it is not blocked", () => {
+  const { buildBookingNotificationEmail } = loadBookingEmail({
+    env: {
+      PAWJAI_EMAIL_FROM: "PawJai <admin@pawjaipet.com>",
+    },
+  });
+  const email = buildBookingNotificationEmail(details);
+
+  assert.equal(email.from, "PawJai <admin@pawjaipet.com>");
 });
 
 test("builds role-aware booking emails for the adopter and shelter", () => {

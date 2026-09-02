@@ -4,6 +4,24 @@ import { Script } from "node:vm";
 import test from "node:test";
 import ts from "typescript";
 
+function loadNotificationEmail(env) {
+  const source = readFileSync(new URL("../utils/notification-email.ts", import.meta.url), "utf8");
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  });
+  const module = { exports: {} };
+
+  new Script(outputText).runInNewContext({
+    exports: module.exports,
+    module,
+    process: { env },
+  });
+  return module.exports;
+}
+
 function loadAdEmail({ sentMessages = [], env = {} } = {}) {
   const source = readFileSync(new URL("../utils/ad-email.ts", import.meta.url), "utf8");
   const { outputText } = ts.transpileModule(source, {
@@ -29,6 +47,7 @@ function loadAdEmail({ sentMessages = [], env = {} } = {}) {
         },
       };
     }
+    if (name === "@/utils/notification-email") return loadNotificationEmail(env);
     throw new Error(`Unexpected require: ${name}`);
   }
 
@@ -57,19 +76,31 @@ const details = {
 test("builds an ad submission confirmation with code, dates, and contact email", () => {
   const { buildAdSubmissionConfirmationEmail } = loadAdEmail({
     env: {
-      PAWJAI_EMAIL_FROM: "PawJai <notifications@pawjai.co.th>",
+      PAWJAI_EMAIL_FROM: "PawJai <notifications@pawjaipet.com>",
     },
   });
   const email = buildAdSubmissionConfirmationEmail(details);
 
   assert.equal(email.to, "brand@pawjai.pet");
-  assert.equal(email.from, "PawJai <notifications@pawjai.co.th>");
+  assert.equal(email.from, "PawJai <notifications@pawjaipet.com>");
   assert.equal(email.subject, "PawJai ad submission confirmed: AD-ABC12345");
   assert.match(email.text, /Thank you for working with PawJai/);
   assert.match(email.text, /Submission code: AD-ABC12345/);
   assert.match(email.text, /Ad format: Video ad/);
   assert.match(email.text, /Campaign dates: 2026-08-01 to 2026-08-15/);
   assert.match(email.text, /Questions: Contact us at pawjaipet@gmail\.com/);
+});
+
+test("uses the verified root sender when ad sender env is missing or unverified", () => {
+  const missingEnv = loadAdEmail().buildAdSubmissionConfirmationEmail(details);
+  const mailSubdomainEnv = loadAdEmail({
+    env: {
+      PAWJAI_EMAIL_FROM: "PawJai <notifications@mail.pawjaipet.com>",
+    },
+  }).buildAdSubmissionConfirmationEmail(details);
+
+  assert.equal(missingEnv.from, "PawJai <notifications@pawjaipet.com>");
+  assert.equal(mailSubdomainEnv.from, "PawJai <notifications@pawjaipet.com>");
 });
 
 test("sends the ad submission confirmation to the submitted email", async () => {

@@ -1,4 +1,5 @@
 import { getResendClient } from "@/lib/resend";
+import { getNotificationFrom } from "@/utils/notification-email";
 
 type BookingEmailStatus = "requested" | "confirmed" | "cancelled";
 export type BookingNotificationEvent =
@@ -87,7 +88,6 @@ type SendAppointmentMessageNotificationInput = {
 
 const FALLBACK_NOTIFICATION_TO = "pawjaipet@gmail.com";
 const DEFAULT_SITE_ORIGIN = "https://www.pawjaipet.com";
-const DEFAULT_FROM = "PawJai <onboarding@resend.dev>";
 const BLOCKED_NOTIFICATION_DOMAINS = new Set([
   "example.com",
   "example.net",
@@ -262,7 +262,7 @@ function buildBookingNotificationEmailForAudience(
   if (!to) return null;
 
   return {
-    from: process.env.PAWJAI_EMAIL_FROM ?? DEFAULT_FROM,
+    from: getNotificationFrom(),
     html: buildHtml(lines),
     subject: `${audience === "shelter" && notificationEvent === "booking_requested" ? "New " : ""}PawJai booking ${details.appointment.bookingCode} ${event.subject}`,
     text: lines.join("\n"),
@@ -292,11 +292,18 @@ export async function sendBookingNotificationEmail(details: BookingEmailDetails)
   await Promise.all(messages.map(async (message) => {
     try {
       const resend = getResendClient();
-      const { error } = await resend.emails.send(message);
+      const { data, error } = await resend.emails.send(message);
 
       if (error) {
         console.error("Booking notification email failed", error);
+        return;
       }
+
+      console.info("Booking notification email sent", {
+        id: data?.id ?? null,
+        subject: message.subject,
+        to: message.to,
+      });
     } catch (error) {
       console.error("Booking notification email could not be sent", error);
     }
@@ -388,7 +395,7 @@ export function buildReturnInquiryNotificationEmail(details: ReturnInquiryNotifi
   ];
 
   return {
-    from: process.env.PAWJAI_EMAIL_FROM ?? DEFAULT_FROM,
+    from: getNotificationFrom(),
     html: buildHtml(lines),
     subject: `PawJai return inquiry for booking ${details.appointment.bookingCode}`,
     text: lines.join("\n"),
@@ -427,7 +434,7 @@ export function buildAppointmentMessageNotificationEmail(details: AppointmentMes
   lines.push(`Open conversation: ${buildAppointmentMessageUrl(details)}`);
 
   return {
-    from: process.env.PAWJAI_EMAIL_FROM ?? DEFAULT_FROM,
+    from: getNotificationFrom(),
     html: buildHtml(lines),
     subject: `New PawJai message for booking ${details.appointment.bookingCode}`,
     text: lines.join("\n"),
