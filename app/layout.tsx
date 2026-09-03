@@ -18,7 +18,7 @@ const montserrat = Montserrat({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  applicationName: "PawJai",
+  applicationName: "PawJai Pet",
   keywords: [
     ...BRAND_SEARCH_ALIASES,
     "adopt dog Thailand",
@@ -28,20 +28,20 @@ export const metadata: Metadata = {
     "rescue dog Thailand",
   ],
   title: {
-    default: "PawJai - Find Your Perfect Companion",
-    template: "%s | PawJai",
+    default: "PawJai Pet - Dog Adoption in Thailand",
+    template: "%s | PawJai Pet",
   },
   description: "PawJai Pet is a Thai dog adoption and shelter-matching platform for people searching for adoptable dogs, rescue dogs, and shelter partners.",
   openGraph: {
-    title: "PawJai - Find Your Perfect Companion",
+    title: "PawJai Pet - Dog Adoption in Thailand",
     description: "PawJai Pet helps people in Thailand discover adoptable dogs and connect with shelter partners.",
-    siteName: "PawJai",
+    siteName: "PawJai Pet",
     url: SITE_URL,
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "PawJai - Find Your Perfect Companion",
+    title: "PawJai Pet - Dog Adoption in Thailand",
     description: "PawJai Pet helps people in Thailand discover adoptable dogs and connect with shelter partners.",
   },
 };

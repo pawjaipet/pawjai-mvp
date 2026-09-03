@@ -4,24 +4,95 @@ Production domain: `https://www.pawjaipet.com`
 
 ## Current Search Visibility Snapshot
 
-Checked on 2026-09-02.
+Checked on 2026-09-03.
 
-- `pawjaipet`: PawJai is discoverable, though business-directory results may appear too.
+- `pawjaipet`: PawJai Pet is discoverable, though business-directory results may appear too.
+- `PawJai Pet`: PawJai Pet is not consistently first-page for every user yet because the phrase has clinic/business-profile competition and the new domain still needs recrawling.
 - `PawJai`: PawJai appears, but the query has competition from other Pawjai/Paw Jai pet businesses and apps.
-- `Project Pet`: PawJai does not reliably appear because this phrase already belongs to other domains and organizations.
-- `Project Pet shelter`: PawJai does not reliably appear yet; existing "Project Pet" and shelter-project results compete for this phrase.
+- `Project Pet`: Treat only as a possible mishearing or typo. PawJai Pet should not center this phrase unless users keep typing it.
 
 Code-side search signals now include these brand aliases in metadata and JSON-LD:
 
-- PawJai
 - PawJai Pet
+- PawJai
+- pawjaipet
+- pawjaipet.com
 - PawJai Thailand
+- PawJai shelter
 - PawJai dog adoption
 - Project Pet
 - Project Pet Thailand
 - Project Pet shelter
 
-Organic ranking for `Project Pet` cannot be guaranteed because Google ranks by relevance, authority, history, and user behavior. For immediate first-page visibility on that exact phrase, run a small Google Search campaign using exact/phrase match keywords.
+Organic ranking for `PawJai Pet` should improve once Google recrawls the brand-first metadata and Search Console requests. Ranking for `Project Pet` cannot be guaranteed because Google ranks by relevance, authority, history, and user behavior, and that phrase already belongs to other organizations. For immediate first-page visibility, run a small Google Search campaign using exact/phrase match brand and adoption keywords.
+
+## Keyword Buckets
+
+Primary brand keywords:
+
+- pawjai pet
+- pawjaipet
+- pawjaipet.com
+- pawjai
+- paw jai pet
+- paw jai
+- pawjai thailand
+- pawjai dog adoption
+- pawjai shelter
+
+Adopter intent keywords:
+
+- dog adoption bangkok
+- dog adoption thailand
+- adopt dog bangkok
+- adopt dog thailand
+- adopt a dog bangkok
+- adopt a dog thailand
+- dogs for adoption bangkok
+- dogs for adoption thailand
+- rescue dogs for adoption thailand
+- shelter dogs for adoption thailand
+- Thai rescue dog adoption
+- Thai street dog adoption
+- stray dog adoption Thailand
+- puppy adoption Bangkok
+- puppy adoption Thailand
+- small dog adoption Bangkok
+- medium dog adoption Thailand
+- senior dog adoption Thailand
+- vaccinated dog adoption Thailand
+- sterilized dog adoption Thailand
+- book dog adoption visit Bangkok
+
+Shelter partner keywords:
+
+- shelter dog listing Thailand
+- dog shelter management Thailand
+- dog adoption platform Thailand
+- shelter adoption appointments
+- rescue dog listing platform
+- dog shelter portal
+- PawJai Pet shelter portal
+- shelter partner PawJai
+
+Donation/support keywords:
+
+- donate to dog shelter Thailand
+- sponsor rescue dog Thailand
+- help shelter dogs Thailand
+- support dog rescue Thailand
+- donate to rescue dogs Bangkok
+
+Defensive typo/mishearing keywords:
+
+- paw jai pet
+- pawj ai pet
+- pawjai pets
+- porjai pet
+- por jai pet
+- project pet
+- project pet thailand
+- project pet shelter
 
 ## Search Console
 
@@ -55,16 +126,22 @@ Landing pages:
 
 Starter exact/phrase keywords:
 
-- `pawjai`
 - `pawjai pet`
 - `pawjaipet`
+- `pawjai`
 - `pawjai thailand`
 - `pawjai dog adoption`
+- `pawjai shelter`
 - `adopt dog thailand`
 - `dog adoption thailand`
 - `dog adoption bangkok`
+- `adopt dog bangkok`
+- `dogs for adoption bangkok`
 - `rescue dog thailand`
 - `shelter dog adoption thailand`
+
+Defensive exact/phrase keywords to test only if misheard searches appear:
+
 - `project pet`
 - `project pet shelter`
 - `project pet thailand`

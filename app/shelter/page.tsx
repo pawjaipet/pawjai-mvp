@@ -11,13 +11,13 @@ import { canonicalUrl } from "@/utils/seo";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Shelter Portal",
+  title: "PawJai Pet Shelter Portal",
   description: "PawJai Pet shelter portal for partner shelters managing dog listings, appointments, and adoption workflows.",
   alternates: {
     canonical: "/shelter",
   },
   openGraph: {
-    title: "PawJai Shelter Portal",
+    title: "PawJai Pet Shelter Portal",
     description: "Partner shelter sign-in for managing PawJai Pet dog listings and adoption appointments.",
     url: canonicalUrl("/shelter"),
     type: "website",
@@ -42,7 +42,7 @@ export default async function ShelterLoginPage({
       <JsonLd
         data={webPageJsonLd({
           description: "PawJai Pet shelter portal for partner shelters managing dog listings, appointments, and adoption workflows.",
-          name: "PawJai Shelter Portal",
+          name: "PawJai Pet Shelter Portal",
           path: "/shelter",
         })}
       />

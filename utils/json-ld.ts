@@ -9,7 +9,7 @@ export function pawjaiOrganizationJsonLd() {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": `${SITE_URL}/#organization`,
-    name: "PawJai",
+    name: "PawJai Pet",
     alternateName: BRAND_SEARCH_ALIASES,
     url: SITE_URL,
     logo: canonicalUrl("/pawjai-logo-square.png"),
@@ -22,7 +22,7 @@ export function pawjaiWebsiteJsonLd() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "@id": `${SITE_URL}/#website`,
-    name: "PawJai",
+    name: "PawJai Pet",
     alternateName: BRAND_SEARCH_ALIASES,
     url: SITE_URL,
     publisher: {

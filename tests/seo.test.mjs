@@ -64,6 +64,8 @@ test("canonical URLs always use the PawJai www production domain", () => {
   assert.equal(canonicalUrl("/dogs"), "https://www.pawjaipet.com/dogs");
   assert.equal(canonicalUrl("dogs/dog-1"), "https://www.pawjaipet.com/dogs/dog-1");
   assert.equal(canonicalUrl("/dogs/dog-1?from=swipe"), "https://www.pawjaipet.com/dogs/dog-1");
+  assert.equal(BRAND_SEARCH_ALIASES[0], "PawJai Pet");
+  assert.equal(BRAND_SEARCH_ALIASES.includes("pawjaipet"), true);
   assert.equal(BRAND_SEARCH_ALIASES.includes("Project Pet"), true);
   assert.equal(BRAND_SEARCH_ALIASES.includes("Project Pet shelter"), true);
 });
@@ -99,6 +101,7 @@ test("structured data uses production URLs and escapes HTML-sensitive characters
   const { jsonLdScriptValue, pawjaiWebsiteJsonLd, webPageJsonLd } = loadJsonLdModel();
 
   assert.equal(jsonLdScriptValue({ name: "<PawJai>" }), "{\"name\":\"\\u003cPawJai>\"}");
+  assert.equal(pawjaiWebsiteJsonLd().name, "PawJai Pet");
   assert.equal(pawjaiWebsiteJsonLd().url, "https://www.pawjaipet.com");
   assert.equal(pawjaiWebsiteJsonLd().alternateName.includes("Project Pet"), true);
   assert.equal(webPageJsonLd({ description: "Shelter sign in", name: "Shelter", path: "/shelter" }).url, "https://www.pawjaipet.com/shelter");

@@ -7,14 +7,14 @@ import { canonicalUrl } from "@/utils/seo";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Available Dogs",
-  description: "Meet available dogs on PawJai and start your adoption journey with verified Thai shelter partners.",
+  title: "Available Dogs for Adoption in Thailand",
+  description: "Browse adoptable dogs on PawJai Pet and start your adoption journey with Thai shelter partners.",
   alternates: {
     canonical: "/dogs",
   },
   openGraph: {
-    title: "Available Dogs on PawJai",
-    description: "Meet available dogs from Thai shelter partners.",
+    title: "Available Dogs on PawJai Pet",
+    description: "Meet available dogs from Thai shelter partners on PawJai Pet.",
     url: canonicalUrl("/dogs"),
     type: "website",
   },
@@ -25,8 +25,8 @@ export default function DogsPage() {
     <>
       <JsonLd
         data={webPageJsonLd({
-          description: "Meet available dogs on PawJai and start your adoption journey with verified Thai shelter partners.",
-          name: "Available Dogs on PawJai",
+          description: "Browse adoptable dogs on PawJai Pet and start your adoption journey with Thai shelter partners.",
+          name: "Available Dogs on PawJai Pet",
           path: "/dogs",
         })}
       />

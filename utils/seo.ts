@@ -3,9 +3,12 @@ import type { Metadata } from "next";
 export const SITE_URL = "https://www.pawjaipet.com";
 
 export const BRAND_SEARCH_ALIASES = [
-  "PawJai",
   "PawJai Pet",
+  "PawJai",
+  "pawjaipet",
+  "pawjaipet.com",
   "PawJai Thailand",
+  "PawJai shelter",
   "PawJai dog adoption",
   "Project Pet",
   "Project Pet Thailand",
