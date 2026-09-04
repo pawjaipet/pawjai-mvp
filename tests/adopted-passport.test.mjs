@@ -77,6 +77,13 @@ test("shelter dog care form supports repeat vaccine rows without verification st
   assert.equal(dogCareFieldSource.includes("Add another vaccination"), true);
   assert.equal(dogCareFieldSource.includes("Vaccination proof / medical record"), true);
   assert.equal(dogCareFieldSource.includes("Adoption document"), false);
+  assert.equal(dogCareFieldSource.includes("care_document_visibility"), false);
+  assert.equal(dogCareFieldSource.includes("care_document_file"), false);
+  assert.equal(dogCareFieldSource.includes("vaccine_document_file"), true);
+  assert.equal(dogCareFieldSource.includes("vaccine_document_title"), true);
+  assert.equal(dogCareFieldSource.includes("vaccine_document_type"), true);
+  assert.equal(dogCareActionSource.includes("vaccine_document_file"), true);
+  assert.equal(dogCareActionSource.includes('visibility: "adopter_visible"'), true);
 });
 
 test("adopted passport fixed copy is translated for Thai mode", () => {

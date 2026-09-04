@@ -22,11 +22,6 @@ const DOG_CARE_DOCUMENT_TYPE_OPTIONS = [
   { label: "Other", value: "other" },
 ];
 
-const DOG_CARE_DOCUMENT_VISIBILITY_OPTIONS = [
-  { label: "Adopter visible", value: "adopter_visible" },
-  { label: "Shelter only", value: "shelter_only" },
-];
-
 function inputClass() {
   return "w-full rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f] outline-none transition focus:border-[#cd8188] focus:ring-4 focus:ring-[#f3cbd0]/50";
 }
@@ -86,33 +81,54 @@ function VaccineRow({
       <Field label="Next due date">
         <input name="vaccine_due_on" className={inputClass()} defaultValue={record?.due_on ?? ""} type="date" />
       </Field>
-      <Field
-        hint="Upload a care document below, save, then link it to this vaccination if needed."
-        label="Linked document"
-      >
-        <select name="vaccine_document_id" className={inputClass()} defaultValue={record?.document_id ?? ""}>
-          <option value="">No linked document</option>
-          {documents.map((document) => (
-            <option key={document.id} value={document.id}>{document.title}</option>
-          ))}
-        </select>
-      </Field>
-      {linkedDocument?.file_url ? (
-        <div className="flex items-end">
-          <a
-            className="inline-flex min-h-[46px] w-full items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-4 py-3 text-sm font-semibold text-[#65584f] transition hover:bg-[#fff4f5]"
-            href={linkedDocument.file_url}
-            rel="noreferrer"
-            target="_blank"
-          >
-            Open linked document
-          </a>
-        </div>
-      ) : null}
       <div className="md:col-span-2">
         <Field label="Vaccine notes">
           <textarea name="vaccine_notes" rows={2} className={inputClass()} defaultValue={record?.notes ?? ""} placeholder="Batch, reaction, reminder, or proof details." />
         </Field>
+      </div>
+      <div className="md:col-span-2 rounded-2xl border border-[#f0e6d7] bg-[#fffaf5] p-4">
+        <div className="mb-3 flex items-center gap-2 text-[#65584f]">
+          <FileText className="h-4 w-4 text-[#cd8188]" />
+          <p className="text-sm font-semibold">Vaccination proof / medical record</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Document title">
+            <input name="vaccine_document_title" className={inputClass()} placeholder="Rabies vaccine card, medical record" />
+          </Field>
+          <Field label="Document type">
+            <select name="vaccine_document_type" className={inputClass()} defaultValue={linkedDocument?.document_type ?? "vaccination_proof"}>
+              {DOG_CARE_DOCUMENT_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </Field>
+          <Field hint="Both the shelter and adopter can view saved care documents." label="Attach file">
+            <input
+              accept="image/png,image/jpeg,image/webp,application/pdf"
+              className="block w-full rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] file:mr-3 file:rounded-full file:border-0 file:bg-[#cd8188] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+              name="vaccine_document_file"
+              type="file"
+            />
+          </Field>
+          <Field label="Saved document">
+            <select name="vaccine_document_id" className={inputClass()} defaultValue={record?.document_id ?? ""}>
+              <option value="">No saved document linked</option>
+              {documents.map((document) => (
+                <option key={document.id} value={document.id}>{document.title}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        {linkedDocument?.file_url ? (
+          <a
+            className="mt-3 inline-flex min-h-[42px] items-center justify-center rounded-full border border-[#d6c8ad] bg-white px-4 py-2 text-sm font-semibold text-[#65584f] transition hover:bg-[#fff4f5]"
+            href={linkedDocument.file_url}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Open saved document
+          </a>
+        ) : null}
       </div>
     </div>
   );
@@ -216,77 +232,6 @@ export default function DogCarePassportFields({
             >
               Add another vaccination
             </button>
-          </div>
-
-          <div className="mt-5 rounded-3xl border border-[#f0e6d7] bg-white p-4">
-            <div className="flex items-center gap-3">
-              <FileText className="h-5 w-5 text-[#cd8188]" />
-              <div>
-                <h3 className="font-semibold text-[#65584f]">Vaccination proof / medical record</h3>
-                <p className="text-sm text-[#65584f]/70">Attach one care file, save, then link it to a vaccine row above if needed.</p>
-              </div>
-            </div>
-            <div className="mt-4 grid gap-3">
-              <Field label="Document title">
-                <input name="care_document_title" className={inputClass()} placeholder="Rabies vaccine card, medical record" />
-              </Field>
-              <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Document type">
-                  <select name="care_document_type" className={inputClass()} defaultValue="vaccination_proof">
-                    {DOG_CARE_DOCUMENT_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Visibility">
-                  <select name="care_document_visibility" className={inputClass()} defaultValue="adopter_visible">
-                    {DOG_CARE_DOCUMENT_VISIBILITY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-              <Field hint="Accepted files: PNG, JPG, WEBP, or PDF under 15 MB." label="Upload document">
-                <input
-                  accept="image/png,image/jpeg,image/webp,application/pdf"
-                  className="block w-full rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] file:mr-3 file:rounded-full file:border-0 file:bg-[#cd8188] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
-                  name="care_document_file"
-                  type="file"
-                />
-              </Field>
-            </div>
-            <div className="mt-4 space-y-3">
-              {documents.length > 0 ? documents.map((document) => {
-                const content = (
-                  <>
-                    <p className="font-semibold">{document.title}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[#cd8188]">
-                      {document.document_type.replaceAll("_", " ")} · {document.visibility.replaceAll("_", " ")}
-                    </p>
-                  </>
-                );
-
-                return document.file_url ? (
-                  <a
-                    className="block rounded-2xl bg-white px-4 py-3 text-sm text-[#65584f] transition hover:bg-[#f8e8ea]"
-                    href={document.file_url}
-                    key={document.id}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    {content}
-                  </a>
-                ) : (
-                  <div key={document.id} className="rounded-2xl bg-white px-4 py-3 text-sm text-[#65584f]">
-                    {content}
-                  </div>
-                );
-              }) : (
-                <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-white px-4 py-5 text-sm leading-6 text-[#65584f]/70">
-                  No documents uploaded yet.
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>

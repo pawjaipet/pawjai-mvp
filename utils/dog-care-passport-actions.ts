@@ -16,10 +16,6 @@ const DOG_CARE_DOCUMENT_TYPES = new Set<Database["public"]["Enums"]["dog_care_do
   "medical_record",
   "other",
 ]);
-const DOG_CARE_DOCUMENT_VISIBILITIES = new Set<Database["public"]["Enums"]["dog_care_document_visibility"]>([
-  "adopter_visible",
-  "shelter_only",
-]);
 const MAX_DOG_CARE_DOCUMENT_BYTES = 15 * 1024 * 1024;
 
 function getString(formData: FormData, name: string) {
@@ -58,6 +54,75 @@ function isMissingCareTableError(error: { code?: string; message?: string } | nu
     || message.includes("could not find")
     || message.includes("does not exist")
     || message.includes("relation");
+}
+
+async function uploadDogCareDocument({
+  actorProfileId,
+  adopterId,
+  documentFile,
+  documentTitle,
+  documentType,
+  dogId,
+  shelterId,
+  supabase,
+}: {
+  actorProfileId: string | null;
+  adopterId: string | null;
+  documentFile: File;
+  documentTitle: string;
+  documentType: string;
+  dogId: string;
+  shelterId: string;
+  supabase: SupabaseAdminClient;
+}) {
+  if (documentFile.size > MAX_DOG_CARE_DOCUMENT_BYTES) {
+    throw new Error("Care document is too large. Please upload a file under 15 MB.");
+  }
+
+  if (!DOG_CARE_DOCUMENT_MIME_TYPES.has(documentFile.type)) {
+    throw new Error("Care document must be a PNG, JPG, WEBP, or PDF file.");
+  }
+
+  const originalName = sanitizeFileName(documentFile.name || "care-document");
+  const storagePath = `dog-care/${shelterId}/${dogId}/${crypto.randomUUID()}-${originalName}`;
+  const buffer = Buffer.from(await documentFile.arrayBuffer());
+  const { error: uploadError } = await supabase.storage
+    .from(DOG_CARE_DOCUMENTS_BUCKET)
+    .upload(storagePath, buffer, {
+      cacheControl: "3600",
+      contentType: documentFile.type,
+      upsert: false,
+    });
+
+  if (uploadError) {
+    throw new Error(`Care document could not be uploaded: ${uploadError.message}`);
+  }
+
+  const title = optionalText(documentTitle)
+    ?? documentFile.name
+    ?? "Care document";
+  const { data: documentRecord, error: documentError } = await supabase
+    .from("dog_care_documents")
+    .insert({
+      adopter_id: adopterId,
+      bucket_id: DOG_CARE_DOCUMENTS_BUCKET,
+      document_type: enumValue(documentType, DOG_CARE_DOCUMENT_TYPES, "vaccination_proof"),
+      dog_id: dogId,
+      file_url: null,
+      shelter_id: shelterId,
+      storage_path: storagePath,
+      title,
+      uploaded_by: actorProfileId,
+      visibility: "adopter_visible",
+    })
+    .select("id")
+    .single();
+
+  if (documentError) {
+    throw new Error(`Care document record could not be saved: ${documentError.message}`);
+  }
+
+  return documentRecord.id;
 }
 
 export async function saveDogCarePassportFromForm({
@@ -105,6 +170,9 @@ export async function saveDogCarePassportFromForm({
   const providers = getStringValues(formData, "vaccine_provider_name");
   const notes = getStringValues(formData, "vaccine_notes");
   const documentIds = getStringValues(formData, "vaccine_document_id");
+  const documentTitles = getStringValues(formData, "vaccine_document_title");
+  const documentTypes = getStringValues(formData, "vaccine_document_type");
+  const documentFiles = formData.getAll("vaccine_document_file");
   const rowCount = Math.max(
     ids.length,
     names.length,
@@ -113,6 +181,9 @@ export async function saveDogCarePassportFromForm({
     providers.length,
     notes.length,
     documentIds.length,
+    documentTitles.length,
+    documentTypes.length,
+    documentFiles.length,
   );
 
   for (let index = 0; index < rowCount; index += 1) {
@@ -132,11 +203,26 @@ export async function saveDogCarePassportFromForm({
       continue;
     }
 
+    const rowDocumentFile = documentFiles[index];
+    let documentId = optionalText(documentIds[index] ?? "");
+    if (rowDocumentFile instanceof File && rowDocumentFile.size > 0) {
+      documentId = await uploadDogCareDocument({
+        actorProfileId,
+        adopterId,
+        documentFile: rowDocumentFile,
+        documentTitle: documentTitles[index] ?? "",
+        documentType: documentTypes[index] ?? "",
+        dogId,
+        shelterId,
+        supabase,
+      });
+    }
+
     const vaccinePayload: Database["public"]["Tables"]["dog_vaccination_records"]["Insert"] = {
       administered_on: optionalDate(administeredDates[index] ?? ""),
       adopter_id: adopterId,
       created_by: actorProfileId,
-      document_id: optionalText(documentIds[index] ?? ""),
+      document_id: documentId,
       dog_id: dogId,
       due_on: optionalDate(dueDates[index] ?? ""),
       notes: optionalText(notes[index] ?? ""),
@@ -162,61 +248,6 @@ export async function saveDogCarePassportFromForm({
     }
   }
 
-  const documentFile = formData.get("care_document_file");
-  if (documentFile instanceof File && documentFile.size > 0) {
-    if (documentFile.size > MAX_DOG_CARE_DOCUMENT_BYTES) {
-      throw new Error("Care document is too large. Please upload a file under 15 MB.");
-    }
-
-    if (!DOG_CARE_DOCUMENT_MIME_TYPES.has(documentFile.type)) {
-      throw new Error("Care document must be a PNG, JPG, WEBP, or PDF file.");
-    }
-
-    const originalName = sanitizeFileName(documentFile.name || "care-document");
-    const storagePath = `dog-care/${shelterId}/${dogId}/${crypto.randomUUID()}-${originalName}`;
-    const buffer = Buffer.from(await documentFile.arrayBuffer());
-    const { error: uploadError } = await supabase.storage
-      .from(DOG_CARE_DOCUMENTS_BUCKET)
-      .upload(storagePath, buffer, {
-        cacheControl: "3600",
-        contentType: documentFile.type,
-        upsert: false,
-      });
-
-    if (uploadError) {
-      throw new Error(`Care document could not be uploaded: ${uploadError.message}`);
-    }
-
-    const documentType = enumValue(
-      getString(formData, "care_document_type"),
-      DOG_CARE_DOCUMENT_TYPES,
-      "other",
-    );
-    const visibility = enumValue(
-      getString(formData, "care_document_visibility"),
-      DOG_CARE_DOCUMENT_VISIBILITIES,
-      "adopter_visible",
-    );
-    const title = optionalText(getString(formData, "care_document_title"))
-      ?? documentFile.name
-      ?? "Care document";
-    const { error: documentError } = await supabase.from("dog_care_documents").insert({
-      adopter_id: adopterId,
-      bucket_id: DOG_CARE_DOCUMENTS_BUCKET,
-      document_type: documentType,
-      dog_id: dogId,
-      file_url: null,
-      shelter_id: shelterId,
-      storage_path: storagePath,
-      title,
-      uploaded_by: actorProfileId,
-      visibility,
-    });
-
-    if (documentError) {
-      throw new Error(`Care document record could not be saved: ${documentError.message}`);
-    }
-  }
 }
 
 export async function linkDogCarePassportToAdopter({
