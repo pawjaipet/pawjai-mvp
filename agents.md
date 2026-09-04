@@ -4,6 +4,8 @@ PAWJAI is a Thai dog **adoption & matching** platform — live in production at 
 
 > **Deeper context:** see [`handoff/HANDOFF.md`](handoff/HANDOFF.md) for the full project history, the session-by-session log in [`handoff/sessions/`](handoff/sessions/), and current open threads. New here? Start with [`handoff/START-HERE.md`](handoff/START-HERE.md).
 
+> **Financial-model source of truth:** use [`handoff/context/FINANCIAL-MODEL-2026-09-03.md`](handoff/context/FINANCIAL-MODEL-2026-09-03.md) for PAWJAI's latest 10-year projections. The founder-supplied workbook has Base case selected and models ads/marketplace first, then pet insurance. Treat every figure as a scenario assumption or projection, never as a current actual.
+
 ---
 
 ## Stack

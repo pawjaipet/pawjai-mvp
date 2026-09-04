@@ -1,6 +1,6 @@
 # PAWJAI — Account Migration Handoff
 
-**Prepared:** 2026-06-15 · **Last updated:** 2026-06-18 (Codex re-verification — transcript/session count, connection inventory, MCP auth notes, env-var names, dirty worktree status) · **Purpose:** hand this repo off to a fresh machine and a different Anthropic/Claude account, cleanly disconnecting the old account from every external service.
+**Prepared:** 2026-06-15 · **Last updated:** 2026-09-03 (latest founder-supplied 10-year financial model indexed for future Codex work) · **Purpose:** hand this repo off to a fresh machine and a different Anthropic/Claude account, cleanly disconnecting the old account from every external service.
 
 ---
 
@@ -21,6 +21,10 @@
 > 4. **Swipe-feed logo resize task** still open from the resumed `7837dd7e` snapshot — user wants the PawJai logo bigger/proportional on the swipe feed to match Figma. Current size `h-[60px] w-[140px]` in `components/SwipeFeed.tsx`.
 
 There is also a **separate personal project, "PROUD,"** whose Claude Code sessions ran inside this same directory. Those sessions are listed below but flagged `NON-PAWJAI` — they belong to a different repo / GitHub / Vercel and should not be conflated with PAWJAI when revoking access.
+
+### Financial-model source of truth
+
+The latest founder-supplied projection is `PAWjai Projection FINAL.xlsx`, reviewed on 2026-09-03. Its Base case is selected. It contains a 120-month Model A (ads plus marketplace) and Model B (pet insurance), with a combined summary that removes duplicated shared cloud cost. Read [FINANCIAL-MODEL-2026-09-03.md](context/FINANCIAL-MODEL-2026-09-03.md) before producing budgets, investor materials, revenue claims, or scale plans. The figures are projections, not verified traction or accounting actuals.
 
 ---
 
