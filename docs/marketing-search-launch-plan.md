@@ -24,7 +24,9 @@ Code-side search signals now include these brand aliases in metadata and JSON-LD
 - Project Pet Thailand
 - Project Pet shelter
 
-Organic ranking for `PawJai Pet` should improve once Google recrawls the brand-first metadata and Search Console requests. Ranking for `Project Pet` cannot be guaranteed because Google ranks by relevance, authority, history, and user behavior, and that phrase already belongs to other organizations. For immediate first-page visibility, run a small Google Search campaign using exact/phrase match brand and adoption keywords.
+Organic ranking for `PawJai Pet` should improve once Google recrawls the brand-first metadata and Search Console requests. Ranking for `Project Pet` cannot be guaranteed because Google ranks by relevance, authority, history, and user behavior, and that phrase already belongs to other organizations.
+
+Free launch path is now the default. Follow [`playbooks/free-search-reputation-launch.md`](playbooks/free-search-reputation-launch.md) before spending on ads. Use the paid Google Ads draft only if PawJai needs immediate paid visibility after the free indexing and reputation steps are in motion.
 
 ## Keyword Buckets
 
@@ -112,7 +114,39 @@ Defensive typo/mishearing keywords:
 3. Submit the domain for reclassification as a pet adoption / nonprofit / community platform.
 4. Keep Cloudflare DNS, HTTPS, sitemap, robots, and canonical URLs stable while the domain builds reputation.
 
-## Google Ads Starter Campaign
+## Free Search Launch
+
+Goal: make PawJai visible through search-engine discovery, trust pages, profile citations, backlinks, and filter recategorization before using paid traffic.
+
+Priority actions:
+
+1. Submit `https://www.pawjaipet.com/sitemap.xml` in Google Search Console.
+2. Request indexing for `/`, `/dogs`, `/shelter`, `/about`, `/privacy`, `/terms`, and `/safety`.
+3. Submit web-filter reclassification requests for the wrong `adult` category.
+4. Create or complete free official profiles, starting with Google Business Profile if PawJai is eligible.
+5. Ask partner shelters to link to PawJai with descriptive anchor text.
+6. Submit the sitemap in Bing Webmaster Tools.
+7. Review Search Console query and indexing data weekly.
+
+Core URLs:
+
+- `https://www.pawjaipet.com/`
+- `https://www.pawjaipet.com/dogs`
+- `https://www.pawjaipet.com/shelter`
+- `https://www.pawjaipet.com/about`
+- `https://www.pawjaipet.com/privacy`
+- `https://www.pawjaipet.com/terms`
+- `https://www.pawjaipet.com/safety`
+
+Free profile description:
+
+```text
+PawJai Pet is a Thai dog adoption and shelter-matching platform. We help people browse adoptable dogs from Thai shelter partners, learn about each dog, and book adoption appointments. Partner shelters can manage dog listings and adoption visits.
+```
+
+## Optional Paid Google Ads Draft
+
+This is optional and not free. Use it only after explicit spend approval.
 
 Goal: make PawJai visible while organic search ranking catches up.
 
