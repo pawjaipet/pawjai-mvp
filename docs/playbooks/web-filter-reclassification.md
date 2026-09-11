@@ -1,6 +1,8 @@
 # PawJai Web Filter Reclassification
 
-Last updated: 2026-09-02
+Last updated: 2026-09-11
+
+Latest investigation log: [`web-filter-reclassification-log-2026-09-11.md`](web-filter-reclassification-log-2026-09-11.md)
 
 ## Issue
 
@@ -86,7 +88,7 @@ Subject: Request to reclassify pawjaipet.com from Adult to Pet Adoption / Shelte
 
 Hello,
 
-Our website `https://www.pawjaipet.com` is being incorrectly blocked as `adult` on a managed Wi-Fi network. PawJai is a Thai dog adoption and shelter-matching platform. The `/shelter` page is a partner shelter login page used to manage dog listings and adoption appointments.
+Our website `https://www.pawjaipet.com` is being incorrectly blocked as `adult` on a managed Wi-Fi network. PawJai Pet is a Thai dog adoption and shelter-matching platform. The `/shelter` page is a partner shelter login page used to manage dog listings and adoption appointments.
 
 Please reclassify the following URLs away from `adult`:
 
