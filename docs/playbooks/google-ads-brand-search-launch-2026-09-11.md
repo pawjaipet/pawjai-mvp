@@ -4,23 +4,39 @@ Production domain: `https://www.pawjaipet.com`
 
 ## Status
 
-Draft only. No campaign was published and no spend was approved.
+Draft configured through the payment handoff screen. No campaign was published and no spend was approved.
 
 Google Ads account check:
 
 - Account opened under `pawjaipet@gmail.com`.
 - Google Ads is in first-campaign onboarding, not an existing campaign dashboard.
-- The visible onboarding page is "Tell us about your business."
-- Business name field currently shows `PAWjaiPet`.
-- Destination selection is currently set to "Your Business Profile page (optimised for ads)."
-- Recommendation: switch destination to "Your website" and use `https://www.pawjaipet.com/` before publishing.
-- Google Ads showed an ad blocker warning. Disable the ad blocker for Google Ads during setup.
+- Business name was set to `PawJai Pet`.
+- Destination was changed from "Business Profile page" to "Your website".
+- Final URL was set to `https://www.pawjaipet.com/`.
+- Google Ads analyzed the website and accepted the destination in the onboarding flow.
+- Campaign type was changed from Google-suggested Performance Max to Search.
+- Draft campaign ID shown in the URL: `281499210453829`.
+- Draft ID shown in the URL: `10213217279`.
+- Google Ads showed an ad blocker warning during setup. Disable the ad blocker for Google Ads if previews or forms fail to load.
+
+Configured draft settings:
+
+- Campaign type: Search.
+- Location: Thailand.
+- Languages: English and Thai.
+- Networks: Search partners off; Display Network off.
+- Bid focus: Clicks.
+- Maximum CPC bid limit: THB 10.00.
+- Average daily budget: THB 150.00. Google warned this is below the suggested THB 201.53/day.
+- Google Ads guidance preference: No.
+- Payment profile was not created or edited.
+- Submit was not clicked.
 
 Manual steps still required:
 
 - User must handle Google login, billing, business verification, payment method, and final publish approval.
 - Do not publish or spend from Codex without explicit user approval at the final submit step.
-- Final URL verification is still blocked from the current network because HTTPS requests to `pawjaipet.com`, `www.pawjaipet.com`, and `media.pawjaipet.com` reset during TLS. Verify the final URLs from an unrestricted network or Vercel dashboard before publishing.
+- Final URL verification should be repeated from an unrestricted network before publishing if the current network blocks `pawjaipet.com`.
 
 ## Campaign Setup
 
@@ -248,15 +264,15 @@ Headlines:
 
 ```text
 PawJai Pet Adoption
-PawJai Pet Thailand
 Adopt Dogs In Thailand
-Find Your Dog Match
-Browse Shelter Dogs
-Thai Shelter Dogs
+Browse Adoptable Dogs
 Book A Shelter Visit
-Meet Adoptable Dogs
-Rescue Dogs In Thailand
 Dog Adoption Bangkok
+Find Your Dog Match
+Thai Shelter Dogs
+PawJai Thailand
+PawJai Shelter
+Rescue Dogs Thailand
 ```
 
 Descriptions:
@@ -265,7 +281,6 @@ Descriptions:
 Browse adoptable dogs from Thai shelter partners and book a shelter visit.
 Meet rescue dogs and find a companion who fits your home.
 PawJai Pet helps adopters discover dogs and connect with shelter partners.
-Start with PawJai Pet, a dog adoption platform for Thailand.
 ```
 
 ### Shelter Partner RSA
@@ -338,10 +353,10 @@ Use these only if Google Ads asks for assets:
 
 | Sitelink | URL | Description 1 | Description 2 |
 | --- | --- | --- | --- |
-| Browse Dogs | `https://www.pawjaipet.com/dogs` | Meet adoptable dogs | Find a dog match |
-| Shelter Portal | `https://www.pawjaipet.com/shelter` | Partner shelter login | Manage appointments |
-| About PawJai Pet | `https://www.pawjaipet.com/about` | Dog adoption mission | Thai shelter partners |
-| Book A Visit | `https://www.pawjaipet.com/dogs` | Choose a dog first | Schedule a shelter visit |
+| Browse Dogs | `https://www.pawjaipet.com/dogs` | See adoptable dogs | Find your best match |
+| Shelter Portal | `https://www.pawjaipet.com/shelter` | Manage listings | Book adoption visits |
+| About PawJai | `https://www.pawjaipet.com/about` | Thai adoption platform | Built for shelters |
+| Support Dogs | `https://www.pawjaipet.com/donations` | Help shelter dogs | Donate to dog care |
 
 ## Policy And Destination Checklist
 
