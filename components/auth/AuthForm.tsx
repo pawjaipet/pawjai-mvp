@@ -13,6 +13,7 @@ import {
   sanitizeNextPath,
 } from "@/utils/account-model";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
+import Link from "next/link";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import type { GoogleCredentialResponse } from "@/types/google-identity";
 import { createClient } from "@/utils/supabase/client";
@@ -505,6 +506,10 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
           )}
         </>
       )}
+
+      <p className="pt-4 text-center text-[12px] leading-relaxed text-[#65584f]">
+        Read our <Link href="/terms" onClick={onClose} className="underline underline-offset-4">Terms of Use</Link> and <Link href="/privacy" onClick={onClose} className="underline underline-offset-4">Privacy Policy</Link> before creating an account.
+      </p>
 
       <div className="pt-[10px] text-center">
         <button

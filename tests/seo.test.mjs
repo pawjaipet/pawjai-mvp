@@ -37,6 +37,22 @@ function loadAuthCookiesModel() {
   return module.exports;
 }
 
+function loadPawjaiProfileModel() {
+  const source = readFileSync(new URL("../utils/pawjai-profile.ts", import.meta.url), "utf8");
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  });
+  const module = { exports: {} };
+  new Script(outputText).runInNewContext({
+    exports: module.exports,
+    module,
+  });
+  return module.exports;
+}
+
 function loadJsonLdModel() {
   const source = readFileSync(new URL("../utils/json-ld.ts", import.meta.url), "utf8");
   const { outputText } = ts.transpileModule(source, {
@@ -51,6 +67,15 @@ function loadJsonLdModel() {
     module,
     require(id) {
       if (id === "@/utils/seo") return loadSeoModel();
+      if (id === "@/utils/pawjai-profile") {
+        return {
+          buildPawjaiContactHref(item) {
+            if (item.type === "email") return `mailto:${item.label}`;
+            if (item.type === "phone") return `tel:${item.label}`;
+            return item.href;
+          },
+        };
+      }
       throw new Error(`Unexpected require: ${id}`);
     },
   });
@@ -66,8 +91,7 @@ test("canonical URLs always use the PawJai www production domain", () => {
   assert.equal(canonicalUrl("/dogs/dog-1?from=swipe"), "https://www.pawjaipet.com/dogs/dog-1");
   assert.equal(BRAND_SEARCH_ALIASES[0], "PawJai Pet");
   assert.equal(BRAND_SEARCH_ALIASES.includes("pawjaipet"), true);
-  assert.equal(BRAND_SEARCH_ALIASES.includes("Project Pet"), true);
-  assert.equal(BRAND_SEARCH_ALIASES.includes("Project Pet shelter"), true);
+  assert.equal(BRAND_SEARCH_ALIASES.includes("Project Pet"), false);
 });
 
 test("/dogs renders the public dog feed directly instead of importing the swipe redirect", () => {
@@ -97,14 +121,44 @@ test("anonymous requests can skip Supabase auth refresh when no auth cookies exi
   assert.equal(hasSupabaseAuthCookies([{ name: "sb-bdnyvcvkyepipdcygkvn-auth-token.0" }]), true);
 });
 
-test("structured data uses production URLs and escapes HTML-sensitive characters", () => {
-  const { jsonLdScriptValue, pawjaiWebsiteJsonLd, webPageJsonLd } = loadJsonLdModel();
+test("structured data uses the official brand, factual contacts, and production URLs", () => {
+  const { jsonLdScriptValue, pawjaiOrganizationJsonLd, pawjaiWebsiteJsonLd, webPageJsonLd } = loadJsonLdModel();
 
   assert.equal(jsonLdScriptValue({ name: "<PawJai>" }), "{\"name\":\"\\u003cPawJai>\"}");
   assert.equal(pawjaiWebsiteJsonLd().name, "PawJai Pet");
   assert.equal(pawjaiWebsiteJsonLd().url, "https://www.pawjaipet.com");
-  assert.equal(pawjaiWebsiteJsonLd().alternateName.includes("Project Pet"), true);
+  assert.equal(pawjaiWebsiteJsonLd().alternateName.includes("Project Pet"), false);
+  const organization = pawjaiOrganizationJsonLd({
+    contactItems: [
+      { type: "email", label: "pawjaipet@gmail.com", href: "mailto:pawjaipet@gmail.com" },
+      { type: "social", label: "unlinked handle", href: null },
+    ],
+  });
+  assert.equal(organization.name, "PawJai Pet");
+  assert.equal(organization.contactPoint[0].email, "pawjaipet@gmail.com");
+  assert.equal(organization.sameAs, undefined);
   assert.equal(webPageJsonLd({ description: "Shelter sign in", name: "Shelter", path: "/shelter" }).url, "https://www.pawjaipet.com/shelter");
+});
+
+test("public trust pages state their dog adoption purpose before account access", () => {
+  const aboutSource = readFileSync(new URL("../app/about/page.tsx", import.meta.url), "utf8");
+  const shelterSource = readFileSync(new URL("../app/shelter/page.tsx", import.meta.url), "utf8");
+
+  assert.match(aboutSource, /Thai dog adoption and shelter matching/);
+  assert.match(aboutSource, /request in-person adoption visits/);
+  assert.match(shelterSource, /Partner shelter portal for dog adoption operations/);
+  assert.match(shelterSource, /dog listings, adoption visit requests, availability, and adopter messages/);
+});
+
+test("the public About page receives confirmed shelter partners only", () => {
+  const { normalizePartnerShelters } = loadPawjaiProfileModel();
+  const partners = normalizePartnerShelters([
+    { name: "Unverified placeholder", detail: "Unknown", confirmed: false },
+    { name: "Confirmed shelter", detail: "Adoption visits", confirmed: true },
+  ]);
+
+  assert.equal(partners.length, 1);
+  assert.equal(partners[0].name, "Confirmed shelter");
 });
 
 test("swipe feed media only loads active dog images eagerly", () => {
@@ -134,6 +188,9 @@ test("sitemap entries include stable public pages and available dog profiles onl
       "https://www.pawjaipet.com/about",
       "https://www.pawjaipet.com/dogs",
       "https://www.pawjaipet.com/shelter",
+      "https://www.pawjaipet.com/privacy",
+      "https://www.pawjaipet.com/terms",
+      "https://www.pawjaipet.com/safety",
       "https://www.pawjaipet.com/dogs/available-dog",
     ]),
   );
@@ -167,7 +224,7 @@ test("private, auth, admin, and transactional paths are noindex", () => {
     assert.equal(isNoindexPath(path), true, path);
   }
 
-  for (const path of ["/", "/about", "/dogs", "/dogs/dog-1", "/shelter"]) {
+  for (const path of ["/", "/about", "/dogs", "/dogs/dog-1", "/shelter", "/privacy", "/terms", "/safety"]) {
     assert.equal(isNoindexPath(path), false, path);
   }
 });

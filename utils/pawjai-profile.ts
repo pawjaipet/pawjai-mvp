@@ -3,6 +3,7 @@ import type { Database, Json } from "@/types/database";
 type PawjaiProfileRow = Database["public"]["Tables"]["pawjai_profile"]["Row"];
 
 export type PawjaiPartnerShelter = {
+  confirmed: boolean;
   detail: string;
   logo_url?: string | null;
   name: string;
@@ -25,20 +26,14 @@ export type PawjaiProfileContent = {
 };
 
 export const DEFAULT_PAWJAI_PROFILE_CONTENT: PawjaiProfileContent = {
-  heroSlogan: "Connecting Thai dogs with loving homes",
+  heroSlogan: "Dog adoption and shelter matching in Thailand",
   missionTitle: "Our Mission",
   missionBody:
-    "Thailand is home to an estimated 3.5 million stray dogs. PawJai was built to change that — one adoption at a time. We partner with shelters across the country to make the adoption process joyful, transparent, and accessible to everyone.",
-  partnerShelters: [
-    { name: "Soi Dog Foundation", detail: "Phuket · 1,600+ dogs" },
-    { name: "Ban Rak Nong Shelter", detail: "Bangkok · 200+ dogs" },
-    { name: "Happy Paws Bangkok", detail: "Bangkok · 120+ dogs" },
-    { name: "Chiang Mai Dog Rescue", detail: "Chiang Mai · 80+ dogs" },
-  ],
+    "PawJai helps people discover dogs available for adoption through participating shelters in Thailand. People can review dog profiles, save their preferences, and request an in-person shelter visit. Adoption decisions and paperwork remain with each shelter.",
+  partnerShelters: [],
   contactItems: [
-    { type: "email", label: "hello@pawjaipet.com", href: "mailto:hello@pawjaipet.com" },
-    { type: "social", label: "@pawjai.official", href: null },
-    { type: "website", label: "pawjaipet.com", href: "https://pawjaipet.com" },
+    { type: "email", label: "pawjaipet@gmail.com", href: "mailto:pawjaipet@gmail.com" },
+    { type: "website", label: "pawjaipet.com", href: "https://www.pawjaipet.com" },
   ],
 };
 
@@ -54,8 +49,11 @@ function isContactType(value: string): value is PawjaiContactItemType {
   return ["custom", "email", "phone", "social", "website"].includes(value);
 }
 
-export function normalizePartnerShelters(value: Json | null | undefined): PawjaiPartnerShelter[] {
-  if (!Array.isArray(value)) return DEFAULT_PAWJAI_PROFILE_CONTENT.partnerShelters;
+export function normalizePartnerShelters(
+  value: Json | null | undefined,
+  { includeUnconfirmed = false }: { includeUnconfirmed?: boolean } = {},
+): PawjaiPartnerShelter[] {
+  if (!Array.isArray(value)) return [];
 
   const rows: PawjaiPartnerShelter[] = [];
 
@@ -64,11 +62,13 @@ export function normalizePartnerShelters(value: Json | null | undefined): Pawjai
 
     const name = cleanString(item.name);
     const detail = cleanString(item.detail);
+    const confirmed = item.confirmed === true;
 
     if (!name || !detail) continue;
+    if (!confirmed && !includeUnconfirmed) continue;
 
     const logoUrl = typeof item.logo_url === "string" ? item.logo_url : null;
-    rows.push({ detail, logo_url: logoUrl, name });
+    rows.push({ confirmed, detail, logo_url: logoUrl, name });
   }
 
   return rows.length > 0 ? rows : [];
@@ -101,11 +101,14 @@ export function normalizeContactItems(value: Json | null | undefined): PawjaiCon
 
 export function mergePawjaiProfileContent(
   row?: Partial<PawjaiProfileRow> | null,
+  options?: { includeUnconfirmedPartners?: boolean },
 ): PawjaiProfileContent {
   const heroSlogan = cleanString(row?.hero_slogan) || DEFAULT_PAWJAI_PROFILE_CONTENT.heroSlogan;
   const missionTitle = cleanString(row?.mission_title) || DEFAULT_PAWJAI_PROFILE_CONTENT.missionTitle;
   const missionBody = cleanString(row?.mission_body) || DEFAULT_PAWJAI_PROFILE_CONTENT.missionBody;
-  const partnerShelters = normalizePartnerShelters(row?.partner_shelters);
+  const partnerShelters = normalizePartnerShelters(row?.partner_shelters, {
+    includeUnconfirmed: options?.includeUnconfirmedPartners,
+  });
   const contactItems = normalizeContactItems(row?.contact_items);
 
   return {
@@ -118,10 +121,18 @@ export function mergePawjaiProfileContent(
 }
 
 export function buildPawjaiContactHref(item: PawjaiContactItem) {
+  if (item.type === "email") {
+    const email = item.href?.replace(/^mailto:/i, "") || item.label;
+    return email.includes("@") ? `mailto:${email}` : null;
+  }
+
+  if (item.type === "phone") {
+    const phone = item.href?.replace(/^tel:/i, "") || item.label;
+    return phone ? `tel:${phone.replace(/\s+/g, "")}` : null;
+  }
+
   if (item.href) return item.href;
 
-  if (item.type === "email") return `mailto:${item.label}`;
-  if (item.type === "phone") return `tel:${item.label.replace(/\s+/g, "")}`;
   if (item.type === "website") {
     return item.label.startsWith("http://") || item.label.startsWith("https://")
       ? item.label
@@ -148,6 +159,7 @@ export function pawjaiContactIcon(itemType: PawjaiContactItemType) {
 
 export async function loadPawjaiProfileContent(
   supabase: any,
+  options?: { includeUnconfirmedPartners?: boolean },
 ) {
   try {
     const { data, error } = await supabase
@@ -160,7 +172,7 @@ export async function loadPawjaiProfileContent(
       return DEFAULT_PAWJAI_PROFILE_CONTENT;
     }
 
-    return mergePawjaiProfileContent(data);
+    return mergePawjaiProfileContent(data, options);
   } catch {
     return DEFAULT_PAWJAI_PROFILE_CONTENT;
   }

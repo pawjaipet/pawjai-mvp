@@ -40,7 +40,7 @@ function withEmptyShelterRows(items: PawjaiPartnerShelter[], totalRows = 10) {
   const rows = [...items];
 
   while (rows.length < totalRows) {
-    rows.push({ detail: "", logo_url: null, name: "" });
+    rows.push({ confirmed: false, detail: "", logo_url: null, name: "" });
   }
 
   return rows;
@@ -81,7 +81,9 @@ export async function PawjaiProfileAdminPageContent({
   await requireGlobalAdmin(currentRoutePath);
 
   const supabase = createAdminClient();
-  const content = await loadPawjaiProfileContent(supabase);
+  const content = await loadPawjaiProfileContent(supabase, {
+    includeUnconfirmedPartners: true,
+  });
   const shelterRows = withEmptyShelterRows(
     content.partnerShelters,
     Math.max(10, content.partnerShelters.length + 2),
@@ -144,7 +146,7 @@ export async function PawjaiProfileAdminPageContent({
 
         {sectionCard(
           "Partner Shelters",
-          "Each row appears in the public shelter list. Add a logo URL if you want the real shelter badge instead of the default icon.",
+          "Only confirmed partners appear publicly. Confirm a shelter only after PawJai has verified the relationship and the details shown here.",
           <div className="space-y-4">
             <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] px-4 py-3 text-sm text-[#65584f]">
               You have extra blank rows ready for new shelters, and empty rows are ignored on save.
@@ -157,7 +159,7 @@ export async function PawjaiProfileAdminPageContent({
                     name={`shelter_name_${index}`}
                     defaultValue={item.name}
                     className={inputClass()}
-                    placeholder="Soi Dog Foundation"
+                    placeholder="Confirmed shelter name"
                   />
                 </label>
                 <label className="block">
@@ -166,7 +168,7 @@ export async function PawjaiProfileAdminPageContent({
                     name={`shelter_detail_${index}`}
                     defaultValue={item.detail}
                     className={inputClass()}
-                    placeholder="Phuket · 1,600+ dogs"
+                    placeholder="Service area · Adoption visits"
                   />
                 </label>
                 <label className="block md:col-span-2">
@@ -177,6 +179,17 @@ export async function PawjaiProfileAdminPageContent({
                     className={inputClass()}
                     placeholder="https://.../shelter-logo.png"
                   />
+                </label>
+                <label className="flex items-center gap-3 md:col-span-2">
+                  <input
+                    name={`shelter_confirmed_${index}`}
+                    defaultChecked={item.confirmed}
+                    className="h-5 w-5 accent-[#cd8188]"
+                    type="checkbox"
+                  />
+                  <span className="text-sm font-medium text-[#65584f]">
+                    Confirmed partner, approved for the public About page
+                  </span>
                 </label>
               </div>
             ))}

@@ -1,3 +1,5 @@
+import Link from "next/link";
+import TrustLinks from "@/components/trust/TrustLinks";
 import type { Metadata } from "next";
 import Image from "next/image";
 import {
@@ -8,26 +10,26 @@ import {
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import JsonLd from "@/components/seo/JsonLd";
 import { createClient } from "@/utils/supabase/server";
-import { webPageJsonLd } from "@/utils/json-ld";
+import { pawjaiOrganizationJsonLd, webPageJsonLd } from "@/utils/json-ld";
 import { canonicalUrl } from "@/utils/seo";
 
 const M = "Montserrat, sans-serif";
 
 const HOW_IT_WORKS = [
-  { step: "1", icon: "🔍", title: "Browse & Match", desc: "Swipe through profiles of dogs waiting for homes. Our smart matching learns your preferences over time." },
+  { step: "1", icon: "🔍", title: "Browse & Match", desc: "Browse dogs available for adoption and use your saved home and lifestyle preferences to find suitable profiles." },
   { step: "2", icon: "📅", title: "Book a Visit", desc: "Schedule a meet-and-greet at the shelter at a time that suits you. No adoption pressure — just a friendly visit." },
   { step: "3", icon: "🏠", title: "Adopt & Celebrate", desc: "Complete the adoption paperwork with the shelter and bring your new companion home!" },
 ];
 
 export const metadata: Metadata = {
-  title: "About PawJai",
-  description: "Learn how PawJai helps people in Thailand discover, match with, and adopt dogs from shelter partners.",
+  title: "About Our Thai Dog Adoption Platform",
+  description: "Learn how PawJai Pet helps people discover adoptable dogs in Thailand and request in-person adoption visits with participating shelters.",
   alternates: {
     canonical: "/about",
   },
   openGraph: {
-    title: "About PawJai",
-    description: "Learn how PawJai helps people in Thailand adopt dogs from shelter partners.",
+    title: "About PawJai Pet Dog Adoption",
+    description: "Discover adoptable dogs in Thailand and request in-person adoption visits with participating shelters.",
     url: canonicalUrl("/about"),
     type: "website",
   },
@@ -36,18 +38,25 @@ export const metadata: Metadata = {
 export default async function AboutPage() {
   const supabase = await createClient();
   const content = await loadPawjaiProfileContent(supabase);
+  const publicContactItems = content.contactItems.filter((item) => {
+    const href = buildPawjaiContactHref(item);
+    return item.type !== "social" || Boolean(href?.startsWith("https://"));
+  });
 
   return (
     <div
       className="relative overflow-y-auto overflow-x-hidden"
-      style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", minHeight: "100vh", paddingBottom: "90px", background: "#F5F1E8", scrollbarWidth: "none", fontFamily: M }}
+      style={{ width: "402px", maxWidth: "100%", margin: "0 auto", minHeight: "100vh", paddingBottom: "90px", background: "#F5F1E8", scrollbarWidth: "none", fontFamily: M }}
     >
       <JsonLd
-        data={webPageJsonLd({
-          description: "Learn how PawJai helps people in Thailand discover, match with, and adopt dogs from shelter partners.",
-          name: "About PawJai",
-          path: "/about",
-        })}
+        data={[
+          webPageJsonLd({
+            description: "Learn how PawJai Pet helps people discover adoptable dogs in Thailand and request in-person adoption visits with participating shelters.",
+            name: "About PawJai Pet Dog Adoption",
+            path: "/about",
+          }),
+          pawjaiOrganizationJsonLd({ contactItems: publicContactItems }),
+        ]}
       />
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
@@ -62,15 +71,27 @@ export default async function AboutPage() {
         <div className="relative h-[220px] w-[300px] mb-[18px]">
           <Image src="/pawjai-logo.png" alt="PawJai" fill className="object-contain" priority />
         </div>
-        <p className="text-[15px] font-semibold text-[#65584f] text-center opacity-80" style={{ fontFamily: M }}>
+        <h1 className="text-center text-[20px] font-bold leading-snug text-[#65584f]" style={{ fontFamily: M }}>
+          Thai dog adoption and shelter matching
+        </h1>
+        <p className="mt-[8px] max-w-[330px] text-center text-[14px] font-medium leading-relaxed text-[#65584f]/75" style={{ fontFamily: M }}>
+          Browse adoptable dogs and request in-person adoption visits with participating shelters in Thailand.
+        </p>
+        <p className="mt-[8px] text-center text-[13px] font-semibold text-[#65584f]/65" style={{ fontFamily: M }}>
           {content.heroSlogan}
         </p>
       </div>
 
       <div className="px-[16px] pt-[24px] space-y-[28px]">
 
+        <section id="shelter-partners" className="rounded-[20px] bg-white p-[20px]">
+          <h2 className="mb-2 text-[18px] font-bold">Our shelter partners</h2>
+          <p className="text-[14px] leading-relaxed">PawJai helps connect adopters with participating shelters. Shelters maintain dog information, coordinate visits, and decide adoption requirements and placements. Contact us to ask about becoming a partner.</p>
+          <Link href="/shelter" className="inline-flex min-h-[44px] items-center text-[14px] font-semibold underline underline-offset-4">Shelter partner information</Link>
+        </section>
+
         {/* Partner Shelters — first */}
-        <div id="shelters">
+        {content.partnerShelters.length > 0 ? <div id="shelters">
           <p className="font-bold text-[11px] text-[#65584f]/60 uppercase tracking-widest mb-[14px]" style={{ fontFamily: M }}>
             Partner Shelters
           </p>
@@ -120,7 +141,7 @@ export default async function AboutPage() {
               </div>
             ))}
           </div>
-        </div>
+        </div> : null}
 
         {/* Mission */}
         <div className="rounded-[20px] p-[20px]" style={{ background: "white" }}>
@@ -163,11 +184,12 @@ export default async function AboutPage() {
 
         {/* Contact */}
         <div id="contact">
+          <p className="mb-3 text-sm leading-relaxed">For support, privacy requests, or shelter partnership enquiries, email <a href="mailto:pawjaipet@gmail.com" className="font-semibold underline break-all">pawjaipet@gmail.com</a>. Start with a brief description; please do not email identity documents or sign-in codes.</p>
           <p className="font-bold text-[11px] text-[#65584f]/60 uppercase tracking-widest mb-[14px]" style={{ fontFamily: M }}>
             Contact Us
           </p>
           <div className="rounded-[16px] overflow-hidden" style={{ background: "white" }}>
-            {content.contactItems.map((item, index) => {
+            {publicContactItems.map((item, index) => {
               const href = buildPawjaiContactHref(item);
               const body = (
                 <>
@@ -201,6 +223,8 @@ export default async function AboutPage() {
             })}
           </div>
         </div>
+
+        <TrustLinks />
 
         <p className="text-center text-[11px] pb-[10px]" style={{ color: "rgba(101,88,79,0.3)", fontFamily: M }}>
           PawJai v0.1 · Made with ❤️ for Thai dogs

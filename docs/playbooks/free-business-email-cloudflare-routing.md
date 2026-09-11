@@ -1,6 +1,6 @@
 # Free Business Email: Cloudflare Email Routing
 
-Last updated: 2026-08-10.
+Last updated: 2026-09-11.
 
 This is the active no-cost PawJai business email setup. It creates `@pawjaipet.com` addresses in Cloudflare and forwards incoming mail to Gmail.
 
@@ -15,6 +15,12 @@ This is the active no-cost PawJai business email setup. It creates `@pawjaipet.c
   - `pakaphol.j@pawjaipet.com` -> `pawjaipet@gmail.com`
   - `kittipat.w@pawjaipet.com` -> `pawjaipet@gmail.com`
 
+Pending dashboard confirmation:
+
+- `hello@pawjaipet.com` -> `pawjaipet@gmail.com`
+- `support@pawjaipet.com` -> `pawjaipet@gmail.com`
+- `dmarc@pawjaipet.com` -> `pawjaipet@gmail.com`
+
 This is forwarding, not a separate mailbox. Replies still come from the Gmail account unless Gmail is separately configured to send mail as the custom address.
 
 ## DNS Records
@@ -27,7 +33,16 @@ MX pawjaipet.com 56 route2.mx.cloudflare.net.
 MX pawjaipet.com 91 route3.mx.cloudflare.net.
 TXT pawjaipet.com "v=spf1 include:_spf.mx.cloudflare.net ~all"
 TXT cf2024-1._domainkey.pawjaipet.com "v=DKIM1; h=sha256; k=rsa; p=..."
+TXT _dmarc.pawjaipet.com "v=DMARC1; p=none;"
 ```
+
+The target DMARC record is:
+
+```txt
+TXT _dmarc.pawjaipet.com "v=DMARC1; p=none; rua=mailto:dmarc@pawjaipet.com"
+```
+
+Create `dmarc@pawjaipet.com` as a Cloudflare routing alias before adding the `rua` mailbox.
 
 Verified publicly on 2026-07-31 with:
 
@@ -35,6 +50,7 @@ Verified publicly on 2026-07-31 with:
 dig +short MX pawjaipet.com
 dig +short TXT pawjaipet.com
 dig +short TXT cf2024-1._domainkey.pawjaipet.com
+dig +short TXT _dmarc.pawjaipet.com
 ```
 
 ## Add Another Address
@@ -92,5 +108,7 @@ To:
   polchaya.s@pawjaipet.com
   pakaphol.j@pawjaipet.com
   kittipat.w@pawjaipet.com
+  hello@pawjaipet.com, after the routing rule is created
+  dmarc@pawjaipet.com, after the routing rule is created
 Expected inbox: pawjaipet@gmail.com
 ```

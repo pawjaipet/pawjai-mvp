@@ -1,10 +1,33 @@
 import { BRAND_SEARCH_ALIASES, canonicalUrl, SITE_URL } from "@/utils/seo";
+import { buildPawjaiContactHref, type PawjaiContactItem } from "@/utils/pawjai-profile";
 
 export function jsonLdScriptValue(value: unknown) {
   return JSON.stringify(value).replace(/</g, "\\u003c");
 }
 
-export function pawjaiOrganizationJsonLd() {
+export function pawjaiOrganizationJsonLd({
+  contactItems = [],
+}: {
+  contactItems?: PawjaiContactItem[];
+} = {}) {
+  const contactPoint = contactItems.flatMap((item) => {
+    if (item.type !== "email" && item.type !== "phone") return [];
+    const href = buildPawjaiContactHref(item);
+    if (!href) return [];
+
+    return [{
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      email: item.type === "email" ? href.replace(/^mailto:/, "") : undefined,
+      telephone: item.type === "phone" ? href.replace(/^tel:/, "") : undefined,
+    }];
+  });
+  const sameAs = contactItems.flatMap((item) => {
+    if (item.type !== "social") return [];
+    const href = buildPawjaiContactHref(item);
+    return href?.startsWith("https://") ? [href] : [];
+  });
+
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -14,6 +37,8 @@ export function pawjaiOrganizationJsonLd() {
     url: SITE_URL,
     logo: canonicalUrl("/pawjai-logo-square.png"),
     description: "PawJai Pet, a Thai dog adoption and shelter-matching platform, helps people discover, match with, and adopt dogs from shelter partners.",
+    contactPoint: contactPoint.length > 0 ? contactPoint : undefined,
+    sameAs: sameAs.length > 0 ? sameAs : undefined,
   };
 }
 

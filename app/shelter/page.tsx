@@ -5,8 +5,10 @@ import { getShelterPortalTarget } from "@/utils/shelter-portal";
 import { signInShelterPortalAction } from "./actions";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import JsonLd from "@/components/seo/JsonLd";
+import TrustLinks from "@/components/trust/TrustLinks";
 import { webPageJsonLd } from "@/utils/json-ld";
 import { canonicalUrl } from "@/utils/seo";
+import { ShieldCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -55,11 +57,15 @@ export default async function ShelterLoginPage({
             PawJai Shelter Portal
           </p>
           <h1 className="mt-5 max-w-2xl text-4xl font-semibold leading-tight sm:text-5xl">
-            Sign in to your shelter workspace.
+            Partner shelter portal for dog adoption operations.
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-[#7a6d61]">
-            This portal is for partner shelters. After sign-in, PawJai opens only the shelter workspace linked to that account.
+            Manage your shelter&apos;s dog listings, adoption visit requests, availability, and adopter messages from the workspace assigned to your account.
           </p>
+          <div className="mt-6 flex max-w-2xl items-start gap-3 rounded-2xl border border-[#eadfce] bg-[#fffaf5] px-4 py-3 text-sm leading-6 text-[#6b5b4d]">
+            <ShieldCheck aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[#cd8188]" />
+            <p>Authorized partner access. Each shelter account can access only its assigned shelter workspace.</p>
+          </div>
 
           <form action={signInShelterPortalAction} className="mt-10 max-w-2xl space-y-5">
             <label className="block" htmlFor="shelter-identifier">
@@ -69,7 +75,7 @@ export default async function ShelterLoginPage({
                 className="w-full rounded-2xl border border-[#e4d5bf] bg-white px-5 py-4 text-base text-[#4f4338] outline-none transition focus:border-[#cd8188] focus:bg-white"
                 id="shelter-identifier"
                 name="identifier"
-                placeholder="thevoice"
+                placeholder="Shelter username"
                 required
                 type="text"
               />
@@ -101,6 +107,9 @@ export default async function ShelterLoginPage({
               Sign in
             </button>
           </form>
+          <div className="mt-8 max-w-2xl border-t border-[#eadfce] pt-5">
+            <TrustLinks />
+          </div>
         </div>
       </section>
     </main>

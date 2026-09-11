@@ -10,12 +10,9 @@ export const BRAND_SEARCH_ALIASES = [
   "PawJai Thailand",
   "PawJai shelter",
   "PawJai dog adoption",
-  "Project Pet",
-  "Project Pet Thailand",
-  "Project Pet shelter",
 ] as const;
 
-export const PUBLIC_SITEMAP_PATHS = ["/", "/about", "/dogs", "/shelter"] as const;
+export const PUBLIC_SITEMAP_PATHS = ["/", "/about", "/dogs", "/shelter", "/privacy", "/terms", "/safety"] as const;
 
 export const ROBOTS_DISALLOW_PATHS = [
   "/admin",

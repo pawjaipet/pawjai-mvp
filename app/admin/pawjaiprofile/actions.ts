@@ -47,11 +47,12 @@ function collectPartnerShelters(formData: FormData, maxRows: number): PawjaiPart
     const name = getString(formData, `shelter_name_${index}`);
     const detail = getString(formData, `shelter_detail_${index}`);
     const logoUrl = getString(formData, `shelter_logo_url_${index}`) || null;
+    const confirmed = formData.get(`shelter_confirmed_${index}`) === "on";
 
     if (!name && !detail) continue;
     if (!name || !detail) continue;
 
-    rows.push({ detail, logo_url: logoUrl, name });
+    rows.push({ confirmed, detail, logo_url: logoUrl, name });
   }
 
   return rows;

@@ -23,7 +23,10 @@ const SECTIONS: ReadonlyArray<{
     title: "About PawJai",
     items: [
       { label: "How adoption works",    href: "/about",         icon: "📖" },
-      { label: "Partner shelters",      href: "/about#shelters", icon: "🏥" },
+      { label: "Partner shelters",      href: "/about#shelter-partners", icon: "🏥" },
+      { label: "Privacy Policy", href: "/privacy", icon: "🔒" },
+      { label: "Terms of Use", href: "/terms", icon: "📄" },
+      { label: "Adoption Safety", href: "/safety", icon: "🐾" },
       { label: "Contact us",            href: "/about#contact",  icon: "✉️" },
     ],
   },
@@ -36,7 +39,7 @@ export default async function MorePage() {
   return (
     <div
       className="relative overflow-y-auto overflow-x-hidden min-h-screen"
-      style={{ width: "402px", maxWidth: "100vw", margin: "0 auto", background: "#F5F1E8", paddingBottom: "90px", scrollbarWidth: "none", fontFamily: M }}
+      style={{ width: "402px", maxWidth: "100%", margin: "0 auto", background: "#F5F1E8", paddingBottom: "90px", scrollbarWidth: "none", fontFamily: M }}
     >
       <style>{`div::-webkit-scrollbar{display:none}`}</style>
 
