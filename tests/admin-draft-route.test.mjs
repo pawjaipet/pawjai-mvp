@@ -60,7 +60,7 @@ test("/shelter supports real shelter account login and scoped shelter mode", () 
 
   assert.equal(pageSource.includes("scopedShelterIds"), false);
   assert.equal(oldLoginPageSource.includes('redirect("/shelter")'), true);
-  assert.equal(shelterLoginPageSource.includes("Sign in to your shelter workspace."), true);
+  assert.equal(shelterLoginPageSource.includes('name="password"'), true);
   assert.equal(shelterLoginPageSource.includes("PawJai Shelter Portal"), true);
   assert.equal(shelterLoginPageSource.includes("Username"), true);
   assert.equal(shelterLoginPageSource.includes('name="identifier"'), true);

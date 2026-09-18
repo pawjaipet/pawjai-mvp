@@ -294,7 +294,7 @@ function buildDogPhotoPath({
   const slug = buildDogMediaBaseName(dogName, dogNumber);
   const normalizedExtension = extension?.replace(/^\./, "") || "jpg";
 
-  return `pawjaidogs/${slug}-photo${photoLetter(photoIndex)}.${normalizedExtension}`;
+  return `pawjaidogs/${crypto.randomUUID()}/${slug}-photo${photoLetter(photoIndex)}.${normalizedExtension}`;
 }
 
 function inferDogNumberFromMedia(items: ReturnType<typeof buildDogMediaItems>) {
@@ -618,6 +618,11 @@ async function updateDogMediaOrder({
     };
   });
 
+  // Release the unique cover slot before assigning a different photo.
+  const { error: clearCoverError } = await supabase.from("dog_photos")
+    .update({ is_cover: false }).eq("dog_id", dogId).eq("is_cover", true);
+  if (clearCoverError) throw new Error(`Could not change cover photo: ${clearCoverError.message}`);
+
   const photoUpdates = orderedItems
     .filter((item) => item.type === "photo")
     .map((item) =>
@@ -732,6 +737,12 @@ export async function updateDogProfileAction(
     : `/admin/dogs/${dogId}/edit`;
   const adminContext = await requireShelterAccess(shelterId, accessRedirectPath);
   const supabase = createAdminClient();
+  const { data: ownedDog, error: ownershipError } = await supabase.from("dogs")
+    .select("id,shelter_id").eq("id", dogId).maybeSingle();
+  if (ownershipError || !ownedDog || (!adminContext.isGlobalAdmin && ownedDog.shelter_id !== shelterId)) {
+    return { status: "error", message: "This dog is not available in your shelter workspace." };
+  }
+  await requireShelterAccess(ownedDog.shelter_id, accessRedirectPath);
 
   const dogSocialStyle = getOptionalString(formData, "dog_social_style");
   const peopleFriendliness = getOptionalString(formData, "people_friendliness");
@@ -794,10 +805,11 @@ export async function updateDogProfileAction(
     };
   }
 
-  const { error: updateError } = await supabase.from("dogs").update(dogPayload).eq("id", dogId);
-  if (updateError) {
+  const { data: updatedDog, error: updateError } = await supabase.from("dogs").update(dogPayload)
+    .eq("id", dogId).eq("shelter_id", ownedDog.shelter_id).select("id").maybeSingle();
+  if (updateError || !updatedDog) {
     return {
-      message: `Could not update this dog profile: ${updateError.message}`,
+      message: `Could not update this dog profile: ${updateError?.message ?? "The dog changed. Refresh and try again."}`,
       status: "error",
     };
   }

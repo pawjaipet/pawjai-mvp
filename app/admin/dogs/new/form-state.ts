@@ -4,6 +4,7 @@ export type CreateDogListingState = {
   dogId?: string;
   fieldErrors?: Record<string, string>;
   message: string;
+  publishState?: "draft" | "processing" | "published";
   status: ActionStatus;
 };
 

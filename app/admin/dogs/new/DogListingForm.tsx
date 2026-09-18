@@ -8,6 +8,7 @@ import DogBreedPicker from "@/components/dogs/DogBreedPicker";
 import PersonalityTagPicker from "@/components/dogs/PersonalityTagPicker";
 import { createDogListingAction } from "./actions";
 import { initialCreateDogListingState } from "./form-state";
+import { stageDogMedia } from "@/utils/dog-media-direct-upload";
 
 type ShelterOption = {
   id: string;
@@ -36,10 +37,14 @@ const careTags = [
   "Behavioral support",
 ];
 
-const CLIENT_MAX_FORM_MEDIA_BYTES = 3.5 * 1024 * 1024;
+const CLIENT_MAX_PHOTO_FORM_MEDIA_BYTES = 3.5 * 1024 * 1024;
+const CLIENT_VIDEO_WARNING_BYTES = 25 * 1024 * 1024;
+const CLIENT_MAX_VIDEO_UPLOAD_BYTES = 50 * 1024 * 1024;
 const CLIENT_PHOTO_MAX_WIDTH = 1800;
 const CLIENT_PHOTO_MAX_HEIGHT = 2400;
 const CLIENT_PHOTO_QUALITY = 0.78;
+const SUPPORTED_VIDEO_EXTENSIONS = new Set(["mov", "mp4"]);
+const SUPPORTED_VIDEO_MIME_TYPES = new Set(["video/mp4", "video/quicktime"]);
 
 function isHeicLikeFile(file: File) {
   const type = file.type.split(";")[0]?.trim().toLowerCase();
@@ -50,6 +55,15 @@ function isHeicLikeFile(file: File) {
 
 function isClientCompressiblePhoto(file: File) {
   return file.type.startsWith("image/") && !isHeicLikeFile(file) && file.type !== "image/gif";
+}
+
+function getFileExtension(fileName: string) {
+  return fileName.split(".").pop()?.toLowerCase() ?? "";
+}
+
+function isSupportedVideoFile(file: File) {
+  const normalizedType = file.type.split(";")[0]?.trim().toLowerCase();
+  return SUPPORTED_VIDEO_MIME_TYPES.has(normalizedType) || SUPPORTED_VIDEO_EXTENSIONS.has(getFileExtension(file.name));
 }
 
 function replaceExtension(fileName: string, extension: string) {
@@ -140,15 +154,24 @@ function Field({
   error,
   hint,
   label,
+  required = false,
 }: {
   children: React.ReactNode;
   error?: string;
   hint?: string;
   label: string;
+  required?: boolean;
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-[#65584f]">{label}</span>
+      <span className="mb-2 flex items-center gap-2 text-sm font-medium text-[#65584f]">
+        {label}
+        {required ? (
+          <span className="rounded-full bg-[#f8e8ea] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#b76470]">
+            Required
+          </span>
+        ) : null}
+      </span>
       {children}
       {hint ? <span className="mt-2 block text-xs text-[#8c7d70]">{hint}</span> : null}
       {error ? <span className="mt-2 block text-xs font-medium text-[#b42318]">{error}</span> : null}
@@ -218,6 +241,13 @@ function ErrorSummary({ errors }: { errors?: Record<string, string> }) {
 function formatFileSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+function statusLabel(status?: string) {
+  if (status === "published") return "Published";
+  if (status === "draft") return "Draft";
+  if (status === "processing") return "Processing";
+  return null;
 }
 
 function ChoiceCards({
@@ -301,11 +331,22 @@ export default function DogListingForm({
   submitLabel?: string;
   successListingsHref?: string;
 }) {
+  const [uploadProgress, setUploadProgress] = useState("");
   const [state, formAction, pending] = useActionState(
-    createDogListingAction,
+    async (previous: typeof initialCreateDogListingState, data: FormData) => {
+      try {
+        await stageDogMedia(data, setUploadProgress);
+      } catch (error) {
+        data.delete("media_files");
+        data.set("media_upload_warning", error instanceof Error ? error.message : "Upload failed. Please try again.");
+        data.set("adoption_status", "draft");
+      }
+      return createDogListingAction(previous, data);
+    },
     initialCreateDogListingState,
   );
   const [mediaError, setMediaError] = useState("");
+  const [mediaWarning, setMediaWarning] = useState("");
   const [photoRows, setPhotoRows] = useState(defaultPhotoRows);
   const [mediaItems, setMediaItems] = useState<PendingMediaItem[]>([]);
   const [coverMediaKey, setCoverMediaKey] = useState("");
@@ -315,6 +356,7 @@ export default function DogListingForm({
     ? selectedShelterId
     : shelters.length === 1 ? shelters[0].id : "";
   const mediaUploadError = state.fieldErrors?.media_files ?? mediaError;
+  const hasVideoSelected = mediaItems.some((item) => item.kind === "video");
 
   useEffect(() => {
     if (!state.message && !state.fieldErrors) return;
@@ -336,6 +378,7 @@ export default function DogListingForm({
     const input = event.currentTarget;
     const selectedFiles = Array.from(input.files ?? []);
     setMediaError("");
+    setMediaWarning("");
 
     if (selectedFiles.length === 0) {
       setMediaItems([]);
@@ -350,6 +393,23 @@ export default function DogListingForm({
       const warnings: string[] = [];
 
       for (const file of selectedFiles) {
+        const looksLikeVideo = file.type.startsWith("video/") || SUPPORTED_VIDEO_EXTENSIONS.has(getFileExtension(file.name));
+        if (looksLikeVideo) {
+          if (!isSupportedVideoFile(file)) {
+            throw new Error(`${file.name} is not supported. Upload an MP4 or MOV video under 50MB.`);
+          }
+
+          if (file.size > CLIENT_MAX_VIDEO_UPLOAD_BYTES) {
+            throw new Error(`${file.name} must be under 50MB before compression.`);
+          }
+
+          if (file.size > CLIENT_VIDEO_WARNING_BYTES) {
+            warnings.push(`${file.name} is a large video. Saving may take longer while PawJai trims and compresses it.`);
+          }
+        } else if (!file.type.startsWith("image/") && !isHeicLikeFile(file)) {
+          throw new Error(`${file.name} is not supported. Upload JPG, PNG, WEBP, HEIC, MP4, or MOV.`);
+        }
+
         const prepared = await compressPhotoForAdminUpload(file);
         preparedFiles.push({
           compressed: prepared.compressed,
@@ -357,19 +417,18 @@ export default function DogListingForm({
           originalSize: file.size,
         });
 
-        if (isHeicLikeFile(file) && file.size > CLIENT_MAX_FORM_MEDIA_BYTES) {
-          warnings.push(`${file.name} is a large HEIC file. Please export it as JPG before uploading online.`);
+        if (isHeicLikeFile(file) && file.size > CLIENT_MAX_PHOTO_FORM_MEDIA_BYTES) {
+          warnings.push(`${file.name} is a large HEIC file. If saving is slow, export it as JPG and try again.`);
         }
 
-        if (file.type.startsWith("video/") && file.size > CLIENT_MAX_FORM_MEDIA_BYTES) {
-          warnings.push(`${file.name} is too large for direct online form upload. Use a shorter/compressed clip for now.`);
-        }
       }
 
-      const totalBytes = preparedFiles.reduce((sum, item) => sum + item.file.size, 0);
-      if (totalBytes > CLIENT_MAX_FORM_MEDIA_BYTES) {
+      const totalPhotoBytes = preparedFiles
+        .filter((item) => !isSupportedVideoFile(item.file))
+        .reduce((sum, item) => sum + item.file.size, 0);
+      if (totalPhotoBytes > CLIENT_MAX_PHOTO_FORM_MEDIA_BYTES) {
         warnings.push(
-          `Selected media is ${formatFileSize(totalBytes)} after browser compression. Please upload fewer files at once or use smaller exports.`,
+          `Selected photos are ${formatFileSize(totalPhotoBytes)} after browser compression. Saving may be slower; upload fewer photos if it fails.`,
         );
       }
 
@@ -380,18 +439,19 @@ export default function DogListingForm({
       const nextItems = preparedFiles.map((item, index) => ({
         compressed: item.compressed,
         key: `file-${index}`,
-        kind: item.file.type.startsWith("video/") ? ("video" as const) : ("photo" as const),
+        kind: isSupportedVideoFile(item.file) ? ("video" as const) : ("photo" as const),
         name: item.file.name,
         originalSize: item.originalSize,
         size: item.file.size,
       }));
       setMediaItems(nextItems);
       setCoverMediaKey(nextItems[0]?.key ?? "");
-      setMediaError(warnings.join(" "));
+      setMediaWarning(warnings.join(" "));
     } catch (error) {
       setMediaItems([]);
       setCoverMediaKey("");
       input.value = "";
+      setMediaWarning("");
       setMediaError(error instanceof Error ? error.message : "Could not prepare these files for upload.");
     } finally {
       setMediaPreparing(false);
@@ -400,6 +460,7 @@ export default function DogListingForm({
 
   return (
     <form action={formAction} aria-busy={pending || mediaPreparing} className="space-y-6">
+      {pending && uploadProgress ? <p role="status" className="sticky top-2 z-20 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{uploadProgress}</p> : null}
       {returnTo ? <input name="returnTo" type="hidden" value={returnTo} /> : null}
       {showIntro ? (
         <div className="rounded-[32px] border border-[#f3cbd0] bg-[#f8e8ea] p-7 shadow-[0_24px_60px_rgba(101,88,79,0.12)]">
@@ -457,7 +518,7 @@ export default function DogListingForm({
       >
         <ErrorSummary errors={state.fieldErrors} />
         <div className="grid gap-5 md:grid-cols-2">
-          <Field label="Dog name (English)" error={state.fieldErrors?.name}>
+          <Field label="Dog name (English)" error={state.fieldErrors?.name} required>
             <input name="name" className={inputClass(state.fieldErrors?.name)} placeholder="Mali" />
           </Field>
 
@@ -465,7 +526,7 @@ export default function DogListingForm({
             <input name="name_th" className={inputClass()} placeholder="มะลิ" />
           </Field>
 
-          <Field label="Shelter" error={state.fieldErrors?.shelter_id}>
+          <Field label="Shelter" error={state.fieldErrors?.shelter_id} required>
             <select name="shelter_id" className={inputClass(state.fieldErrors?.shelter_id)} defaultValue={defaultShelterId}>
               <option value="" disabled>
                 Select a shelter
@@ -478,7 +539,7 @@ export default function DogListingForm({
             </select>
           </Field>
 
-          <Field label="Breed" error={state.fieldErrors?.breed}>
+          <Field label="Breed" error={state.fieldErrors?.breed} required>
             <DogBreedPicker buttonClassName={inputClass(state.fieldErrors?.breed)} placeholder="Choose breed" />
           </Field>
 
@@ -703,7 +764,7 @@ export default function DogListingForm({
 
       <Section
         title="Photos and videos"
-        description="Upload photos and short dog videos, then choose the cover and order before saving. Videos are compressed to short muted MP4 loops."
+        description="Upload photos and short dog videos, then choose the cover and order before saving. PawJai compresses videos on the server after upload, then stores them as short muted MP4 loops."
       >
         <div className="space-y-4">
           <Field
@@ -720,12 +781,12 @@ export default function DogListingForm({
           <Field
             label="Upload photos and videos"
             error={mediaUploadError}
-            hint="Select photos and up to 6 videos. Photos are compressed in your browser first so online uploads stay fast and reliable."
+            hint="Supported: JPG, PNG, WEBP, HEIC photos and MP4/MOV videos under 50MB. Photos are compressed in your browser; videos are uploaded to PawJai and compressed on the server during save. If a video fails later, PawJai keeps the dog saved as a draft."
           >
             <input
               name="media_files"
               type="file"
-              accept="image/*,video/*,.heic,.heif"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov"
               multiple
               onChange={(event) => {
                 void handleMediaFilesChange(event);
@@ -733,6 +794,16 @@ export default function DogListingForm({
               className={fileInputClass(mediaUploadError, "file:bg-[#cd8188]")}
             />
           </Field>
+          {mediaWarning ? (
+            <p className="rounded-2xl border border-[#ead7b8] bg-[#fffaf0] px-4 py-3 text-xs leading-5 text-[#8a6420]">
+              {mediaWarning}
+            </p>
+          ) : null}
+          {hasVideoSelected ? (
+            <p className="rounded-2xl border border-[#ead7b8] bg-[#fffaf0] px-4 py-3 text-xs leading-5 text-[#8a6420]">
+              Video compression runs on PawJai after upload, so larger videos can take a little longer to save. If compression fails, the dog profile will still be saved as a draft with a clear error.
+            </p>
+          ) : null}
 
           {mediaItems.length > 0 ? (
             <div className="rounded-[24px] border border-[#d6c8ad] bg-[#fffaf5] p-4">
@@ -852,11 +923,23 @@ export default function DogListingForm({
               : "border-[#f1c4c0] bg-[#fff5f4] text-[#9f2d24]"
           }`}
         >
-          <p>{state.message}</p>
-          {state.status === "success" && state.dogId ? (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <p>{state.message}</p>
+            {statusLabel(state.publishState) ? (
+              <span className="w-fit rounded-full bg-white/75 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]">
+                {statusLabel(state.publishState)}
+              </span>
+            ) : null}
+          </div>
+          {state.dogId ? (
             <p className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
-              <Link href={`/dogs/${state.dogId}`} className="font-semibold underline decoration-2 underline-offset-4">
-                Open the new dog profile
+              {state.publishState === "published" ? (
+                <Link href={`/dogs/${state.dogId}`} className="font-semibold underline decoration-2 underline-offset-4" target="_blank">
+                  Open live public profile
+                </Link>
+              ) : null}
+              <Link href={`/admin/dogs/${state.dogId}/edit`} className="font-semibold underline decoration-2 underline-offset-4">
+                Open saved draft
               </Link>
               <Link href={successListingsHref} className="font-semibold underline decoration-2 underline-offset-4">
                 View in Manage listings
@@ -890,7 +973,13 @@ export default function DogListingForm({
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cd8188] px-7 py-3 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(205,129,136,0.22)] transition hover:bg-[#b87179] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Save aria-hidden="true" className="h-4 w-4" />
-              {mediaPreparing ? "Preparing media..." : pending ? "Creating listing..." : submitLabel}
+              {mediaPreparing
+                ? "Preparing media..."
+                : pending && hasVideoSelected
+                  ? "Uploading and compressing video..."
+                  : pending
+                    ? "Creating listing..."
+                    : submitLabel}
             </button>
           </div>
         </div>
@@ -898,7 +987,9 @@ export default function DogListingForm({
           {mediaPreparing
             ? "Preparing selected files before upload."
             : pending
-              ? "Creating the listing now. Keep this page open until the result message appears."
+              ? hasVideoSelected
+                ? "Uploading to PawJai and compressing the video on the server. Keep this page open until the result message appears."
+                : "Creating the listing now. Keep this page open until the result message appears."
               : "If anything needs attention, the form will scroll to the fix list after submit."}
         </p>
       </div>

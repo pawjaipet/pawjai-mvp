@@ -81,9 +81,12 @@ export function normalizeBreedLabel(value: string) {
   return canonicalizeBreedLabel(value);
 }
 
-export function canonicalizeBreedLabel(value: string | null | undefined) {
+export function canonicalizeBreedLabel(value: string | null | undefined): string {
   const label = cleanBreedLabel(value ?? "");
   if (!label) return "";
+  if (label.includes(" / ")) {
+    return [...new Set(label.split(" / ").map(canonicalizeBreedLabel))].filter(Boolean).join(" / ");
+  }
 
   const key = toBreedKey(label);
   const exact = DOG_BREED_KEYS.get(key);
@@ -97,7 +100,7 @@ export function canonicalizeBreedLabel(value: string | null | undefined) {
 }
 
 export function isCanonicalDogBreed(value: string | null | undefined): value is DogBreedOption {
-  return DOG_BREED_KEYS.has(toBreedKey(canonicalizeBreedLabel(value)));
+  return canonicalizeBreedLabel(value).split(" / ").every((breed) => DOG_BREED_KEYS.has(toBreedKey(breed)));
 }
 
 export function isAllBreedsLabel(value: string | null | undefined) {

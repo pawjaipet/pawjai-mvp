@@ -3690,6 +3690,8 @@ export default function AdminReorgDraftPanel({
   initialBookingWorkspaceView,
   initialVisitBucket,
   initialMessage,
+  initialMessageDogId,
+  initialMessageDogState,
   initialRoleView = "pawjai",
   initialShelterId,
   initialShelterTab,
@@ -3702,6 +3704,8 @@ export default function AdminReorgDraftPanel({
   initialVisitBucket?: string;
   initialMainTab?: string;
   initialMessage?: string;
+  initialMessageDogId?: string;
+  initialMessageDogState?: string;
   initialRoleView?: RoleView;
   initialShelterId?: string;
   initialShelterTab?: string;
@@ -3778,6 +3782,7 @@ export default function AdminReorgDraftPanel({
   const shelterWorkspaceTabHref = (nextTab: ShelterTab) => isShelterPortal
     ? `${workspaceBaseHref}?view=${nextTab}`
     : adminDraftShelterWorkspaceHref(selectedShelter.id, nextTab, draftShelterRole);
+  const initialMessageDogPathId = initialMessageDogId ? encodeURIComponent(initialMessageDogId) : "";
   const selectAdminShelterPreview = (shelterId: string) => {
     setSelectedShelterId(shelterId);
     router.replace(adminDraftShelterWorkspaceHref(shelterId, shelterTab, "shelter"), { scroll: false });
@@ -3874,7 +3879,28 @@ export default function AdminReorgDraftPanel({
 
         {initialMessage ? (
           <div className={`mb-3 rounded-2xl border px-4 py-3 text-xs font-semibold md:mb-6 md:px-5 md:py-4 md:text-sm ${/could not|choose|must|required|invalid|failed/i.test(initialMessage) ? "border-[#efc2be] bg-[#fff1f0] text-[#9a3129]" : "border-[#cfe2c5] bg-[#eef5ea] text-[#4f7847]"}`}>
-            {initialMessage}
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <span>{initialMessage}</span>
+                {initialMessageDogState === "published" || initialMessageDogState === "draft" ? (
+                  <span className="w-fit rounded-full bg-white/75 px-3 py-1 text-[10px] uppercase tracking-[0.14em]">
+                    {initialMessageDogState === "published" ? "Published" : "Draft"}
+                  </span>
+                ) : null}
+              </div>
+              {initialMessageDogId ? (
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  {initialMessageDogState === "published" ? (
+                    <Link className="inline-flex items-center gap-1 underline decoration-2 underline-offset-4" href={`/dogs/${initialMessageDogPathId}`} target="_blank">
+                      Open live public profile <ExternalLink size={13} />
+                    </Link>
+                  ) : null}
+                  <Link className="inline-flex items-center gap-1 underline decoration-2 underline-offset-4" href={isShelterPortal ? `${workspaceBaseHref}/dogs/${initialMessageDogPathId}/edit` : adminDraftDogEditHref(initialMessageDogPathId, selectedShelter.id, draftShelterRole)}>
+                    Open saved draft
+                  </Link>
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : null}
 

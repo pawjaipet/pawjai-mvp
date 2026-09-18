@@ -9,6 +9,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import DogListingForm from "@/app/admin/dogs/new/DogListingForm";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export default async function ShelterNewDogPage({
   params,

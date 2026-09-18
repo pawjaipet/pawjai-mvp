@@ -77,6 +77,7 @@ const nextConfig: NextConfig = {
     },
   },
   outputFileTracingIncludes: {
+    "/shelter/**/*": ["./node_modules/ffmpeg-static/ffmpeg"],
     "/admin/**/*": ["./node_modules/ffmpeg-static/ffmpeg"],
     "/ads/**/*": ["./node_modules/ffmpeg-static/ffmpeg"],
     "/admindraft/**/*": ["./node_modules/ffmpeg-static/ffmpeg"],

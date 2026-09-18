@@ -5,7 +5,7 @@ import { loadAdminDraftData } from "@/utils/admin-draft-data";
 
 export const dynamic = "force-dynamic";
 
-function buildAdminReturnTo(searchParams?: { bookingView?: string; role?: string; shelter?: string; view?: string; visitBucket?: string }) {
+function buildAdminReturnTo(searchParams?: { bookingView?: string; newDogId?: string; newDogState?: string; role?: string; shelter?: string; view?: string; visitBucket?: string }) {
   const params = new URLSearchParams();
 
   if (searchParams?.shelter) params.set("shelter", searchParams.shelter);
@@ -13,6 +13,8 @@ function buildAdminReturnTo(searchParams?: { bookingView?: string; role?: string
   if (searchParams?.bookingView) params.set("bookingView", searchParams.bookingView);
   if (searchParams?.visitBucket) params.set("visitBucket", searchParams.visitBucket);
   if (searchParams?.role === "shelter") params.set("role", "shelter");
+  if (searchParams?.newDogId) params.set("newDogId", searchParams.newDogId);
+  if (searchParams?.newDogState) params.set("newDogState", searchParams.newDogState);
 
   const query = params.toString();
   return query ? `/admin?${query}` : "/admin";
@@ -21,7 +23,7 @@ function buildAdminReturnTo(searchParams?: { bookingView?: string; role?: string
 export default async function AdminWorkspacePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ bookingView?: string; message?: string; role?: string; shelter?: string; view?: string; visitBucket?: string }>;
+  searchParams?: Promise<{ bookingView?: string; message?: string; newDogId?: string; newDogState?: string; role?: string; shelter?: string; view?: string; visitBucket?: string }>;
 }) {
   const resolvedSearchParams = await searchParams;
   await requireGlobalAdmin(buildAdminReturnTo(resolvedSearchParams));
@@ -39,6 +41,8 @@ export default async function AdminWorkspacePage({
       initialVisitBucket={resolvedSearchParams?.visitBucket}
       initialMainTab={resolvedSearchParams?.view}
       initialMessage={resolvedSearchParams?.message}
+      initialMessageDogId={resolvedSearchParams?.newDogId}
+      initialMessageDogState={resolvedSearchParams?.newDogState}
       initialRoleView={resolvedSearchParams?.role === "shelter" ? "shelter" : "pawjai"}
       initialShelterId={resolvedSearchParams?.shelter}
       initialShelterTab={resolvedSearchParams?.view}

@@ -128,7 +128,8 @@ export async function getAdminAuthContext(options: AdminAuthContextOptions = {})
       const { data: memberships } = await admin
         .from("shelter_users")
         .select("shelter_id")
-        .eq("profile_id", user.id);
+        .eq("profile_id", user.id)
+        .in("role", ["owner", "staff"]);
 
       return {
         fullName: profile.full_name,

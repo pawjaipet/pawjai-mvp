@@ -24,6 +24,14 @@ function plain(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+test("multiple breeds survive save and edit normalization without collapsing a mixed breed", () => {
+  const { canonicalizeBreedLabel, isCanonicalDogBreed } = loadDogBreeds();
+  assert.equal(canonicalizeBreedLabel("Mixed Breed / Thai Ridgeback / Mixed Breed"), "Mixed Breed / Thai Ridgeback");
+  assert.equal(isCanonicalDogBreed("Golden Retriever / Thai Dog"), true);
+  assert.equal(isCanonicalDogBreed("Thai Dog / Not a breed"), false);
+  assert.equal(isCanonicalDogBreed(""), false);
+});
+
 test("recent dog breed selections are unique and limited to three", () => {
   const { recordRecentBreedSelection } = loadDogBreeds();
 

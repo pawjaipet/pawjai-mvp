@@ -288,6 +288,23 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     return fallbackData(error instanceof Error ? error.message : "Supabase admin client is unavailable.");
   }
 
+  const scopedShelterIds = options.shelterIds ?? null;
+  const shouldScopeShelters = Array.isArray(scopedShelterIds);
+  // Scope before limiting rows; never fetch other partners' private workspace data.
+  function scoped<T>(query: T, column = "shelter_id"): T {
+    return shouldScopeShelters
+      ? (query as T & { in(column: string, values: string[]): T }).in(column, scopedShelterIds)
+      : query;
+  }
+  const tenantDogs = shouldScopeShelters
+    ? await supabase.from("dogs").select("id").in("shelter_id", scopedShelterIds)
+        .order("updated_at", { ascending: false }).limit(200)
+    : { data: [], error: null };
+  if (tenantDogs.error) return fallbackData(tenantDogs.error.message);
+  const tenantDogIds = (tenantDogs.data ?? []).map((dog) => dog.id);
+  const photoQuery = supabase.from("dog_photos").select("dog_id,public_url,is_cover,sort_order,storage_path");
+  if (shouldScopeShelters) photoQuery.in("dog_id", tenantDogIds);
+
   const [
     sheltersResult,
     dogsResult,
@@ -306,74 +323,72 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     careDocumentsResult,
     careTimelineResult,
   ] = await Promise.all([
-    supabase
+    scoped(supabase
       .from("shelters")
-      .select("id,name,phone_number,email,address_line,subdistrict,district,province,postal_code,description,website_url,facebook_url,instagram_url,logo_url,google_maps_url,meeting_instructions,promptpay_id,bank_name,bank_account_number,bank_account_name")
+      .select("id,name,phone_number,email,address_line,subdistrict,district,province,postal_code,description,website_url,facebook_url,instagram_url,logo_url,google_maps_url,meeting_instructions,promptpay_id,bank_name,bank_account_number,bank_account_name"), "id")
       .order("name", { ascending: true }),
-    supabase
+    scoped(supabase
       .from("dogs")
-      .select("id,name,breed,adoption_status,shelter_id,created_at,updated_at,gender,size,energy_level")
+      .select("id,name,breed,adoption_status,shelter_id,created_at,updated_at,gender,size,energy_level"))
       .order("updated_at", { ascending: false })
       .limit(200),
-    supabase
-      .from("dog_photos")
-      .select("dog_id,public_url,is_cover,sort_order,storage_path")
+    photoQuery
       .order("sort_order", { ascending: true })
       .limit(1000),
-    supabase
+    scoped(supabase
       .from("appointments")
-      .select("*")
+      .select("*"))
       .order("appointment_date", { ascending: true })
       .limit(200),
-    supabase
+    scoped(supabase
       .from("donation_intents")
-      .select("id,user_id,dog_id,shelter_id,treat_count,amount_thb,status,created_at,updated_at,proof_bucket_id,proof_storage_path,proof_mime_type,proof_original_file_name,proof_submitted_at,shelter_note")
+      .select("id,user_id,dog_id,shelter_id,treat_count,amount_thb,status,created_at,updated_at,proof_bucket_id,proof_storage_path,proof_mime_type,proof_original_file_name,proof_submitted_at,shelter_note"))
       .order("created_at", { ascending: false })
       .limit(500),
     loadAppointmentMessageThreads({ shelterIds: options.shelterIds }),
-    supabase
+    shouldScopeShelters ? { data: [], error: null } : supabase
       .from("ads")
       .select("id,submission_code,company_name,contact_info,contact_email,contact_phone,image_url,media_type,click_url,is_active,ad_status,start_date,end_date")
       .order("created_at", { ascending: false })
       .limit(50),
-    supabase
+    shouldScopeShelters ? { data: [], error: null } : supabase
       .from("ad_clicks")
       .select("id,ad_id,user_id,destination_url,clicked_at")
       .order("clicked_at", { ascending: false })
       .limit(1000),
-    supabase
+    shouldScopeShelters ? { data: null, error: null } : supabase
       .from("pawjai_profile")
       .select("hero_slogan,mission_title,mission_body,partner_shelters,updated_at")
       .eq("id", "default")
       .maybeSingle(),
-    (supabase as any)
+    scoped((supabase as any)
       .from("shelter_availability")
-      .select("id,shelter_id,availability_type,start_date,end_date,note")
+      .select("id,shelter_id,availability_type,start_date,end_date,note"))
       .order("start_date", { ascending: true }),
-    supabase
+    scoped(supabase
       .from("shelter_regular_hours")
-      .select("id,shelter_id,day_of_week,is_closed,opens_at,closes_at,slot_duration_minutes")
+      .select("id,shelter_id,day_of_week,is_closed,opens_at,closes_at,slot_duration_minutes"))
       .order("day_of_week", { ascending: true }),
-    supabase
+    shouldScopeShelters ? { data: null, error: null } : supabase
       .from("site_settings")
       .select("value")
       .eq("key", "ads_creative_specs")
       .maybeSingle(),
-    supabase
+    scoped(supabase
       .from("dog_care_records")
-      .select("*")
+      .select("*"))
       .limit(500),
-    supabase
+    scoped(supabase
       .from("dog_vaccination_records")
-      .select("*")
+      .select("*"))
       .limit(1000),
-    supabase
+    scoped(supabase
       .from("dog_care_documents")
-      .select("*")
+      .select("*"))
       .limit(1000),
-    supabase
+    scoped(supabase
       .from("dog_care_timeline_events")
-      .select("*")
+      .select("*"))
       .limit(1000),
   ]);
 
@@ -382,8 +397,6 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
     return fallbackData(firstError.message);
   }
 
-  const scopedShelterIds = options.shelterIds ?? null;
-  const shouldScopeShelters = Array.isArray(scopedShelterIds);
   const visibleShelterIds = new Set(scopedShelterIds ?? []);
   const rawShelters = (sheltersResult.data ?? []).filter((shelter) => (
     shouldScopeShelters ? visibleShelterIds.has(shelter.id) : true

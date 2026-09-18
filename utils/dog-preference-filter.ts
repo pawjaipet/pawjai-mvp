@@ -90,9 +90,8 @@ function matchesBreed(value: Nullable<string>, allowed: Nullable<string[]>) {
   const labels = canonicalizeBreedSelections(allowed);
   if (!labels.length) return true;
   if (!value) return false;
-  const normalizedValue = normalize(canonicalizeBreedLabel(value));
-
-  return labels.some((label) => normalize(label) === normalizedValue);
+  const breeds = canonicalizeBreedLabel(value).split(" / ").map(normalize);
+  return labels.some((label) => breeds.includes(normalize(label)));
 }
 
 function matchesBoolean(value: Nullable<boolean>, required: Nullable<boolean>) {

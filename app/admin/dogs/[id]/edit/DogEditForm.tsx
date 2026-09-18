@@ -436,6 +436,7 @@ export default function DogEditForm({
   }, [router, state.status]);
 
   const [newPhotoUploadError, setNewPhotoUploadError] = useState("");
+  const [newPhotoUploadWarning, setNewPhotoUploadWarning] = useState("");
   const [newPhotoItems, setNewPhotoItems] = useState<PendingPhotoUpload[]>([]);
   const [newPhotosPreparing, setNewPhotosPreparing] = useState(false);
 
@@ -443,6 +444,7 @@ export default function DogEditForm({
     const input = event.currentTarget;
     const selectedFiles = Array.from(input.files ?? []);
     setNewPhotoUploadError("");
+    setNewPhotoUploadWarning("");
 
     if (selectedFiles.length === 0) {
       setNewPhotoItems([]);
@@ -453,10 +455,11 @@ export default function DogEditForm({
 
     try {
       const preparedFiles: { compressed: boolean; file: File; originalSize: number }[] = [];
+      const warnings: string[] = [];
 
       for (const file of selectedFiles) {
         if (isHeicLikeFile(file) && file.size > CLIENT_MAX_FORM_MEDIA_BYTES) {
-          throw new Error(`${file.name} is a large HEIC file. Please export it as JPG before uploading online.`);
+          warnings.push(`${file.name} is a large HEIC file. If saving is slow, export it as JPG and try again.`);
         }
 
         const prepared = await compressPhotoForAdminUpload(file);
@@ -469,8 +472,8 @@ export default function DogEditForm({
 
       const totalBytes = preparedFiles.reduce((sum, item) => sum + item.file.size, 0);
       if (totalBytes > CLIENT_MAX_FORM_MEDIA_BYTES) {
-        throw new Error(
-          `Selected photos are ${formatFileSize(totalBytes)} after browser compression. Please upload fewer photos at once or use smaller exports.`,
+        warnings.push(
+          `Selected photos are ${formatFileSize(totalBytes)} after browser compression. Saving may be slower; upload fewer photos if it fails.`,
         );
       }
 
@@ -485,9 +488,11 @@ export default function DogEditForm({
           size: item.file.size,
         })),
       );
+      setNewPhotoUploadWarning(warnings.join(" "));
     } catch (error) {
       setNewPhotoItems([]);
       input.value = "";
+      setNewPhotoUploadWarning("");
       setNewPhotoUploadError(error instanceof Error ? error.message : "Could not prepare these photos for upload.");
     } finally {
       setNewPhotosPreparing(false);
@@ -851,6 +856,11 @@ export default function DogEditForm({
                   className="block w-full rounded-2xl border border-[#d6c8ad] bg-white px-4 py-3 text-sm text-[#65584f] file:mr-4 file:rounded-full file:border-0 file:bg-[#cd8188] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#b87179]"
                 />
               </Field>
+              {newPhotoUploadWarning ? (
+                <p className="mt-3 rounded-2xl border border-[#ead7b8] bg-[#fffaf0] px-4 py-3 text-xs leading-5 text-[#8a6420]">
+                  {newPhotoUploadWarning}
+                </p>
+              ) : null}
               {newPhotosPreparing ? (
                 <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#cd8188]">
                   Preparing photos...

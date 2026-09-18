@@ -168,7 +168,9 @@ test("shelter form mutations cannot honor an admin return destination", () => {
   assert.match(bookingActions, /await redirectAfterShelterMutation\(formData, adminContext/);
   assert.match(dogCreateActions, /if \(!context\.isGlobalAdmin\)/);
   assert.match(dogCreateActions, /allowedPortalReturn/);
-  assert.match(dogCreateActions, /redirect\(addDogRedirectMessage\(allowedPortalReturn \? requested : fallback, message\)\)/);
+  assert.match(dogCreateActions, /redirect\(addDogRedirectMessage\(allowedPortalReturn \? requested : fallback, message, options\)\)/);
+  assert.match(dogCreateActions, /newDogId/);
+  assert.match(dogCreateActions, /newDogState/);
   assert.match(dogEditActions, /if \(!adminContext\.isGlobalAdmin\)/);
   assert.match(dogEditActions, /if \(!context\.isGlobalAdmin\)/);
   assert.match(dogEditActions, /safePortalReturn/);

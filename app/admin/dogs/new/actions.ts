@@ -55,13 +55,16 @@ const DOG_ADOPTION_STATUSES = new Set<Database["public"]["Enums"]["dog_adoption_
 ]);
 
 const IMAGE_EXTENSIONS = new Set([".avif", ".gif", ".heic", ".heif", ".jpeg", ".jpg", ".png", ".webp"]);
+const VIDEO_EXTENSIONS = new Set([".mov", ".mp4"]);
+const VIDEO_MIME_TYPES = new Set(["video/mp4", "video/quicktime"]);
 const DOG_PHOTOS_BUCKET = "dog-photos";
 const DOG_MEDIA_MIME_TYPES = ["image/png", "image/jpeg", "image/webp", "video/mp4"];
 const DOG_STORAGE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_DOG_PHOTO_WIDTH = 1800;
 const MAX_DOG_PHOTO_HEIGHT = 2400;
 const DOG_PHOTO_JPEG_QUALITY = 78;
-const MAX_VIDEO_UPLOAD_BYTES = 100 * 1024 * 1024;
+const MAX_VIDEO_UPLOAD_BYTES = 50 * 1024 * 1024;
+const DOG_MEDIA_BUCKET_FILE_SIZE_LIMIT_BYTES = 25 * 1024 * 1024;
 const DOG_VIDEO_DURATION_SECONDS = 10;
 const execFileAsync = promisify(execFile);
 
@@ -114,9 +117,28 @@ function getString(formData: FormData, name: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function addDogRedirectMessage(path: string, message: string) {
+function formatUploadSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+function mediaFailureMessage(fileName: string, detail: string, wasRequestedPublic: boolean) {
+  const visibilityCopy = wasRequestedPublic
+    ? "The dog was saved as a draft so it is not public yet,"
+    : "The dog was created,";
+
+  return `${visibilityCopy} but ${fileName} could not be processed: ${detail}`;
+}
+
+function addDogRedirectMessage(
+  path: string,
+  message: string,
+  options: { dogId?: string; publishState?: "draft" | "processing" | "published" } = {},
+) {
   const url = new URL(path, "https://pawjai.local");
   if (message) url.searchParams.set("message", message);
+  if (options.dogId) url.searchParams.set("newDogId", options.dogId);
+  if (options.publishState) url.searchParams.set("newDogState", options.publishState);
   return `${url.pathname}${url.search}`;
 }
 
@@ -124,6 +146,7 @@ async function redirectAfterShelterDogMutation(
   context: Awaited<ReturnType<typeof requireShelterAccess>>,
   returnTo: string,
   message: string,
+  options: { dogId?: string; publishState?: "draft" | "processing" | "published" } = {},
 ): Promise<never | null> {
   const requested = returnTo.trim();
 
@@ -134,13 +157,13 @@ async function redirectAfterShelterDogMutation(
       ? requested === portalTarget || requested.startsWith(`${portalTarget}?`)
       : requested === "/shelter" || requested.startsWith("/shelter?");
 
-    redirect(addDogRedirectMessage(allowedPortalReturn ? requested : fallback, message));
+    redirect(addDogRedirectMessage(allowedPortalReturn ? requested : fallback, message, options));
   }
 
   if (requested.startsWith("/admin") || requested.startsWith("/admindraft")) {
     const canonicalReturnTo = requested.replace(/^\/admindraft/, "/admin");
     if (canonicalReturnTo === "/admin" || canonicalReturnTo.startsWith("/admin?")) {
-      redirect(addDogRedirectMessage(canonicalReturnTo, message));
+      redirect(addDogRedirectMessage(canonicalReturnTo, message, options));
     }
   }
 
@@ -427,7 +450,7 @@ function buildDogPhotoPath({
   const slug = buildDogMediaBaseName(dogName, dogNumber);
   const normalizedExtension = extension?.replace(/^\./, "") || "jpg";
 
-  return `pawjaidogs/${slug}-photo${photoLetter(photoIndex)}.${normalizedExtension}`;
+  return `pawjaidogs/${crypto.randomUUID()}/${slug}-photo${photoLetter(photoIndex)}.${normalizedExtension}`;
 }
 
 function buildDogVideoPath({
@@ -441,7 +464,7 @@ function buildDogVideoPath({
 }) {
   const slug = buildDogMediaBaseName(dogName, dogNumber);
 
-  return `pawjaidogs/${slug}-video${photoLetter(videoIndex)}.mp4`;
+  return `pawjaidogs/${crypto.randomUUID()}/${slug}-video${photoLetter(videoIndex)}.mp4`;
 }
 
 function buildDogMediaBaseName(dogName: string, dogNumber: number) {
@@ -553,7 +576,7 @@ async function uploadPhotoBuffer({
   };
 }
 
-async function optimizeDogVideo(body: Buffer, contentType: string | null) {
+async function optimizeDogVideo(body: Buffer) {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pawjai-video-"));
   const inputPath = path.join(tempDir, "input");
   const outputPath = path.join(tempDir, "output.mp4");
@@ -563,8 +586,7 @@ async function optimizeDogVideo(body: Buffer, contentType: string | null) {
     const ffmpegPath = ffmpegModule.default;
 
     if (!ffmpegPath || !(await fileExists(ffmpegPath))) {
-      if (contentType === "video/mp4") return body;
-      throw new Error("Video compression is unavailable on this machine.");
+      throw new Error("Video compression is unavailable on the server. The dog was saved as a draft; please try uploading the video again later.");
     }
 
     await fs.writeFile(inputPath, body);
@@ -591,15 +613,6 @@ async function optimizeDogVideo(body: Buffer, contentType: string | null) {
         outputPath,
       ]);
     } catch (error) {
-      if (
-        contentType === "video/mp4" &&
-        error instanceof Error &&
-        "code" in error &&
-        error.code === "ENOENT"
-      ) {
-        return body;
-      }
-
       throw error;
     }
 
@@ -623,12 +636,18 @@ async function uploadVideoFile({
   videoIndex: number;
 }): Promise<UploadedVideo> {
   const body = Buffer.from(await file.arrayBuffer());
-  const optimizedBody = await optimizeDogVideo(body, file.type || null);
+  const optimizedBody = await optimizeDogVideo(body);
   const desiredPath = buildDogVideoPath({ dogName, dogNumber, videoIndex });
+
+  if (optimizedBody.length > DOG_MEDIA_BUCKET_FILE_SIZE_LIMIT_BYTES) {
+    throw new Error(
+      `The compressed video is still ${formatUploadSize(optimizedBody.length)}. Please trim it shorter or export a smaller clip.`,
+    );
+  }
 
   const { error: bucketError } = await supabase.storage.updateBucket(DOG_PHOTOS_BUCKET, {
     allowedMimeTypes: DOG_MEDIA_MIME_TYPES,
-    fileSizeLimit: "26214400",
+    fileSizeLimit: String(DOG_MEDIA_BUCKET_FILE_SIZE_LIMIT_BYTES),
     public: true,
   });
 
@@ -675,7 +694,10 @@ function getOptionalVideoFile(formData: FormData) {
 }
 
 function isVideoFile(file: File) {
-  return file.type.startsWith("video/");
+  const normalizedType = file.type.split(";")[0]?.trim().toLowerCase();
+  const extension = path.extname(file.name).toLowerCase();
+
+  return VIDEO_MIME_TYPES.has(normalizedType) || VIDEO_EXTENSIONS.has(extension);
 }
 
 function getOrderedMediaKeys(formData: FormData, mediaFileCount: number) {
@@ -768,6 +790,26 @@ export async function createDogListingAction(
   const ageMonths = getOptionalNumber(formData, "age_months");
   const weightKg = getOptionalNumber(formData, "weight_kg");
   const mediaFiles = normalizeMediaFiles(formData);
+  // Large media travels directly to private storage, avoiding the host's request limit.
+  if (formData.get("staged_media")) {
+    const context = await requireShelterAccess(shelterId, accessRedirectPath);
+    const storage = createAdminClient().storage.from("dog-upload-staging");
+    try {
+      const staged: unknown = JSON.parse(String(formData.get("staged_media")));
+      if (!Array.isArray(staged) || staged.length > 30) throw new Error("Invalid upload list.");
+      for (const item of staged) {
+        const prefix = `${shelterId}/${context.userId}/`;
+        if (!item || typeof item.path !== "string" || !item.path.startsWith(prefix) || !/^[a-f0-9-]+\.(jpg|jpeg|png|webp|heic|heif|mp4|mov)$/.test(item.path.slice(prefix.length)) || typeof item.name !== "string") throw new Error("Invalid upload reference.");
+        const { data, error } = await storage.download(item.path);
+        if (error || !data) throw new Error(`Could not read ${item.name}. Please upload it again.`);
+        if (data.size > MAX_VIDEO_UPLOAD_BYTES) throw new Error(`${item.name} must be under 50MB.`);
+        mediaFiles.push(new File([data], item.name, { type: data.type }));
+        await storage.remove([item.path]);
+      }
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : "Could not read uploaded media." };
+    }
+  }
   const photoUrls = normalizePhotoUrls(formData);
   const photoFiles = normalizePhotoFiles(formData);
   const videoFile = getOptionalVideoFile(formData);
@@ -821,13 +863,13 @@ export async function createDogListingAction(
   for (const [index, file] of mediaFiles.entries()) {
     if (isVideoFile(file)) {
       if (file.size > MAX_VIDEO_UPLOAD_BYTES) {
-        fieldErrors[`media_file_${index}`] = `${file.name} must be under 100MB before compression.`;
+        fieldErrors[`media_file_${index}`] = `${file.name} must be under 50MB before compression.`;
       }
       continue;
     }
 
     if (!isHeicFile(file) && !file.type.startsWith("image/")) {
-      fieldErrors[`media_file_${index}`] = `${file.name} is not a supported photo or video file.`;
+      fieldErrors[`media_file_${index}`] = `${file.name} is not supported. Upload JPG, PNG, WEBP, HEIC, MP4, or MOV. Videos must be under 50MB.`;
     }
   }
 
@@ -842,10 +884,10 @@ export async function createDogListingAction(
   }
 
   if (videoFile) {
-    if (!videoFile.type.startsWith("video/")) {
-      fieldErrors.video_file = `${videoFile.name} is not a video file.`;
+    if (!isVideoFile(videoFile)) {
+      fieldErrors.video_file = `${videoFile.name} is not supported. Upload an MP4 or MOV video under 50MB.`;
     } else if (videoFile.size > MAX_VIDEO_UPLOAD_BYTES) {
-      fieldErrors.video_file = "Please use a video under 100MB. It will be trimmed and compressed after upload.";
+      fieldErrors.video_file = "Please use a video under 50MB. It will be trimmed and compressed after upload.";
     }
   }
 
@@ -889,9 +931,12 @@ export async function createDogListingAction(
     getOptionalString(formData, "special_needs") ??
     (visibleCareTags.length > 0 ? visibleCareTags.join(", ") : null);
   const dogNumber = await getNextDogNumber(supabase);
+  const requestedAdoptionStatus = getEnumValue(formData, "adoption_status", DOG_ADOPTION_STATUSES, "draft") ?? "draft";
+  const initialAdoptionStatus = requestedAdoptionStatus === "available" ? "draft" : requestedAdoptionStatus;
+  const wasRequestedPublic = requestedAdoptionStatus === "available";
 
   const dogPayload: DogInsert = {
-    adoption_status: getEnumValue(formData, "adoption_status", DOG_ADOPTION_STATUSES, "draft") ?? "draft",
+    adoption_status: initialAdoptionStatus,
     age_months: ageMonths,
     animal_friendly: getBoolean(formData, "animal_friendly"),
     background: getOptionalString(formData, "background"),
@@ -933,7 +978,8 @@ export async function createDogListingAction(
     context: adminContext,
     metadata: {
       name,
-      status: dogPayload.adoption_status,
+      initialStatus: initialAdoptionStatus,
+      requestedStatus: requestedAdoptionStatus,
     },
     shelterId,
     targetId: insertedDog.id,
@@ -941,6 +987,9 @@ export async function createDogListingAction(
   });
 
   let backblazeMirrorWarningCount = 0;
+  const videoWarnings: string[] = [];
+  const uploadWarning = getString(formData, "media_upload_warning");
+  if (uploadWarning) videoWarnings.push(uploadWarning.slice(0, 500));
   let coverPhotoUrl: string | null = null;
   const mediaManifestItems: UploadedMediaItem[] = [];
   const pendingPhotoManifestItems: PendingPhotoMediaItem[] = [];
@@ -982,13 +1031,7 @@ export async function createDogListingAction(
           mediaSortOrder += 1;
           videoIndex += 1;
         } catch (error) {
-          return {
-            dogId: insertedDog.id,
-            message: `The dog was created, but ${file.name} could not be compressed and uploaded: ${
-              error instanceof Error ? error.message : "Unknown video upload error"
-            }`,
-            status: "error",
-          };
+          videoWarnings.push(`${file.name}: ${error instanceof Error ? error.message : "Video compression failed."}`);
         }
 
         continue;
@@ -1027,9 +1070,12 @@ export async function createDogListingAction(
       } catch (error) {
         return {
           dogId: insertedDog.id,
-          message: `The dog was created, but ${file.name} could not be uploaded to public photo storage: ${
-            error instanceof Error ? error.message : "Unknown upload error"
-          }`,
+          publishState: "draft",
+          message: mediaFailureMessage(
+            file.name,
+            `photo upload failed. ${error instanceof Error ? error.message : "Unknown upload error"}`,
+            wasRequestedPublic,
+          ),
           status: "error",
         };
       }
@@ -1073,9 +1119,12 @@ export async function createDogListingAction(
       } catch (error) {
         return {
           dogId: insertedDog.id,
-          message: `The dog was created, but the local photo folder could not be imported: ${
-            error instanceof Error ? error.message : "Unknown folder import error"
-          }`,
+          publishState: "draft",
+          message: mediaFailureMessage(
+            "the local photo folder",
+            error instanceof Error ? error.message : "Unknown folder import error",
+            wasRequestedPublic,
+          ),
           status: "error",
         };
       }
@@ -1115,9 +1164,12 @@ export async function createDogListingAction(
       } catch (error) {
         return {
           dogId: insertedDog.id,
-          message: `The dog was created, but ${file.name} could not be uploaded to public photo storage: ${
-            error instanceof Error ? error.message : "Unknown upload error"
-          }`,
+          publishState: "draft",
+          message: mediaFailureMessage(
+            file.name,
+            `photo upload failed. ${error instanceof Error ? error.message : "Unknown upload error"}`,
+            wasRequestedPublic,
+          ),
           status: "error",
         };
       }
@@ -1155,9 +1207,12 @@ export async function createDogListingAction(
       } catch (error) {
         return {
           dogId: insertedDog.id,
-          message: `The dog was created, but photo URL ${index + 1} could not be moved to public photo storage: ${
-            error instanceof Error ? error.message : "Unknown upload error"
-          }`,
+          publishState: "draft",
+          message: mediaFailureMessage(
+            `photo URL ${index + 1}`,
+            `could not be moved to public photo storage. ${error instanceof Error ? error.message : "Unknown upload error"}`,
+            wasRequestedPublic,
+          ),
           status: "error",
         };
       }
@@ -1170,7 +1225,8 @@ export async function createDogListingAction(
     if (photoError) {
       return {
         dogId: insertedDog.id,
-        message: `The dog was created, but saving the photos failed: ${photoError.message}`,
+        publishState: "draft",
+        message: mediaFailureMessage("the uploaded photos", `saving failed. ${photoError.message}`, wasRequestedPublic),
         status: "error",
       };
     }
@@ -1229,7 +1285,8 @@ export async function createDogListingAction(
       if (videoError) {
         return {
           dogId: insertedDog.id,
-          message: `The dog was created, but saving the video metadata failed: ${videoError.message}`,
+          publishState: "draft",
+          message: mediaFailureMessage("the video metadata", `saving failed. ${videoError.message}`, wasRequestedPublic),
           status: "error",
         };
       }
@@ -1251,9 +1308,12 @@ export async function createDogListingAction(
     } catch (error) {
       return {
         dogId: insertedDog.id,
-        message: `The dog was created, but the video could not be compressed and uploaded: ${
-          error instanceof Error ? error.message : "Unknown video upload error"
-        }`,
+        publishState: "draft",
+        message: mediaFailureMessage(
+          "the video",
+          error instanceof Error ? error.message : "Unknown video upload error",
+          wasRequestedPublic,
+        ),
         status: "error",
       };
     }
@@ -1308,7 +1368,8 @@ export async function createDogListingAction(
     if (manifestError) {
       return {
         dogId: insertedDog.id,
-        message: `The dog was created, but saving media order failed: ${manifestError.message}`,
+        publishState: "draft",
+        message: mediaFailureMessage("the media order", `saving failed. ${manifestError.message}`, wasRequestedPublic),
         status: "error",
       };
     }
@@ -1326,7 +1387,8 @@ export async function createDogListingAction(
     if (traitError) {
       return {
         dogId: insertedDog.id,
-        message: `The dog was created, but saving the custom traits failed: ${traitError.message}`,
+        publishState: "draft",
+        message: mediaFailureMessage("the custom traits", `saving failed. ${traitError.message}`, wasRequestedPublic),
         status: "error",
       };
     }
@@ -1343,11 +1405,42 @@ export async function createDogListingAction(
   } catch (error) {
     return {
       dogId: insertedDog.id,
-      message: `The dog was created, but the care passport could not be saved: ${
-        error instanceof Error ? error.message : "Unknown care passport error"
-      }`,
+      publishState: "draft",
+      message: mediaFailureMessage(
+        "the care passport",
+        error instanceof Error ? error.message : "Unknown care passport error",
+        wasRequestedPublic,
+      ),
       status: "error",
     };
+  }
+
+  if (videoWarnings.length > 0) {
+    const { error } = await supabase.from("dogs").update({ adoption_status: "draft" }).eq("id", insertedDog.id);
+    revalidatePath("/shelter", "layout");
+    revalidatePath("/admin", "layout");
+    return {
+      dogId: insertedDog.id,
+      publishState: "draft",
+      status: "error",
+      message: `${error ? "Profile saved, but could not reset it to draft." : "Profile saved as a draft, including successfully processed photos."} ${videoWarnings.join(" ")} Open the saved draft to continue; do not create another listing.`,
+    };
+  }
+
+  if (requestedAdoptionStatus !== initialAdoptionStatus) {
+    const { error: publishError } = await supabase
+      .from("dogs")
+      .update({ adoption_status: requestedAdoptionStatus })
+      .eq("id", insertedDog.id);
+
+    if (publishError) {
+      return {
+        dogId: insertedDog.id,
+        publishState: "draft",
+        message: `The dog was created as a draft, but could not be published: ${publishError.message}`,
+        status: "error",
+      };
+    }
   }
 
   revalidatePath("/");
@@ -1357,14 +1450,22 @@ export async function createDogListingAction(
   revalidatePath("/admin/dogs/new");
   revalidatePath(`/dogs/${insertedDog.id}`);
 
+  const publishState = requestedAdoptionStatus === "available" ? "published" : "draft";
+  const successMessage = publishState === "published"
+    ? "Dog listing published successfully. It is live on the public dog profile."
+    : `Dog listing saved as ${requestedAdoptionStatus}. It is not live in the public adoption feed until status is Available.`;
   const message = backblazeMirrorWarningCount > 0
-    ? `Dog listing created and photos saved to Supabase. Backblaze mirror needs attention for ${backblazeMirrorWarningCount} photo(s).`
-    : "Dog listing created successfully.";
-  await redirectAfterShelterDogMutation(adminContext, returnTo, message);
+    ? `${successMessage} Backblaze mirror needs attention for ${backblazeMirrorWarningCount} photo(s).`
+    : successMessage;
+  await redirectAfterShelterDogMutation(adminContext, returnTo, message, {
+    dogId: insertedDog.id,
+    publishState,
+  });
 
   return {
     dogId: insertedDog.id,
     message,
+    publishState,
     status: "success",
   };
 }
