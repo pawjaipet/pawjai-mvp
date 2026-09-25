@@ -55,17 +55,6 @@ const DOG_ADOPTION_STATUSES = new Set<Database["public"]["Enums"]["dog_adoption_
   "unavailable",
 ]);
 
-const EDITABLE_TRAIT_TYPES = [
-  "localized_name_th",
-  "protectiveness",
-  "affection_style",
-  "training_preference_match",
-  "people_friendliness",
-  "dog_social_style",
-  "intake_note",
-  "personality",
-  "medical_needs",
-];
 const DOG_PHOTOS_BUCKET = "dog-photos";
 const DOG_STORAGE_IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_DOG_PHOTO_HEIGHT = 2400;
@@ -558,7 +547,7 @@ async function updateDogMediaOrder({
 
       photoRows.push({
         dog_id: dogId,
-        is_cover: currentItems.length === 0 && index === 0 && !coverMediaId,
+        is_cover: false,
         public_url: uploaded.publicUrl,
         sort_order: nextSortOrder + index,
         storage_path: uploaded.storagePath,
@@ -618,40 +607,6 @@ async function updateDogMediaOrder({
     };
   });
 
-  // Release the unique cover slot before assigning a different photo.
-  const { error: clearCoverError } = await supabase.from("dog_photos")
-    .update({ is_cover: false }).eq("dog_id", dogId).eq("is_cover", true);
-  if (clearCoverError) throw new Error(`Could not change cover photo: ${clearCoverError.message}`);
-
-  const photoUpdates = orderedItems
-    .filter((item) => item.type === "photo")
-    .map((item) =>
-      supabase
-        .from("dog_photos")
-        .update({
-          is_cover: item.isCover,
-          sort_order: item.sortOrder,
-        })
-        .eq("id", item.id)
-        .eq("dog_id", dogId),
-    );
-
-  const photoUpdateResults = await Promise.all(photoUpdates);
-  const failedPhotoUpdate = photoUpdateResults.find((result) => result.error);
-  if (failedPhotoUpdate?.error) {
-    throw new Error(`Could not save photo order: ${failedPhotoUpdate.error.message}`);
-  }
-
-  const { error: deleteMediaTraitsError } = await supabase
-    .from("dog_traits")
-    .delete()
-    .eq("dog_id", dogId)
-    .in("trait_type", ["media_manifest", "cover_video_url", "cover_video_storage_path", "cover_video_poster_url"]);
-
-  if (deleteMediaTraitsError) {
-    throw new Error(`Could not replace media metadata: ${deleteMediaTraitsError.message}`);
-  }
-
   const mediaTraitRows: DogTraitInsert[] = [
     {
       dog_id: dogId,
@@ -684,7 +639,12 @@ async function updateDogMediaOrder({
     }
   }
 
-  const { error: insertMediaTraitsError } = await supabase.from("dog_traits").insert(mediaTraitRows);
+  const { error: insertMediaTraitsError } = await supabase.rpc("save_dog_media_order", {
+    p_dog_id: dogId,
+    p_items: orderedItems,
+    p_traits: mediaTraitRows.map(({ trait_type, trait_value }) => ({ trait_type, trait_value })),
+    p_expected_manifest: traits?.find((trait) => trait.trait_type === "media_manifest")?.trait_value ?? null,
+  });
   if (insertMediaTraitsError) {
     throw new Error(`Could not save media order: ${insertMediaTraitsError.message}`);
   }
@@ -708,6 +668,8 @@ export async function updateDogProfileAction(
 
   if (!dogId) fieldErrors.dog_id = "Missing dog profile id.";
   if (!name) fieldErrors.name = "Dog name is required.";
+  if (!getString(formData, "name_th")) fieldErrors.name_th = "Please enter the dog's Thai name.";
+  if (!["male", "female", "unknown"].includes(getString(formData, "gender"))) fieldErrors.gender = "Choose a gender, or Unknown if you are not sure.";
   if (!shelterId) fieldErrors.shelter_id = "Choose a shelter for this dog.";
   if (!breed || !isCanonicalDogBreed(breed)) {
     fieldErrors.breed = "Choose a breed from the shared PawJai breed list.";
@@ -839,32 +801,24 @@ export async function updateDogProfileAction(
     cancelledFutureAppointments = cancelledAppointments?.length ?? 0;
   }
 
-  const { error: deleteTraitError } = await supabase
-    .from("dog_traits")
-    .delete()
-    .eq("dog_id", dogId)
-    .in("trait_type", EDITABLE_TRAIT_TYPES);
-  if (deleteTraitError) {
-    return {
-      message: `Profile details were updated, but replacing public tags failed: ${deleteTraitError.message}`,
-      status: "error",
-    };
-  }
-
   const traitRows: DogTraitInsert[] = normalizeStructuredTraits(formData).map((trait) => ({
     dog_id: dogId,
     trait_type: trait.traitType,
     trait_value: trait.traitValue,
   }));
 
-  if (traitRows.length > 0) {
-    const { error: insertTraitError } = await supabase.from("dog_traits").insert(traitRows);
-    if (insertTraitError) {
-      return {
-        message: `Profile details were updated, but saving public tags failed: ${insertTraitError.message}`,
-        status: "error",
-      };
-    }
+  const { error: tagSaveError } = await supabase.rpc("replace_dog_matching_tags", {
+    p_dog_id: dogId,
+    p_shelter_id: shelterId,
+    p_actor_id: adminContext.userId!,
+    p_actor_role: adminContext.role,
+    p_traits: traitRows.map(({ trait_type, trait_value }) => ({ trait_type, trait_value })),
+  });
+  if (tagSaveError) {
+    return {
+      message: `Profile details were updated, but matching tags could not be saved. Your previous tags are unchanged. Please retry. ${tagSaveError.message}`,
+      status: "error",
+    };
   }
 
   try {

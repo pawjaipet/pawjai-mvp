@@ -28,7 +28,7 @@ test("forged own-shelter form cannot edit another shelter's dog", async () => {
     };
     const action = new Function(...Object.keys(bindings), `${compiled}; return updateDogProfileAction;`)(...Object.values(bindings));
     const form = new FormData();
-    Object.entries({ dog_id: "foreign-dog", shelter_id: "my-shelter", name: "Forged edit", breed: "Thai Dog" }).forEach(([k,v]) => form.set(k,v));
+    Object.entries({ dog_id: "foreign-dog", shelter_id: "my-shelter", name: "Forged edit", name_th: "Test", gender: "unknown", breed: "Thai Dog" }).forEach(([k,v]) => form.set(k,v));
     const result = await action({}, form);
     assert.equal(result.status, "error");
     assert.equal(writes, 0);

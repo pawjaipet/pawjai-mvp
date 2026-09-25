@@ -34,6 +34,14 @@ test("changing the cover succeeds on the first save under the one-cover constrai
       },
     };
     return query;
+  }, async rpc(name, args) {
+    assert.equal(name, "save_dog_media_order");
+    assert.equal(args.p_dog_id, "dog");
+    assert.equal(args.p_expected_manifest, null);
+    for (const photo of photos) photo.is_cover = false;
+    for (const item of args.p_items) Object.assign(photos.find((p) => p.id === item.id), {is_cover:item.isCover, sort_order:item.sortOrder});
+    manifest = JSON.parse(args.p_traits[0].trait_value);
+    return {error:null};
   } };
   const update = new Function("buildDogMediaItems", "getUniqueSubmittedOrder", `${js}; return updateDogMediaOrder;`)(
     ({ photos }) => photos.map((p) => ({ id: p.id, isCover: p.is_cover, sortOrder: p.sort_order, type: "photo", publicUrl: `${p.id}.jpg` })),

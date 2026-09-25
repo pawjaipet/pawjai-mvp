@@ -982,6 +982,14 @@ export type Database = {
     }
     Views: Record<never, never>
     Functions: {
+      save_dog_media_order: {
+        Args: { p_dog_id: string; p_items: Json; p_traits: Json; p_expected_manifest: string | null }
+        Returns: undefined
+      }
+      replace_dog_matching_tags: {
+        Args: { p_dog_id: string; p_shelter_id: string; p_actor_id: string; p_actor_role: "admin" | "shelter_admin"; p_traits: Json }
+        Returns: undefined
+      }
       ensure_launch_premium_grant_for_user: {
         Args: { p_user_id: string }
         Returns: {

@@ -79,6 +79,7 @@ export type AdminDraftDog = {
   adoptedByPhoneNumber: string | null;
   breed: string | null;
   careCompletenessPercent?: number;
+  careUnavailable?: boolean;
   careDocumentCount?: number;
   careMissingCount?: number;
   careMissingSummary?: string | null;
@@ -721,6 +722,7 @@ export async function loadAdminDraftData(options: LoadAdminDraftDataOptions = {}
         adoptedByPhoneNumber: adoptedBooking?.adopterPhoneNumber ?? null,
         breed: dog.breed,
         careCompletenessPercent: careCompleteness.percent,
+        careUnavailable: Boolean(careRecordsResult.error || careVaccinationsResult.error || careDocumentsResult.error || careTimelineResult.error),
         careDocumentCount: careDocuments.length,
         careMissingCount: careCompleteness.missing.length,
         careMissingSummary: careCompleteness.missing.slice(0, 3).join(", ") || null,

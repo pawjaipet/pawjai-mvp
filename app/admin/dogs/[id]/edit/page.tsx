@@ -31,7 +31,7 @@ export default async function EditAdminDogPage({
     { data: dog },
     { data: shelters },
     { data: photos },
-    { data: traits },
+    { data: traits, error: traitsError },
     { data: personalityTraitRows },
     carePassport,
   ] = await Promise.all([
@@ -48,6 +48,7 @@ export default async function EditAdminDogPage({
   ]);
 
   if (!dog) notFound();
+  if (traitsError) throw new Error("Saved matching tags could not be loaded. Refresh before editing this dog.");
   await requireShelterAccess(dog.shelter_id, `/admin/dogs/${id}/edit`);
 
   const listingsParams = new URLSearchParams({ shelter: dog.shelter_id, view: "dogs" });

@@ -4,7 +4,7 @@ export async function stageDogMedia(formData: FormData, onProgress: (message: st
   const files = formData.getAll("media_files").filter((value): value is File => value instanceof File && value.size > 0);
   const staged: { path: string; name: string; type: string }[] = [];
   const keyMap = new Map<string, string>();
-  const warnings: string[] = [];
+  const warnings: string[] = formData.get("media_upload_warning") ? [String(formData.get("media_upload_warning"))] : [];
   for (const [index, file] of files.entries()) {
     try {
     const target = await prepareDogMediaUpload(String(formData.get("shelter_id") ?? ""), file.name, file.size);

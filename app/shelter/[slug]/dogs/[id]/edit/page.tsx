@@ -34,7 +34,7 @@ export default async function ShelterEditDogPage({
     { data: dog },
     { data: shelters },
     { data: photos },
-    { data: traits },
+    { data: traits, error: traitsError },
     { data: personalityTraitRows },
     carePassport,
   ] = await Promise.all([
@@ -55,6 +55,8 @@ export default async function ShelterEditDogPage({
   if (dog.shelter_id !== shelter.id) {
     notFound();
   }
+
+  if (traitsError) throw new Error("Saved matching tags could not be loaded. Refresh before editing this dog.");
 
   const shelterListingsHref = `/shelter/${slug}?view=dogs`;
 

@@ -11,7 +11,7 @@ test("admin create form lets server-side video compression run instead of blocki
 
   assert.match(createForm, /const \[mediaError, setMediaError\] = useState\(""\)/);
   assert.match(createForm, /const \[mediaWarning, setMediaWarning\] = useState\(""\)/);
-  assert.match(createForm, /CLIENT_MAX_VIDEO_UPLOAD_BYTES = 50 \* 1024 \* 1024/);
+  assert.match(createForm, /await prepareLargeDogVideo\(file, setUploadProgress\)/);
   assert.match(createForm, /SUPPORTED_VIDEO_EXTENSIONS = new Set\(\["mov", "mp4"\]\)/);
   assert.match(createForm, /SUPPORTED_VIDEO_MIME_TYPES = new Set\(\["video\/mp4", "video\/quicktime"\]\)/);
   assert.match(createForm, /Upload JPG, PNG, WEBP, HEIC, MP4, or MOV/);

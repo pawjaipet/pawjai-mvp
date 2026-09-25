@@ -825,6 +825,8 @@ export async function createDogListingAction(
   if (!name) {
     fieldErrors.name = "Dog name is required.";
   }
+  if (!getString(formData, "name_th")) fieldErrors.name_th = "Please enter the dog's Thai name.";
+  if (!["male", "female", "unknown"].includes(getString(formData, "gender"))) fieldErrors.gender = "Choose a gender, or Unknown if you are not sure.";
 
   if (!shelterId) {
     fieldErrors.shelter_id = "Choose a shelter for this listing.";
@@ -980,6 +982,7 @@ export async function createDogListingAction(
       name,
       initialStatus: initialAdoptionStatus,
       requestedStatus: requestedAdoptionStatus,
+      submittedMatchingTags: traitPairs,
     },
     shelterId,
     targetId: insertedDog.id,

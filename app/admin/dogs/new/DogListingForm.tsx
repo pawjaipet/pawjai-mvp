@@ -5,10 +5,12 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { Save } from "lucide-react";
 import DogCarePassportFields from "@/components/admin/DogCarePassportFields";
 import DogBreedPicker from "@/components/dogs/DogBreedPicker";
+import DogSaveNotice from "@/components/dogs/DogSaveNotice";
 import PersonalityTagPicker from "@/components/dogs/PersonalityTagPicker";
 import { createDogListingAction } from "./actions";
 import { initialCreateDogListingState } from "./form-state";
 import { stageDogMedia } from "@/utils/dog-media-direct-upload";
+import { prepareLargeDogVideo } from "@/utils/prepare-large-dog-video";
 
 type ShelterOption = {
   id: string;
@@ -39,7 +41,6 @@ const careTags = [
 
 const CLIENT_MAX_PHOTO_FORM_MEDIA_BYTES = 3.5 * 1024 * 1024;
 const CLIENT_VIDEO_WARNING_BYTES = 25 * 1024 * 1024;
-const CLIENT_MAX_VIDEO_UPLOAD_BYTES = 50 * 1024 * 1024;
 const CLIENT_PHOTO_MAX_WIDTH = 1800;
 const CLIENT_PHOTO_MAX_HEIGHT = 2400;
 const CLIENT_PHOTO_QUALITY = 0.78;
@@ -347,6 +348,7 @@ export default function DogListingForm({
   );
   const [mediaError, setMediaError] = useState("");
   const [mediaWarning, setMediaWarning] = useState("");
+  const [rejectedMediaWarning, setRejectedMediaWarning] = useState("");
   const [photoRows, setPhotoRows] = useState(defaultPhotoRows);
   const [mediaItems, setMediaItems] = useState<PendingMediaItem[]>([]);
   const [coverMediaKey, setCoverMediaKey] = useState("");
@@ -379,6 +381,7 @@ export default function DogListingForm({
     const selectedFiles = Array.from(input.files ?? []);
     setMediaError("");
     setMediaWarning("");
+    setRejectedMediaWarning("");
 
     if (selectedFiles.length === 0) {
       setMediaItems([]);
@@ -391,17 +394,19 @@ export default function DogListingForm({
     try {
       const preparedFiles: { compressed: boolean; file: File; originalSize: number }[] = [];
       const warnings: string[] = [];
+      const rejected: string[] = [];
 
       for (const file of selectedFiles) {
+        try {
+        let uploadFile = file;
         const looksLikeVideo = file.type.startsWith("video/") || SUPPORTED_VIDEO_EXTENSIONS.has(getFileExtension(file.name));
         if (looksLikeVideo) {
           if (!isSupportedVideoFile(file)) {
             throw new Error(`${file.name} is not supported. Upload an MP4 or MOV video under 50MB.`);
           }
 
-          if (file.size > CLIENT_MAX_VIDEO_UPLOAD_BYTES) {
-            throw new Error(`${file.name} must be under 50MB before compression.`);
-          }
+          uploadFile = await prepareLargeDogVideo(file, setUploadProgress);
+          if (uploadFile !== file) warnings.push(`${file.name}: prepared the first 12 seconds as a smaller, muted video.`);
 
           if (file.size > CLIENT_VIDEO_WARNING_BYTES) {
             warnings.push(`${file.name} is a large video. Saving may take longer while PawJai trims and compresses it.`);
@@ -410,9 +415,9 @@ export default function DogListingForm({
           throw new Error(`${file.name} is not supported. Upload JPG, PNG, WEBP, HEIC, MP4, or MOV.`);
         }
 
-        const prepared = await compressPhotoForAdminUpload(file);
+        const prepared = await compressPhotoForAdminUpload(uploadFile);
         preparedFiles.push({
-          compressed: prepared.compressed,
+          compressed: prepared.compressed || uploadFile !== file,
           file: prepared.file,
           originalSize: file.size,
         });
@@ -421,6 +426,11 @@ export default function DogListingForm({
           warnings.push(`${file.name} is a large HEIC file. If saving is slow, export it as JPG and try again.`);
         }
 
+        } catch (error) {
+          const message = error instanceof Error ? error.message : `${file.name}: could not prepare this file.`;
+          warnings.push(message);
+          rejected.push(message);
+        }
       }
 
       const totalPhotoBytes = preparedFiles
@@ -447,6 +457,7 @@ export default function DogListingForm({
       setMediaItems(nextItems);
       setCoverMediaKey(nextItems[0]?.key ?? "");
       setMediaWarning(warnings.join(" "));
+      setRejectedMediaWarning(rejected.join(" "));
     } catch (error) {
       setMediaItems([]);
       setCoverMediaKey("");
@@ -460,7 +471,9 @@ export default function DogListingForm({
 
   return (
     <form action={formAction} aria-busy={pending || mediaPreparing} className="space-y-6">
-      {pending && uploadProgress ? <p role="status" className="sticky top-2 z-20 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{uploadProgress}</p> : null}
+      <DogSaveNotice pending={pending} message={state.message} success={state.status === "success"} />
+      {rejectedMediaWarning ? <input type="hidden" name="media_upload_warning" value={rejectedMediaWarning} /> : null}
+      {(pending || mediaPreparing) && uploadProgress ? <p role="status" className="sticky top-2 z-20 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{uploadProgress}</p> : null}
       {returnTo ? <input name="returnTo" type="hidden" value={returnTo} /> : null}
       {showIntro ? (
         <div className="rounded-[32px] border border-[#f3cbd0] bg-[#f8e8ea] p-7 shadow-[0_24px_60px_rgba(101,88,79,0.12)]">
@@ -519,11 +532,11 @@ export default function DogListingForm({
         <ErrorSummary errors={state.fieldErrors} />
         <div className="grid gap-5 md:grid-cols-2">
           <Field label="Dog name (English)" error={state.fieldErrors?.name} required>
-            <input name="name" className={inputClass(state.fieldErrors?.name)} placeholder="Mali" />
+            <input name="name" required className={inputClass(state.fieldErrors?.name)} placeholder="Mali" />
           </Field>
 
-          <Field label="Dog name (Thai)">
-            <input name="name_th" className={inputClass()} placeholder="มะลิ" />
+          <Field label="Dog name (Thai)" required error={state.fieldErrors?.name_th}>
+            <input name="name_th" required className={inputClass(state.fieldErrors?.name_th)} placeholder="มะลิ" />
           </Field>
 
           <Field label="Shelter" error={state.fieldErrors?.shelter_id} required>
@@ -553,8 +566,9 @@ export default function DogListingForm({
             </select>
           </Field>
 
-          <Field label="Gender">
-            <select name="gender" className={inputClass()} defaultValue="unknown">
+          <Field label="Gender" required error={state.fieldErrors?.gender}>
+            <select name="gender" required className={inputClass(state.fieldErrors?.gender)} defaultValue="">
+              <option value="" disabled>Choose gender</option>
               <option value="unknown">Unknown</option>
               <option value="male">Male</option>
               <option value="female">Female</option>
@@ -781,10 +795,11 @@ export default function DogListingForm({
           <Field
             label="Upload photos and videos"
             error={mediaUploadError}
-            hint="Supported: JPG, PNG, WEBP, HEIC photos and MP4/MOV videos under 50MB. Photos are compressed in your browser; videos are uploaded to PawJai and compressed on the server during save. If a video fails later, PawJai keeps the dog saved as a draft."
+            hint="JPG, PNG, WEBP, HEIC, MP4 or MOV. Videos over 50MB, up to 250MB, are automatically prepared as short muted clips when your browser supports it. PawJai compresses uploaded videos again on the server. Keep this page open until saving finishes."
           >
             <input
               name="media_files"
+              disabled={mediaPreparing || pending}
               type="file"
               accept="image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov"
               multiple

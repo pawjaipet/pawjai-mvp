@@ -1,4 +1,5 @@
 "use client";
+import DogSaveNotice from "@/components/dogs/DogSaveNotice";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -987,6 +988,9 @@ function DogCard({
         {dog.energyLevel ? <span>{formatStatus(dog.energyLevel)}</span> : null}
       </div>
       <div className={`flex flex-wrap items-center gap-2 text-[#65584f] ${compactMobile ? "mt-2 text-[9px] md:mt-3 md:text-xs" : "mt-3 text-xs"}`}>
+        {dog.careUnavailable ? (
+          <span role="status" className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-800">Care records unavailable</span>
+        ) : <>
         <span className="rounded-full bg-[#eef5ea] px-2.5 py-1 font-bold text-[#4f7847]">
           Care passport {careCompletenessPercent}%
         </span>
@@ -994,10 +998,11 @@ function DogCard({
           {dog.vaccinationStatusLabel ?? "Vaccines unknown"}
         </span>
         {careMissingCount > 0 ? (
-          <span className={compactMobile ? "hidden md:inline" : ""}>
-            {careMissingCount} fields missing
+          <span title={dog.careMissingSummary ?? undefined} className={compactMobile ? "hidden md:inline" : ""}>
+            {careMissingCount} care fields incomplete
           </span>
         ) : null}
+        </>}
       </div>
       {dog.status === "adopted" ? (
         <div className={`border border-[#d6c8ad] bg-[#fffaf5] ${compactMobile ? "mt-2 rounded-xl p-2 md:mt-4 md:rounded-2xl md:p-3" : "mt-4 rounded-2xl p-3"}`}>
@@ -3879,6 +3884,7 @@ export default function AdminReorgDraftPanel({
 
         {initialMessage ? (
           <div className={`mb-3 rounded-2xl border px-4 py-3 text-xs font-semibold md:mb-6 md:px-5 md:py-4 md:text-sm ${/could not|choose|must|required|invalid|failed/i.test(initialMessage) ? "border-[#efc2be] bg-[#fff1f0] text-[#9a3129]" : "border-[#cfe2c5] bg-[#eef5ea] text-[#4f7847]"}`}>
+            <DogSaveNotice message={initialMessage} success={!/could not|choose|must|required|invalid|failed|warning|retry|partially/i.test(initialMessage)} />
             <div className="flex flex-col gap-2">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <span>{initialMessage}</span>

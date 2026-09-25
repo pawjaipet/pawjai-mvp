@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import DogCarePassportFields from "@/components/admin/DogCarePassportFields";
 import DogBreedPicker from "@/components/dogs/DogBreedPicker";
+import DogSaveNotice from "@/components/dogs/DogSaveNotice";
 import PersonalityTagPicker from "@/components/dogs/PersonalityTagPicker";
 import type { Database, DogCareDocument, DogCareRecord, DogCareTimelineEvent, DogPhoto, DogTrait, DogVaccinationRecord } from "@/types/database";
 import { buildDogMediaItems, type DogMediaItem } from "@/utils/dog-media";
@@ -539,6 +540,7 @@ export default function DogEditForm({
       </div>
 
       <form action={formAction} className="space-y-6">
+        <DogSaveNotice pending={pending} message={state.message} success={state.status === "success"} />
         <input type="hidden" name="dog_id" value={dog.id} />
         {returnTo ? <input name="returnTo" type="hidden" value={returnTo} /> : null}
 
@@ -548,19 +550,21 @@ export default function DogEditForm({
         >
           <ErrorSummary errors={state.fieldErrors} />
           <div className="grid gap-5 md:grid-cols-2">
-            <Field label="Dog name (English)" error={state.fieldErrors?.name}>
+            <Field label="Dog name (English) *" error={state.fieldErrors?.name}>
               <input
                 name="name"
+                required
                 className={inputClass(state.fieldErrors?.name)}
                 defaultValue={dog.name}
                 placeholder="Mali"
               />
             </Field>
 
-            <Field label="Dog name (Thai)">
+            <Field label="Dog name (Thai) *" error={state.fieldErrors?.name_th}>
               <input
                 name="name_th"
-                className={inputClass()}
+                required
+                className={inputClass(state.fieldErrors?.name_th)}
                 defaultValue={thaiName}
                 placeholder="มะลิ"
               />
@@ -580,7 +584,7 @@ export default function DogEditForm({
               </select>
             </Field>
 
-            <Field label="Breed" error={state.fieldErrors?.breed}>
+            <Field label="Breed *" error={state.fieldErrors?.breed}>
               <DogBreedPicker
                 buttonClassName={inputClass(state.fieldErrors?.breed)}
                 defaultValue={dog.breed}
@@ -601,8 +605,8 @@ export default function DogEditForm({
               </select>
             </Field>
 
-            <Field label="Gender">
-              <select name="gender" className={inputClass()} defaultValue={dog.gender}>
+            <Field label="Gender *" error={state.fieldErrors?.gender}>
+              <select name="gender" required className={inputClass(state.fieldErrors?.gender)} defaultValue={dog.gender}>
                 <option value="unknown">Unknown</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
