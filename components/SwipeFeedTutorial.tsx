@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowLeftRight, ChevronUp, Hand, X } from "lucide-react";
+import { useEffect, useState, type CSSProperties } from "react";
+import { ArrowLeftRight, ChevronUp, X } from "lucide-react";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 const M = "Montserrat, sans-serif";
@@ -11,6 +11,27 @@ type SwipeFeedTutorialProps = {
   enabled?: boolean;
   isLoggedIn: boolean;
 };
+
+// Echo the logo’s four rounded toes and paw-shaped “A” without cropping the wordmark.
+function PawGesture({ className, size, style }: { className: string; size: number; style: CSSProperties }) {
+  return (
+    <span
+      className={`${className} relative inline-flex shrink-0 items-center justify-center rounded-full bg-[#fff8f0] p-[7px] shadow-[0_2px_8px_rgba(101,88,79,0.25)]`}
+      style={{ width: size, height: size, ...style }}
+    >
+      <svg viewBox="0 0 64 64" className="h-full w-full" fill="#cd8188" aria-hidden="true" focusable="false">
+        <ellipse cx="12" cy="23" rx="5.5" ry="8" transform="rotate(-14 12 23)" />
+        <ellipse cx="25" cy="15" rx="6.5" ry="8" transform="rotate(-7 25 15)" />
+        <ellipse cx="40" cy="15" rx="6.5" ry="8" transform="rotate(7 40 15)" />
+        <ellipse cx="53" cy="23" rx="5.5" ry="8" transform="rotate(14 53 23)" />
+        <path
+          fillRule="evenodd"
+          d="M32 26C21 26 12 37 7 51C3 63 17 61 25 55L32 49L39 55C47 61 61 63 57 51C52 37 43 26 32 26ZM32 35C28 35 25 39 24 43C29 41 35 41 40 43C39 39 36 35 32 35Z"
+        />
+      </svg>
+    </span>
+  );
+}
 
 export default function SwipeFeedTutorial({ enabled = true, isLoggedIn }: SwipeFeedTutorialProps) {
   const [visible, setVisible] = useState(false);
@@ -101,22 +122,18 @@ export default function SwipeFeedTutorial({ enabled = true, isLoggedIn }: SwipeF
       <div className="pointer-events-none absolute inset-x-0 top-[266px] z-10 flex flex-col items-center gap-[42px]" aria-hidden="true">
         <div className="relative flex h-[118px] w-[118px] items-center justify-center rounded-full bg-[#cd8188] shadow-[0_18px_42px_rgba(205,129,136,0.38)]">
           <ChevronUp className="absolute top-[14px] text-white/80" size={26} strokeWidth={3} />
-          <Hand
+          <PawGesture
             className="pawjai-gesture-up"
-            size={44}
-            stroke="white"
-            strokeWidth={2.4}
+            size={56}
             style={{ animation: "pawjai-tutorial-up 1.55s ease-in-out infinite" }}
           />
         </div>
 
         <div className="relative flex h-[96px] w-[168px] items-center justify-center rounded-full bg-[#cd8188]/90 text-white shadow-[0_16px_36px_rgba(205,129,136,0.32)] ring-1 ring-white/35 backdrop-blur">
           <ArrowLeftRight className="absolute opacity-70" size={76} strokeWidth={1.7} />
-          <Hand
+          <PawGesture
             className="pawjai-gesture-side"
-            size={38}
-            stroke="white"
-            strokeWidth={2.4}
+            size={50}
             style={{ animation: "pawjai-tutorial-side 1.6s ease-in-out infinite" }}
           />
         </div>
