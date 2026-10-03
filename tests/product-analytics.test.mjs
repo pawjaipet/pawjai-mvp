@@ -57,6 +57,7 @@ function loadAnalyticsClient() {
     },
   };
   const context = {
+    require: (name) => { if (name === "@/utils/google-analytics") return { trackGA() {} }; throw new Error(name); },
     Blob,
     clearTimeout: (id) => timers.delete(id),
     document,

@@ -1,5 +1,6 @@
 "use client";
 
+import { trackGA } from "@/utils/google-analytics";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -299,7 +300,7 @@ export default function ScheduleBookingClient({
           </div>
         )}
 
-        <form action={bookAppointment}>
+        <form action={bookAppointment} onSubmit={() => trackGA("booking_submit", { dog_id: dog.id })}>
           <input type="hidden" name="dogId" value={dog.id} />
           <input type="hidden" name="shelterId" value={shelter.id} />
           <input type="hidden" name="appointmentDate" value={selectedDate ?? ""} />

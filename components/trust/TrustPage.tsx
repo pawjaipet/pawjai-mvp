@@ -15,7 +15,8 @@ export function trustMetadata(title: string, description: string, path: string):
   };
 }
 
-export default function TrustPage({ title, description, path, sections }: {
+export default function TrustPage({ title, description, path, sections, updatedDate = "2026-09-11" }: {
+  updatedDate?: string;
   title: string;
   description: string;
   path: string;
@@ -29,7 +30,7 @@ export default function TrustPage({ title, description, path, sections }: {
         <p className="mb-2 text-xs font-semibold uppercase tracking-widest">PawJai Pet</p>
         <h1 className="text-[28px] font-bold leading-tight">{title}</h1>
         <p className="mt-3 text-sm leading-relaxed">{description}</p>
-        <p className="mt-4 text-xs">Last updated: <time dateTime="2026-09-11">11 September 2026</time></p>
+        <p className="mt-4 text-xs">Last updated: <time dateTime={updatedDate}>{new Date(`${updatedDate}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}</time></p>
       </header>
       <div className="space-y-4">
         {sections.map((section) => (

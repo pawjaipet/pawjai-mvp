@@ -48,6 +48,9 @@ async function recordBookingOutcome({
   userId?: string | null;
 }) {
   const cookieStore = await cookies();
+  cookieStore.set("pawjai_ga_booking", `${eventName}:${reason ?? "confirmed"}`, {
+    path: "/", maxAge: 60, sameSite: "lax", secure: process.env.NODE_ENV === "production",
+  });
   await recordProductAnalyticsEvent({
     appointmentId: appointmentId ?? null,
     dogId,

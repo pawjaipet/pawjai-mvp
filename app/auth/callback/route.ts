@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
     return redirectToAuth(request, nextPath, error.message);
   }
 
+  let profileReady = false;
   try {
     const {
       data: { user },
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
 
     if (user) {
       await ensureAdopterForUser(supabase, user);
+      profileReady = true;
     }
   } catch (error) {
     console.error("Auth callback profile setup failed", error);
@@ -48,5 +50,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return NextResponse.redirect(redirectTo);
+  const response = NextResponse.redirect(redirectTo);
+  if (profileReady) response.cookies.set("pawjai_ga_auth", "login:confirmed", { path: "/", maxAge: 60, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
+  return response;
 }

@@ -7,7 +7,7 @@ export const metadata = trustMetadata(title, description, "/privacy");
 
 export default function Page() {
   return (
-    <TrustPage title={title} description={description} path="/privacy" sections={[
+    <TrustPage title={title} description={description} path="/privacy" updatedDate="2026-10-02" sections={[
       {
             "title": "About this policy",
             "body": "PawJai helps connect adopters and shelter partners in Thailand. This page describes our website’s operational privacy practices. It is not legal advice or a certification of legal compliance."
@@ -23,6 +23,10 @@ export default function Page() {
       {
             "title": "Cookies, storage, and usage information",
             "body": "The website uses cookies for sign-in and browser storage for preferences and session state. Product analytics records page visits and interactions, such as viewed dogs, swipes, and booking steps, with a session identifier and, when signed in, an account identifier. Hosting and security services may also process technical request information. Clearing browser storage can reset preferences or sign you out; it does not delete records already held by PawJai."
+      },
+      {
+            "title": "Optional Google Analytics",
+            "body": "If you choose Allow analytics, we use Google Analytics to measure page visits, campaign sources, dog browsing, signup and login steps, and booking outcomes. Google uses analytics cookies and processes technical device and connection information. We do not send form contents, names, email addresses, passwords, verification codes, messages, or uploaded documents to Google Analytics. Advertising signals and ad personalisation are disabled. You can decline or withdraw your choice using Analytics preferences on this page or in Settings. Declining does not prevent adoption or sign-in. This optional measurement is separate from PawJai’s operational product analytics described above. Learn how Google processes information at https://policies.google.com/technologies/partner-sites."
       },
       {
             "title": "Who receives information",

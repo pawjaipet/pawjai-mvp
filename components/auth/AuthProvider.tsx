@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { trackGA, analyticsPath } from "@/utils/google-analytics";
 import AuthForm from "@/components/auth/AuthForm";
 import { createClient } from "@/utils/supabase/client";
 import { sanitizeNextPath } from "@/utils/account-model";
@@ -40,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         typeof window === "undefined"
           ? "/"
           : `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      trackGA("auth_prompt", { destination: analyticsPath(options?.nextPath ?? currentPath) ?? "other" });
       setModal({
         isOpen: true,
         nextPath: sanitizeNextPath(options?.nextPath ?? currentPath),

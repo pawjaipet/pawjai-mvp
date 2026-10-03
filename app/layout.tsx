@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import ProductAnalyticsTracker from "@/components/analytics/ProductAnalyticsTracker";
 import BottomNavBar from "@/components/BottomNavBar";
 import NavigationFeedback from "@/components/NavigationFeedback";
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LanguageProvider>
           <AuthProvider>
             <ProductAnalyticsTracker />
+            <GoogleAnalytics />
             <NavigationFeedback />
             <main className="min-h-screen pb-[70px]">{children}</main>
             <BottomNavBar />

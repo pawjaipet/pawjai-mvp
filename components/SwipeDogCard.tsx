@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition, type MouseEvent } from "react";
 import Link from "next/link";
 import { CalendarDays, Bookmark, Info, PawPrint } from "lucide-react";
+import { trackGA } from "@/utils/google-analytics";
 import { toggleWishlistAction } from "@/app/actions/wishlist";
 import { useAuthModal } from "@/components/auth/AuthProvider";
 import DogVideoFrame from "@/components/dogs/DogVideoFrame";
@@ -171,7 +172,9 @@ export default function SwipeDogCard({
     setSaved(next); // optimistic
     startTransition(async () => {
       const result = await toggleWishlistAction(dog.id);
+      if (!result.error) trackGA(result.saved ? "dog_saved" : "dog_unsaved", { dog_id: dog.id });
       if (result.error) {
+        trackGA("save_failed", { reason: result.error });
         setSaved(!next); // rollback on error
         if (result.error === "wishlist_limit_reached") {
           setWishlistLimit(result.limit ?? 5);

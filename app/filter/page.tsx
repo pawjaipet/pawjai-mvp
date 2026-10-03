@@ -1,5 +1,7 @@
 "use client";
 
+import { trackGA } from "@/utils/google-analytics";
+
 import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, PawPrint } from "lucide-react";
@@ -320,6 +322,7 @@ export default function FilterPage() {
   };
 
   const finishAndSave = () => {
+    trackGA("matching_apply", { answered_count: Object.keys(selectedAnswers).length });
     // Map question indices to backend-supported preference fields.
     const sizeQ = selectedAnswers[0] ?? [];         // Q0: size cards
     const energyQ = selectedAnswers[3] ?? [];        // Q3: activity cards
