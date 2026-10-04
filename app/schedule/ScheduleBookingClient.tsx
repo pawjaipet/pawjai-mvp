@@ -3,12 +3,13 @@
 import { trackGA } from "@/utils/google-analytics";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { bookAppointment } from "@/app/dogs/[id]/actions";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import type { MonthAvailability } from "@/utils/shelter-availability";
+import { createBookingSubmissionGuard, recoverBookingSlot } from "@/utils/booking-recovery";
 
 const M = "Montserrat, sans-serif";
 
@@ -83,6 +84,11 @@ export default function ScheduleBookingClient({
 }: ScheduleBookingClientProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [currentAvailability, setCurrentAvailability] = useState(availability);
+  const [slotConflict, setSlotConflict] = useState<"remaining" | "full" | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const submissionGuard = useRef(createBookingSubmissionGuard());
+  const calendarRef = useRef<HTMLDivElement>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [note, setNote] = useState("");
   const { language, t } = useLanguage();
@@ -90,7 +96,7 @@ export default function ScheduleBookingClient({
   const firstDay = firstDayOfMonth(viewYear, viewMonth);
   const previousMonth = getAdjacentMonth(viewYear, viewMonth, -1);
   const nextMonth = getAdjacentMonth(viewYear, viewMonth, 1);
-  const selectedAvailability = selectedDate ? availability.daysByDate[selectedDate] : null;
+  const selectedAvailability = selectedDate ? currentAvailability.daysByDate[selectedDate] : null;
   const selectedSlots = selectedAvailability?.slots ?? [];
   const selectedMonthLabel = useMemo(() => {
     if (!selectedDate) return "";
@@ -169,7 +175,7 @@ export default function ScheduleBookingClient({
           </span>
         </div>
 
-        <div className="mb-[20px] rounded-[20px] bg-white p-[16px]">
+        <div ref={calendarRef} className="mb-[20px] rounded-[20px] bg-white p-[16px]" tabIndex={-1}>
           <div className="mb-[16px] flex items-center justify-between">
             <Link
               href={monthHref(dog.id, previousMonth.year, previousMonth.month)}
@@ -208,7 +214,7 @@ export default function ScheduleBookingClient({
             ))}
             {Array.from({ length: totalDays }, (_, index) => index + 1).map((day) => {
               const dateKey = formatDateKey(viewYear, viewMonth, day);
-              const dayAvailability = availability.daysByDate[dateKey];
+              const dayAvailability = currentAvailability.daysByDate[dateKey];
               const selected = selectedDate === dateKey;
               const unavailable = !dayAvailability || dayAvailability.isUnavailable;
               const past = dayAvailability?.isPast ?? false;
@@ -217,12 +223,13 @@ export default function ScheduleBookingClient({
                 <button
                   key={dateKey}
                   type="button"
-                  disabled={unavailable}
+                  disabled={unavailable || submitting}
                   title={dayAvailability?.unavailableReason ?? undefined}
                   onClick={() => {
                     flushSync(() => setSlotsLoading(true));
                     setSelectedDate(dateKey);
                     setSelectedTime(null);
+                    setSlotConflict(null);
                   }}
                   aria-pressed={selected}
                   className="relative flex h-[42px] items-center justify-center rounded-[8px] transition-all active:scale-95 disabled:active:scale-100"
@@ -242,6 +249,25 @@ export default function ScheduleBookingClient({
             })}
           </div>
         </div>
+
+        {slotConflict && (
+          <div role="alert" className="mb-[20px] rounded-[16px] border border-[#cd8188]/45 bg-white px-[16px] py-[14px] text-[13px] leading-relaxed text-[#65584f]">
+            <p className="font-semibold">
+              {slotConflict === "remaining"
+                ? t("That visit time was just taken. Your date and note are saved. Choose another time below.")
+                : t("That visit time was just taken. No times remain on this date. Your note is saved; choose another date.")}
+            </p>
+            {slotConflict === "full" && (
+              <button type="button" onClick={() => {
+                setSelectedDate(null);
+                setSlotConflict(null);
+                calendarRef.current?.focus();
+              }} className="mt-3 rounded-full bg-[#cd8188] px-4 py-2 font-semibold text-white">
+                {t("Choose another date")}
+              </button>
+            )}
+          </div>
+        )}
 
         {selectedDate && (
           <div className="mb-[20px] rounded-[20px] bg-white p-[16px]" aria-live="polite">
@@ -263,9 +289,9 @@ export default function ScheduleBookingClient({
                     <button
                       key={slot}
                       type="button"
-                      disabled={slotsLoading}
+                      disabled={slotsLoading || submitting}
                       aria-pressed={active}
-                      onClick={() => setSelectedTime(slot)}
+                      onClick={() => { setSelectedTime(slot); setSlotConflict(null); }}
                       className="rounded-full px-[16px] py-[8px] text-[13px] font-semibold transition-all active:scale-95 disabled:cursor-wait disabled:opacity-60"
                       style={{
                         background: active ? "#cd8188" : "#d6c8ad",
@@ -284,7 +310,7 @@ export default function ScheduleBookingClient({
           </div>
         )}
 
-        {selectedTime && (
+        {selectedDate && (
           <div className="mb-[24px] rounded-[20px] bg-white p-[16px]">
             <label className="mb-[8px] block text-[12px] font-semibold uppercase tracking-wider text-[#65584f]/60" style={{ fontFamily: M }}>
               {t("Note (optional)")}
@@ -300,18 +326,43 @@ export default function ScheduleBookingClient({
           </div>
         )}
 
-        <form action={bookAppointment} onSubmit={() => trackGA("booking_submit", { dog_id: dog.id })}>
+        <form onSubmit={(event) => {
+          if (!selectedDate || !selectedTime || slotsLoading || !submissionGuard.current.claim()) {
+            event.preventDefault();
+            return;
+          }
+          setSubmitting(true);
+          trackGA("booking_submit", { dog_id: dog.id });
+        }} action={async (formData) => {
+          try {
+            const result = await bookAppointment(formData);
+            if (result?.status === "slot_unavailable") {
+              const recovered = recoverBookingSlot(String(formData.get("appointmentDate")), note, result);
+              setCurrentAvailability(recovered.availability);
+              setSelectedDate(recovered.selectedDate);
+              setSelectedTime(recovered.selectedTime);
+              setSlotConflict(recovered.hasRemainingTimes ? "remaining" : "full");
+              trackGA("booking_failed", { reason: result.reason });
+              submissionGuard.current.release();
+              setSubmitting(false);
+            }
+          } catch (error) {
+            submissionGuard.current.release();
+            setSubmitting(false);
+            throw error;
+          }
+        }}>
           <input type="hidden" name="dogId" value={dog.id} />
           <input type="hidden" name="shelterId" value={shelter.id} />
           <input type="hidden" name="appointmentDate" value={selectedDate ?? ""} />
           <input type="hidden" name="appointmentTime" value={selectedTime ?? ""} />
           <input type="hidden" name="visitorNote" value={note} />
           <button
-            disabled={!selectedDate || !selectedTime || slotsLoading}
+            disabled={!selectedDate || !selectedTime || slotsLoading || submitting}
             className="w-full rounded-full py-[15px] text-[16px] font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40"
             style={{ background: "#cd8188", fontFamily: M }}
           >
-            {slotsLoading ? t("Loading visit times...") : t("Confirm Visit")}
+            {slotsLoading ? t("Loading visit times...") : submitting ? t("Booking your visit...") : t("Confirm Visit")}
           </button>
         </form>
       </div>

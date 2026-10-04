@@ -20,7 +20,8 @@ import {
   recordProductAnalyticsEvent,
 } from "@/utils/product-analytics";
 import { assertRateLimit } from "@/utils/rate-limit";
-import { getShelterDaySlots } from "@/utils/shelter-availability";
+import { getShelterMonthAvailability } from "@/utils/shelter-availability";
+import { bookingSlotConflictReason, isBookingSlotUniqueConflict, type BookingSlotConflict } from "@/utils/booking-recovery";
 import { getSubscriptionLimits } from "@/utils/subscription-limits";
 import { resolveSubscriptionEntitlementForUser } from "@/utils/subscription-entitlements";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -40,17 +41,21 @@ async function recordBookingOutcome({
   eventName,
   reason,
   userId,
+  writeGaReceipt = true,
 }: {
   appointmentId?: string;
   dogId: string;
   eventName: "booking_failed" | "booking_succeeded";
   reason?: string;
   userId?: string | null;
+  writeGaReceipt?: boolean;
 }) {
   const cookieStore = await cookies();
-  cookieStore.set("pawjai_ga_booking", `${eventName}:${reason ?? "confirmed"}`, {
-    path: "/", maxAge: 60, sameSite: "lax", secure: process.env.NODE_ENV === "production",
-  });
+  if (writeGaReceipt) {
+    cookieStore.set("pawjai_ga_booking", `${eventName}:${reason ?? "confirmed"}`, {
+      path: "/", maxAge: 60, sameSite: "lax", secure: process.env.NODE_ENV === "production",
+    });
+  }
   await recordProductAnalyticsEvent({
     appointmentId: appointmentId ?? null,
     dogId,
@@ -103,7 +108,7 @@ export async function toggleWishlist(formData: FormData) {
   revalidatePath("/profile");
 }
 
-export async function bookAppointment(formData: FormData) {
+export async function bookAppointment(formData: FormData): Promise<BookingSlotConflict> {
   const dogId = String(formData.get("dogId") ?? "");
   const appointmentDate = String(formData.get("appointmentDate") ?? "");
   const appointmentTime = String(formData.get("appointmentTime") ?? "");
@@ -116,7 +121,12 @@ export async function bookAppointment(formData: FormData) {
     redirect(`/auth?message=${encodeURIComponent("Sign in to book a shelter visit.")}`);
   }
 
-  const { adopter, user } = ctx;
+  const { adopter, supabase, user } = ctx;
+  const verification = await getAdopterVerificationSnapshot(supabase, user);
+  if (!canBookAppointment(verification)) {
+    await recordBookingOutcome({ dogId, eventName: "booking_failed", reason: "verification_required", userId: user.id });
+    redirect(`/documents?next=${encodeURIComponent(`/schedule?dogId=${dogId}`)}`);
+  }
   try {
     await assertRateLimit({
       action: "booking.create",
@@ -145,22 +155,41 @@ export async function bookAppointment(formData: FormData) {
     await recordBookingOutcome({ dogId, eventName: "booking_failed", reason: "dog_unavailable", userId: user.id });
     redirect(`/dogs/${dogId}?message=${encodeURIComponent("This dog is no longer available for visit bookings.")}`);
   }
+  const shelterId = dog.shelter_id;
 
-  if (!appointmentDate || !appointmentTime) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(appointmentDate) || !appointmentTime) {
     await recordBookingOutcome({ dogId, eventName: "booking_failed", reason: "missing_date_or_time", userId: user.id });
     redirect(`/schedule?dogId=${encodeURIComponent(dogId)}&message=${encodeURIComponent("Choose a visit date and time first.")}`);
   }
 
   const normalizedAppointmentTime = normalizeAppointmentTime(appointmentTime);
-  const availableSlots = await getShelterDaySlots({
+  const parsedDate = new Date(`${appointmentDate}T12:00:00`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    await recordBookingOutcome({ dogId, eventName: "booking_failed", reason: "missing_date_or_time", userId: user.id });
+    redirect(`/schedule?dogId=${encodeURIComponent(dogId)}&message=${encodeURIComponent("Choose a valid visit date and time first.")}`);
+  }
+  const availability = await getShelterMonthAvailability({
     admin,
-    date: appointmentDate,
-    shelterId: dog.shelter_id,
+    month: parsedDate.getMonth(),
+    shelterId,
+    year: parsedDate.getFullYear(),
   });
+  const availableSlots = availability.daysByDate[appointmentDate]?.slots ?? [];
 
-  if (!availableSlots.includes(normalizedAppointmentTime)) {
-    await recordBookingOutcome({ dogId, eventName: "booking_failed", reason: "slot_unavailable", userId: user.id });
-    redirect(`/schedule?dogId=${encodeURIComponent(dogId)}&message=${encodeURIComponent("That visit time is no longer available. Please choose another time.")}`);
+  async function slotConflict(reason: BookingSlotConflict["reason"]): Promise<BookingSlotConflict> {
+    await recordBookingOutcome({ dogId, eventName: "booking_failed", reason, userId: user.id, writeGaReceipt: false });
+    const refreshedAvailability = await getShelterMonthAvailability({
+      admin,
+      month: parsedDate.getMonth(),
+      shelterId,
+      year: parsedDate.getFullYear(),
+    });
+    return { status: "slot_unavailable", reason, availability: refreshedAvailability };
+  }
+
+  const unavailableReason = bookingSlotConflictReason(availableSlots, normalizedAppointmentTime);
+  if (unavailableReason) {
+    return slotConflict(unavailableReason);
   }
 
   const { data: existingAppointment } = await admin
@@ -174,9 +203,9 @@ export async function bookAppointment(formData: FormData) {
     .limit(1)
     .maybeSingle();
 
-  if (existingAppointment) {
-    await recordBookingOutcome({ dogId, eventName: "booking_failed", reason: "slot_taken", userId: user.id });
-    redirect(`/dogs/${dogId}?message=${encodeURIComponent("That visit time was just booked. Please choose another time.")}`);
+  const takenReason = bookingSlotConflictReason(availableSlots, normalizedAppointmentTime, Boolean(existingAppointment));
+  if (takenReason) {
+    return slotConflict(takenReason);
   }
 
   const appointmentId = randomUUID();
@@ -211,16 +240,16 @@ export async function bookAppointment(formData: FormData) {
   }
 
   if (error) {
-    const message = error.message.includes("appointments_active_slot_unique_idx")
-      ? "That visit time was just booked. Please choose another time."
-      : error.message;
+    if (isBookingSlotUniqueConflict(error.message)) {
+      return slotConflict("slot_taken");
+    }
     await recordBookingOutcome({
       dogId,
       eventName: "booking_failed",
-      reason: error.message.includes("appointments_active_slot_unique_idx") ? "slot_taken" : "database_error",
+      reason: "database_error",
       userId: user.id,
     });
-    redirect(`/dogs/${dogId}?message=${encodeURIComponent(message)}`);
+    redirect(`/dogs/${dogId}?message=${encodeURIComponent(error.message)}`);
   }
 
   await sendBookingNotificationForAppointment({
