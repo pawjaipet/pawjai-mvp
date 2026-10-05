@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Calendar, ShieldCheck, Bookmark } from "lucide-react";
+import { ArrowLeft, Calendar, ShieldCheck } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { canBookAppointment, getAdopterVerificationSnapshot } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -18,7 +18,7 @@ import { buildDogMediaItems, normalizeDogMediaUrl } from "@/utils/dog-media";
 import { dogProfileJsonLd } from "@/utils/json-ld";
 import { hasSupabaseAuthCookies } from "@/utils/supabase/auth-cookies";
 import { NOINDEX_ROBOTS, canonicalUrl } from "@/utils/seo";
-import { toggleWishlist } from "./actions";
+import WishlistSaveButton from "@/components/dogs/WishlistSaveButton";
 
 const M = "Montserrat, sans-serif";
 const BG = "#F5F1E8";
@@ -268,26 +268,10 @@ export default async function DogProfilePage({
         </div>
 
         {/* Wishlist save (bookmark) — floating top-right, matches swipe card */}
-        {user && (
-          <form action={toggleWishlist} className="absolute right-[14px] top-[14px] z-10">
-            <input type="hidden" name="dogId" value={dog.id} />
-            <input type="hidden" name="isSaved" value={String(saved)} />
-            <button
-              type="submit"
-              className="w-[48px] h-[48px] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-all"
-              style={{ background: "#cd8188" }}
-              aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
-            >
-              <Bookmark
-                size={22}
-                stroke="white"
-                fill={saved ? "white" : "none"}
-                strokeWidth={2.2}
-              />
-            </button>
-          </form>
-        )}
-        <div className={`absolute right-[14px] ${user ? "top-[74px]" : "top-[14px]"} z-10`}>
+        <div className="absolute right-[14px] top-[14px] z-10">
+          <WishlistSaveButton dogId={dog.id} initialSaved={saved} isLoggedIn={Boolean(user)} surface="dog_detail" />
+        </div>
+        <div className="absolute right-[14px] top-[74px] z-10">
           <LanguageSwitcher compact />
         </div>
       </div>

@@ -108,7 +108,7 @@ test("dog profiles are publicly readable while booking and saving stay gated", (
   assert.doesNotMatch(source, /ProtectedRouteGate/);
   assert.doesNotMatch(cardSource, /view this dog profile/);
   assert.match(source, /Sign in to book a visit/);
-  assert.match(source, /user &&/);
+  assert.match(source, /WishlistSaveButton.*isLoggedIn=\{Boolean\(user\)\}/);
   assert.match(cardSource, /book this shelter visit/);
 });
 

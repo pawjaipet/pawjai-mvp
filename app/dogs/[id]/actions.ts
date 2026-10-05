@@ -67,47 +67,6 @@ async function recordBookingOutcome({
   });
 }
 
-export async function toggleWishlist(formData: FormData) {
-  const dogId = String(formData.get("dogId") ?? "");
-  const ctx = await getAdopter();
-
-  if (!ctx) {
-    redirect(`/auth?message=${encodeURIComponent("Sign in to save dogs to your wishlist.")}`);
-  }
-
-  const { adopter, supabase, user } = ctx;
-  const verification = await getAdopterVerificationSnapshot(supabase, user);
-
-  if (!canBookAppointment(verification)) {
-    redirect(`/documents?message=${encodeURIComponent("Complete your verification details once before booking shelter visits.")}`);
-  }
-
-  const admin = createAdminClient();
-
-  const { tier } = await resolveSubscriptionEntitlementForUser(user);
-  const { wishlistLimit } = getSubscriptionLimits(tier);
-  const { data, error } = await admin.rpc("toggle_subscription_wishlist_for_user", {
-    p_adopter_id: adopter.id,
-    p_dog_id: dogId,
-    p_tier: tier,
-    p_user_id: user.id,
-  });
-  if (error || !data?.[0]) throw error ?? new Error("Wishlist could not be updated.");
-  if (data[0].limit_reached) {
-    await recordProductAnalyticsEvent({
-      dogId,
-      eventName: "subscription_limit_prompt",
-      metadata: { limit: wishlistLimit, limitType: "wishlist", tier },
-      path: `/dogs/${dogId}`,
-      userId: user.id,
-    });
-    redirect(`/settings/subscription?message=${encodeURIComponent("Wishlist limit reached. Upgrade to save more dogs.")}`);
-  }
-
-  revalidatePath(`/dogs/${dogId}`);
-  revalidatePath("/profile");
-}
-
 export async function bookAppointment(formData: FormData): Promise<BookingSlotConflict> {
   const dogId = String(formData.get("dogId") ?? "");
   const appointmentDate = String(formData.get("appointmentDate") ?? "");

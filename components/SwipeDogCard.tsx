@@ -1,12 +1,11 @@
 "use client";
 
-import { useRef, useState, useTransition, type MouseEvent } from "react";
+import { useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
-import { CalendarDays, Bookmark, Info, PawPrint } from "lucide-react";
-import { trackGA } from "@/utils/google-analytics";
-import { toggleWishlistAction } from "@/app/actions/wishlist";
+import { CalendarDays, Info, PawPrint } from "lucide-react";
 import { useAuthModal } from "@/components/auth/AuthProvider";
 import DogVideoFrame from "@/components/dogs/DogVideoFrame";
+import WishlistSaveButton from "@/components/dogs/WishlistSaveButton";
 import TreatButton from "@/components/donations/TreatButton";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { translateAgeLabel, translateDogValue } from "@/components/i18n/translations";
@@ -77,9 +76,6 @@ export default function SwipeDogCard({
 }: Props) {
   const carouselRef = useRef<HTMLDivElement>(null);
   const [imgIdx, setImgIdx]     = useState(0);
-  const [saved, setSaved]       = useState(initialSaved);
-  const [wishlistLimit, setWishlistLimit] = useState<number | null>(null);
-  const [pending, startTransition] = useTransition();
   const { openAuthModal } = useAuthModal();
   const { language, t } = useLanguage();
 
@@ -157,29 +153,6 @@ export default function SwipeDogCard({
     openAuthModal({
       nextPath: `/schedule/${dog.id}`,
       reason: t("Sign in or create an account to book this shelter visit."),
-    });
-  }
-
-  function handleBookmark() {
-    if (!isLoggedIn) {
-      openAuthModal({
-        nextPath: "/swipe",
-        reason: t("Sign in or create an account to save dogs to your wishlist."),
-      });
-      return;
-    }
-    const next = !saved;
-    setSaved(next); // optimistic
-    startTransition(async () => {
-      const result = await toggleWishlistAction(dog.id);
-      if (!result.error) trackGA(result.saved ? "dog_saved" : "dog_unsaved", { dog_id: dog.id });
-      if (result.error) {
-        trackGA("save_failed", { reason: result.error });
-        setSaved(!next); // rollback on error
-        if (result.error === "wishlist_limit_reached") {
-          setWishlistLimit(result.limit ?? 5);
-        }
-      }
     });
   }
 
@@ -323,59 +296,8 @@ export default function SwipeDogCard({
         >
           <CalendarDays size={24} stroke="white" strokeWidth={2} />
         </Link>
-        <button
-          onClick={handleBookmark}
-          disabled={pending}
-          className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform disabled:opacity-60"
-          style={{ background: saved ? "#65584f" : "#cd8188" }}
-          aria-label={saved ? t("Saved") : t("Save")}
-        >
-          <Bookmark size={24} stroke="white" fill={saved ? "white" : "none"} strokeWidth={2} />
-        </button>
+        <WishlistSaveButton dogId={dog.id} initialSaved={initialSaved} isLoggedIn={isLoggedIn} surface="swipe_feed" />
       </div>
-
-      {wishlistLimit !== null && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 px-[18px]"
-          onClick={() => setWishlistLimit(null)}
-          style={{ paddingTop: "max(24px, env(safe-area-inset-top))", paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-[342px] rounded-[22px] bg-white px-[22px] py-[22px] text-center shadow-[0_20px_60px_rgba(0,0,0,0.24)]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <p className="text-[20px] font-extrabold text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              {t("Wishlist limit reached")}
-            </p>
-            <p className="mt-[10px] text-[14px] leading-[1.55] text-[#65584f]/70" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              {t("Your current plan can save up to")}
-              {" "}
-              <strong className="font-bold text-[#65584f]">{wishlistLimit}</strong>
-              {" "}
-              {t("dogs. Upgrade to keep more favorites close before they disappear or get adopted.")}
-            </p>
-            <div className="mt-[18px] flex flex-col gap-[10px]">
-              <Link
-                href="/settings/subscription"
-                className="rounded-[14px] bg-[#cd8188] py-[12px] text-[14px] font-bold text-white active:scale-[0.99] transition-transform"
-                style={{ fontFamily: "Montserrat, sans-serif" }}
-              >
-                {t("View plans")}
-              </Link>
-              <button
-                type="button"
-                onClick={() => setWishlistLimit(null)}
-                className="rounded-[14px] py-[10px] text-[13px] font-bold text-[#65584f]/68"
-                style={{ fontFamily: "Montserrat, sans-serif" }}
-              >
-                {t("Maybe later")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -44,3 +44,18 @@ test('local and preview hosts never send production events',()=>{
   window.location.hostname='preview.vercel.app'; api.trackGA('login');
   assert.equal(window.dataLayer,undefined);
 });
+test('save and unsave events respect consent and exclude personal fields on both surfaces',()=>{
+  for (const pathname of ['/swipe', '/dogs/118f9254-aa74-42fe-9f82-55811bf1f889']) {
+    const {api,window}=load(); window.location.pathname=pathname;
+    api.trackGA('dog_saved', {dog_id:'118f9254-aa74-42fe-9f82-55811bf1f889'});
+    assert.equal(window.dataLayer, undefined);
+    api.setAnalyticsConsent('granted');
+    for (const name of ['dog_saved','dog_unsaved']) {
+      api.trackGA(name, {dog_id:'118f9254-aa74-42fe-9f82-55811bf1f889',email:'private@example.com',note:'private note'});
+      const event=window.dataLayer.at(-1);
+      assert.equal(event[1],name);
+      assert.equal(event[2].email,undefined);
+      assert.equal(event[2].note,undefined);
+    }
+  }
+});
