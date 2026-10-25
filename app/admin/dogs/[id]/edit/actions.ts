@@ -407,6 +407,7 @@ function normalizeStructuredTraits(formData: FormData) {
 
 function revalidateDogManagementPaths(dogId: string) {
   revalidatePath("/");
+  revalidatePath("/swipe");
   revalidatePath("/dogs");
   revalidatePath(`/dogs/${dogId}`);
   revalidatePath("/admin");

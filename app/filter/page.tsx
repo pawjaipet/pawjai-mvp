@@ -210,11 +210,11 @@ export default function FilterPage() {
   const [ageRange, setAgeRange] = useState<[number, number]>([2, 4]);
   const [isDragging, setIsDragging] = useState<"min" | "max" | null>(null);
   const [hasLoadedInitialPreferences, setHasLoadedInitialPreferences] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const sliderRef = useRef<HTMLDivElement>(null);
   const [, startTransition] = useTransition();
 
-  // Load from localStorage immediately on mount so breed + special needs + age
-  // (none of which the server persists yet) survive a revisit.
+  // Keep an in-progress local draft until saved server preferences load.
   useEffect(() => {
     const local = loadFromLocal();
     if (local) {
@@ -306,10 +306,11 @@ export default function FilterPage() {
   };
 
   const resetFilter = async () => {
+    try {
     clearLocal();
     setSelectedAnswers({});
     setAgeRange([0, 7]);
-    await saveFilterPreferences({
+    const result = await saveFilterPreferences({
       energyLevels: [],
       fullAnswers: {},
       goodWithCats: null,
@@ -318,6 +319,10 @@ export default function FilterPage() {
       questionLabels: Object.fromEntries(questions.map((question, index) => [index, question.question])),
       sizes: [],
     });
+    setSaveError(result.error ?? "");
+    } catch {
+      setSaveError("Your filters could not be reset. Please try again.");
+    }
   };
 
   const finishAndSave = () => {
@@ -333,8 +338,10 @@ export default function FilterPage() {
     saveToLocal(selectedAnswers, ageRange);
 
     startTransition(async () => {
+      setSaveError("");
+      try {
       const activeAgeRange = ageRange[0] === 0 && ageRange[1] >= 7 ? undefined : ageRange;
-      await saveFilterPreferences({
+      const result = await saveFilterPreferences({
         ageRange: activeAgeRange,
         fullAnswers: selectedAnswers,
         sizes: sizeQ,
@@ -344,7 +351,11 @@ export default function FilterPage() {
         goodWithCats: catsQ.includes("Cat-friendly") ? true : catsQ.length > 0 ? false : null,
         questionLabels: Object.fromEntries(questions.map((question, index) => [index, question.question])),
       });
+      if (result.error) { setSaveError(result.error); return; }
       router.push("/");
+      } catch {
+        setSaveError("Your filters could not be saved. Please try again.");
+      }
     });
   };
 
@@ -355,6 +366,7 @@ export default function FilterPage() {
 
   return (
     <>
+      {saveError ? <p role="alert" className="fixed left-4 right-4 top-4 z-[100] mx-auto max-w-lg rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{saveError}</p> : null}
       <ScrollFilter
         answers={selectedAnswers}
         ageRange={ageRange}

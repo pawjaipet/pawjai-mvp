@@ -1447,6 +1447,7 @@ export async function createDogListingAction(
   }
 
   revalidatePath("/");
+  revalidatePath("/swipe");
   revalidatePath("/dogs");
   revalidatePath("/admin");
   revalidatePath("/admin/listings");

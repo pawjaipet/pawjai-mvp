@@ -21,6 +21,7 @@ export interface DogTraitForPreferenceFilter {
 }
 
 export interface PreferenceForDogFilter {
+  filter_answers?: unknown;
   good_with_cats?: Nullable<boolean>;
   good_with_dogs?: Nullable<boolean>;
   good_with_kids?: Nullable<boolean>;
@@ -34,6 +35,20 @@ export interface PreferenceForDogFilter {
   preferred_size?: Nullable<string>;
   preferred_special_needs?: Nullable<string[]>;
   preferred_training_preferences?: Nullable<string[]>;
+}
+
+// The snapshot preserves multi-select answers that legacy scalar columns cannot.
+function savedChoices(preference: Nullable<PreferenceForDogFilter>, index: number): string[] {
+  const snapshot = preference?.filter_answers;
+  if (!snapshot || typeof snapshot !== "object" || !("answers" in snapshot)) return [];
+  const answers = snapshot.answers;
+  if (!answers || typeof answers !== "object") return [];
+  const values = (answers as Record<string, unknown>)[String(index)];
+  return Array.isArray(values) ? values.filter((value): value is string => typeof value === "string" && Boolean(value.trim())) : [];
+}
+
+export function hasSavedDogSocialChoice(preference: Nullable<PreferenceForDogFilter>) {
+  return savedChoices(preference, 8).length > 0;
 }
 
 function clean(values: Nullable<string[]>) {
@@ -51,7 +66,10 @@ function hasAny(values: Nullable<string[]>) {
 export function hasActiveDogPreference(preference: Nullable<PreferenceForDogFilter>) {
   if (!preference) return false;
   return Boolean(
-    preference.preferred_size ||
+    savedChoices(preference, 0).length ||
+      savedChoices(preference, 3).length ||
+      hasSavedDogSocialChoice(preference) ||
+      preference.preferred_size ||
       preference.preferred_energy_level ||
       preference.good_with_cats !== null && preference.good_with_cats !== undefined ||
       preference.good_with_dogs !== null && preference.good_with_dogs !== undefined ||
@@ -168,9 +186,11 @@ export function filterDogsByPreferences<TDog extends DogForPreferenceFilter>(
     return (
       matchesBreed(dog.breed, preference!.preferred_breeds) &&
       matchesAge(dog, preference!) &&
-      matchesOneOf(dog.size, preference!.preferred_size ? [preference!.preferred_size] : []) &&
-      matchesOneOf(dog.energy_level, preference!.preferred_energy_level ? [preference!.preferred_energy_level] : []) &&
-      matchesBoolean(dog.good_with_dogs, preference!.good_with_dogs) &&
+      matchesOneOf(dog.size, savedChoices(preference, 0).length ? savedChoices(preference, 0) : preference!.preferred_size ? [preference!.preferred_size] : []) &&
+      matchesOneOf(dog.energy_level, savedChoices(preference, 3).length ? savedChoices(preference, 3) : preference!.preferred_energy_level ? [preference!.preferred_energy_level] : []) &&
+      (hasSavedDogSocialChoice(preference)
+        ? matchesTrait(dogTraits, "dog_social_style", savedChoices(preference, 8))
+        : matchesBoolean(dog.good_with_dogs, preference!.good_with_dogs)) &&
       matchesBoolean(dog.good_with_cats, preference!.good_with_cats) &&
       matchesBoolean(dog.good_with_kids, preference!.good_with_kids) &&
       matchesTrait(dogTraits, "protectiveness", preference!.preferred_protectiveness) &&
@@ -192,9 +212,9 @@ export function rankDogsByPreferenceMatch<TDog extends DogForPreferenceFilter>(
   const dimensions: PreferenceForDogFilter[] = [
     { preferred_breeds: preference!.preferred_breeds },
     { preferred_age_min_months: preference!.preferred_age_min_months, preferred_age_max_months: preference!.preferred_age_max_months },
-    { preferred_size: preference!.preferred_size },
-    { preferred_energy_level: preference!.preferred_energy_level },
-    { good_with_dogs: preference!.good_with_dogs },
+    { preferred_size: preference!.preferred_size, filter_answers: { answers: { 0: savedChoices(preference, 0) } } },
+    { preferred_energy_level: preference!.preferred_energy_level, filter_answers: { answers: { 3: savedChoices(preference, 3) } } },
+    { good_with_dogs: preference!.good_with_dogs, filter_answers: { answers: { 8: savedChoices(preference, 8) } } },
     { good_with_cats: preference!.good_with_cats },
     { good_with_kids: preference!.good_with_kids },
     { preferred_protectiveness: preference!.preferred_protectiveness },

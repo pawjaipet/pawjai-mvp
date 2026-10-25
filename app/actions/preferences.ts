@@ -1,12 +1,11 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
 import { GUEST_FILTER_COOKIE, readGuestPreferences } from "@/utils/guest-preferences";
-
 import { createClient } from "@/utils/supabase/server";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { revalidatePath } from "next/cache";
 import {
   buildPreferenceUpdate,
   hasStructuredPreferenceAnswers,
@@ -33,13 +32,13 @@ export async function getSavedFilterPreferences(): Promise<SavedFilterAnswers | 
 
   if (!preferences) return null;
 
+  const snapshotAnswers = restoreAnswersFromSnapshot(preferences.filter_answers);
+  if (snapshotAnswers) return snapshotAnswers;
+
   if (hasStructuredPreferenceAnswers(preferences)) {
     const structuredAnswers = restoreAnswersFromPreference(preferences);
     if (Object.keys(structuredAnswers).length) return structuredAnswers;
   }
-
-  const snapshotAnswers = restoreAnswersFromSnapshot((preferences as unknown as { filter_answers?: unknown }).filter_answers);
-  if (snapshotAnswers) return snapshotAnswers;
 
   const legacyAnswers = restoreAnswersFromPreference(preferences);
   return Object.keys(legacyAnswers).length ? legacyAnswers : null;
@@ -62,23 +61,11 @@ export async function saveFilterPreferences(answers: FilterAnswers) {
 
   const updates = buildPreferenceUpdate(answers);
 
-  const { data: existing } = await admin
-    .from("adopter_preferences")
-    .select("adopter_id")
-    .eq("adopter_id", adopter.id)
-    .maybeSingle();
-
-  if (existing) {
-    const { error } = await (admin as any).from("adopter_preferences").update(updates).eq("adopter_id", adopter.id);
-    if (error && (error.message.includes("filter_answers") || error.message.includes("filter_summary") || error.message.includes("preferred_") || error.message.includes("schema cache"))) {
-      const { filter_answers: _filterAnswers, filter_summary: _filterSummary, preferred_affection_styles: _affection, preferred_age_max_months: _ageMax, preferred_age_min_months: _ageMin, preferred_breeds: _breeds, preferred_people_friendliness: _people, preferred_protectiveness: _protectiveness, preferred_special_needs: _specialNeeds, preferred_training_preferences: _training, ...legacyUpdates } = updates;
-      await admin.from("adopter_preferences").update(legacyUpdates).eq("adopter_id", adopter.id);
-    }
-  } else {
-    const { error } = await (admin as any).from("adopter_preferences").insert({ adopter_id: adopter.id, ...updates });
-    if (error && (error.message.includes("filter_answers") || error.message.includes("filter_summary") || error.message.includes("preferred_") || error.message.includes("schema cache"))) {
-      const { filter_answers: _filterAnswers, filter_summary: _filterSummary, preferred_affection_styles: _affection, preferred_age_max_months: _ageMax, preferred_age_min_months: _ageMin, preferred_breeds: _breeds, preferred_people_friendliness: _people, preferred_protectiveness: _protectiveness, preferred_special_needs: _specialNeeds, preferred_training_preferences: _training, ...legacyUpdates } = updates;
-      await admin.from("adopter_preferences").insert({ adopter_id: adopter.id, ...legacyUpdates });
-    }
-  }
+  const { error } = await admin.from("adopter_preferences")
+    .upsert({ adopter_id: adopter.id, ...updates }, { onConflict: "adopter_id" });
+  if (error) return { error: "Your filters could not be saved. Your selections are still here; please try again." };
+  revalidatePath("/");
+  revalidatePath("/swipe");
+  revalidatePath("/filter");
+  return { error: null };
 }

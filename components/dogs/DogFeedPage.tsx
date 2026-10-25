@@ -8,6 +8,7 @@ import { buildDogMediaItems, normalizeDogMediaUrl } from "@/utils/dog-media";
 import {
   filterDogsByPreferences,
   hasActiveDogPreference,
+  hasSavedDogSocialChoice,
   rankDogsByPreferenceMatch,
   type PreferenceForDogFilter,
 } from "@/utils/dog-preference-filter";
@@ -59,7 +60,7 @@ async function getMatchingDogs(
 
   if (!advancedMatching && preference?.preferred_size) dogQuery = dogQuery.eq("size", preference.preferred_size as Database["public"]["Enums"]["dog_size"]);
   if (!advancedMatching && preference?.preferred_energy_level) dogQuery = dogQuery.eq("energy_level", preference.preferred_energy_level as Database["public"]["Enums"]["dog_energy_level"]);
-  if (!advancedMatching && preference?.good_with_dogs !== null && preference?.good_with_dogs !== undefined) dogQuery = dogQuery.eq("good_with_dogs", preference.good_with_dogs);
+  if (!advancedMatching && !hasSavedDogSocialChoice(preference) && preference?.good_with_dogs !== null && preference?.good_with_dogs !== undefined) dogQuery = dogQuery.eq("good_with_dogs", preference.good_with_dogs);
   if (!advancedMatching && preference?.good_with_cats !== null && preference?.good_with_cats !== undefined) dogQuery = dogQuery.eq("good_with_cats", preference.good_with_cats);
   if (!advancedMatching && preference?.good_with_kids !== null && preference?.good_with_kids !== undefined) dogQuery = dogQuery.eq("good_with_kids", preference.good_with_kids);
   if (!advancedMatching && preference?.preferred_age_min_months !== null && preference?.preferred_age_min_months !== undefined) {
@@ -85,11 +86,12 @@ async function getMatchingDogs(
     .select("id, dog_id, public_url, is_cover, sort_order, storage_path")
     .in("dog_id", ids)
     .order("sort_order");
-  const { data: traits } = await supabase
+  const { data: traits, error: traitError } = await supabase
     .from("dog_traits")
     .select("dog_id, trait_type, trait_value")
     .in("dog_id", ids)
     .order("created_at");
+  if (traitError) throw new Error("Dog matching tags could not be loaded. Please retry.");
 
   const photoMap = new Map<string, { id: string; public_url: string | null; is_cover: boolean; sort_order: number; storage_path: string }[]>();
   for (const p of photos ?? []) {

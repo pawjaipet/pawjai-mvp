@@ -111,6 +111,36 @@ const traits = [
   { dog_id: "young", trait_type: "medical_needs", trait_value: "Behavioral support" },
 ];
 
+test("saved multi-select energy and size choices restrict results to their union", () => {
+  const { filterDogsByPreferences, hasActiveDogPreference } = loadDogPreferenceFilter();
+  const preference = { filter_answers: { answers: { 0: ["Small", "Medium"], 3: ["Low", "Medium"] } } };
+  assert.equal(hasActiveDogPreference(preference), true);
+  const result = filterDogsByPreferences(dogs, traits, preference);
+  assert.ok(result.length > 0);
+  assert.ok(result.every(dog => ["small", "medium"].includes(dog.size) && ["low", "medium"].includes(dog.energy_level)));
+  assert.ok(!result.some(dog => dog.id === "match"));
+});
+
+test("saved selective-dog choice uses the shelter social tag, not the legacy boolean", () => {
+  const { filterDogsByPreferences, rankDogsByPreferenceMatch } = loadDogPreferenceFilter();
+  const socialTraits = [
+    { dog_id: "match", trait_type: "dog_social_style", trait_value: "Okay with other dogs but not too social" },
+    { dog_id: "young", trait_type: "dog_social_style", trait_value: "Prefer to be solo" },
+  ];
+  const preference = { good_with_dogs: false, filter_answers: { answers: { 8: ["Okay with other dogs but not too social"] } } };
+  assert.deepEqual(Array.from(filterDogsByPreferences(dogs, socialTraits, preference), dog => dog.id), ["match"]);
+  assert.equal(rankDogsByPreferenceMatch(dogs, socialTraits, preference)[0].id, "match");
+  assert.equal(filterDogsByPreferences(dogs, [], preference).length, 0);
+});
+
+test("changed shelter matching tags change filter results without copying tags into preferences", () => {
+  const { filterDogsByPreferences } = loadDogPreferenceFilter();
+  const preference = { preferred_affection_styles: ["Independent"], preferred_protectiveness: ["Highly protective"] };
+  assert.deepEqual(Array.from(filterDogsByPreferences(dogs, traits, preference), dog => dog.id), ["match"]);
+  const updatedTraits = traits.map(trait => trait.dog_id === "match" && trait.trait_type === "affection_style" ? { ...trait, trait_value: "Subtle" } : trait);
+  assert.equal(filterDogsByPreferences(dogs, updatedTraits, preference).length, 0);
+});
+
 test("returns all dogs when there are no active preference filters", () => {
   const { filterDogsByPreferences } = loadDogPreferenceFilter();
 
