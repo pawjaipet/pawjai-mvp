@@ -37,7 +37,11 @@ export const metadata: Metadata = {
 
 export default async function AboutPage() {
   const supabase = await createClient();
-  const content = await loadPawjaiProfileContent(supabase);
+  const [content, { data: partnerShelters, error: partnerError }] = await Promise.all([
+    loadPawjaiProfileContent(supabase),
+    supabase.from("shelters").select("id, name, logo_url, province, district, website_url, facebook_url").order("name"),
+  ]);
+  if (partnerError) console.error("Could not load partner shelters", { code: partnerError.code });
   const publicContactItems = content.contactItems.filter((item) => {
     const href = buildPawjaiContactHref(item);
     return item.type !== "social" || Boolean(href?.startsWith("https://"));
@@ -91,15 +95,16 @@ export default async function AboutPage() {
         </section>
 
         {/* Partner Shelters — first */}
-        {content.partnerShelters.length > 0 ? <div id="shelters">
+        {Boolean(partnerShelters?.length) ? <div id="shelters">
           <p className="font-bold text-[11px] text-[#65584f]/60 uppercase tracking-widest mb-[14px]" style={{ fontFamily: M }}>
             Partner Shelters
           </p>
           <div className="space-y-[12px]">
-            {content.partnerShelters.map((shelter, index) => (
-              <div
-                key={`${shelter.name}-${index}`}
-                className="rounded-[20px] p-[18px] flex items-center gap-[16px]"
+            {partnerShelters?.map((shelter) => (
+              <a
+                key={shelter.id}
+                href={shelter.website_url || shelter.facebook_url || "#contact"}
+                className="rounded-[20px] p-[18px] flex items-center gap-[16px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#cd8188]"
                 style={{ background: "white" }}
               >
                 {/* Logo area — large square for real logos */}
@@ -111,7 +116,7 @@ export default async function AboutPage() {
                     <img
                       src={shelter.logo_url}
                       alt={shelter.name}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain p-1"
                     />
                   ) : (
                     <span className="text-[32px]">🏥</span>
@@ -123,14 +128,14 @@ export default async function AboutPage() {
                     {shelter.name}
                   </p>
                   <p className="text-[13px] text-[#65584f]/50 mt-[3px]" style={{ fontFamily: M }}>
-                    {shelter.detail.split(" · ")[0]}
+                    {[shelter.district, shelter.province].filter(Boolean).join(", ") || "Dog adoption visits"}
                   </p>
                   <div
                     className="inline-flex items-center mt-[8px] px-[10px] py-[3px] rounded-full"
                     style={{ background: "rgba(205,129,136,0.12)" }}
                   >
                     <span className="text-[12px] font-semibold text-[#cd8188]" style={{ fontFamily: M }}>
-                      {shelter.detail.split(" · ")[1] ?? shelter.detail}
+                      View shelter information
                     </span>
                   </div>
                 </div>
@@ -138,7 +143,7 @@ export default async function AboutPage() {
                 <svg className="shrink-0" width="7" height="12" viewBox="0 0 7 12" fill="none">
                   <path d="M1 1L6 6L1 11" stroke="#65584f" strokeOpacity="0.3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-              </div>
+              </a>
             ))}
           </div>
         </div> : null}

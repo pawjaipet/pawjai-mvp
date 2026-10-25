@@ -11,12 +11,14 @@ import { trackGA } from "@/utils/google-analytics";
 
 type Props = {
   dogId: string;
+  initialCount?: number | null;
   initialSaved: boolean;
   isLoggedIn: boolean;
   surface: "swipe_feed" | "dog_detail";
 };
 
-export default function WishlistSaveButton({ dogId, initialSaved, isLoggedIn, surface }: Props) {
+export default function WishlistSaveButton({ dogId, initialSaved, isLoggedIn, surface, initialCount }: Props) {
+  const [count, setCount] = useState(initialCount);
   const [saved, setSaved] = useState(initialSaved);
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<{ message: string; error: boolean } | null>(null);
@@ -64,6 +66,7 @@ export default function WishlistSaveButton({ dogId, initialSaved, isLoggedIn, su
         setFeedback({ message: t("Could not update saved dogs. Please try again."), error: true });
         trackGA("save_failed", { reason: result.error });
       } else {
+        if (count != null && result.saved !== saved) setCount(Math.max(0, count + (result.saved ? 1 : -1)));
         setSaved(result.saved);
         setFeedback({
           message: t(result.saved ? "Saved to your wishlist." : "Removed from your wishlist."),
@@ -88,10 +91,11 @@ export default function WishlistSaveButton({ dogId, initialSaved, isLoggedIn, su
         disabled={pending}
         aria-label={t(saved ? "Remove from wishlist" : "Save to wishlist")}
         aria-pressed={saved}
-        className={`${surface === "dog_detail" ? "h-[48px] w-[48px]" : "h-14 w-14"} flex items-center justify-center rounded-full shadow-lg transition-transform active:scale-95 disabled:opacity-60`}
+        className={`${surface === "dog_detail" ? "h-[48px] w-[48px]" : "h-14 w-14"} relative flex items-center justify-center rounded-full shadow-lg transition-transform active:scale-95 disabled:opacity-60`}
         style={{ background: saved ? "#65584f" : "#cd8188" }}
       >
         <Bookmark size={surface === "dog_detail" ? 22 : 24} stroke="white" fill={saved ? "white" : "none"} strokeWidth={2.2} />
+        {surface === "swipe_feed" && count != null && <span className="absolute -right-1 -top-1 min-w-6 rounded-full border-2 border-white bg-[#65584f] px-1 text-xs font-bold leading-5 text-white" aria-label={`${t("Saved by users")}: ${count}`}>{count}</span>}
       </button>
 
       {feedback && typeof document !== "undefined" && createPortal(

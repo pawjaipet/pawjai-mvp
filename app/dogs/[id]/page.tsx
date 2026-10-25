@@ -20,6 +20,8 @@ import { hasSupabaseAuthCookies } from "@/utils/supabase/auth-cookies";
 import { NOINDEX_ROBOTS, canonicalUrl } from "@/utils/seo";
 import WishlistSaveButton from "@/components/dogs/WishlistSaveButton";
 
+import DogShareButton from "@/components/dogs/DogShareButton";
+
 const M = "Montserrat, sans-serif";
 const BG = "#F5F1E8";
 
@@ -253,18 +255,8 @@ export default async function DogProfilePage({
           <ArrowLeft size={22} stroke="white" strokeWidth={2.2} />
         </Link>
 
-        {/* Treat button — floating bottom-right of the hero image */}
         <div className="absolute right-[14px] bottom-[14px] z-20">
-          <TreatButton
-            variant="floating"
-            size="sm"
-            dogId={dog.id}
-            dogName={dog.name}
-            shelterId={dog.shelter_id}
-            shelterName={shelter?.name ?? "their shelter"}
-            dogPhotoUrl={primaryDogPhotoUrl}
-            isLoggedIn={Boolean(user)}
-          />
+          <DogShareButton dogId={dog.id} dogName={dog.name} surface="dog_detail" compact />
         </div>
 
         {/* Wishlist save (bookmark) — floating top-right, matches swipe card */}
@@ -279,6 +271,7 @@ export default async function DogProfilePage({
       {/* Main content */}
       <div className="px-[20px] pt-[20px]">
         {/* Name + breed */}
+        <div className="flex items-center justify-between gap-4">
         <h1
           data-i18n-ignore
           className="text-[32px] font-bold leading-tight text-[#65584f]"
@@ -286,6 +279,8 @@ export default async function DogProfilePage({
         >
           {dog.name}
         </h1>
+        {shelter?.logo_url && <img src={shelter.logo_url} alt={shelter.name} className="h-16 w-20 shrink-0 rounded-xl bg-white p-1 object-contain" />}
+        </div>
         {breedLabel && (
           <p
             className="text-[16px] text-[#65584f]/55 mt-[2px]"

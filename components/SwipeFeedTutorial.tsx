@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
-import { ArrowLeftRight, ChevronUp, X } from "lucide-react";
+import { ArrowUp, X } from "lucide-react";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 
 const M = "Montserrat, sans-serif";
@@ -62,7 +62,10 @@ export default function SwipeFeedTutorial({ enabled = true, isLoggedIn }: SwipeF
   useEffect(() => {
     if (!visible) return;
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setVisible(false);
+      if (event.key === "Escape") {
+        setVisible(false);
+        try { window.localStorage.setItem(DISMISSED_KEY, "true"); } catch { /* Storage may be disabled. */ }
+      }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -72,80 +75,27 @@ export default function SwipeFeedTutorial({ enabled = true, isLoggedIn }: SwipeF
 
   return (
     <div
-      className="fixed inset-0 z-[80] mx-auto h-[100dvh] w-full max-w-[402px] overflow-hidden"
-      style={{
-        background: "rgba(101,88,79,0.72)",
-        backdropFilter: "blur(4px)",
-        WebkitBackdropFilter: "blur(4px)",
-        fontFamily: M,
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="swipe-tutorial-title"
+      className="fixed left-1/2 top-[114px] z-[80] -translate-x-1/2 overflow-hidden rounded-[22px] border border-white/40 bg-[#65584f]/45 text-white"
+      style={{ width: "min(370px, calc(100vw - 32px))", height: "min(590px, calc(100svh - 200px))", fontFamily: M }}
+      role="dialog" aria-labelledby="swipe-tutorial-title"
     >
       <style>{`
         @keyframes pawjai-tutorial-up {
-          0%, 100% { transform: translateY(26px); opacity: 0.45; }
-          44% { transform: translateY(-24px); opacity: 1; }
-          72% { transform: translateY(-36px); opacity: 0; }
+          0%, 100% { transform: translateY(46px); opacity: 0.4; }
+          65% { transform: translateY(-44px); opacity: 1; }
+          85% { transform: translateY(-54px); opacity: 0; }
         }
-        @keyframes pawjai-tutorial-side {
-          0%, 100% { transform: translateX(-30px); opacity: 0.45; }
-          50% { transform: translateX(30px); opacity: 1; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .pawjai-gesture-up,
-          .pawjai-gesture-side {
-            animation: none !important;
-          }
-        }
+        @media (prefers-reduced-motion: reduce) { .pawjai-gesture-up { animation: none !important; } }
       `}</style>
-
-      <button
-        type="button"
-        onClick={dismiss}
-        className="absolute right-[18px] top-[18px] z-20 flex h-[36px] w-[36px] items-center justify-center rounded-full bg-[#cd8188]/90 text-white shadow-[0_8px_24px_rgba(205,129,136,0.35)] ring-1 ring-white/35 backdrop-blur transition-transform active:scale-95"
-        aria-label={t("Close tutorial")}
-      >
-        <X size={17} strokeWidth={2.4} />
-      </button>
-
-      <div className="absolute left-[24px] right-[24px] top-[126px] z-10 text-center">
-        <p
-          id="swipe-tutorial-title"
-          className="rounded-[26px] bg-[#cd8188]/90 px-[18px] py-[14px] text-[18px] font-extrabold leading-[1.28] text-white shadow-[0_16px_38px_rgba(205,129,136,0.34)] ring-1 ring-white/35 backdrop-blur"
-        >
-          {t("Scroll up to view dogs. Swipe left or right to see more photos.")}
-        </p>
-      </div>
-
-      <div className="pointer-events-none absolute inset-x-0 top-[266px] z-10 flex flex-col items-center gap-[42px]" aria-hidden="true">
-        <div className="relative flex h-[118px] w-[118px] items-center justify-center rounded-full bg-[#cd8188] shadow-[0_18px_42px_rgba(205,129,136,0.38)]">
-          <ChevronUp className="absolute top-[14px] text-white/80" size={26} strokeWidth={3} />
-          <PawGesture
-            className="pawjai-gesture-up"
-            size={56}
-            style={{ animation: "pawjai-tutorial-up 1.55s ease-in-out infinite" }}
-          />
+      <button type="button" onClick={dismiss} aria-label={t("Close tutorial")} className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-[#65584f] text-white"><X size={22} /></button>
+      <div className="flex h-full flex-col items-center justify-center gap-6 px-7 py-16 text-center">
+        <p id="swipe-tutorial-title" className="rounded-2xl bg-[#65584f]/90 px-5 py-3 text-lg font-bold">{t("Swipe up to see the next dog.")}</p>
+        <div className="relative flex min-h-32 flex-1 items-center justify-center" aria-hidden="true">
+          <ArrowUp size={100} strokeWidth={3} className="absolute -translate-y-6 drop-shadow-lg" />
+          <PawGesture className="pawjai-gesture-up" size={66} style={{ animation: "pawjai-tutorial-up 1.8s ease-in-out infinite" }} />
         </div>
-
-        <div className="relative flex h-[96px] w-[168px] items-center justify-center rounded-full bg-[#cd8188]/90 text-white shadow-[0_16px_36px_rgba(205,129,136,0.32)] ring-1 ring-white/35 backdrop-blur">
-          <ArrowLeftRight className="absolute opacity-70" size={76} strokeWidth={1.7} />
-          <PawGesture
-            className="pawjai-gesture-side"
-            size={50}
-            style={{ animation: "pawjai-tutorial-side 1.6s ease-in-out infinite" }}
-          />
-        </div>
+        <button type="button" onClick={dismiss} className="min-h-12 w-full shrink-0 rounded-full bg-[#cd8188] px-6 py-3 font-bold shadow-lg">{t("Got it")}</button>
       </div>
-
-      <button
-        type="button"
-        onClick={dismiss}
-        className="absolute bottom-[28px] left-[36px] right-[36px] z-20 flex h-[48px] items-center justify-center rounded-[24px] bg-[#cd8188] text-[15px] font-extrabold text-white shadow-[0_14px_32px_rgba(205,129,136,0.34)] transition-transform active:scale-[0.98]"
-      >
-        {t("Got it")}
-      </button>
     </div>
   );
 }

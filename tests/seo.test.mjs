@@ -161,15 +161,17 @@ test("the public About page receives confirmed shelter partners only", () => {
   assert.equal(partners[0].name, "Confirmed shelter");
 });
 
-test("swipe feed media only loads active dog images eagerly", () => {
+test("swipe feed eagerly loads first photos only for mounted neighbouring cards", () => {
   const cardSource = readFileSync(new URL("../components/SwipeDogCard.tsx", import.meta.url), "utf8");
   const feedSource = readFileSync(new URL("../components/SwipeFeed.tsx", import.meta.url), "utf8");
   const videoSource = readFileSync(new URL("../components/dogs/DogVideoFrame.tsx", import.meta.url), "utf8");
 
   assert.match(feedSource, /const shouldRenderContent = Math\.abs\(idx - activeIndex\) <= 1/);
-  assert.match(cardSource, /loading=\{isActive && i === 0 \? "eager" : "lazy"\}/);
-  assert.match(cardSource, /fetchPriority=\{isActive && i === 0 \? "high" : "low"\}/);
-  assert.match(videoSource, /loading="lazy"/);
+  const photoSource = readFileSync(new URL("../components/dogs/DogCardPhoto.tsx", import.meta.url), "utf8");
+  assert.match(cardSource, /DogCardPhoto/);
+  assert.match(photoSource, /loading=\{first \? "eager" : "lazy"\}/);
+  assert.match(photoSource, /fetchPriority=\{active && first \? "high" : "auto"\}/);
+  assert.match(videoSource, /loading="eager"/);
   assert.match(videoSource, /fetchPriority="low"/);
 });
 

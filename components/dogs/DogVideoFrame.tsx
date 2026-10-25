@@ -63,7 +63,7 @@ export default function DogVideoFrame({
           decoding="async"
           draggable={false}
           fetchPriority="low"
-          loading="lazy"
+          loading="eager"
           style={{ filter: "brightness(0.75)" }}
         />
       ) : (

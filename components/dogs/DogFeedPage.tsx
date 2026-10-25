@@ -1,3 +1,4 @@
+import { GUEST_FILTER_COOKIE, readGuestPreferences } from "@/utils/guest-preferences";
 import { cookies } from "next/headers";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
@@ -262,6 +263,7 @@ export default async function DogFeedPage() {
   }
 
   if (!isLoggedIn) {
+    preference = readGuestPreferences(cookieStore.get(GUEST_FILTER_COOKIE)?.value);
     dailyDogViewsRemaining = ANONYMOUS_DOG_VIEW_LIMIT;
   }
 
@@ -277,9 +279,15 @@ export default async function DogFeedPage() {
       ? dogs.slice(0, dailyDogViewsRemaining)
     : dogs;
 
+  // Only aggregate counts leave the server; saver identities remain private.
+  const { data: counts } = visibleDogs.length
+    ? await createAdminClient().from("dogs").select("id, wishlists(count)").in("id", visibleDogs.map(dog => dog.id))
+    : { data: [] };
+  const countByDog = new Map(((counts ?? []) as unknown as { id: string; wishlists: { count: number }[] }[]).map(row => [row.id, row.wishlists[0]?.count ?? 0]));
+
   return (
     <SwipeFeed
-      dogs={visibleDogs}
+      dogs={visibleDogs.map(dog => ({ ...dog, save_count: countByDog.get(dog.id) ?? null }))}
       savedIds={savedIds}
       isLoggedIn={isLoggedIn}
       ads={ads}

@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { ArrowLeft, Check, Copy, FileCheck2, Upload } from "lucide-react";
 import generatePromptPayPayload from "promptpay-qr";
 import QRCode from "qrcode";
@@ -137,6 +138,7 @@ export default function DonateScreen({
   bankAccountNumber,
   bankAccountName,
 }: DonateScreenProps) {
+  const { t } = useLanguage();
   const [qrDataUrl, setQrDataUrl] = useState("");
   const initialSlipState: DonationSlipState = { message: "", status: "idle" };
   const [slipState, submitSlip, slipPending] = useActionState(submitDonationSlipAction, initialSlipState);
@@ -258,7 +260,7 @@ export default function DonateScreen({
             className="rounded-[16px] px-[16px] py-[12px] text-[13px] leading-5"
             style={{ background: "#fbf2e2", color: "#9a7b4f" }}
           >
-            This shelter hasn&apos;t set up all donation methods yet.
+            {t(hasBank ? "Transfer directly using the bank details below." : "This shelter hasn’t set up donation methods yet.")}
           </div>
         ) : null}
 

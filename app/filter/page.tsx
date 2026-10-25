@@ -6,7 +6,6 @@ import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, PawPrint } from "lucide-react";
 import { getSavedFilterPreferences, saveFilterPreferences } from "@/app/actions/preferences";
-import ClientAuthGate from "@/components/auth/ClientAuthGate";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { translateAgeLabel, translateDogValue } from "@/components/i18n/translations";
@@ -355,10 +354,7 @@ export default function FilterPage() {
   };
 
   return (
-    <ClientAuthGate
-      nextPath="/filter"
-      reason="Sign in to save your matching preferences."
-    >
+    <>
       <ScrollFilter
         answers={selectedAnswers}
         ageRange={ageRange}
@@ -370,7 +366,7 @@ export default function FilterPage() {
         onReset={resetFilter}
         getAgeLabel={getAgeLabel}
       />
-    </ClientAuthGate>
+    </>
   );
 }
 

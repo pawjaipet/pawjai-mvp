@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuthModal } from "@/components/auth/AuthProvider";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, SlidersHorizontal, Calendar, User, MoreHorizontal } from "lucide-react";
@@ -30,6 +31,7 @@ function hidesAdopterNavigation(pathname: string) {
 }
 
 export default function BottomNavBar() {
+  const { closeAuthModal } = useAuthModal();
   const pathname = usePathname();
   const { t } = useLanguage();
 
@@ -49,6 +51,7 @@ export default function BottomNavBar() {
             <Link
               key={href}
               href={href}
+              onClick={closeAuthModal}
               className="flex flex-col items-center justify-center flex-1 h-full transition-colors active:bg-[#d6c8ad]/20"
             >
               <Icon

@@ -345,11 +345,12 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
 
   return (
     <div className="relative rounded-[24px] bg-white px-[30px] pb-[30px] pt-[28px] shadow-2xl">
+      {isSignup && <p className="mb-4 pr-8 text-sm font-semibold text-[#65584f]">{t("Create an account today and get free booking for your first appointment.")}</p>}
       {onClose && (
         <button
           type="button"
           onClick={() => { trackGA("auth_dismiss", { mode }); onClose?.(); }}
-          className="absolute right-[10px] top-[10px] flex size-[52px] items-center justify-center rounded-full text-[36px] text-[#65584f] active:bg-[#d6c8ad]/40"
+          className="sticky float-right -mr-[20px] -mt-[18px] top-0 z-10 bg-white flex size-[52px] items-center justify-center rounded-full text-[36px] text-[#65584f] active:bg-[#d6c8ad]/40"
           aria-label="Close"
         >
           ×

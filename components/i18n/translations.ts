@@ -6,6 +6,8 @@ export const DEFAULT_LANGUAGE: Language = "en";
 export const LANGUAGE_STORAGE_KEY = "pawjai.language";
 
 const THAI_TEXT: Record<string, string> = {
+  "Transfer directly using the bank details below.": "โอนเงินโดยตรงตามข้อมูลบัญชีธนาคารด้านล่าง",
+  "This shelter hasn’t set up donation methods yet.": "ศูนย์พักพิงนี้ยังไม่ได้ตั้งค่าช่องทางรับบริจาค",
   Home: "หน้าแรก",
   Filter: "ค้นหา",
   Appointments: "นัดหมาย",
@@ -355,6 +357,16 @@ const THAI_TEXT: Record<string, string> = {
   "How adoption works": "ขั้นตอนการรับเลี้ยง",
   "How Adoption Works": "ขั้นตอนการรับเลี้ยง",
   "Partner shelters": "ศูนย์พักพิงพาร์ทเนอร์",
+  "Dog adoption visits": "เยี่ยมสุนัขเพื่อรับเลี้ยง",
+  "Klaeng, Rayong": "แกลง, ระยอง",
+  "Sriracha, Chonburi": "ศรีราชา, ชลบุรี",
+  "Create an account today and get free booking for your first appointment.": "สร้างบัญชีวันนี้ รับสิทธิ์จองนัดหมายครั้งแรกฟรี",
+  "Swipe up to see the next dog.": "ปัดขึ้นเพื่อดูสุนัขตัวถัดไป",
+  "Loading photo…": "กำลังโหลดรูป…",
+  "Photo could not load.": "โหลดรูปไม่สำเร็จ",
+  "Saved by users": "จำนวนผู้บันทึก",
+  "Could not share. Please try again.": "ไม่สามารถแชร์ได้ กรุณาลองอีกครั้ง",
+  "View shelter information": "ดูข้อมูลศูนย์พักพิง",
   "Partner Shelters": "ศูนย์พักพิงพาร์ทเนอร์",
   "Contact us": "ติดต่อเรา",
   "Contact Us": "ติดต่อเรา",

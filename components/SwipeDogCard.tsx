@@ -2,8 +2,9 @@
 
 import { useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
-import { CalendarDays, Info, PawPrint } from "lucide-react";
+import { CalendarDays, Info } from "lucide-react";
 import { useAuthModal } from "@/components/auth/AuthProvider";
+import DogCardPhoto from "@/components/dogs/DogCardPhoto";
 import DogVideoFrame from "@/components/dogs/DogVideoFrame";
 import WishlistSaveButton from "@/components/dogs/WishlistSaveButton";
 import TreatButton from "@/components/donations/TreatButton";
@@ -12,7 +13,7 @@ import { translateAgeLabel, translateDogValue } from "@/components/i18n/translat
 import type { Dog, DogPhoto, DogTrait } from "@/types/database";
 import { canonicalizeBreedLabel } from "@/utils/dog-breeds";
 import { normalizeDogMediaUrl, type DogMediaItem } from "@/utils/dog-media";
-import { sendProductAnalyticsEvent } from "@/utils/product-analytics-client";
+import DogShareButton from "@/components/dogs/DogShareButton";
 
 export type SwipeDog = Dog & {
   photos: Pick<DogPhoto, "public_url" | "is_cover" | "sort_order">[];
@@ -21,6 +22,7 @@ export type SwipeDog = Dog & {
   video?: { poster_url: string | null; public_url: string } | null;
   shelter_logo_url?: string | null;
   shelter_name?: string | null;
+  save_count?: number | null;
 };
 
 function ageLabel(months: number | null) {
@@ -34,27 +36,6 @@ function ageLabel(months: number | null) {
 // Soft lift so tags stay readable over busy dog photos.
 const TAG_BEIGE = "bg-[#d6c8ad] text-black shadow-[0_7px_16px_rgba(0,0,0,0.20)] ring-1 ring-white/30";
 const TAG_ROSE  = "bg-[#cd8188] text-white shadow-[0_7px_16px_rgba(0,0,0,0.22)] ring-1 ring-white/25";
-
-function CurvedShareArrow() {
-  return (
-    <svg
-      aria-hidden="true"
-      width="31"
-      height="31"
-      viewBox="0 0 64 64"
-      fill="none"
-      className="translate-x-[1px]"
-    >
-      <path
-        d="M10 50C12 33 24 22 38 21V10L56 28L38 46V35C26 35 16 39 10 50Z"
-        stroke="white"
-        strokeWidth="6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 interface Props {
   dog: SwipeDog;
@@ -120,33 +101,6 @@ export default function SwipeDogCard({
     setImgIdx(idx);
   }
 
-  async function handleShare() {
-    const shareUrl = new URL(`/dogs/${dog.id}`, window.location.origin).toString();
-
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: dog.name, url: shareUrl });
-        sendProductAnalyticsEvent({
-          dogId: dog.id,
-          eventName: "dog_shared",
-          metadata: { method: "native", source: "swipe_feed" },
-        });
-        return;
-      }
-
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(shareUrl);
-        sendProductAnalyticsEvent({
-          dogId: dog.id,
-          eventName: "dog_shared",
-          metadata: { method: "clipboard", source: "swipe_feed" },
-        });
-      }
-    } catch {
-      // Closing the native share sheet is not a completed share.
-    }
-  }
-
   function requireAuthForBooking(event: MouseEvent<HTMLAnchorElement>) {
     if (isLoggedIn) return;
     event.preventDefault();
@@ -183,16 +137,7 @@ export default function SwipeDogCard({
                   videoUrl={item.publicUrl}
                 />
               ) : item.type === "photo" && item.publicUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.publicUrl}
-                  alt={dog.name}
-                  className="w-full h-full object-cover"
-                  decoding="async"
-                  draggable={false}
-                  fetchPriority={isActive && i === 0 ? "high" : "low"}
-                  loading={isActive && i === 0 ? "eager" : "lazy"}
-                />
+                <DogCardPhoto src={item.publicUrl} alt={dog.name} first={i === 0} active={isActive} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-6xl select-none">🐾</div>
               )}
@@ -220,23 +165,6 @@ export default function SwipeDogCard({
           ))}
         </div>
       )}
-
-      {/* Shelter logo overlay */}
-      <div className={`pointer-events-none absolute left-4 z-20 flex h-[66px] min-w-[90px] max-w-[156px] items-center justify-center overflow-hidden rounded-[20px] border border-white/60 bg-white/40 px-[8px] shadow-[0_10px_26px_rgba(0,0,0,0.16)] backdrop-blur-md ${orderedMedia.length > 1 ? "top-[30px]" : "top-4"}`}>
-        {dog.shelter_logo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={dog.shelter_logo_url}
-            alt={`${dog.shelter_name ?? "Shelter"} logo`}
-            className="max-h-[58px] max-w-[144px] object-contain mix-blend-multiply contrast-110 saturate-110"
-            decoding="async"
-            draggable={false}
-            loading={isActive ? "eager" : "lazy"}
-          />
-        ) : (
-          <PawPrint aria-hidden="true" size={25} stroke="#cd8188" strokeWidth={2.4} />
-        )}
-      </div>
 
       {/* Dog name, centered in the pocket above the tags */}
       <div className="pointer-events-none absolute bottom-[44px] left-4 right-4 z-10 flex h-[96px] items-center">
@@ -280,14 +208,7 @@ export default function SwipeDogCard({
           dogPhotoUrl={photoMedia[0]?.publicUrl ?? null}
           isLoggedIn={isLoggedIn}
         />
-        <button
-          type="button"
-          onClick={handleShare}
-          className="bg-[#cd8188] w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-          aria-label={t("Share")}
-        >
-          <CurvedShareArrow />
-        </button>
+        <DogShareButton dogId={dog.id} dogName={dog.name} surface="swipe_feed" />
         <Link
           href={`/schedule/${dog.id}`}
           onClick={requireAuthForBooking}
@@ -296,7 +217,7 @@ export default function SwipeDogCard({
         >
           <CalendarDays size={24} stroke="white" strokeWidth={2} />
         </Link>
-        <WishlistSaveButton dogId={dog.id} initialSaved={initialSaved} isLoggedIn={isLoggedIn} surface="swipe_feed" />
+        <WishlistSaveButton dogId={dog.id} initialSaved={initialSaved} isLoggedIn={isLoggedIn} surface="swipe_feed" initialCount={dog.save_count} />
       </div>
     </div>
   );

@@ -2996,6 +2996,8 @@ function AllDogsTab({ dogs, shelters }: { dogs: AdminDraftDog[]; shelters: Admin
 
   return (
     <Section eyebrow="All dog listings" title="Platform dog database">
+      <a download href="/api/admin/exports/dogs" className="mt-4 inline-flex rounded-full bg-[#65584f] px-5 py-3 text-sm font-semibold text-white">Download dogs + photos (ZIP)</a>
+      <p className="mt-2 text-xs text-[#65584f]">Up to 2,000 dogs / 500 MB. Large exports can take 4 minutes. Check manifest.json for any missing photos.</p>
       <p className="mt-2 text-sm leading-6 text-[#65584f]">
         This is the global dog listing view that does not require entering a shelter first.
       </p>
@@ -3075,6 +3077,7 @@ function GlobalBookingsTab({ bookings, shelters }: { bookings: AdminDraftBooking
 
   return (
     <Section eyebrow="Bookings" title="All shelter visits">
+      <a download href="/api/admin/exports/bookings" className="mt-4 inline-flex rounded-full bg-[#65584f] px-5 py-3 text-sm font-semibold text-white">Download bookings and visits (CSV)</a>
       <p className="mt-2 text-sm leading-6 text-[#65584f]">
         PawJai HQ can still see bookings across shelters here. Shelter users only see the booking tab inside their own workspace.
       </p>
@@ -3994,8 +3997,8 @@ export default function AdminReorgDraftPanel({
             messagesUnavailable={messagesUnavailable}
           />
         ) : null}
-        {isPawjai && mainTab === "dogs" ? <AllDogsTab dogs={dogs} shelters={shelters} /> : null}
-        {isPawjai && mainTab === "bookings" ? <GlobalBookingsTab bookings={bookings} shelters={shelters} /> : null}
+        {!isShelterPortal && isPawjai && mainTab === "dogs" ? <AllDogsTab dogs={dogs} shelters={shelters} /> : null}
+        {!isShelterPortal && isPawjai && mainTab === "bookings" ? <GlobalBookingsTab bookings={bookings} shelters={shelters} /> : null}
         {isPawjai && mainTab === "donations" ? <DonationLedger donations={donations} returnTo="/admin?view=donations" shelters={shelters} showShelterFilter /> : null}
         {isPawjai && mainTab === "ads" ? (
           <AdsTab

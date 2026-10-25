@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
 import { useAuthModal } from "@/components/auth/AuthProvider";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
@@ -34,6 +35,7 @@ export default function ProtectedRouteGate({ nextPath, reason }: ProtectedRouteG
         >
           {t("Open sign in")}
         </button>
+        <Link href="/" className="mt-4 block p-3 text-sm font-semibold text-[#65584f] underline">{t("Back to home")}</Link>
       </div>
     </div>
   );

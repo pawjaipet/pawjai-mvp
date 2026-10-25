@@ -1,5 +1,9 @@
 "use server";
 
+import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
+import { GUEST_FILTER_COOKIE, readGuestPreferences } from "@/utils/guest-preferences";
+
 import { createClient } from "@/utils/supabase/server";
 import { ensureAdopterForUser } from "@/utils/adopter";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -44,7 +48,14 @@ export async function getSavedFilterPreferences(): Promise<SavedFilterAnswers | 
 export async function saveFilterPreferences(answers: FilterAnswers) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return; // not logged in — silently skip
+  if (!user) {
+    const raw = JSON.stringify({ ...answers, questionLabels: undefined });
+    if (!readGuestPreferences(raw)) return { error: "Your filters could not be saved. Please try again." };
+    (await cookies()).set(GUEST_FILTER_COOKIE, raw, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 30 });
+    revalidatePath("/");
+    revalidatePath("/swipe");
+    return { error: null };
+  }
 
   const adopter = await ensureAdopterForUser(supabase, user);
   const admin = createAdminClient();

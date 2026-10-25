@@ -25,6 +25,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [viewport, setViewport] = useState<{ height: number; top: number } | null>(null);
   const [modal, setModal] = useState<AuthModalState>({
     isOpen: false,
     nextPath: "/swipe",
@@ -64,6 +65,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [closeAuthModal]);
 
+  useEffect(() => {
+    if (!modal.isOpen) return;
+    const updateViewport = () => setViewport({ height: Math.max(100, (window.visualViewport?.height ?? window.innerHeight) - 70), top: window.visualViewport?.offsetTop ?? 0 });
+    updateViewport();
+    window.visualViewport?.addEventListener("resize", updateViewport);
+    window.visualViewport?.addEventListener("scroll", updateViewport);
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") closeAuthModal(); };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.visualViewport?.removeEventListener("resize", updateViewport);
+      window.visualViewport?.removeEventListener("scroll", updateViewport);
+    };
+  }, [modal.isOpen, closeAuthModal]);
+
   const value = useMemo(() => ({ openAuthModal, closeAuthModal }), [openAuthModal, closeAuthModal]);
 
   return (
@@ -71,11 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
       {modal.isOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 px-[18px] py-[24px]"
+          className="fixed inset-x-0 top-0 bottom-[70px] z-[40] flex items-center justify-center bg-black/45 px-[12px] py-[12px]"
+          style={viewport ? { top: viewport.top, height: viewport.height, bottom: "auto" } : undefined}
           role="dialog"
-          aria-modal="true"
+          aria-label="Sign in"
         >
-          <div className="w-full max-w-[370px]">
+          <div className="w-full max-w-[370px] max-h-full overflow-y-auto overscroll-contain rounded-[24px]">
             <AuthForm
               message={modal.reason}
               nextPath={modal.nextPath}
