@@ -214,7 +214,7 @@ function dogViewWindowStartIso() {
   return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 }
 
-export default async function DogFeedPage() {
+export default async function DogFeedPage({ sampleSaveCounts = false }: { sampleSaveCounts?: boolean }) {
   let preference: PreferenceForDogFilter | null = null;
   let savedIds: string[] = [];
   let isLoggedIn = false;
@@ -289,6 +289,7 @@ export default async function DogFeedPage() {
 
   return (
     <SwipeFeed
+      sampleSaveCounts={sampleSaveCounts}
       dogs={visibleDogs.map(dog => ({ ...dog, save_count: countByDog.get(dog.id) ?? null }))}
       savedIds={savedIds}
       isLoggedIn={isLoggedIn}

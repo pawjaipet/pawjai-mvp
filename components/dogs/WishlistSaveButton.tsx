@@ -10,6 +10,7 @@ import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { trackGA } from "@/utils/google-analytics";
 
 type Props = {
+  sampleSaveCounts?: boolean;
   dogId: string;
   initialCount?: number | null;
   initialSaved: boolean;
@@ -17,7 +18,15 @@ type Props = {
   surface: "swipe_feed" | "dog_detail";
 };
 
-export default function WishlistSaveButton({ dogId, initialSaved, isLoggedIn, surface, initialCount }: Props) {
+function sampleSaveCount(dogId: string) {
+  let hash = 2166136261;
+  for (const character of `pawjai-focus-group-v1:${dogId}`) {
+    hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+  }
+  return (hash >>> 0) % 10;
+}
+
+export default function WishlistSaveButton({ dogId, initialSaved, isLoggedIn, surface, initialCount, sampleSaveCounts = false }: Props) {
   const [count, setCount] = useState(initialCount);
   const [saved, setSaved] = useState(initialSaved);
   const [pending, setPending] = useState(false);
@@ -29,6 +38,7 @@ export default function WishlistSaveButton({ dogId, initialSaved, isLoggedIn, su
   const dialogTitleId = useId();
   const { openAuthModal } = useAuthModal();
   const { t } = useLanguage();
+  const displayedCount = sampleSaveCounts ? sampleSaveCount(dogId) : count;
 
   useEffect(() => {
     if (!feedback || feedback.error) return;
@@ -95,7 +105,7 @@ export default function WishlistSaveButton({ dogId, initialSaved, isLoggedIn, su
         style={{ background: saved ? "#65584f" : "#cd8188" }}
       >
         <Bookmark size={surface === "dog_detail" ? 22 : 24} stroke="white" fill={saved ? "white" : "none"} strokeWidth={2.2} />
-        {surface === "swipe_feed" && count != null && <span className="absolute -right-1 -top-1 min-w-6 rounded-full border-2 border-white bg-[#65584f] px-1 text-xs font-bold leading-5 text-white" aria-label={`${t("Saved by users")}: ${count}`}>{count}</span>}
+        {surface === "swipe_feed" && displayedCount != null && <span className="absolute -right-1 -top-1 min-w-6 rounded-full border-2 border-white bg-[#65584f] px-1 text-xs font-bold leading-5 text-white" aria-label={sampleSaveCounts ? `Sample save count: ${displayedCount}` : `${t("Saved by users")}: ${displayedCount}`}>{displayedCount}</span>}
       </button>
 
       {feedback && typeof document !== "undefined" && createPortal(

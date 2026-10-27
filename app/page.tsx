@@ -20,7 +20,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ focus_group_counts?: string }> }) {
+  const sampleSaveCounts = (await searchParams).focus_group_counts === "1";
   return (
     <>
       <JsonLd
@@ -30,7 +31,7 @@ export default function HomePage() {
           path: "/",
         })}
       />
-      <DogFeedPage />
+      <DogFeedPage sampleSaveCounts={sampleSaveCounts} />
     </>
   );
 }

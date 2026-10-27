@@ -22,6 +22,7 @@ const CARD_H = "min(590px, calc(100svh - 200px))";
 const AD_EVERY = 3;
 
 interface Props {
+  sampleSaveCounts?: boolean;
   dogs: SwipeDog[];
   savedIds: string[];
   isLoggedIn: boolean;
@@ -33,6 +34,7 @@ interface Props {
 }
 
 export default function SwipeFeed({
+  sampleSaveCounts = false,
   dogs,
   savedIds,
   isLoggedIn,
@@ -301,6 +303,12 @@ export default function SwipeFeed({
         </div>
       </div>
 
+      {sampleSaveCounts && (
+        <div className="absolute left-[16px] right-[16px] top-[112px] z-30 rounded-full bg-white/90 px-3 py-1 text-center text-[11px] font-semibold text-[#65584f] shadow-sm">
+          Focus group preview · save counts are sample data
+        </div>
+      )}
+
       <SwipeFeedTutorial enabled={feed.length > 0} isLoggedIn={isLoggedIn} />
 
       {showFallbackNotice && (
@@ -433,6 +441,7 @@ export default function SwipeFeed({
             >
               {shouldRenderContent ? (
                 <SwipeDogCard
+                  sampleSaveCounts={sampleSaveCounts}
                   dog={item.dog}
                   initialSaved={savedIds.includes(item.dog.id)}
                   isActive={isActiveDogFeedItem(item, idx, activeIndex)}

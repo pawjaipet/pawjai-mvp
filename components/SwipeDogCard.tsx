@@ -38,6 +38,7 @@ const TAG_BEIGE = "bg-[#d6c8ad] text-black shadow-[0_7px_16px_rgba(0,0,0,0.20)] 
 const TAG_ROSE  = "bg-[#cd8188] text-white shadow-[0_7px_16px_rgba(0,0,0,0.22)] ring-1 ring-white/25";
 
 interface Props {
+  sampleSaveCounts?: boolean;
   dog: SwipeDog;
   initialSaved: boolean;
   isLoggedIn: boolean;
@@ -47,6 +48,7 @@ interface Props {
 }
 
 export default function SwipeDogCard({
+  sampleSaveCounts = false,
   dog,
   initialSaved,
   isLoggedIn,
@@ -217,7 +219,7 @@ export default function SwipeDogCard({
         >
           <CalendarDays size={24} stroke="white" strokeWidth={2} />
         </Link>
-        <WishlistSaveButton dogId={dog.id} initialSaved={initialSaved} isLoggedIn={isLoggedIn} surface="swipe_feed" initialCount={dog.save_count} />
+        <WishlistSaveButton dogId={dog.id} initialSaved={initialSaved} isLoggedIn={isLoggedIn} surface="swipe_feed" initialCount={dog.save_count} sampleSaveCounts={sampleSaveCounts} />
       </div>
     </div>
   );
