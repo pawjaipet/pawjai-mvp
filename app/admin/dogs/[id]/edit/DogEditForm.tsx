@@ -661,17 +661,6 @@ export default function DogEditForm({
               </Field>
             </div>
 
-            <div className="md:col-span-2">
-              <Field label="Medical needs shown on profile">
-                <textarea
-                  name="special_needs"
-                  rows={4}
-                  className={inputClass()}
-                  defaultValue={dog.special_needs ?? ""}
-                  placeholder="Example: None - vaccinated and neutered."
-                />
-              </Field>
-            </div>
           </div>
         </Section>
 
@@ -803,6 +792,11 @@ export default function DogEditForm({
             <div>
               <p className="mb-3 text-sm font-semibold text-[#65584f]">Care and medical tags</p>
               <ChipCheckboxGroup name="care_tag" options={careTags} selected={selectedCareTags} />
+              <div className="mt-4">
+                <Field label="Care description (public)">
+                  <textarea name="special_needs" rows={3} className={inputClass()} defaultValue={dog.special_needs ?? ""} placeholder="Diet, mobility, recovery, or other care needs." />
+                </Field>
+              </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

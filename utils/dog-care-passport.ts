@@ -57,24 +57,12 @@ const CARE_COMPLETENESS_FIELDS = [
     label: "Medical notes",
   },
   {
-    isComplete: (passport: DogCarePassport) => Boolean(passport.careRecord?.special_needs_notes?.trim()),
-    label: "Special needs notes",
-  },
-  {
     isComplete: (passport: DogCarePassport) => Boolean(passport.careRecord?.allergies?.trim()),
     label: "Allergies",
   },
   {
     isComplete: (passport: DogCarePassport) => Boolean(passport.careRecord?.medications?.trim()),
     label: "Medication",
-  },
-  {
-    isComplete: (passport: DogCarePassport) => Boolean(passport.careRecord?.last_vet_check_date),
-    label: "Last vet check",
-  },
-  {
-    isComplete: (passport: DogCarePassport) => Boolean(passport.careRecord?.next_vet_check_due_date),
-    label: "Next vet check due",
   },
 ];
 

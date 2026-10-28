@@ -5,7 +5,6 @@ import { FileText, HeartPulse, Syringe } from "lucide-react";
 import type { DogCareDocument, DogCareRecord, DogCareTimelineEvent, DogVaccinationRecord } from "@/types/database";
 import {
   buildDogCareCompleteness,
-  isCareDateOverdue,
 } from "@/utils/dog-care-passport";
 
 type DogCarePassportFieldsProps = {
@@ -42,17 +41,6 @@ function Field({
       {hint ? <span className="mt-2 block text-xs leading-5 text-[#8c7d70]">{hint}</span> : null}
     </label>
   );
-}
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return "Not recorded";
-  const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 function VaccineRow({
@@ -173,11 +161,6 @@ export default function DogCarePassportFields({
           <span className="rounded-full bg-[#eef8e9] px-3 py-1.5 text-[#3d7a34]">
             {completeness.percent}% complete
           </span>
-          {careRecord?.next_vet_check_due_date ? (
-            <span className={`rounded-full px-3 py-1.5 ${isCareDateOverdue(careRecord.next_vet_check_due_date) ? "bg-[#fff1ee] text-[#b42318]" : "bg-[#fff6dd] text-[#8a5b00]"}`}>
-              Next vet {formatDate(careRecord.next_vet_check_due_date)}
-            </span>
-          ) : null}
         </div>
       </summary>
 
@@ -189,18 +172,13 @@ export default function DogCarePassportFields({
           </div>
         ) : null}
 
-        <div className="grid gap-5 md:grid-cols-2">
-          <Field label="Last vet check date">
-            <input name="care_last_vet_check_date" className={inputClass()} defaultValue={careRecord?.last_vet_check_date ?? ""} type="date" />
-          </Field>
-          <Field label="Next vet check due date">
-            <input name="care_next_vet_check_due_date" className={inputClass()} defaultValue={careRecord?.next_vet_check_due_date ?? ""} type="date" />
-          </Field>
+        {/* Keep historical values intact when saving the simplified form. */}
+        <input type="hidden" name="care_last_vet_check_date" value={careRecord?.last_vet_check_date ?? ""} />
+        <input type="hidden" name="care_next_vet_check_due_date" value={careRecord?.next_vet_check_due_date ?? ""} />
+        <input type="hidden" name="care_special_needs_notes" value={careRecord?.special_needs_notes ?? ""} />
+        <div className="grid gap-5 md:grid-cols-3">
           <Field label="Current medication">
             <textarea name="care_medications" rows={3} className={inputClass()} defaultValue={careRecord?.medications ?? ""} placeholder="None, or medication name, dose, schedule." />
-          </Field>
-          <Field label="Special needs notes">
-            <textarea name="care_special_needs_notes" rows={3} className={inputClass()} defaultValue={careRecord?.special_needs_notes ?? ""} placeholder="Mobility, recovery, diet, behavior support." />
           </Field>
           <Field label="Allergies">
             <textarea name="care_allergies" rows={3} className={inputClass()} defaultValue={careRecord?.allergies ?? ""} placeholder="None known, food sensitivity, medicine allergy." />

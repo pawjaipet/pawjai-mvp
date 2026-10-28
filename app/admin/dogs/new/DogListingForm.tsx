@@ -619,16 +619,6 @@ export default function DogListingForm({
             </Field>
           </div>
 
-          <div className="md:col-span-2">
-            <Field label="Medical needs shown on profile">
-              <textarea
-                name="special_needs"
-                rows={4}
-                className={inputClass()}
-                placeholder="Example: None - vaccinated and spayed. Or add medication, recovery, mobility, allergy, or diet notes."
-              />
-            </Field>
-          </div>
         </div>
       </Section>
 
@@ -757,6 +747,11 @@ export default function DogListingForm({
               These help fill the medical needs area without making the team write everything from scratch.
             </p>
             <ChipCheckboxGroup name="care_tag" options={careTags} />
+            <div className="mt-4">
+              <Field label="Care description (public)">
+                <textarea name="special_needs" rows={3} className={inputClass()} placeholder="Diet, mobility, recovery, or other care needs." />
+              </Field>
+            </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
