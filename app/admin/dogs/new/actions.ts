@@ -989,6 +989,24 @@ export async function createDogListingAction(
     targetTable: "dogs",
   });
 
+  // Preserve submitted answers even when later media processing fails.
+  if (traitPairs.length > 0) {
+    const traitRows: DogTraitInsert[] = traitPairs.map((pair) => ({
+      dog_id: insertedDog.id,
+      trait_type: pair.traitType,
+      trait_value: pair.traitValue,
+    }));
+    const { error: traitError } = await supabase.from("dog_traits").insert(traitRows);
+    if (traitError) {
+      return {
+        dogId: insertedDog.id,
+        publishState: "draft",
+        message: mediaFailureMessage("the custom traits", `saving failed. ${traitError.message}`, wasRequestedPublic),
+        status: "error",
+      };
+    }
+  }
+
   let backblazeMirrorWarningCount = 0;
   const videoWarnings: string[] = [];
   const uploadWarning = getString(formData, "media_upload_warning");
@@ -1373,25 +1391,6 @@ export async function createDogListingAction(
         dogId: insertedDog.id,
         publishState: "draft",
         message: mediaFailureMessage("the media order", `saving failed. ${manifestError.message}`, wasRequestedPublic),
-        status: "error",
-      };
-    }
-  }
-
-  if (traitPairs.length > 0) {
-    const traitRows: DogTraitInsert[] = traitPairs.map((pair) => ({
-      dog_id: insertedDog.id,
-      trait_type: pair.traitType,
-      trait_value: pair.traitValue,
-    }));
-
-    const { error: traitError } = await supabase.from("dog_traits").insert(traitRows);
-
-    if (traitError) {
-      return {
-        dogId: insertedDog.id,
-        publishState: "draft",
-        message: mediaFailureMessage("the custom traits", `saving failed. ${traitError.message}`, wasRequestedPublic),
         status: "error",
       };
     }
