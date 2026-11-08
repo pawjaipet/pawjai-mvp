@@ -1,6 +1,6 @@
 "use client";
 
-import { trackGA, authErrorReason, GA_CHANGE_EVENT, analyticsConsent } from "@/utils/google-analytics";
+import { trackGA, GA_CHANGE_EVENT, analyticsConsent } from "@/utils/google-analytics";
 import Image from "next/image";
 import Script from "next/script";
 import type { FormEvent } from "react";
@@ -18,6 +18,7 @@ import Link from "next/link";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import type { GoogleCredentialResponse } from "@/types/google-identity";
 import { createClient } from "@/utils/supabase/client";
+import { authErrorReason, completeVerifiedEmailProfile } from "@/utils/auth-analytics";
 
 type AuthFormProps = {
   message?: string | null;
@@ -69,12 +70,12 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
   const finishAuthenticatedSession = useCallback(async () => {
     const ensured = await ensureCurrentUserProfile();
     if (!ensured.ok) {
-      trackGA("auth_failed", { reason: "profile_setup" });
+      trackGA("auth_failed", { method: "google", mode: "login", reason: "profile_setup", stage: "profile_setup" });
       setLocalMessage(ensured.error);
       return;
     }
 
-    trackGA("login", { method: "google" });
+    trackGA("login", { method: "google", mode: "login", stage: "profile_setup" });
     window.location.assign(safeNextPath);
   }, [safeNextPath]);
 
@@ -83,7 +84,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
 
     trackGA("auth_submit", { method: "google", mode: "login" });
     if (!response.credential || !googleNonceRef.current) {
-      trackGA("auth_failed", { method: "google", reason: "missing_credential" });
+      trackGA("auth_failed", { method: "google", mode: "login", reason: "missing_credential", stage: "credentials" });
       setLocalMessage("Google sign in could not finish. Please try again.");
       return;
     }
@@ -97,7 +98,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
     });
 
     if (error) {
-      trackGA("auth_failed", { reason: authErrorReason(error) });
+      trackGA("auth_failed", { method: "google", mode: "login", reason: authErrorReason(error), stage: "credentials" });
       setLocalMessage(friendlyAuthMessage(error.message));
       setIsGooglePending(false);
       return;
@@ -213,9 +214,9 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
         return;
       }
 
-      trackGA("signup_request_accepted", { method: "email" });
+      trackGA("signup_request_accepted", { method: "email", mode: "signup", stage: "credentials" });
       if (!data.session) {
-        trackGA("verification_required", { method: "email" });
+        trackGA("verification_required", { method: "email", mode: "signup", stage: "email_link" });
         setPendingVerificationEmail(credentials.email);
         setMode("verify");
         setLocalMessage("Check your email for the PawJai verification link or 6-digit code.");
@@ -240,19 +241,19 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      trackGA("verification_required", { method: "email" });
+      trackGA("verification_required", { method: "email", mode, stage: "email_link" });
       setLocalMessage("Check your email to verify your account, then come back to sign in.");
       return;
     }
 
     const ensured = await ensureCurrentUserProfile();
     if (!ensured.ok) {
-      trackGA("auth_failed", { reason: "profile_setup" });
+      trackGA("auth_failed", { method: "email", mode, reason: "profile_setup", stage: "profile_setup" });
       setLocalMessage(ensured.error);
       return;
     }
 
-    trackGA("login", { method: "email", mode });
+    trackGA("login", { method: "email", mode, stage: "profile_setup" });
     window.location.assign(safeNextPath);
   }
 
@@ -271,12 +272,12 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
       },
     });
 
-    if (error) { trackGA("auth_failed", { method: "google", reason: authErrorReason(error) });
+    if (error) { trackGA("auth_failed", { method: "google", mode, reason: authErrorReason(error), stage: "oauth_callback" });
       setLocalMessage(friendlyAuthMessage(error.message)); }
   }
 
   async function submitVerificationCode(formData: FormData) {
-    trackGA("verification_submit", { method: "email" });
+    trackGA("verification_submit", { method: "email", mode: "verify", stage: "code_entry" });
     setLocalMessage(null);
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
     let token;
@@ -284,7 +285,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
     try {
       token = parseVerificationCode(formData.get("token"));
     } catch (error) {
-      trackGA("auth_failed", { mode: "verify", reason: "invalid_code_format" });
+      trackGA("auth_failed", { method: "email", mode: "verify", reason: "invalid_code_format", stage: "code_entry" });
       setLocalMessage(error instanceof Error ? error.message : "Please check the code.");
       return;
     }
@@ -297,20 +298,25 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
     });
 
     if (error) {
-      trackGA("auth_failed", { reason: authErrorReason(error) });
+      trackGA("auth_failed", { method: "email", mode: "verify", reason: authErrorReason(error), stage: "code_entry" });
       setLocalMessage(friendlyAuthMessage(error.message));
       return;
     }
 
-    const ensured = await ensureCurrentUserProfile();
-    if (!ensured.ok) {
-      trackGA("auth_failed", { reason: "profile_setup" });
-      setLocalMessage(ensured.error);
+    const completion = await completeVerifiedEmailProfile({
+      ensureProfile: ensureCurrentUserProfile,
+      emit: (receipt) => trackGA(receipt.event, {
+        method: receipt.method,
+        mode: receipt.mode,
+        reason: receipt.reason,
+        stage: receipt.stage,
+      }),
+      stage: "code_entry",
+    });
+    if (!completion.ok) {
+      setLocalMessage(completion.error);
       return;
     }
-
-    trackGA("email_verified", { method: "email" });
-    trackGA("login", { method: "email" });
     window.location.assign(safeNextPath);
   }
 
@@ -319,6 +325,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      trackGA("auth_failed", { method: "email", mode: "verify", reason: "validation", stage: "resend" });
       setLocalMessage("Enter the email you used to create your account.");
       return;
     }
@@ -333,12 +340,12 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
     });
 
     if (error) {
-      trackGA("auth_failed", { reason: authErrorReason(error) });
+      trackGA("auth_failed", { method: "email", mode: "verify", reason: authErrorReason(error), stage: "resend" });
       setLocalMessage(friendlyAuthMessage(error.message));
       return;
     }
 
-    trackGA("verification_resent", { method: "email" });
+    trackGA("verification_resent", { method: "email", mode: "verify", stage: "resend" });
     setPendingVerificationEmail(email);
     setLocalMessage("We sent a fresh verification email.");
   }
@@ -386,7 +393,11 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
 
       {isVerification ? (
         <div className="space-y-[12px]">
-          <form onSubmit={handleVerificationSubmit} className="space-y-[12px]">
+          <form
+            onInvalid={() => trackGA("auth_failed", { method: "email", mode: "verify", reason: "browser_validation", stage: "code_entry" })}
+            onSubmit={handleVerificationSubmit}
+            className="space-y-[12px]"
+          >
             <input type="hidden" name="next" value={safeNextPath} />
             <input
               name="email"
@@ -430,7 +441,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
           </form>
         </div>
       ) : isSignup ? (
-        <form onInvalid={() => trackGA("auth_failed", { mode, reason: "browser_validation" })} onSubmit={handleEmailSubmit} className="space-y-[12px]">
+        <form onInvalid={() => trackGA("auth_failed", { method: "email", mode, reason: "browser_validation", stage: "credentials" })} onSubmit={handleEmailSubmit} className="space-y-[12px]">
           <input type="hidden" name="next" value={safeNextPath} />
           <input
             name="email"
@@ -469,7 +480,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
           </div>
         </form>
       ) : (
-        <form onInvalid={() => trackGA("auth_failed", { mode, reason: "browser_validation" })} onSubmit={handleEmailSubmit} className="space-y-[12px]">
+        <form onInvalid={() => trackGA("auth_failed", { method: "email", mode, reason: "browser_validation", stage: "credentials" })} onSubmit={handleEmailSubmit} className="space-y-[12px]">
           <input type="hidden" name="next" value={safeNextPath} />
           <input
             name="email"

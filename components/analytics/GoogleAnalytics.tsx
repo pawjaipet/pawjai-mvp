@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
+import { consumeAuthAnalyticsReceipts } from "@/utils/auth-analytics";
 import { analyticsConsent, analyticsHost, analyticsPath, GA_CHANGE_EVENT, GA_ID, initializeAnalytics, setAnalyticsConsent, syncAnalyticsConsent, trackGA, trackGAPage } from "@/utils/google-analytics";
 
 function subscribe(callback: () => void) {
@@ -27,13 +28,26 @@ export default function GoogleAnalytics() {
     initializeAnalytics();
     trackGAPage(pathname);
     // Receipts are issued only after a server-confirmed outcome. Consume once.
-    for (const name of ["pawjai_ga_booking", "pawjai_ga_auth"]) {
-      const value = document.cookie.split("; ").find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1);
-      if (!value) continue;
-      document.cookie = `${name}=;Max-Age=0;path=/;SameSite=Lax`;
+    const authReceipts = consumeAuthAnalyticsReceipts({
+      read: (name) => document.cookie.split("; ").find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1) ?? null,
+      remove: (name) => { document.cookie = `${name}=;Max-Age=0;path=/;SameSite=Lax`; },
+    });
+    for (const receipt of authReceipts) {
+      trackGA(receipt.event, {
+        method: receipt.method,
+        mode: receipt.mode,
+        reason: receipt.reason,
+        stage: receipt.stage,
+      });
+    }
+
+    const bookingCookie = "pawjai_ga_booking";
+    const bookingValue = document.cookie.split("; ").find((part) => part.startsWith(`${bookingCookie}=`))?.slice(bookingCookie.length + 1);
+    if (bookingValue) {
+      document.cookie = `${bookingCookie}=;Max-Age=0;path=/;SameSite=Lax`;
       try {
-        const [event, reason] = decodeURIComponent(value).split(":");
-        if (["booking_succeeded", "booking_failed", "login", "email_verified"].includes(event)) trackGA(event, { reason: reason || "confirmed" });
+        const [event, reason] = decodeURIComponent(bookingValue).split(":");
+        if (["booking_succeeded", "booking_failed"].includes(event)) trackGA(event, { reason: reason || "confirmed" });
       } catch { /* Ignore malformed receipts without affecting navigation. */ }
     }
   }, [enabled, pathname]);

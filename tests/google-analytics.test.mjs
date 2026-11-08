@@ -13,8 +13,10 @@ function load() {
   return {api:module.exports,window,document};
 }
 test('no Google events or initialization before consent; withdrawal stops capture',()=>{
-  const {api,window}=load(); api.trackGA('login'); assert.equal(window.dataLayer,undefined);
-  api.setAnalyticsConsent('granted'); api.trackGA('login'); assert.equal(window.dataLayer.length,4);
+  const {api,window}=load(); api.trackGA('email_verified',{method:'email',mode:'verify',stage:'email_link',token:'secret'}); assert.equal(window.dataLayer,undefined);
+  api.setAnalyticsConsent('granted'); api.trackGA('email_verified',{method:'email',mode:'verify',stage:'email_link',token:'secret'}); assert.equal(window.dataLayer.length,4);
+  assert.equal(window.dataLayer.at(-1)[2].stage,'email_link');
+  assert.equal(window.dataLayer.at(-1)[2].token,undefined);
   assert.equal(window.dataLayer[0][2].ad_storage,'denied');
   api.setAnalyticsConsent('denied'); const length=window.dataLayer.length; api.trackGA('login'); assert.equal(window.dataLayer.length,length);
   assert.equal(window['ga-disable-G-PPD6QKJEHR'],true);

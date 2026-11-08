@@ -90,7 +90,7 @@ function safeReferrer() {
   try { return new URL(document.referrer).origin; } catch { return ""; }
 }
 
-const PARAMS = new Set(["method", "mode", "step", "reason", "feature", "dog_id", "dogs_viewed", "swipes", "duration_seconds", "answered_count", "destination", "surface"]);
+const PARAMS = new Set(["method", "mode", "stage", "step", "reason", "feature", "dog_id", "dogs_viewed", "swipes", "duration_seconds", "answered_count", "destination", "surface"]);
 export function trackGA(name: string, params: Record<string, string | number | boolean | null> = {}) {
   try {
     if (!initializeAnalytics()) return;
@@ -111,9 +111,4 @@ export function trackGAPage(path: string) {
   lastPage = location;
   (window as GAWindow).gtag?.("set", { page_location: location, page_title: safe, page_referrer: safeReferrer() });
   trackGA("page_view");
-}
-
-export function authErrorReason(error: unknown) {
-  const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
-  return ["invalid_credentials", "email_not_confirmed", "user_already_exists", "weak_password", "over_request_rate_limit", "over_email_send_rate_limit", "otp_expired", "email_address_invalid", "signup_disabled"].includes(code) ? code : "auth_error";
 }
