@@ -409,6 +409,9 @@ export async function AdminUserAnalyticsPageContent({
                   {option.label}
                 </Link>
               ))}
+              <a className="rounded-full border border-[#cd8188] bg-white px-4 py-2 text-xs font-semibold text-[#b76d76] hover:bg-[#f8e8ea]" href={`/api/admin/analytics/export?range=${selectedRange}`}>
+                Download Excel report
+              </a>
             </div>
           </div>
         </section>
@@ -416,6 +419,7 @@ export async function AdminUserAnalyticsPageContent({
         <div className="mb-6 rounded-[22px] border border-[#d6c8ad] bg-[#fffaf5] px-5 py-4 text-sm leading-6 text-[#65584f]/75">
           Account, verification, and appointment history comes from existing Supabase records. Interaction tracking starts when this release is deployed and stores no IP address, user agent, or browser fingerprint.
           {trackingSince ? ` Current event history begins ${formatDateTime(trackingSince)}.` : " No interaction events have arrived yet."}
+          {" "}The Excel report includes a summary, daily activity, and tracking gaps. GA4 signup attempts are separate and are not included.
         </div>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5" aria-label="Launch metrics">
