@@ -411,17 +411,17 @@ export default async function DogProfilePage({
             ) : (
               <div className="space-y-[10px]">
                 <Link
-                  href="/documents"
+                  href={`/documents?next=${encodeURIComponent(`/schedule/${dog.id}`)}`}
                   className="block w-full rounded-full py-[16px] text-center text-white font-bold text-[16px] transition-all active:scale-[0.98]"
                   style={{ background: "#cd8188", fontFamily: M, boxShadow: "0 6px 18px rgba(205,129,136,0.35)" }}
                 >
-                  <MachineTranslatedText text="Verify to book →" />
+                  <MachineTranslatedText text="Complete verification to book →" />
                 </Link>
                 <p
                   className="text-[13px] text-center font-bold"
                   style={{ fontFamily: M, color: "#cd8188" }}
                 >
-                  <MachineTranslatedText text="Complete one-time verification, then book any visit instantly." />
+                  <MachineTranslatedText text="Submit your one-time details, then return to choose a visit time for this dog." />
                 </p>
               </div>
             )

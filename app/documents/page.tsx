@@ -3,12 +3,15 @@ import DocumentsPageClient from "@/components/documents/DocumentsPageClient";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { ensureAdopterForUser } from "@/utils/adopter";
+import { sanitizeNextPath } from "@/utils/account-model";
 
 function joinedName(firstName: string | null, lastName: string | null) {
   return [firstName, lastName].filter(Boolean).join(" ").trim();
 }
 
-export default async function DocumentsPage() {
+export default async function DocumentsPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const next = (await searchParams).next;
+  const nextPath = next ? sanitizeNextPath(next) : null;
   const supabase = await createClient();
   const {
     data: { user },
@@ -17,7 +20,7 @@ export default async function DocumentsPage() {
   if (!user) {
     return (
       <ProtectedRouteGate
-        nextPath="/documents"
+        nextPath={`/documents${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`}
         reason="Sign in to upload and manage adoption documents."
       />
     );
@@ -57,6 +60,7 @@ export default async function DocumentsPage() {
 
   return (
     <DocumentsPageClient
+      nextPath={nextPath}
       initialData={{
         existingHomeFileNames,
         existingIdFileName: idDocument?.original_file_name ?? null,

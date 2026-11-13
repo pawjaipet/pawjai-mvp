@@ -287,7 +287,7 @@ function statusCopy(status: string) {
   }
 }
 
-export default function DocumentsPageClient({ initialData }: { initialData: DocumentsInitialData }) {
+export default function DocumentsPageClient({ initialData, nextPath }: { initialData: DocumentsInitialData; nextPath: string | null }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [section, setSection] = useState<Section>("A");
@@ -340,13 +340,13 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
       setSection("done");
       scrollFormToTop();
       const redirectTimer = window.setTimeout(() => {
-        router.replace("/profile");
+        router.replace(nextPath ?? "/profile");
       }, 900);
 
       return () => window.clearTimeout(redirectTimer);
     }
     return undefined;
-  }, [router, state.completed, state.status]);
+  }, [nextPath, router, state.completed, state.status]);
 
   const sectionIdx = section === "done" ? 4 : SECTIONS.indexOf(section);
   const meta = section !== "done" ? SECTION_META[section] : null;
@@ -783,11 +783,11 @@ export default function DocumentsPageClient({ initialData }: { initialData: Docu
               {state.message ?? "Your verification details were saved successfully. You can update them later whenever something changes."}
             </p>
             <Link
-              href="/profile"
+              href={nextPath ?? "/profile"}
               className="block w-full rounded-full py-[15px] text-center text-[16px] font-bold text-white transition-all active:scale-[0.98]"
               style={{ background: "#cd8188", fontFamily: M }}
             >
-              Back to Profile
+              {nextPath ? "Continue to visit booking" : "Back to Profile"}
             </Link>
             <Link href="/" className="mt-[14px] text-[14px] font-semibold text-[#65584f]/50" style={{ fontFamily: M }}>
               Back to browsing
