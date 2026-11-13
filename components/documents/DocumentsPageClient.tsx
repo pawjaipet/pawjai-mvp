@@ -287,7 +287,7 @@ function statusCopy(status: string) {
   }
 }
 
-export default function DocumentsPageClient({ initialData, nextPath }: { initialData: DocumentsInitialData; nextPath: string | null }) {
+export default function DocumentsPageClient({ initialData, nextPath, bookingDogName }: { initialData: DocumentsInitialData; nextPath: string | null; bookingDogName: string | null }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [section, setSection] = useState<Section>("A");
@@ -497,7 +497,13 @@ export default function DocumentsPageClient({ initialData, nextPath }: { initial
 
       {section !== "done" && (
         <div className="px-[20px] pb-[8px]">
-          <div className="mb-[12px] rounded-[16px] bg-white px-[16px] py-[14px]">
+          {bookingDogName && (
+            <div className="mb-[12px] rounded-[16px] border border-[#e8ccd0] bg-[#fff9f7] px-[16px] py-[14px]" role="status">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#b76d76]">Next: meet {bookingDogName}</p>
+              <p className="mt-[5px] text-[13px] leading-[1.5] text-[#65584f]">Your answers save as you go. Submit once, then choose a visit time.</p>
+            </div>
+          )}
+          {!bookingDogName && <div className="mb-[12px] rounded-[16px] bg-white px-[16px] py-[14px]">
             <p className="text-[11px] uppercase tracking-[0.18em] text-[#65584f]/45" style={{ fontFamily: M }}>
               Verification status
             </p>
@@ -505,9 +511,9 @@ export default function DocumentsPageClient({ initialData, nextPath }: { initial
               {statusCopy(initialData.verificationStatus)}
             </p>
             <p className="mt-[4px] text-[12px] text-[#65584f]/60" style={{ fontFamily: M }}>
-              Complete this once, then you can keep booking shelter visits without redoing the full document flow.
+              Your progress is saved as you continue. Complete this once to request shelter visits without repeating the form.
             </p>
-          </div>
+          </div>}
         </div>
       )}
 

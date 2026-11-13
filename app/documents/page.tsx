@@ -12,6 +12,7 @@ function joinedName(firstName: string | null, lastName: string | null) {
 export default async function DocumentsPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const next = (await searchParams).next;
   const nextPath = next ? sanitizeNextPath(next) : null;
+  const bookingDogId = nextPath?.match(/^\/schedule\/([0-9a-f-]{36})$/i)?.[1] ?? null;
   const supabase = await createClient();
   const {
     data: { user },
@@ -28,6 +29,10 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
 
   const adopter = await ensureAdopterForUser(supabase, user);
   const admin = createAdminClient();
+
+  const bookingDog = bookingDogId
+    ? await admin.from("dogs").select("name").eq("id", bookingDogId).maybeSingle()
+    : null;
 
   const [{ data: profile }, { data: documents }, { data: accountProfile }] = await Promise.all([
     admin
@@ -61,6 +66,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
   return (
     <DocumentsPageClient
       nextPath={nextPath}
+      bookingDogName={bookingDog?.data?.name ?? null}
       initialData={{
         existingHomeFileNames,
         existingIdFileName: idDocument?.original_file_name ?? null,
