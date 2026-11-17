@@ -364,6 +364,7 @@ const THAI_TEXT: Record<string, string> = {
   "Swipe up to see the next dog.": "ปัดขึ้นเพื่อดูสุนัขตัวถัดไป",
   "Loading photo…": "กำลังโหลดรูป…",
   "Photo could not load.": "โหลดรูปไม่สำเร็จ",
+  "Edited background": "แก้ไขพื้นหลังภาพ",
   "Saved by users": "จำนวนผู้บันทึก",
   "Could not share. Please try again.": "ไม่สามารถแชร์ได้ กรุณาลองอีกครั้ง",
   "View shelter information": "ดูข้อมูลศูนย์พักพิง",

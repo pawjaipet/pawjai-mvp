@@ -3,11 +3,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   isProductAnalyticsEventName,
   isTrackablePublicPath,
+  partitionEventsForInsert,
 } from "@/utils/product-analytics-model";
 import {
   ANALYTICS_VISITOR_COOKIE,
   recordProductAnalyticsEvents,
 } from "@/utils/product-analytics";
+import { analyticsVisitorCookie } from "@/utils/analytics-visitor";
 import { createClient } from "@/utils/supabase/server";
 import { hasSupabaseAuthCookies } from "@/utils/supabase/auth-cookies";
 
@@ -90,23 +92,20 @@ export async function POST(request: NextRequest) {
     userId = user?.id ?? null;
   }
 
-  await recordProductAnalyticsEvents(events.map((event) => ({
+  const rows = events.map((event) => ({
     ...event!,
     userId,
     visitorId,
-  })));
+  }));
+  // Experiment exposures go in their own insert: a rejected exposure (for
+  // example before its migration is applied) never drops the other events.
+  const { isolated, regular } = partitionEventsForInsert(rows);
+  if (regular.length > 0) await recordProductAnalyticsEvents(regular);
+  if (isolated.length > 0) await recordProductAnalyticsEvents(isolated);
 
   const response = new NextResponse(null, { status: 204 });
   if (!existingVisitorId) {
-    response.cookies.set({
-      httpOnly: true,
-      maxAge: 60 * 60 * 24 * 180,
-      name: ANALYTICS_VISITOR_COOKIE,
-      path: "/",
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      value: visitorId,
-    });
+    response.cookies.set(analyticsVisitorCookie(visitorId));
   }
 
   return response;

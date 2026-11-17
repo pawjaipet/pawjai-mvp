@@ -3,15 +3,25 @@ import { useEffect, useState } from "react";
 import { PawPrint } from "lucide-react";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 
-export default function DogCardPhoto({ src, alt, first, active }: { src: string; alt: string; first: boolean; active: boolean }) {
+export default function DogCardPhoto({ src, alt, first, active, onReady, onFailure }: {
+  src: string;
+  alt: string;
+  first: boolean;
+  active: boolean;
+  onReady?: () => void;
+  /** Return true when the parent handles the failure (e.g. swaps to the original photo). */
+  onFailure?: () => boolean;
+}) {
   const { t } = useLanguage();
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (state !== "loading" || !first) return;
-    const timeout = window.setTimeout(() => setState("failed"), 15000);
+    const timeout = window.setTimeout(() => {
+      if (!onFailure?.()) setState("failed");
+    }, 15000);
     return () => window.clearTimeout(timeout);
-  }, [state, first, attempt]);
+  }, [state, first, attempt, onFailure]);
   return <div className="relative h-full w-full">
     {state !== "ready" && <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-20 text-center text-sm text-[#65584f]" role="status">
       <PawPrint size={36} />
@@ -20,6 +30,6 @@ export default function DogCardPhoto({ src, alt, first, active }: { src: string;
     </div>}
     {/* First images of mounted neighbours start early; the feed mounts only nearby cards. */}
     {/* eslint-disable-next-line @next/next/no-img-element */}
-    <img key={`${src}-${attempt}`} src={src} alt={alt} className={`h-full w-full object-cover ${state === "ready" ? "opacity-100" : "opacity-0"}`} decoding="async" draggable={false} fetchPriority={active && first ? "high" : "auto"} loading={first ? "eager" : "lazy"} onLoad={() => setState("ready")} onError={() => setState("failed")} />
+    <img key={`${src}-${attempt}`} src={src} alt={alt} className={`h-full w-full object-cover ${state === "ready" ? "opacity-100" : "opacity-0"}`} decoding="async" draggable={false} fetchPriority={active && first ? "high" : "auto"} loading={first ? "eager" : "lazy"} onLoad={() => { setState("ready"); onReady?.(); }} onError={() => { if (!onFailure?.()) setState("failed"); }} />
   </div>;
 }

@@ -9,9 +9,29 @@ export const PRODUCT_ANALYTICS_EVENT_NAMES = [
   "booking_failed",
   "subscription_limit_prompt",
   "subscription_changed",
+  "dog_photo_exposure",
 ] as const;
 
 export type ProductAnalyticsEventName = (typeof PRODUCT_ANALYTICS_EVENT_NAMES)[number];
+
+// Experiment measurement stays first-party: never forwarded to Google Analytics.
+export const FIRST_PARTY_ONLY_EVENT_NAMES: readonly ProductAnalyticsEventName[] = ["dog_photo_exposure"];
+
+// Inserted separately from other events. Until migration
+// 20261117160000_photo_experiment_exposure_event.sql is applied, the database
+// constraint rejects these rows; isolation keeps that from discarding the
+// page views and other events that arrived in the same batch.
+export const ISOLATED_EVENT_NAMES: readonly ProductAnalyticsEventName[] = ["dog_photo_exposure"];
+
+export function isFirstPartyOnlyEvent(eventName: ProductAnalyticsEventName) {
+  return FIRST_PARTY_ONLY_EVENT_NAMES.includes(eventName);
+}
+
+export function partitionEventsForInsert<T extends { eventName: ProductAnalyticsEventName }>(events: T[]) {
+  const isolated = events.filter((event) => ISOLATED_EVENT_NAMES.includes(event.eventName));
+  const regular = events.filter((event) => !ISOLATED_EVENT_NAMES.includes(event.eventName));
+  return { isolated, regular };
+}
 
 const PRIVATE_PATH_PREFIXES = [
   "/admin",

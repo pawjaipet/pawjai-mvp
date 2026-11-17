@@ -1,7 +1,7 @@
 "use client";
 
 import { trackGA } from "@/utils/google-analytics";
-import type { ProductAnalyticsEventName } from "@/utils/product-analytics-model";
+import { isFirstPartyOnlyEvent, type ProductAnalyticsEventName } from "@/utils/product-analytics-model";
 
 const SESSION_KEY = "pawjai_analytics_session";
 const RECENT_EVENT_PREFIX = "pawjai_analytics_recent:";
@@ -132,7 +132,8 @@ export function sendProductAnalyticsEvent({
   const eventKey = dedupeKey ?? `${eventName}:${path}:${dogId ?? ""}`;
   if (recentlySent(eventKey, dedupeWindowMs)) return false;
 
-  if (eventName !== "page_view") trackGA(eventName, {
+  // Experiment events are first-party only; they never reach Google Analytics.
+  if (eventName !== "page_view" && !isFirstPartyOnlyEvent(eventName)) trackGA(eventName, {
     dog_id: dogId ?? null,
     dogs_viewed: typeof metadata?.dogsViewed === "number" ? metadata.dogsViewed : null,
     swipes: typeof metadata?.totalFeedSwipes === "number" ? metadata.totalFeedSwipes : null,
