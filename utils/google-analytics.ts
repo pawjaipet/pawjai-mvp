@@ -27,7 +27,7 @@ export function analyticsPath(path: string) {
   if (/^\/schedule\/[0-9a-f-]{36}$/i.test(clean)) return "/schedule";
   if (/^\/appointments\//.test(clean)) return "/appointments/detail";
   if (/^\/adopted\//.test(clean)) return "/adopted/detail";
-  const routes = ["/", "/swipe", "/dogs", "/filter", "/profile", "/appointments", "/schedule", "/documents", "/adopted", "/about", "/more", "/settings", "/settings/subscription", "/donations", "/auth", "/privacy", "/terms"];
+  const routes = ["/", "/swipe", "/dogs", "/filter", "/profile", "/appointments", "/schedule", "/documents", "/adopted", "/about", "/more", "/settings", "/settings/subscription", "/donations", "/auth", "/privacy", "/terms", "/cookies", "/refunds", "/data-deletion"];
   return routes.includes(clean) ? clean : null;
 }
 
