@@ -1,6 +1,6 @@
 # Codex Session Merge Ledger
 
-Last updated: 2026-08-29 +07; actions applied 2026-07-20 and 2026-08-29
+Last updated: 2026-10-29 +07; actions applied 2026-07-20, 2026-08-29, and 2026-10-29
 
 Purpose: reduce the visible Codex task clutter for the PAWJAI project without losing context. This ledger records which sidebar sessions should be treated as merged, what each source session contributed, and what should remain findable before any task is renamed or archived.
 
@@ -40,6 +40,18 @@ Additional sidebar cleanup applied for the fourth requested batch:
 - Archived redundant source task: `Cloudflare CDN for Backblaze`.
 - No application code, environment variables, production services, DNS records, Vercel settings, Supabase settings, Cloudflare settings, or Backblaze data were changed during this cleanup.
 
+Additional sidebar cleanup applied for the fifth requested batch:
+
+- Created dated export-MD handoffs for the admin/shelter, backend/messaging, auth/email, production/launch, analytics, and UX/UI lanes.
+- Renamed survivor `shelter portal` to `Admin and shelter portal architecture`; archived `Plan admin reorg`.
+- Kept `BACKEND related` as the survivor; archived `MESSAGES` after preserving its messaging pipeline context.
+- Renamed survivor `OAUTH n Emails` to `Auth and email automation`; archived `RESEND automation email` and `Set up Pawjai business email`.
+- Renamed survivor `Production, audit, and and launch safety` to `Production, audit, and launch readiness`; archived `Review launch readiness`.
+- Renamed survivor `Choose website activity tracking` to `Analytics and measurement`; archived `Fix PAWJAI auth analytics`.
+- Renamed survivor `UXUI new` to `UX/UI User Frontend`; archived `UXUI User Frontend design` and `Connect to PAWJAI frontend`.
+- Preserved all merged context in `handoff/prompts/*-current-state-2026-10-28.md` files before archive actions.
+- No application code, production data, environment variables, migrations, or external service settings were changed by the session cleanup.
+
 ## Final Old-to-New Merge Map
 
 | New Survivor Task | Merged From |
@@ -49,6 +61,12 @@ Additional sidebar cleanup applied for the fourth requested batch:
 | `BACKEND related` | `Build booking system`, `Fix appointment chat backend`, `Dog import workflow`, `Fix appointment chat`, `Add Python bin to PATH`, `FILTER PAGE UXUI & BACKEND logic` |
 | `UXUI User Frontend design` | `UXUI frontend user`, `Apply adopter profiles migration` |
 | `Domain, DNS, and media infrastructure` | `Migrate to new domain`, `Cloudflare CDN for Backblaze` |
+| `Admin and shelter portal architecture` | `shelter portal`, `Plan admin reorg` |
+| `BACKEND related` | `MESSAGES` added after the original backend merge |
+| `Auth and email automation` | `OAUTH n Emails`, `RESEND automation email`, `Set up Pawjai business email` |
+| `Production, audit, and launch readiness` | `Production, audit, and and launch safety`, `Review launch readiness` |
+| `Analytics and measurement` | `Choose website activity tracking`, `Fix PAWJAI auth analytics` |
+| `UX/UI User Frontend` | `UXUI new`, `UXUI User Frontend design`, `Connect to PAWJAI frontend` |
 
 ## Current Visible Survivor Buckets
 
@@ -56,10 +74,15 @@ Additional sidebar cleanup applied for the fourth requested batch:
 |---|---|---|
 | `Map session responsibilities` | This cleanup/map task and the merge ledger. | None. |
 | `Domain, DNS, and media infrastructure` | Domain purchase/recovery, Cloudflare DNS, Vercel domain setup, Backblaze B2 media delivery, Cloudflare CDN, media URL normalization, old-domain redirects/brand protection, and infrastructure verification. | `Cloudflare CDN for Backblaze`. |
+| `Admin and shelter portal architecture` | HQ admin umbrella, shelter portal, shelter employee access, mobile admin, dog listings, bookings, accounts, and scoped roles. | `Plan admin reorg`. |
 | `Production, audit, and and launch safety` | Production checks, launch readiness, security hardening, audit work, SEO/domain-indexing strategy. | `Audit security gaps`, `Implement reel strategy`. |
 | `Supabase access and MCP setup` | Supabase CLI/env/MCP connection history and migration-access setup. | `Check Supabase MCP access`. |
 | `BACKEND related` | Booking system, appointment messaging, return inquiries, dog import/media tooling, B2/photo ops, adopter preference filtering, and backend dog-feed matching. | `Fix appointment chat backend`, `Dog import workflow`, `Fix appointment chat`, `Add Python bin to PATH`, `FILTER PAGE UXUI & BACKEND logic`. |
 | `UXUI User Frontend design` | User-facing UX/UI, documents flow, upload UX, frontend design continuity, Figma-adjacent frontend work. | `Apply adopter profiles migration`. |
+| `UX/UI User Frontend` | Current adopter-facing UX/UI continuation, tutorials, trust pages, profile, verification, wishlist, documents, discovery, and responsive behavior. | `UXUI User Frontend design`, `Connect to PAWJAI frontend`. |
+| `Auth and email automation` | Account creation, OAuth, auth callbacks, verification, Resend transactional mail, Cloudflare Email Routing, and future Workspace planning. | `RESEND automation email`, `Set up Pawjai business email`. |
+| `Analytics and measurement` | GA4, first-party analytics, auth funnel events, consent/privacy boundaries, booking conversion signals, and focus-group previews. | `Fix PAWJAI auth analytics`. |
+| `Production, audit, and launch readiness` | Production health, security, SEO/indexing, public trust, monitoring, and launch go/no-go review. | `Review launch readiness`; corrected survivor name on 2026-10-29. |
 | `Review launch readiness` | Broader launch-readiness critique and pre-scale gaps. | None yet. |
 | `Plan admin reorg` | Admin/shelter portal structure and role-specific operations. | None yet. |
 | `MESSAGES` | Current/newer messaging feature thread. | None yet; cross-links to booking group. |
@@ -217,7 +240,6 @@ Cleanup action applied:
 ## Open Follow-Up After This Cleanup
 
 - Decide whether `Domain, DNS, and media infrastructure` stays separate from `Production, audit, and and launch safety`. Recommended: yes, because the first owns infrastructure/domain/media mechanics while the second owns readiness, audit, and go/no-go judgment.
-- Decide whether `MESSAGES` should later merge into Group 3, or remain a separate current feature thread. Recommended: merge later after this first batch.
-- Decide whether `Plan admin reorg` should remain its own master thread. Recommended: yes, it is still the clearest umbrella for admin/shelter portal architecture.
-- Decide whether `RESEND automation email` and `OAUTH n Emails` should merge into one auth/email bucket next.
+- `MESSAGES`, `Plan admin reorg`, `Review launch readiness`, `Fix PAWJAI auth analytics`, `UXUI User Frontend design`, `Connect to PAWJAI frontend`, `RESEND automation email`, and `Set up Pawjai business email` have now been preserved and archived into newer survivor buckets.
+- Use the dated export files before continuing any survivor task after a context reset: `handoff/prompts/admin-shelter-architecture-current-state-2026-10-28.md`, `backend-operations-current-state-2026-10-28.md`, `auth-email-current-state-2026-10-28.md`, `production-launch-audit-current-state-2026-10-28.md`, `analytics-measurement-current-state-2026-10-28.md`, and `uxui-frontend-current-state-2026-10-28.md`.
 - Decide whether `Donation Backend Schema` should merge with the Treat donation modal UX context or remain separate until the remote donation migrations are applied.

@@ -33,3 +33,7 @@ pawjai snapshots/
 IMG_6829*.PNG
 .vercel
 pawjai linked in/
+
+# Local-only Codex scratch and raw brand photos (cutover 2026-11-17)
+tmp/
+Corporate Identity/
