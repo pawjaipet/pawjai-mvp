@@ -27,8 +27,18 @@ import studio_lib as S  # noqa: E402
 
 ROOT = os.environ.get("PAWJAI_STUDIO_ROOT", os.path.expanduser("~/PAWJAI-HQ/studio/white-background-study"))
 INV = f"{ROOT}/inventory-2026-11-17"
-EXPERIMENT_VERSION = "studio-bg-v1"
-B2_PREFIX = "experiments/studio-background-v1"  # owner-named versioned prefix; a new pipeline gets a new prefix
+V1 = S.PIPELINE_VERSION.startswith("studio-bg-v1")
+EXPERIMENT_VERSION = "studio-bg-v1" if V1 else "studio-bg-v2"
+# Owner-named prefix (17 Nov task). v2.0 derivatives live under the same prefix with a "-v2"
+# file suffix, so no existing object is ever overwritten.
+B2_PREFIX = "experiments/studio-background-v1"
+FILE_SUFFIX = "" if V1 else "-v2"
+QA_FILE = "qa-decisions.json" if V1 else "qa-decisions-v2.json"
+METHOD = ("Apple Vision subject lift + guided-filter edge refinement + procedural off-white sweep + contact shadows; "
+          "opaque dog pixels copied byte-for-byte") if V1 else (
+          "Reviewed v1.3 mask (Apple Vision subject lift + guided-filter edges) + procedural matte off-white tarp "
+          "(irregular tone, faint folds/creases shaded by the light measured on the dog) + contact, under-body and "
+          "restrained cast shadows; opaque dog pixels copied byte-for-byte")
 PUBLIC_BASE = "https://media.pawjaipet.com/file/pawjai"  # same CDN as the original listing photos
 MAX_WIDTH = 1350  # most originals are 1350 px wide; keep detail parity with control
 WEBP_QUALITY = 90  # q82 visibly softened fur strands at 100%
@@ -43,11 +53,13 @@ def main():
     ap.add_argument("--worktree", required=True)
     ap.add_argument("--initial-cohorts", default="c1")
     ap.add_argument("--enabled", action="store_true", help="ship with the experiment on (default: off until the event migration is applied)")
+    ap.add_argument("--mode", choices=["experiment", "rollout"], default="experiment",
+                    help="rollout: every visitor sees the reviewed derivative (no randomisation, nothing measured)")
     args = ap.parse_args()
     wt = os.path.expanduser(args.worktree)
     sources = load(f"{INV}/sources.json")
     cls = load(f"{INV}/classification.json", {})
-    qa = load(f"{INV}/qa-decisions.json", {})
+    qa = load(f"{INV}/{QA_FILE}", {})
     os.makedirs(f"{ROOT}/exports", exist_ok=True)
 
     entries, retained, catalogue = [], [], []
@@ -75,10 +87,12 @@ def main():
                 retained.append({"dogId": dog, "reason": "existing studio photo retained"})
         elif c.get("skip"):
             row["processing_status"] = "skipped"
+        elif decision.get("decision") == "not_selected":
+            row["processing_status"] = "kept_original"
         elif not meta:
             row["processing_status"] = "not_processed"
         else:
-            row.update(method="Apple Vision subject lift + guided-filter edge refinement + procedural off-white sweep + contact shadows; opaque dog pixels copied byte-for-byte",
+            row.update(method=METHOD,
                        pipeline_version=S.PIPELINE_VERSION, source_size=meta.get("size"),
                        output_master=os.path.relpath(f"{d}/composite.png", ROOT))
             dec = decision.get("decision")
@@ -88,7 +102,7 @@ def main():
                 comp = Image.open(f"{d}/composite.png").convert("RGB")
                 if comp.width > MAX_WIDTH:
                     comp = comp.resize((MAX_WIDTH, round(comp.height * MAX_WIDTH / comp.width)), Image.LANCZOS)
-                rel = f"{B2_PREFIX}/{dog}/{rec['source_sha1'][:12]}.webp"
+                rel = f"{B2_PREFIX}/{dog}/{rec['source_sha1'][:12]}{FILE_SUFFIX}.webp"
                 local = f"{ROOT}/exports/{rel}"
                 os.makedirs(os.path.dirname(local), exist_ok=True)
                 tmp_png = f"{local}.tmp.png"
@@ -127,10 +141,12 @@ def main():
           "// exact cover it was made from; if the live cover changes, the entry stops applying.",
           'import type { StudioExperimentConfig, StudioManifestEntry } from "@/utils/studio-experiment-model";', "",
           "// Kill switch: `enabled` (or Vercel env PAWJAI_STUDIO_EXPERIMENT=off|c1|c1,c2).",
-          "// Shipped OFF until migration 20261117160000_photo_experiment_exposure_event.sql is applied.",
+          ("// Rollout: every visitor sees the reviewed derivative for enabled cohorts; nothing is randomised or measured."
+           if args.mode == "rollout" else
+           "// Experiment: enabled cohorts are randomised 50/50 per visitor and dog (needs migration 20261117160000)."),
           "export const STUDIO_EXPERIMENT_DEFAULTS: StudioExperimentConfig = {",
           f'  version: "{EXPERIMENT_VERSION}",', f"  enabled: {'true' if args.enabled else 'false'},",
-          f"  enabledCohorts: {json.dumps(cohorts)},", "};", "",
+          f"  enabledCohorts: {json.dumps(cohorts)},"] + ([f'  mode: "rollout",'] if args.mode == "rollout" else []) + ["};", "",
           "export const STUDIO_EXPERIMENT_ENTRIES: StudioManifestEntry[] = ["]
     for e in entries:
         ts.append("  " + json.dumps(e, ensure_ascii=False) + ",")

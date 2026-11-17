@@ -19,7 +19,11 @@ import numpy as np
 from scipy import ndimage as ndi
 from skimage import color as skcolor
 
-PIPELINE_VERSION = "studio-bg-v1.3"
+import os as _os
+# v1.3: smooth paper sweep (shipped 17 Nov, superseded). v2.0: matte off-white tarp with
+# irregular tone, faint fabric ripples/creases shaded by the light, light direction
+# measured on the dog, contact shadows plus a restrained cast shadow (owner brief, 17 Nov).
+PIPELINE_VERSION = _os.environ.get("PAWJAI_STUDIO_PIPELINE", "studio-bg-v2.0")
 MAX_WORK_SIDE = 2400  # long side; matches the import pipeline (1800x2400 max)
 
 # Calibrated from reference-white.jpg (genuine founder studio photo; it is the
@@ -359,6 +363,8 @@ def subject_extent(alpha: np.ndarray):
 
 
 def composite(src_u8: np.ndarray, alpha: np.ndarray, *, dog_id: str, source_sha1: str) -> tuple[np.ndarray, dict]:
+    if not PIPELINE_VERSION.startswith("studio-bg-v1"):
+        return composite_v2(src_u8, alpha, dog_id=dog_id, source_sha1=source_sha1)
     H, W, _ = src_u8.shape
     # A chroma "despill" of opaque edge pixels was tried (v1.4) and not adopted:
     # every opaque dog pixel stays byte-identical to the original.
@@ -540,3 +546,213 @@ def select_dog_v2(seg: dict, W: int, H: int) -> dict:
     return base
 
 
+
+
+# ------------------------------------------------------------------ v2.0 --
+# Matte tarp backdrop + light matched to the dog + restrained cast shadow.
+
+def estimate_light(src: np.ndarray, alpha: np.ndarray) -> tuple[float, float]:
+    """(light_x, harshness) from the dog's own shading.
+
+    light_x in [-1, 1]: >0 when the viewer-right side of the dog is brighter
+    (median L* of the right third vs the left third of the body). harshness in
+    [0, 1]: spread between the dog's bright and median tones (hard sun -> high).
+    """
+    lab = skcolor.rgb2lab(src[::4, ::4].astype(np.float64))
+    m = alpha[::4, ::4] > 0.98
+    ys, xs = np.nonzero(m)
+    if xs.size < 400:
+        return 0.0, 0.3
+    L = lab[..., 0][ys, xs]
+    xl, xr = np.percentile(xs, 33), np.percentile(xs, 67)
+    dog_diff = float(np.median(L[xs >= xr]) - np.median(L[xs <= xl]))
+    bg = alpha[::4, ::4] < 0.02
+    Lall = lab[..., 0]
+    w3 = max(1, Lall.shape[1] // 3)
+    bl, br = bg[:, :w3], bg[:, -w3:]
+    bg_diff = float(np.median(Lall[:, -w3:][br]) - np.median(Lall[:, :w3][bl])) if bl.sum() > 200 and br.sum() > 200 else 0.0
+    light_x = float(np.clip(0.5 * dog_diff / 20.0 + 0.5 * bg_diff / 25.0, -0.7, 0.7))
+    harsh = float(np.clip((np.percentile(L, 97) - np.percentile(L, 50)) / 45.0, 0.0, 1.0))
+    return light_x, harsh
+
+
+def _emboss(height: np.ndarray, lx: float, ly: float) -> np.ndarray:
+    gy, gx = np.gradient(height)
+    return -(gx * lx + gy * ly)
+
+
+def _crease_field(H, W, horizon_px, rng, n_wall, n_floor, s):
+    """Thin, tapered crease lines (wall: near-vertical folds; floor: shallow, foreshortened)."""
+    canvas = np.zeros((H, W), np.float32)
+    def draw(x0, y0, ang, length, curv, w_px):
+        n = max(40, int(length / 3))
+        t = np.linspace(0, 1, n)
+        a = ang + curv * (t - 0.5)
+        xs = x0 + np.cumsum(np.cos(a)) * (length / n)
+        ys = y0 + np.cumsum(np.sin(a)) * (length / n)
+        taper = np.sin(np.pi * t) ** 0.8
+        for x, y, k in zip(xs, ys, taper):
+            xi, yi = int(round(x)), int(round(y))
+            if 0 <= xi < W and 0 <= yi < H:
+                canvas[yi, xi] += k * w_px
+    for _ in range(n_wall):
+        if horizon_px < 0.12 * H:
+            break
+        x0 = rng.uniform(0.05, 0.95) * W
+        y0 = rng.uniform(0.0, 0.35) * horizon_px
+        ang = np.pi / 2 + rng.uniform(-0.28, 0.28)
+        draw(x0, y0, ang, rng.uniform(0.35, 0.8) * horizon_px, rng.uniform(-0.25, 0.25), 1.0)
+    for _ in range(n_floor):
+        x0 = rng.uniform(0.0, 1.0) * W
+        y0 = horizon_px + rng.uniform(0.15, 0.85) * (H - horizon_px)
+        ang = rng.uniform(-0.55, 0.55) + (np.pi if rng.random() < 0.5 else 0.0)
+        draw(x0, y0, ang, rng.uniform(0.18, 0.45) * s, rng.uniform(-0.4, 0.4), 0.8)
+    return canvas
+
+
+def tarp_background(H, W, *, horizon: float, warmth: float, lum_shift: float, light_x: float,
+                    rng: np.random.Generator) -> np.ndarray:
+    """Matte, slightly off-white tarp sweep in CIELAB -> linear RGB.
+
+    Base palette and curve follow the founder's studio references (as v1.3); on top:
+    irregular low-contrast tone, broad hanging folds on the backdrop, a few shallow
+    creases, all shaded by the same light direction as the dog; natural falloff.
+    """
+    s = min(H, W)
+    prof = _lab_profile(WHITE_PROFILE, WARM_PROFILE, warmth, lum_shift)
+    yh = float(np.clip(horizon, 0.06, 0.92))
+    pts = [(0.0, "top"), (yh - 0.20, "above"), (yh, "sweep"), (yh + 0.10, "front"),
+           (yh + 0.20, "near"), (1.0, "bottom")]
+    pts = [(y, k) for y, k in pts if 0.0 <= y <= 1.0] if yh + 0.2 < 1.0 else \
+        [(0.0, "top"), (yh - 0.2, "above"), (yh, "sweep"), (min(0.999, yh + 0.08), "front"), (1.0, "near")]
+    pts = sorted({round(y, 4): k for y, k in pts}.items())
+    ys = np.array([p[0] for p in pts])
+    vals = np.array([prof[p[1]] for p in pts], dtype=np.float32)
+    yy = (np.arange(H, dtype=np.float32) + 0.5) / H
+    col = np.stack([np.interp(yy, ys, vals[:, c]) for c in range(3)], -1)
+    col = ndi.gaussian_filter1d(col, sigma=max(2.0, 0.05 * H), axis=0, mode="nearest")
+    lab = np.repeat(col[:, None, :], W, axis=1)
+    xx = (np.arange(W, dtype=np.float32) + 0.5) / W
+    # soft curve shading where the tarp bends from wall to floor
+    lab[..., 0] -= 1.6 * np.exp(-(((yy - (yh - 0.03)) / 0.07) ** 2))[:, None]
+    # broad key light on the dog's lit side, natural falloff to the shaded side and the top
+    lab[..., 0] += 2.6 * light_x * (xx[None, :] - 0.5) * 2.0
+    lab[..., 0] -= 2.4 * np.clip(0.35 - yy, 0, None)[:, None] / 0.35 * (yh > 0.15)
+    r = np.hypot((xx[None, :] - 0.5 - 0.12 * light_x) / 0.8, (yy[:, None] - 0.55) / 0.9)
+    lab[..., 0] -= 3.2 * np.clip(r - 0.42, 0, None) ** 1.5
+    # irregular, low-contrast tone (no smooth digital gradient)
+    lab[..., 0] += 1.2 * _smooth_noise(H, W, 0.38 * max(H, W), rng) + \
+        0.75 * _smooth_noise(H, W, 0.14 * max(H, W), rng) + 0.35 * _smooth_noise(H, W, 0.05 * max(H, W), rng)
+    lab[..., 2] += 0.35 * _smooth_noise(H, W, 0.45 * max(H, W), rng)
+    # fabric relief shaded by the same light as the dog (each term scaled on its own so it
+    # stays visible at feed-card size but subtle): gentle undulation, broad hanging folds on
+    # the backdrop, a few soft shallow creases.
+    lx, ly = float(np.clip(light_x, -1, 1)) * 0.8 + 0.25, -0.65
+    def shaded(height):
+        sh = _emboss(height, lx, ly)
+        return sh / (np.std(sh) + 1e-6)
+    und = _smooth_noise(H, W, 0.20 * max(H, W), rng)
+    lab[..., 0] += 1.0 * np.clip(shaded(und), -3, 3)
+    wall_env = smoothstep(yh, max(0.0, yh - 0.22), yy)[:, None]  # C1-continuous, no seam at the curve
+    lam = rng.uniform(0.2, 0.32) * W
+    phase = _smooth_noise(H, 1, 0.5 * H, rng)[:, :1] * 1.4
+    folds = np.sin(2 * np.pi * (np.arange(W)[None, :] / lam) + phase).astype(np.float32) * wall_env
+    if yh > 0.12:
+        f = shaded(ndi.gaussian_filter(folds, max(2.0, 0.01 * s)))
+        lab[..., 0] += 0.9 * np.clip(f, -2.5, 2.5) * wall_env
+    cr = _crease_field(H, W, yh * H, rng, n_wall=int(rng.integers(1, 3)), n_floor=int(rng.integers(2, 4)), s=s)
+    cr = ndi.gaussian_filter(cr, max(3.0, 0.008 * s))
+    if cr.max() > 0:
+        cr = cr / cr.max()
+        sh = _emboss(cr, lx, ly)
+        sh = sh / (np.abs(sh).max() + 1e-6)
+        lab[..., 0] += 2.6 * sh - 0.9 * cr
+    rgb = skcolor.lab2rgb(lab.astype(np.float64)).astype(np.float32)
+    return srgb_to_linear(np.clip(rgb, 0, 1))
+
+
+def cast_shadow(alpha: np.ndarray, ext: dict, light_x: float, harsh: float) -> np.ndarray:
+    """Restrained cast shadow: the silhouette, weighted toward the ground, pushed slightly
+    behind the dog and away from the light, heavily softened. Mostly hidden by the dog;
+    only a soft edge shows on the shaded side."""
+    H, W = alpha.shape
+    top, bottom = ext["top"], ext["bottom"]
+    height = max(8, bottom - top)
+    yy = np.arange(H, dtype=np.float32)[:, None]
+    near_ground = smoothstep(top + 0.25 * height, bottom, yy)
+    src = (alpha > 0.5).astype(np.float32) * (0.30 + 0.70 * near_ground)
+    # shadow falls away from the light; with no clear direction, to viewer-right as in both references
+    side = -np.sign(light_x) * (0.55 + 0.45 * min(1.0, abs(light_x) / 0.5)) if abs(light_x) > 0.12 else 0.6
+    src = (alpha > 0.5).astype(np.float32) * (0.55 + 0.45 * near_ground)
+    dx = side * 0.17 * height
+    dy = -0.06 * height
+    sh = ndi.shift(src, (dy, dx), order=1, mode="constant", cval=0.0)
+    sh = ndi.gaussian_filter(sh, 0.035 * height + 2.0)
+    opacity = 0.15 + 0.08 * harsh
+    return (1.0 - opacity * np.clip(sh * 1.2, 0, 1)).astype(np.float32)
+
+
+def under_body_occlusion(alpha: np.ndarray, ext: dict) -> np.ndarray:
+    """Soft darkening of the floor just below the silhouette's lower contour (the dog blocks
+    the overhead light). Stronger toward the ground line, nothing above the dog's mid-height."""
+    H, W = alpha.shape
+    top, bottom = ext["top"], ext["bottom"]
+    height = max(8, bottom - top)
+    sub = alpha > 0.5
+    has = sub.any(axis=0)
+    yb = np.where(has, H - 1 - np.argmax(sub[::-1, :], axis=0), -1).astype(np.float32)
+    width = max(8, ext["right"] - ext["left"])
+    lying = width > 1.15 * height  # body resting on the floor along its whole lower contour
+    lo = 0.15 if lying else 0.45
+    wcol = np.where(has, smoothstep(top + lo * height, top + (lo + 0.4) * height, yb), 0.0).astype(np.float32)
+    wcol = ndi.gaussian_filter1d(wcol, max(2.0, 0.01 * W))
+    yy = np.arange(H, dtype=np.float32)[:, None]
+    d = yy - yb[None, :]
+    length = (0.05 if lying else 0.07) * height
+    ao = np.where(d > 0, np.exp(-np.clip(d, 0, None) / length), 0.0) * wcol[None, :]
+    ao = ndi.gaussian_filter(ao, max(3.0, 0.015 * height))
+    return (1.0 - (0.34 if lying else 0.22) * np.clip(ao, 0, 1)).astype(np.float32)
+
+
+def composite_v2(src_u8: np.ndarray, alpha: np.ndarray, *, dog_id: str, source_sha1: str) -> tuple[np.ndarray, dict]:
+    H, W, _ = src_u8.shape
+    src = src_u8.astype(np.float32) / 255.0
+    src_lin = srgb_to_linear(src)
+    ext = subject_extent(alpha)
+    rng = np.random.default_rng(seed_for(dog_id, source_sha1, PIPELINE_VERSION))
+    light_x, harsh = estimate_light(src, alpha)
+    light_dir = 1 if light_x >= 0 else -1
+    top = ext["top"]
+    horizon = max(0.06, (top - 0.05 * H) / H)
+    bg_w = (1 - alpha) > 0.5
+    lab_src = skcolor.rgb2lab(src[::4, ::4].astype(np.float64))
+    bgm = bg_w[::4, ::4]
+    b_bg = float(np.median(lab_src[..., 2][bgm])) if bgm.sum() > 500 else 8.0
+    warmth = float(np.clip((b_bg - 6.0) / 22.0, 0.0, 0.40))
+    fgm = (alpha > 0.95)[::4, ::4]
+    subj_L = lab_src[..., 0][fgm] if fgm.sum() > 200 else lab_src[..., 0].ravel()
+    subj_p90 = float(np.percentile(subj_L, 90))
+    lum_shift = -float(np.clip((subj_p90 - 80.0) * 0.45, 0.0, 7.0))
+    bg_lin = tarp_background(H, W, horizon=horizon, warmth=warmth, lum_shift=lum_shift,
+                             light_x=light_x, rng=rng)
+    cs = contact_shadows(alpha, top, ext["bottom"], light_dir)
+    bg_lin *= np.clip(1.0 - 1.35 * (1.0 - cs), 0.0, 1.0)[..., None]
+    bg_lin *= under_body_occlusion(alpha, ext)[..., None]
+    bg_lin *= cast_shadow(alpha, ext, light_x, harsh)[..., None]
+    grain = estimate_grain(src, alpha)
+    bg_srgb = linear_to_srgb(bg_lin)
+    noise = rng.standard_normal((H, W, 1)).astype(np.float32) * grain + \
+        rng.standard_normal((H, W, 3)).astype(np.float32) * grain * 0.25
+    bg_lin = srgb_to_linear(np.clip(bg_srgb + noise, 0, 1))
+    fg_lin = decontaminate(src_lin, alpha)
+    a = alpha[..., None]
+    out = np.clip(np.round(linear_to_srgb(a * fg_lin + (1 - a) * bg_lin) * 255.0), 0, 255).astype(np.uint8)
+    opaque = alpha >= 0.996
+    out[opaque] = src_u8[opaque]  # dog interior is the original photograph, byte for byte
+    params = {
+        "pipeline": PIPELINE_VERSION, "horizon": round(horizon, 4), "warmth": round(warmth, 3),
+        "lum_shift": round(lum_shift, 2), "light_x": round(light_x, 3), "harshness": round(harsh, 3),
+        "grain": round(grain, 4), "contact_y": None if ext["touches"]["bottom"] else ext["bottom"],
+        "subject": ext, "bg_b_star": round(b_bg, 2), "subject_L_p90": round(subj_p90, 1),
+    }
+    return out, params

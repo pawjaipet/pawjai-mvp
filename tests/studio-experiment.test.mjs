@@ -100,6 +100,25 @@ test("no stable visitor id means no experiment (original photo, nothing measured
   assert.equal(resolveStudioPhotoAssignment({ config, cover, entry, unitId: "not-a-uuid" }), null);
 });
 
+test("rollout shows the reviewed studio photo to every visitor and measures nothing", () => {
+  const { resolveStudioPhotoAssignment, resolveStudioExperimentConfig } = model();
+  const rollout = { ...config, mode: "rollout", version: "studio-bg-v2" };
+  for (const unitId of [UNIT, null, "not-a-uuid"]) {
+    const assignment = resolveStudioPhotoAssignment({ config: rollout, cover, entry, unitId });
+    assert.equal(assignment.variant, "studio", "no randomisation and no visitor id needed");
+    assert.equal(assignment.measured, false, "nothing is recorded as an experiment exposure");
+    assert.equal(assignment.studioUrl, entry.derivativeUrl);
+    assert.equal(assignment.originalUrl, entry.sourceUrl);
+  }
+  assert.equal(resolveStudioExperimentConfig(rollout, "c1").mode, "rollout", "env cohort override keeps the mode");
+  assert.equal(resolveStudioPhotoAssignment({ config: resolveStudioExperimentConfig(rollout, "off"), cover, entry, unitId: UNIT }), null, "kill switch wins");
+  assert.equal(resolveStudioPhotoAssignment({ config: { ...rollout, enabledCohorts: ["c2"] }, cover, entry, unitId: UNIT }), null, "only enabled cohorts");
+  const replacedCover = { ...cover, publicUrl: "https://media.pawjaipet.com/file/pawjai/pawjaidogs/new-photo.jpg" };
+  assert.equal(resolveStudioPhotoAssignment({ config: rollout, cover: replacedCover, entry, unitId: UNIT }), null, "a replaced cover drops the stale edit");
+  assert.equal(resolveStudioPhotoAssignment({ config: rollout, cover: { ...cover, type: "video" }, entry, unitId: UNIT }), null);
+  assert.equal(resolveStudioPhotoAssignment({ config: rollout, cover, entry, preview: "control", unitId: UNIT }).variant, "control", "QA can still compare");
+});
+
 test("QA preview shows either version for any reviewed dog and is never measured", () => {
   const { resolveStudioPhotoAssignment, parseStudioPreview, exposureConditionsMet } = model();
   assert.equal(parseStudioPreview("studio"), "studio");
@@ -202,15 +221,17 @@ test("report says insufficient data until both arms are large enough", () => {
 
 test("reviewed manifest only lists CDN derivatives bound to their source and safe to serve", () => {
   const { STUDIO_EXPERIMENT_DEFAULTS, STUDIO_EXPERIMENT_ENTRIES, STUDIO_EXPERIMENT_RETAINED_ORIGINALS } = manifest();
-  assert.equal(STUDIO_EXPERIMENT_DEFAULTS.version, "studio-bg-v1");
+  assert.match(STUDIO_EXPERIMENT_DEFAULTS.version, /^studio-bg-v\d+$/);
+  assert.ok(["experiment", "rollout"].includes(STUDIO_EXPERIMENT_DEFAULTS.mode ?? "experiment"));
   assert.ok(STUDIO_EXPERIMENT_ENTRIES.length > 0, "at least one reviewed derivative");
   const ids = new Set();
   for (const item of STUDIO_EXPERIMENT_ENTRIES) {
     assert.ok(!ids.has(item.dogId), "one derivative per dog");
     ids.add(item.dogId);
     // Additive B2 objects under the owner-named versioned prefix, on the same CDN as the originals.
-    assert.match(item.derivativeUrl, /^https:\/\/media\.pawjaipet\.com\/file\/pawjai\/experiments\/studio-background-v1\/[0-9a-f-]{36}\/[0-9a-f]{12}\.webp$/);
-    assert.ok(item.derivativeUrl.includes(item.dogId) && item.derivativeUrl.includes(`/${item.sourceSha1.slice(0, 12)}.webp`));
+    // v2 derivatives carry a "-v2" suffix so no existing object is ever overwritten.
+    assert.match(item.derivativeUrl, /^https:\/\/media\.pawjaipet\.com\/file\/pawjai\/experiments\/studio-background-v1\/[0-9a-f-]{36}\/[0-9a-f]{12}(-v2)?\.webp$/);
+    assert.ok(item.derivativeUrl.includes(item.dogId) && item.derivativeUrl.includes(`/${item.sourceSha1.slice(0, 12)}`));
     assert.match(item.derivativeSha1, /^[0-9a-f]{40}$/);
     assert.ok(item.derivativeBytes > 0 && item.derivativeBytes < 450 * 1024, `${item.derivativeUrl} is too heavy for mobile`);
     assert.match(item.sourceUrl, /^https:\/\/media\.pawjaipet\.com\/file\/pawjai\//);

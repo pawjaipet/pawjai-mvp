@@ -71,6 +71,26 @@ def process(rec, force=False):
     src = np.asarray(im)
     H, W, _ = src.shape
     t0 = time.time()
+    reuse = os.environ.get("PAWJAI_STUDIO_REUSE_MASK")  # e.g. studio-bg-v1.3: keep the reviewed mask
+    if reuse:
+        prev = f"{ROOT}/outputs/{reuse}/{rec['dog_id']}/{rec['source_sha1'][:12]}"
+        prev_meta = load_json(f"{prev}/meta.json")
+        if prev_meta and os.path.exists(f"{prev}/mask.png") and prev_meta.get("status") == "generated":
+            alpha = np.asarray(Image.open(f"{prev}/mask.png").convert("L"), dtype=np.float32) / 255.0
+            if alpha.shape == (H, W):
+                meta = {k: prev_meta[k] for k in ("dog_id", "name", "source_sha1", "source_sha256", "source_url",
+                                                   "size", "work_scale", "vision") if k in prev_meta}
+                meta.update({"pipeline": S.PIPELINE_VERSION, "mask_from": reuse,
+                             "flags": [f for f in prev_meta.get("flags", []) if f != "INTERIOR_NOT_IDENTICAL"]})
+                out, params = S.composite(src, alpha, dog_id=rec["dog_id"], source_sha1=rec["source_sha1"])
+                qa = S.qa_metrics(src, out, alpha)
+                Image.fromarray(out).save(f"{d}/composite.png", optimize=False, compress_level=6)
+                Image.fromarray(np.round(alpha * 255).astype(np.uint8)).save(f"{d}/mask.png")
+                if not qa["opaque_pixels_identical"]:
+                    meta["flags"].append("INTERIOR_NOT_IDENTICAL")
+                meta.update({"params": params, "qa": qa, "seconds": round(time.time() - t0, 2), "status": "generated"})
+                json.dump(meta, open(meta_path, "w"), indent=1, ensure_ascii=False)
+                return meta, "generated"
     seg = S.segment(work_path, W, H)
     sel = S.select_dog_v2(seg, W, H)
     meta = {

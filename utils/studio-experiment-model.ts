@@ -34,6 +34,12 @@ export type StudioExperimentConfig = {
   version: string;
   enabled: boolean;
   enabledCohorts: string[];
+  /**
+   * "experiment" (default): enabled cohorts are randomised 50/50 per visitor and dog and
+   * qualified exposures are measured. "rollout": every visitor sees the reviewed studio
+   * derivative for enabled cohorts; nothing is randomised or measured.
+   */
+  mode?: "experiment" | "rollout";
 };
 
 export type StudioPhotoAssignment = {
@@ -131,6 +137,7 @@ export function resolveStudioPhotoAssignment({
   };
   if (preview) return { ...base, measured: false, preview, variant: preview };
   if (!config.enabled || !config.enabledCohorts.includes(entry.cohort)) return null;
+  if (config.mode === "rollout") return { ...base, measured: false, preview: null, variant: "studio" };
   if (!isExperimentUnitId(unitId)) return null;
   return { ...base, measured: true, preview: null, variant: assignStudioVariant(unitId, entry.dogId, config.version) };
 }

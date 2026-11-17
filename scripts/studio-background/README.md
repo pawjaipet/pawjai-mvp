@@ -30,20 +30,28 @@ and the uploader.
    studio photos (retained), ambiguous/complex cases and skips with reasons.
 5. **Process**: `.venv/bin/python run_pipeline.py process [--only …] [--force]`
    — Vision mask → dog instance selection (other dogs/people flagged) →
-   guided-filter edge refinement → off-white sweep calibrated to the founder's
-   two studio references → contact shadows → composite. Opaque dog pixels are
+   guided-filter edge refinement → background calibrated to the founder's
+   two studio references → shadows → composite. Opaque dog pixels are
    copied byte-for-byte; `meta.json` records `opaque_pixels_identical`.
    Outputs: `outputs/<pipeline-version>/<dog-id>/<source-sha1-12>/`.
+   The default pipeline is `studio-bg-v2.0` (matte off-white tarp with irregular
+   tone, folds and shallow creases shaded by the light measured on the dog;
+   contact, under-body and restrained cast shadows). `PAWJAI_STUDIO_PIPELINE=studio-bg-v1.3`
+   reproduces the original smooth paper sweep. `PAWJAI_STUDIO_REUSE_MASK=studio-bg-v1.3`
+   reuses the already reviewed masks instead of segmenting again.
 6. **Review** (human): `run_pipeline.py review` builds sheets (original,
    composite, 370×590 feed crop, removed-area overlay). Record decisions in
    `inventory-*/qa-decisions.json` (`passed` + cohort, or `failed` + reason).
-7. **Export**: `export_experiment.py --worktree <repo> [--enabled]` writes WebP
+7. **Export**: `export_experiment.py --worktree <repo> [--enabled] [--mode rollout]` writes WebP
    derivatives to `exports/experiments/studio-background-v1/<dog-id>/<source-sha1-12>.webp`
+   (v2.0: `<source-sha1-12>-v2.webp`, decisions from `qa-decisions-v2.json`)
    and regenerates `utils/studio-experiment-manifest.ts` (CDN URL, SHA-1 and
-   size per derivative; shipped off unless `--enabled`), plus the full
+   size per derivative; shipped off unless `--enabled`; 50/50 experiment unless
+   `--mode rollout`, which shows the edit to every visitor), plus the full
    catalogue manifest.
 8. **Upload (additive only)**:
-   `node --import ./server-only-shim.mjs --env-file=<path to .env.local> upload_b2.mjs <repo> <exports-root> [--dry-run]`.
+   `node --import ./server-only-shim.mjs --env-file=<path to .env.local> upload_b2.mjs <repo> <exports-root> [--dry-run]`
+   (run from the folder that holds both scripts).
    Loads credentials only into the process (never printed), uses the app's
    `uploadBufferToBackblaze`, uploads only derivatives the manifest references,
    lists the prefix first and refuses to overwrite any existing object, then
