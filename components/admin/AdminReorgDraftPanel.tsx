@@ -90,7 +90,7 @@ type ShelterTab = "profile" | "dogs" | "bookings" | "donations" | "messages";
 type DogRecordView = "current" | "adopted" | "all";
 type BookingWorkspaceView = "visits" | "calendar";
 type VisitBucket = "upcoming" | "past" | "history" | "adopted";
-type MessageFilter = "all" | "unread" | "upcoming" | "needs_reply";
+type MessageFilter = "all" | "unread" | "upcoming" | "history" | "needs_reply";
 type MessageSort = "newest" | "oldest" | "unread";
 type AdStatusFilter = "all" | AdDisplayStatus;
 
@@ -151,7 +151,6 @@ type DraftAdminMessageAttachment = {
 const ADMIN_RETURN_TO = "/admin";
 const ADMIN_ADS_RETURN_TO = "/admin?view=ads";
 const APPOINTMENT_MESSAGE_ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov,application/pdf,image/heic,image/heif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime";
-const MESSAGE_THREAD_REFRESH_INTERVAL_MS = 12_000;
 const MAIN_TABS: MainTab[] = ["shelters", "dogs", "bookings", "donations", "ads", "about", "messages"];
 const BOOKING_STATUS_OPTIONS = ["requested", "confirmed", "completed", "cancelled", "no_show"];
 const AD_STATUS_TABS: { label: string; value: AdStatusFilter }[] = [
@@ -751,6 +750,24 @@ function bookingVisitBucket(booking: AdminDraftBooking, now = new Date()): Visit
   return followUpDue ? "past" : "upcoming";
 }
 
+function messageThreadVisitDate(thread: AdminDraftMessageThread) {
+  const time = normalizeAppointmentTime(thread.appointmentTime || "00:00");
+  const date = new Date(`${thread.appointmentDate}T${time}`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isUpcomingMessageThread(thread: AdminDraftMessageThread, now = new Date()) {
+  if (thread.status === "completed" || thread.status === "no_show" || thread.status === "cancelled") {
+    return false;
+  }
+  const visitDate = messageThreadVisitDate(thread);
+  return visitDate ? visitDate >= now : true;
+}
+
+function messageFilterForThread(thread: AdminDraftMessageThread) {
+  return isUpcomingMessageThread(thread) ? "upcoming" : "history";
+}
+
 function bookingDogProfileFacts(booking: AdminDraftBooking) {
   return [
     booking.dogBreed,
@@ -854,16 +871,21 @@ function buildAdClickBuckets(clicks: AdminDraftAdClick[], today: string, days = 
   });
 }
 
-function matchesMessageThread(thread: AdminDraftMessageThread, messageSearch: string, messageFilter: MessageFilter) {
+function matchesMessageThread(
+  thread: AdminDraftMessageThread,
+  messageSearch: string,
+  messageFilter: MessageFilter,
+  includeHistoryOutsideHistoryFilter: boolean,
+) {
   const query = messageSearch.trim().toLowerCase();
+  const isUpcoming = isUpcomingMessageThread(thread);
 
   if (query && !thread.searchableText.includes(query)) return false;
+  if (messageFilter === "history") return !isUpcoming;
+  if (!includeHistoryOutsideHistoryFilter && !isUpcoming) return false;
   if (messageFilter === "unread") return thread.unreadForShelterCount > 0;
   if (messageFilter === "needs_reply") return thread.needsReply;
-  if (messageFilter === "upcoming") {
-    const visitDate = new Date(`${thread.appointmentDate}T${thread.appointmentTime || "00:00"}`);
-    return Number.isNaN(visitDate.getTime()) ? true : visitDate >= new Date();
-  }
+  if (messageFilter === "upcoming") return isUpcoming;
   return true;
 }
 
@@ -2301,21 +2323,27 @@ function ShelterMessagesTab({
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedThreadId = searchParams.get("thread") ?? "";
+  const isGlobalOverview = Boolean(globalShelters);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
-  const [messageFilter, setMessageFilter] = useState<MessageFilter>("all");
+  const consumedRequestedThreadRef = useRef(false);
+  const [messageFilter, setMessageFilter] = useState<MessageFilter>(isGlobalOverview ? "all" : "upcoming");
   const [messageSearch, setMessageSearch] = useState("");
   const [messageSort, setMessageSort] = useState<MessageSort>("newest");
   const [selectedThreadId, setSelectedThreadId] = useState(requestedThreadId);
   const [replyAttachment, setReplyAttachment] = useState<DraftAdminMessageAttachment | null>(null);
   const [shelterFilter, setShelterFilter] = useState("all");
-  const isGlobalOverview = Boolean(globalShelters);
   const shelterThreads = useMemo(() => messageThreads.filter((thread) => (
     isGlobalOverview
       ? shelterFilter === "all" || thread.shelterId === shelterFilter
       : thread.shelterId === shelter.id
   )), [isGlobalOverview, messageThreads, shelter.id, shelterFilter]);
+  const activeThreadCount = useMemo(
+    () => shelterThreads.filter((thread) => isUpcomingMessageThread(thread)).length,
+    [shelterThreads],
+  );
+  const historyThreadCount = shelterThreads.length - activeThreadCount;
   const filteredThreads = useMemo(() => shelterThreads
-    .filter((thread) => matchesMessageThread(thread, messageSearch, messageFilter))
+    .filter((thread) => matchesMessageThread(thread, messageSearch, messageFilter, isGlobalOverview))
     .slice()
     .sort((a, b) => {
       const aActivity = a.latestMessage?.created_at ?? `${a.appointmentDate}T${a.appointmentTime}`;
@@ -2325,9 +2353,9 @@ function ShelterMessagesTab({
         return b.unreadForShelterCount - a.unreadForShelterCount || bActivity.localeCompare(aActivity);
       }
       return bActivity.localeCompare(aActivity);
-    }), [messageFilter, messageSearch, messageSort, shelterThreads]);
+    }), [isGlobalOverview, messageFilter, messageSearch, messageSort, shelterThreads]);
   const selectedThread = (selectedThreadId
-    ? shelterThreads.find((thread) => thread.appointmentId === selectedThreadId)
+    ? filteredThreads.find((thread) => thread.appointmentId === selectedThreadId)
     : null) ?? filteredThreads[0] ?? null;
   const selectedThreadReturnTo = selectedThread
     ? bookingWorkspaceMessageHref({
@@ -2335,12 +2363,15 @@ function ShelterMessagesTab({
         bookingListHref: returnTo,
       })
     : returnTo;
-  const unreadMessageCount = shelterThreads.reduce((total, thread) => total + thread.unreadForShelterCount, 0);
+  const unreadMessageCount = shelterThreads
+    .filter((thread) => isGlobalOverview || isUpcomingMessageThread(thread))
+    .reduce((total, thread) => total + thread.unreadForShelterCount, 0);
   const filterOptions: { label: string; value: MessageFilter }[] = [
-    { label: "All", value: "all" },
+    ...(isGlobalOverview ? [{ label: "All", value: "all" as const }] : []),
+    { label: "Upcoming", value: "upcoming" },
     { label: "Unread", value: "unread" },
-    { label: "Upcoming visits", value: "upcoming" },
     { label: "Needs reply", value: "needs_reply" },
+    { label: "History", value: "history" },
   ];
 
   function clearReplyAttachment() {
@@ -2372,36 +2403,22 @@ function ShelterMessagesTab({
   }, [replyAttachment?.previewUrl]);
 
   useEffect(() => {
-    if (requestedThreadId && shelterThreads.some((thread) => thread.appointmentId === requestedThreadId)) {
+    if (requestedThreadId && !consumedRequestedThreadRef.current) {
+      const requestedThread = shelterThreads.find((thread) => thread.appointmentId === requestedThreadId);
+      if (!requestedThread) return;
+      consumedRequestedThreadRef.current = true;
       setSelectedThreadId(requestedThreadId);
-      setMessageFilter("all");
+      setMessageFilter(isGlobalOverview ? "all" : messageFilterForThread(requestedThread));
       return;
     }
-    if (selectedThreadId && !shelterThreads.some((thread) => thread.appointmentId === selectedThreadId)) {
+    if (selectedThreadId && !filteredThreads.some((thread) => thread.appointmentId === selectedThreadId)) {
       setSelectedThreadId(filteredThreads[0]?.appointmentId ?? "");
       return;
     }
     if (!selectedThreadId && filteredThreads[0]) {
       setSelectedThreadId(filteredThreads[0].appointmentId);
     }
-  }, [filteredThreads, requestedThreadId, selectedThreadId, shelterThreads]);
-
-  useEffect(() => {
-    if (messagesUnavailable) return;
-
-    const refreshIfVisible = () => {
-      if (document.visibilityState === "visible") {
-        router.refresh();
-      }
-    };
-    const interval = window.setInterval(refreshIfVisible, MESSAGE_THREAD_REFRESH_INTERVAL_MS);
-    document.addEventListener("visibilitychange", refreshIfVisible);
-
-    return () => {
-      window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", refreshIfVisible);
-    };
-  }, [messagesUnavailable, router]);
+  }, [filteredThreads, isGlobalOverview, requestedThreadId, selectedThreadId, shelterThreads]);
 
   useEffect(() => {
     if (messagesUnavailable) return;
@@ -2409,7 +2426,12 @@ function ShelterMessagesTab({
     const supabase = createBrowserSupabaseClient();
     const channel = supabase.channel(isGlobalOverview ? "admin-all-messages" : `shelter-messages:${shelter.id}`);
     const refresh = () => {
-      if (document.visibilityState === "visible") router.refresh();
+      if (document.visibilityState !== "visible") return;
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
+      router.refresh();
+      requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
+      window.setTimeout(() => window.scrollTo(scrollX, scrollY), 250);
     };
 
     if (isGlobalOverview) {
@@ -2454,8 +2476,13 @@ function ShelterMessagesTab({
         <div className="rounded-2xl border border-[#d6c8ad] bg-[#fffaf5] p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-semibold text-[#65584f]">{shelterThreads.length} appointment threads</p>
-              <p className="mt-1 text-sm text-[#65584f]">{unreadMessageCount} unread adopter messages</p>
+              <p className="font-semibold text-[#65584f]">
+                {isGlobalOverview ? `${shelterThreads.length} appointment threads` : `${activeThreadCount} upcoming appointment conversations`}
+              </p>
+              <p className="mt-1 text-sm text-[#65584f]">
+                {unreadMessageCount} unread adopter messages
+                {!isGlobalOverview && historyThreadCount > 0 ? ` · ${historyThreadCount} in history` : ""}
+              </p>
             </div>
             <MessageCircle className="h-5 w-5 text-[#cd8188]" />
           </div>
@@ -2549,7 +2576,9 @@ function ShelterMessagesTab({
             ))}
             {filteredThreads.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-[#d6c8ad] bg-white p-4 text-sm text-[#65584f]">
-                No message threads match these filters.
+                {messageFilter === "history"
+                  ? "No past appointment conversations yet."
+                  : "No upcoming appointment conversations match these filters."}
               </div>
             ) : null}
           </div>
