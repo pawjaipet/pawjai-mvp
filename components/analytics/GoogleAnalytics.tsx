@@ -17,10 +17,12 @@ function subscribe(callback: () => void) {
 export default function GoogleAnalytics() {
   const pathname = usePathname();
   const consent = useSyncExternalStore(subscribe, analyticsConsent, () => "pending");
-  const [editing, setEditing] = useState(false);
+  const [editingPath, setEditingPath] = useState<string | null>(null);
   const { language } = useLanguage();
   const thai = language === "th";
   const enabled = consent === "granted" && analyticsHost() && analyticsPath(pathname) !== null;
+  const preferencesPage = pathname === "/privacy" || pathname === "/settings";
+  const editing = preferencesPage && editingPath === pathname;
 
   useEffect(() => {
     syncAnalyticsConsent(enabled);
@@ -55,13 +57,13 @@ export default function GoogleAnalytics() {
   if (analyticsPath(pathname) === null) return null;
   return <>
     {enabled && <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />}
-    {consent !== "pending" && (!consent || editing) && <section data-i18n-ignore aria-label={thai ? "การวิเคราะห์การใช้งาน" : "Analytics preferences"} className="fixed bottom-[82px] left-3 right-3 z-[110] mx-auto max-w-md rounded-2xl border border-[#d6c8ad] bg-white p-4 text-[#65584f] shadow-lg">
+    {consent !== "pending" && editing && <section id="analytics-preferences" data-i18n-ignore aria-label={thai ? "การวิเคราะห์การใช้งาน" : "Analytics preferences"} className="mx-auto mb-24 w-[calc(100%-24px)] max-w-md rounded-2xl border border-[#d6c8ad] bg-white p-4 text-[#65584f]">
       <p className="text-sm leading-6">{thai ? "อนุญาต Google Analytics เพื่อช่วยให้เราเข้าใจการใช้งานและปรับปรุงการรับเลี้ยงสุนัขไหม? ไม่ส่งข้อมูลที่กรอกในแบบฟอร์ม" : "Allow Google Analytics to help us understand site use and make adoption easier? We do not send form contents."} <Link href="/privacy" className="underline">{thai ? "ความเป็นส่วนตัว" : "Privacy"}</Link></p>
       <div className="mt-3 flex gap-2">
-        <button onClick={() => { setAnalyticsConsent("denied"); setEditing(false); }} className="min-h-11 flex-1 rounded-xl border border-[#d6c8ad] px-3 text-sm font-semibold">{thai ? "ไม่อนุญาต" : "Decline"}</button>
-        <button onClick={() => { setAnalyticsConsent("granted"); setEditing(false); }} className="min-h-11 flex-1 rounded-xl bg-[#cd8188] px-3 text-sm font-semibold text-white">{thai ? "อนุญาต" : "Allow analytics"}</button>
+        <button type="button" onClick={() => { setAnalyticsConsent("denied"); setEditingPath(null); }} className="min-h-11 flex-1 rounded-xl border border-[#d6c8ad] px-3 text-sm font-semibold">{thai ? "ไม่อนุญาต" : "Decline"}</button>
+        <button type="button" onClick={() => { setAnalyticsConsent("granted"); setEditingPath(null); }} className="min-h-11 flex-1 rounded-xl bg-[#cd8188] px-3 text-sm font-semibold text-white">{thai ? "อนุญาต" : "Allow analytics"}</button>
       </div>
     </section>}
-    {(pathname === "/privacy" || pathname === "/settings") && <button data-i18n-ignore onClick={() => setEditing(true)} className="mx-auto mb-6 block min-h-11 rounded-full border border-[#d6c8ad] px-5 text-sm underline">{thai ? "ตั้งค่าการวิเคราะห์การใช้งาน" : "Analytics preferences"}</button>}
+    {preferencesPage && <button type="button" data-i18n-ignore aria-expanded={editing} aria-controls={editing ? "analytics-preferences" : undefined} onClick={() => setEditingPath(editing ? null : pathname)} className="mx-auto mb-6 block min-h-11 rounded-full border border-[#d6c8ad] px-5 text-sm underline">{thai ? "ตั้งค่าการวิเคราะห์การใช้งาน" : "Analytics preferences"}</button>}
   </>;
 }
