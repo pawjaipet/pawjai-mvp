@@ -12,9 +12,9 @@ test("appointment and shelter message views refresh while visible", () => {
   assert.equal(adopterSource.includes('document.visibilityState === "visible"'), true);
   assert.equal(adopterSource.includes('"postgres_changes"'), true);
   assert.equal(adopterSource.includes('filter: `appointment_id=eq.${appointmentId}`'), true);
-  assert.equal(adminSource.includes("MESSAGE_THREAD_REFRESH_INTERVAL_MS"), true);
   assert.equal(adminSource.includes("router.refresh()"), true);
-  assert.equal(adminSource.includes('document.visibilityState === "visible"'), true);
+  assert.equal(adminSource.includes("window.scrollTo(scrollX, scrollY)"), true);
+  assert.equal(adminSource.includes("window.setInterval(refreshIfVisible"), false);
   assert.equal(adminSource.includes('"postgres_changes"'), true);
   assert.equal(adminSource.includes('filter: `shelter_id=eq.${shelter.id}`'), true);
   assert.equal(migrationSource.includes("alter publication supabase_realtime add table public.appointment_messages"), true);

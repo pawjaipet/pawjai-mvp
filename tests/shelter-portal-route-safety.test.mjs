@@ -158,6 +158,17 @@ test("booking and message workspace links preserve the active message thread", (
   assert.match(sharedVisitor, /Open booking detail/);
 });
 
+test("shelter messages default to upcoming appointment conversations with history tucked away", () => {
+  const panel = source("../components/admin/AdminReorgDraftPanel.tsx");
+
+  assert.match(panel, /useState<MessageFilter>\(isGlobalOverview \? "all" : "upcoming"\)/);
+  assert.match(panel, /type MessageFilter = "all" \| "unread" \| "upcoming" \| "history" \| "needs_reply"/);
+  assert.match(panel, /function isUpcomingMessageThread/);
+  assert.match(panel, /\{ label: "History", value: "history" \}/);
+  assert.match(panel, /upcoming appointment conversations/);
+  assert.match(panel, /No past appointment conversations yet/);
+});
+
 test("shelter form mutations cannot honor an admin return destination", () => {
   const bookingActions = source("../app/admin/bookings/actions.ts");
   const dogCreateActions = source("../app/admin/dogs/new/actions.ts");
