@@ -6,6 +6,7 @@ import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import ProductAnalyticsTracker from "@/components/analytics/ProductAnalyticsTracker";
 import BottomNavBar from "@/components/BottomNavBar";
 import NavigationFeedback from "@/components/NavigationFeedback";
+import ReliabilityMonitor from "@/components/reliability/ReliabilityMonitor";
 import { LanguageProvider } from "@/components/i18n/LanguageProvider";
 import JsonLd from "@/components/seo/JsonLd";
 import { pawjaiOrganizationJsonLd, pawjaiWebsiteJsonLd } from "@/utils/json-ld";
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ProductAnalyticsTracker />
             <GoogleAnalytics />
             <NavigationFeedback />
+            <ReliabilityMonitor />
             <main className="min-h-screen pb-[70px]">{children}</main>
             <BottomNavBar />
           </AuthProvider>
