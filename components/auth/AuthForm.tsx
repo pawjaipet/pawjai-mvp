@@ -203,7 +203,7 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
         email: credentials.email,
         password: credentials.password,
         options: {
-          data: { full_name: null },
+          data: { full_name: null, age_consent: true, age_consent_at: new Date().toISOString() },
           emailRedirectTo: buildEmailVerificationRedirect(window.location.origin, safeNextPath),
         },
       });
@@ -469,6 +469,10 @@ export default function AuthForm({ message, nextPath, onClose }: AuthFormProps) 
             minLength={8}
             className="h-[58px] w-full rounded-[18px] border-0 bg-[#d6c8ad] px-[20px] text-[16px] text-[#65584f] outline-none placeholder:text-[#65584f]/45"
           />
+          <label className="flex items-start gap-3 px-1 pt-1 text-[12px] leading-relaxed text-[#65584f]">
+            <input name="ageConsent" type="checkbox" value="yes" required className="mt-1 size-4 accent-[#cd8188]" />
+            <span>I agree to the <Link href="/terms" className="font-semibold underline">Terms of Use</Link> and <Link href="/privacy" className="font-semibold underline">Privacy Policy</Link>, and confirm I am 18 or have a parent or guardian involved in adoption decisions.</span>
+          </label>
           <div className="pt-[6px]">
             <button
               type="submit"

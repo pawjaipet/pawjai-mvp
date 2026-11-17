@@ -85,6 +85,9 @@ export async function signIn(formData: FormData) {
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
   const nextPath = getFormNext(formData);
+  if (formData.get("ageConsent") !== "yes") {
+    authRedirect("Please confirm the account and age requirements before signing up.", nextPath);
+  }
   let credentials;
 
   try {
@@ -115,6 +118,8 @@ export async function signUp(formData: FormData) {
     options: {
       data: {
         full_name: null,
+        age_consent: true,
+        age_consent_at: new Date().toISOString(),
       },
       emailRedirectTo: buildEmailVerificationRedirect(await getRequestOrigin(), nextPath),
     },
