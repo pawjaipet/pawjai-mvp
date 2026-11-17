@@ -8,7 +8,7 @@ import type { StudioExperimentConfig, StudioManifestEntry } from "@/utils/studio
 // Shipped OFF until migration 20261117160000_photo_experiment_exposure_event.sql is applied.
 export const STUDIO_EXPERIMENT_DEFAULTS: StudioExperimentConfig = {
   version: "studio-bg-v1",
-  enabled: false,
+  enabled: true,
   enabledCohorts: ["c1"],
 };
 
