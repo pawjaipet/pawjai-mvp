@@ -12,7 +12,7 @@ export const BRAND_SEARCH_ALIASES = [
   "PawJai dog adoption",
 ] as const;
 
-export const PUBLIC_SITEMAP_PATHS = ["/", "/about", "/dogs", "/shelter", "/privacy", "/terms", "/safety"] as const;
+export const PUBLIC_SITEMAP_PATHS = ["/", "/about", "/dogs", "/shelter", "/privacy", "/terms", "/cookies", "/refunds", "/data-deletion", "/safety"] as const;
 
 export const ROBOTS_DISALLOW_PATHS = [
   "/admin",
