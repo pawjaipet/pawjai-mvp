@@ -68,7 +68,7 @@ console.log(`existing objects under ${PREFIX}: ${existing.size}`);
 const results = [];
 for (const path of local.sort()) {
   const objectName = relative(exportsRoot, path).split("\\").join("/");
-  if (!objectName.startsWith(PREFIX) || !/^experiments\/studio-background-v1\/[0-9a-f-]{36}\/[0-9a-f]{12}(-v2)?\.webp$/.test(objectName)) {
+  if (!objectName.startsWith(PREFIX) || !/^experiments\/studio-background-v1\/[0-9a-f-]{36}\/[0-9a-f]{12}(-v[23])?\.webp$/.test(objectName)) {
     throw new Error(`refusing unexpected object name: ${objectName}`);
   }
   const body = readFileSync(path);
@@ -96,6 +96,7 @@ for (const result of results) {
   result.publicUrl = `${PUBLIC_BASE}/${result.objectName}`;
 }
 const summary = results.reduce((acc, result) => ({ ...acc, [result.action]: (acc[result.action] ?? 0) + 1 }), {});
-const resultsName = results.some((r) => r.objectName.endsWith("-v2.webp")) ? "b2-upload-results-v2.json" : "b2-upload-results.json";
+const suffix = results.map((r) => (r.objectName.match(/-(v[23])\.webp$/) || [])[1]).find(Boolean);
+const resultsName = suffix ? `b2-upload-results-${suffix}.json` : "b2-upload-results.json";
 writeFileSync(join(exportsRoot, resultsName), JSON.stringify({ prefix: PREFIX, at: new Date().toISOString(), dryRun, summary, verifiedInListing: verified, results }, null, 1));
 console.log(JSON.stringify({ dryRun, summary, verifiedInListing: verified, total: results.length }));

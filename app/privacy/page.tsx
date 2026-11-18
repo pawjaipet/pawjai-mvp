@@ -26,7 +26,7 @@ export default function Page() {
       },
       {
             "title": "Edited dog photo backgrounds",
-            "body": "Some feed photos show a dog with an edited, plain studio-style background in place of a cluttered shelter background, marked “Edited background”. Only the background is changed; the dog in the photo is not retouched, and the original photo stays on the dog’s profile. Every visitor sees the same version, so no cookie or analytics is used to choose it. A brief comparison of the two versions in November 2026 was measured with PawJai’s own product analytics only; it was not sent to Google Analytics."
+            "body": "Some feed photos show a dog with an edited, plain studio-style background in place of a cluttered shelter or yard background, marked “Edited background”. The background is replaced and the photo’s overall light and colour are adjusted to match it, as a photographer would; the dog itself is not retouched or redrawn, and the original photo stays on the dog’s profile. Every visitor sees the same version, so no cookie or analytics is used to choose it. A brief comparison of two versions in November 2026 was measured with PawJai’s own product analytics only; it was not sent to Google Analytics."
       },
       {
             "title": "Optional Google Analytics",

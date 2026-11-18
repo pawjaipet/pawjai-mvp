@@ -72,21 +72,39 @@ def process(rec, force=False):
     H, W, _ = src.shape
     t0 = time.time()
     reuse = os.environ.get("PAWJAI_STUDIO_REUSE_MASK")  # e.g. studio-bg-v1.3: keep the reviewed mask
-    if reuse:
-        prev = f"{ROOT}/outputs/{reuse}/{rec['dog_id']}/{rec['source_sha1'][:12]}"
-        prev_meta = load_json(f"{prev}/meta.json")
-        if prev_meta and os.path.exists(f"{prev}/mask.png") and prev_meta.get("status") == "generated":
-            alpha = np.asarray(Image.open(f"{prev}/mask.png").convert("L"), dtype=np.float32) / 255.0
+    fixed = f"{ROOT}/masks-fixed/{rec['dog_id']}/{rec['source_sha1'][:12]}.png"  # hand-fixed cut-outs win
+    if reuse or os.path.exists(fixed):
+        prev = f"{ROOT}/outputs/{reuse or 'studio-bg-v1.3'}/{rec['dog_id']}/{rec['source_sha1'][:12]}"
+        prev_meta = load_json(f"{prev}/meta.json") or {}
+        mask_path = fixed if os.path.exists(fixed) else f"{prev}/mask.png"
+        if os.path.exists(mask_path) and (os.path.exists(fixed) or prev_meta.get("status") == "generated"):
+            alpha = np.asarray(Image.open(mask_path).convert("L"), dtype=np.float32) / 255.0
             if alpha.shape == (H, W):
                 meta = {k: prev_meta[k] for k in ("dog_id", "name", "source_sha1", "source_sha256", "source_url",
                                                    "size", "work_scale", "vision") if k in prev_meta}
-                meta.update({"pipeline": S.PIPELINE_VERSION, "mask_from": reuse,
-                             "flags": [f for f in prev_meta.get("flags", []) if f != "INTERIOR_NOT_IDENTICAL"]})
+                meta.update({"dog_id": rec["dog_id"], "name": rec["name"], "source_sha1": rec["source_sha1"],
+                             "pipeline": S.PIPELINE_VERSION,
+                             "mask_from": "hand-fixed (masks-fixed/)" if mask_path == fixed else reuse,
+                             "flags": [f for f in prev_meta.get("flags", []) if f not in ("INTERIOR_NOT_IDENTICAL",
+                                       "other_dog_merged", "MERGED_OTHER_DOG")]})
                 out, params = S.composite(src, alpha, dog_id=rec["dog_id"], source_sha1=rec["source_sha1"])
                 qa = S.qa_metrics(src, out, alpha)
                 Image.fromarray(out).save(f"{d}/composite.png", optimize=False, compress_level=6)
                 Image.fromarray(np.round(alpha * 255).astype(np.uint8)).save(f"{d}/mask.png")
-                if not qa["opaque_pixels_identical"]:
+                if S.PIPELINE_VERSION.startswith("studio-bg-v3"):
+                    # Independent check: recompute the recorded global adjustment from the original and
+                    # compare every interior dog pixel (away from the edge band) with the composite.
+                    src_lin = S.srgb_to_linear(src.astype(np.float32) / 255.0)
+                    expect = np.clip(np.round(S.linear_to_srgb(S.apply_dog_adjustments(
+                        src_lin, params["dog_adjustments"], params["subject"])) * 255.0), 0, 255).astype(np.uint8)
+                    margin = int(params["edge_band_px"] + 3 * max(2.0, 0.006 * min(H, W))) + 2
+                    inner = S.ndi.binary_erosion(alpha >= 0.996, iterations=margin)
+                    qa["interior_checked_pixels"] = int(inner.sum())
+                    qa["interior_matches_recorded_adjustment"] = bool(np.array_equal(out[inner], expect[inner]))
+                    qa.pop("opaque_pixels_identical", None)
+                    if not qa["interior_matches_recorded_adjustment"]:
+                        meta["flags"].append("INTERIOR_NOT_RECORDED_ADJUSTMENT")
+                elif not qa["opaque_pixels_identical"]:
                     meta["flags"].append("INTERIOR_NOT_IDENTICAL")
                 meta.update({"params": params, "qa": qa, "seconds": round(time.time() - t0, 2), "status": "generated"})
                 json.dump(meta, open(meta_path, "w"), indent=1, ensure_ascii=False)

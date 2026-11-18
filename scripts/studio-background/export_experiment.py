@@ -27,21 +27,30 @@ import studio_lib as S  # noqa: E402
 
 ROOT = os.environ.get("PAWJAI_STUDIO_ROOT", os.path.expanduser("~/PAWJAI-HQ/studio/white-background-study"))
 INV = f"{ROOT}/inventory-2026-11-17"
-V1 = S.PIPELINE_VERSION.startswith("studio-bg-v1")
-EXPERIMENT_VERSION = "studio-bg-v1" if V1 else "studio-bg-v2"
-# Owner-named prefix (17 Nov task). v2.0 derivatives live under the same prefix with a "-v2"
+MAJOR = S.PIPELINE_VERSION.split("-v")[-1].split(".")[0]  # "1", "2", "3"
+EXPERIMENT_VERSION = f"studio-bg-v{MAJOR}"
+# Owner-named prefix (17 Nov task). Later pipelines live under the same prefix with a "-v<major>"
 # file suffix, so no existing object is ever overwritten.
 B2_PREFIX = "experiments/studio-background-v1"
-FILE_SUFFIX = "" if V1 else "-v2"
-QA_FILE = "qa-decisions.json" if V1 else "qa-decisions-v2.json"
-METHOD = ("Apple Vision subject lift + guided-filter edge refinement + procedural off-white sweep + contact shadows; "
-          "opaque dog pixels copied byte-for-byte") if V1 else (
-          "Reviewed v1.3 mask (Apple Vision subject lift + guided-filter edges) + procedural matte off-white tarp "
-          "(irregular tone, faint folds/creases shaded by the light measured on the dog) + contact, under-body and "
-          "restrained cast shadows; opaque dog pixels copied byte-for-byte")
+FILE_SUFFIX = "" if MAJOR == "1" else f"-v{MAJOR}"
+QA_FILE = "qa-decisions.json" if MAJOR == "1" else f"qa-decisions-v{MAJOR}.json"
+METHOD = {
+    "1": "Apple Vision subject lift + guided-filter edge refinement + procedural off-white sweep + contact shadows; "
+         "opaque dog pixels copied byte-for-byte",
+    "2": "Reviewed v1.3 mask (Apple Vision subject lift + guided-filter edges) + procedural matte off-white tarp "
+         "(irregular tone, faint folds/creases shaded by the light measured on the dog) + contact, under-body and "
+         "restrained cast shadows; opaque dog pixels copied byte-for-byte",
+    "3": "Reviewed v1.3 mask (or a hand-guided fix) + seamless studio sweep matched to the camera angle and the original "
+         "floor/wall line, one soft key light (light pool, falloff), depth-of-field and grain match, light wrap and "
+         "colour-spill cleanup on the fur edge, contact/under-body/cast shadows; dog: recorded global photographic "
+         "adjustments only (white balance, exposure, tone curve, soft directional falloff), no local retouching",
+}[MAJOR]
 PUBLIC_BASE = "https://media.pawjaipet.com/file/pawjai"  # same CDN as the original listing photos
 MAX_WIDTH = 1350  # most originals are 1350 px wide; keep detail parity with control
 WEBP_QUALITY = 90  # q82 visibly softened fur strands at 100%
+
+
+BEST = {}
 
 
 def load(path, default=None):
@@ -60,13 +69,16 @@ def main():
     sources = load(f"{INV}/sources.json")
     cls = load(f"{INV}/classification.json", {})
     qa = load(f"{INV}/{QA_FILE}", {})
+    global BEST
+    BEST = load(f"{ROOT}/review/v{MAJOR}/best-version.json", {}) if MAJOR != "1" else {}
     os.makedirs(f"{ROOT}/exports", exist_ok=True)
 
     entries, retained, catalogue = [], [], []
     for rec in sources:
         dog = rec["dog_id"]
         c = cls.get(dog, {})
-        d = f"{ROOT}/outputs/{S.PIPELINE_VERSION}/{dog}/{rec.get('source_sha1', '')[:12]}"
+        version = BEST.get(dog, S.PIPELINE_VERSION)  # best reviewed render of this pipeline family
+        d = f"{ROOT}/outputs/{version}/{dog}/{rec.get('source_sha1', '')[:12]}"
         meta = load(f"{d}/meta.json", {})
         decision = qa.get(dog, {})
         row = {
@@ -93,8 +105,11 @@ def main():
             row["processing_status"] = "not_processed"
         else:
             row.update(method=METHOD,
-                       pipeline_version=S.PIPELINE_VERSION, source_size=meta.get("size"),
-                       output_master=os.path.relpath(f"{d}/composite.png", ROOT))
+                       pipeline_version=version, source_size=meta.get("size"),
+                       output_master=os.path.relpath(f"{d}/composite.png", ROOT),
+                       mask_from=meta.get("mask_from"),
+                       dog_adjustments=(meta.get("params") or {}).get("dog_adjustments"),
+                       qa_metrics=meta.get("qa"))
             dec = decision.get("decision")
             if dec == "passed":
                 row["processing_status"] = "passed"
@@ -107,8 +122,12 @@ def main():
                 os.makedirs(os.path.dirname(local), exist_ok=True)
                 tmp_png = f"{local}.tmp.png"
                 comp.save(tmp_png)
-                subprocess.run(["cwebp", "-quiet", "-q", str(WEBP_QUALITY), "-m", "6", "-sharp_yuv", "-metadata", "none",
-                                tmp_png, "-o", local], check=True)
+                for q in (WEBP_QUALITY, 88, 86, 84):  # step down only when a file is too heavy for mobile
+                    subprocess.run(["cwebp", "-quiet", "-q", str(q), "-m", "6", "-sharp_yuv", "-metadata", "none",
+                                    tmp_png, "-o", local], check=True)
+                    if os.path.getsize(local) < 440 * 1024:
+                        break
+                row["webp_quality"] = q
                 os.remove(tmp_png)
                 row["output_derivative"] = os.path.relpath(local, ROOT)
                 row["derivative_bytes"] = os.path.getsize(local)

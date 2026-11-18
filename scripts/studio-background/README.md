@@ -34,17 +34,32 @@ and the uploader.
    two studio references → shadows → composite. Opaque dog pixels are
    copied byte-for-byte; `meta.json` records `opaque_pixels_identical`.
    Outputs: `outputs/<pipeline-version>/<dog-id>/<source-sha1-12>/`.
-   The default pipeline is `studio-bg-v2.0` (matte off-white tarp with irregular
-   tone, folds and shallow creases shaded by the light measured on the dog;
-   contact, under-body and restrained cast shadows). `PAWJAI_STUDIO_PIPELINE=studio-bg-v1.3`
-   reproduces the original smooth paper sweep. `PAWJAI_STUDIO_REUSE_MASK=studio-bg-v1.3`
+   The default pipeline is `studio-bg-v3.3`:
+   - a seamless sweep matched to the camera angle and to the original floor/wall line
+   - one soft key light (light pool, falloff)
+   - depth-of-field and grain match
+   - light wrap and colour-spill cleanup on the fur edge
+   - contact, under-body and cast shadows
+   - recorded global photographic adjustments on the dog only (white balance, exposure, tone curve, soft
+     directional falloff; `meta.json` › `params.dog_adjustments`), with no local retouching
+
+   QA recomputes the recorded adjustment from the original and checks every interior dog pixel
+   (`qa.interior_matches_recorded_adjustment`). `PAWJAI_STUDIO_PIPELINE=studio-bg-v1.3` or
+   `studio-bg-v2.0` reproduces the earlier looks. `PAWJAI_STUDIO_REUSE_MASK=studio-bg-v1.3`
    reuses the already reviewed masks instead of segmenting again.
+   Hand-guided cut-out fixes: `fix_masks.py [names…]` writes `masks-fixed/<dog-id>/<sha12>.png`
+   (GrabCut seeded by hand-placed boxes or colour seeds, or a colour key of the old wall; it only
+   removes area), and `run_pipeline.py` prefers those masks.
 6. **Review** (human): `run_pipeline.py review` builds sheets (original,
    composite, 370×590 feed crop, removed-area overlay). Record decisions in
    `inventory-*/qa-decisions.json` (`passed` + cohort, or `failed` + reason).
+   For v3: `review_v3.py` writes one sheet per dog (original, full frame, feed-card size,
+   100% crops of head, paws and busiest fur edge); `select_best_v3.py` picks each dog's best reviewed render (v3.1-v3.3); `decide_v3.py` records the outcome in
+   `qa-decisions-v3.json`; `build_v3_page.py` writes a self-contained original/v3 page
+   (images as data URIs) for the owner.
 7. **Export**: `export_experiment.py --worktree <repo> [--enabled] [--mode rollout]` writes WebP
    derivatives to `exports/experiments/studio-background-v1/<dog-id>/<source-sha1-12>.webp`
-   (v2.0: `<source-sha1-12>-v2.webp`, decisions from `qa-decisions-v2.json`)
+   (v2.0/v3.0: `<source-sha1-12>-v2.webp` / `-v3.webp`, decisions from `qa-decisions-v2.json` / `qa-decisions-v3.json`)
    and regenerates `utils/studio-experiment-manifest.ts` (CDN URL, SHA-1 and
    size per derivative; shipped off unless `--enabled`; 50/50 experiment unless
    `--mode rollout`, which shows the edit to every visitor), plus the full

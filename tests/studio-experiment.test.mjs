@@ -229,8 +229,8 @@ test("reviewed manifest only lists CDN derivatives bound to their source and saf
     assert.ok(!ids.has(item.dogId), "one derivative per dog");
     ids.add(item.dogId);
     // Additive B2 objects under the owner-named versioned prefix, on the same CDN as the originals.
-    // v2 derivatives carry a "-v2" suffix so no existing object is ever overwritten.
-    assert.match(item.derivativeUrl, /^https:\/\/media\.pawjaipet\.com\/file\/pawjai\/experiments\/studio-background-v1\/[0-9a-f-]{36}\/[0-9a-f]{12}(-v2)?\.webp$/);
+    // Later pipelines carry a "-v2"/"-v3" suffix so no existing object is ever overwritten.
+    assert.match(item.derivativeUrl, /^https:\/\/media\.pawjaipet\.com\/file\/pawjai\/experiments\/studio-background-v1\/[0-9a-f-]{36}\/[0-9a-f]{12}(-v[23])?\.webp$/);
     assert.ok(item.derivativeUrl.includes(item.dogId) && item.derivativeUrl.includes(`/${item.sourceSha1.slice(0, 12)}`));
     assert.match(item.derivativeSha1, /^[0-9a-f]{40}$/);
     assert.ok(item.derivativeBytes > 0 && item.derivativeBytes < 450 * 1024, `${item.derivativeUrl} is too heavy for mobile`);
