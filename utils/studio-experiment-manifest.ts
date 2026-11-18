@@ -8,7 +8,7 @@ import type { StudioExperimentConfig, StudioManifestEntry } from "@/utils/studio
 // Rollout: every visitor sees the reviewed derivative for enabled cohorts; nothing is randomised or measured.
 export const STUDIO_EXPERIMENT_DEFAULTS: StudioExperimentConfig = {
   version: "studio-bg-v2",
-  enabled: true,
+  enabled: false,
   enabledCohorts: ["c1"],
   mode: "rollout",
 };
