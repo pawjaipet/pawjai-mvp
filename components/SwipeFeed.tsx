@@ -13,7 +13,6 @@ import type { Ad } from "@/utils/ads";
 import { sendProductAnalyticsEvent } from "@/utils/product-analytics-client";
 import { buildSwipeFeed, isActiveDogFeedItem } from "@/utils/swipe-feed-model";
 import type { SubscriptionTier } from "@/utils/subscription-limits";
-import type { StudioPreview } from "@/utils/studio-experiment-model";
 
 const CARD_W = "min(370px, calc(100vw - 32px))";
 const FEED_VIEWPORT_HEIGHT = "100svh";
@@ -32,7 +31,6 @@ interface Props {
   dailyDogViewsRemaining?: number | null;
   showNoFilterResultsNotice?: boolean;
   subscriptionTier?: SubscriptionTier;
-  studioPreview?: StudioPreview | null;
 }
 
 export default function SwipeFeed({
@@ -45,7 +43,6 @@ export default function SwipeFeed({
   dailyDogViewsRemaining = null,
   showNoFilterResultsNotice = false,
   subscriptionTier = "free",
-  studioPreview = null,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeIndexRef = useRef(0);
@@ -312,17 +309,6 @@ export default function SwipeFeed({
         </div>
       )}
 
-      {studioPreview && (
-        <div
-          data-i18n-ignore
-          role="status"
-          className="absolute left-[16px] right-[16px] z-30 rounded-full bg-[#65584f] px-3 py-1 text-center text-[11px] font-semibold text-white shadow-sm"
-          style={{ top: sampleSaveCounts ? 140 : 112 }}
-        >
-          QA preview · {studioPreview === "studio" ? "studio-background photos" : "original photos"} · not measured
-        </div>
-      )}
-
       <SwipeFeedTutorial enabled={feed.length > 0} isLoggedIn={isLoggedIn} />
 
       {showFallbackNotice && (
@@ -462,8 +448,6 @@ export default function SwipeFeed({
                   isLoggedIn={isLoggedIn}
                   cardWidth={CARD_W}
                   cardHeight={CARD_H}
-                  feedPosition={{ card: idx + 1, dog: item.dogIndex + 1 }}
-                  getFeedVisitId={ensureFeedVisit}
                 />
               ) : null}
             </div>

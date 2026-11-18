@@ -3,7 +3,6 @@ import DogFeedPage from "@/components/dogs/DogFeedPage";
 import JsonLd from "@/components/seo/JsonLd";
 import { webPageJsonLd } from "@/utils/json-ld";
 import { canonicalUrl } from "@/utils/seo";
-import { parseStudioPreview } from "@/utils/studio-experiment-model";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +20,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function DogsPage({ searchParams }: { searchParams: Promise<{ studio_preview?: string }> }) {
-  // QA only: ?studio_preview=studio|control shows one photo version and is never measured.
-  const studioPreview = parseStudioPreview((await searchParams).studio_preview);
+export default function DogsPage() {
   return (
     <>
       <JsonLd
@@ -33,7 +30,7 @@ export default async function DogsPage({ searchParams }: { searchParams: Promise
           path: "/dogs",
         })}
       />
-      <DogFeedPage studioPreview={studioPreview} />
+      <DogFeedPage />
     </>
   );
 }

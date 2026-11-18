@@ -23,9 +23,6 @@ import {
 import { resolveSubscriptionEntitlementForUser } from "@/utils/subscription-entitlements";
 import type { Database } from "@/types/database";
 import { hasSupabaseAuthCookies } from "@/utils/supabase/auth-cookies";
-import { ANALYTICS_VISITOR_COOKIE, isAnalyticsVisitorId } from "@/utils/analytics-visitor";
-import { studioAssignmentsForDogs } from "@/utils/studio-experiment";
-import type { StudioPreview } from "@/utils/studio-experiment-model";
 
 type DogFeedResult = {
   dogs: SwipeDog[];
@@ -217,13 +214,7 @@ function dogViewWindowStartIso() {
   return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 }
 
-export default async function DogFeedPage({
-  sampleSaveCounts = false,
-  studioPreview = null,
-}: {
-  sampleSaveCounts?: boolean;
-  studioPreview?: StudioPreview | null;
-}) {
+export default async function DogFeedPage({ sampleSaveCounts = false }: { sampleSaveCounts?: boolean }) {
   let preference: PreferenceForDogFilter | null = null;
   let savedIds: string[] = [];
   let isLoggedIn = false;
@@ -296,22 +287,10 @@ export default async function DogFeedPage({
     : { data: [] };
   const countByDog = new Map(((counts ?? []) as unknown as { id: string; wishlists: { count: number }[] }[]).map(row => [row.id, row.wishlists[0]?.count ?? 0]));
 
-  // Photo experiment: decided after matching, ordering, limits and ads, so it
-  // can only change which version of an already-chosen cover photo is shown.
-  const visitorCookie = cookieStore.get(ANALYTICS_VISITOR_COOKIE)?.value;
-  const studioAssignments = studioAssignmentsForDogs(visibleDogs, {
-    preview: studioPreview,
-    unitId: isAnalyticsVisitorId(visitorCookie) ? visitorCookie : null,
-  });
-
   return (
     <SwipeFeed
       sampleSaveCounts={sampleSaveCounts}
-      dogs={visibleDogs.map(dog => ({
-        ...dog,
-        photo_experiment: studioAssignments.get(dog.id) ?? null,
-        save_count: countByDog.get(dog.id) ?? null,
-      }))}
+      dogs={visibleDogs.map(dog => ({ ...dog, save_count: countByDog.get(dog.id) ?? null }))}
       savedIds={savedIds}
       isLoggedIn={isLoggedIn}
       ads={ads}
@@ -319,7 +298,6 @@ export default async function DogFeedPage({
       dailyDogViewsRemaining={dailyDogViewsRemaining}
       showNoFilterResultsNotice={showingAllBecauseNoMatches}
       subscriptionTier={subscriptionTier}
-      studioPreview={studioPreview}
     />
   );
 }

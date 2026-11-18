@@ -5,7 +5,6 @@ import Link from "next/link";
 import { CalendarDays, Info } from "lucide-react";
 import { useAuthModal } from "@/components/auth/AuthProvider";
 import DogCardPhoto from "@/components/dogs/DogCardPhoto";
-import StudioCardPhoto from "@/components/dogs/StudioCardPhoto";
 import DogVideoFrame from "@/components/dogs/DogVideoFrame";
 import WishlistSaveButton from "@/components/dogs/WishlistSaveButton";
 import TreatButton from "@/components/donations/TreatButton";
@@ -15,7 +14,6 @@ import type { Dog, DogPhoto, DogTrait } from "@/types/database";
 import { canonicalizeBreedLabel } from "@/utils/dog-breeds";
 import { normalizeDogMediaUrl, type DogMediaItem } from "@/utils/dog-media";
 import DogShareButton from "@/components/dogs/DogShareButton";
-import type { StudioPhotoAssignment } from "@/utils/studio-experiment-model";
 
 export type SwipeDog = Dog & {
   photos: Pick<DogPhoto, "public_url" | "is_cover" | "sort_order">[];
@@ -25,8 +23,6 @@ export type SwipeDog = Dog & {
   shelter_logo_url?: string | null;
   shelter_name?: string | null;
   save_count?: number | null;
-  /** Studio-background experiment assignment for this visitor (server-decided). */
-  photo_experiment?: StudioPhotoAssignment | null;
 };
 
 function ageLabel(months: number | null) {
@@ -49,8 +45,6 @@ interface Props {
   isActive?: boolean;
   cardWidth?: number | string;
   cardHeight?: number | string;
-  feedPosition?: { card: number; dog: number };
-  getFeedVisitId?: () => string | null;
 }
 
 export default function SwipeDogCard({
@@ -62,8 +56,6 @@ export default function SwipeDogCard({
   // CSS clamp: max Figma 370x620, shrinks on narrow viewports / small dvh
   cardWidth = "min(370px, calc(100vw - 32px))",
   cardHeight = "min(620px, calc(100dvh - 160px))",
-  feedPosition,
-  getFeedVisitId,
 }: Props) {
   const carouselRef = useRef<HTMLDivElement>(null);
   const [imgIdx, setImgIdx]     = useState(0);
@@ -127,7 +119,7 @@ export default function SwipeDogCard({
   ].filter(Boolean);
 
   return (
-    <div className="relative" style={{ width: cardWidth }} data-dog-card="">
+    <div className="relative" style={{ width: cardWidth }}>
       {/* Image carousel */}
       <div
         ref={carouselRef}
@@ -145,17 +137,6 @@ export default function SwipeDogCard({
                   className="w-full h-full object-cover"
                   posterUrl={item.posterUrl}
                   videoUrl={item.publicUrl}
-                />
-              ) : item.type === "photo" && item.publicUrl && i === 0 && dog.photo_experiment ? (
-                <StudioCardPhoto
-                  active={isActive}
-                  alt={dog.name}
-                  assignment={dog.photo_experiment}
-                  cardPosition={feedPosition?.card ?? null}
-                  coverShowing={imgIdx === 0}
-                  dogId={dog.id}
-                  dogPosition={feedPosition?.dog ?? null}
-                  getFeedVisitId={getFeedVisitId}
                 />
               ) : item.type === "photo" && item.publicUrl ? (
                 <DogCardPhoto src={item.publicUrl} alt={dog.name} first={i === 0} active={isActive} />

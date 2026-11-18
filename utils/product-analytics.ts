@@ -3,7 +3,7 @@ import "server-only";
 import { createAdminClient } from "@/utils/supabase/admin";
 import type { ProductAnalyticsEventName } from "@/utils/product-analytics-model";
 
-export { ANALYTICS_VISITOR_COOKIE } from "@/utils/analytics-visitor";
+export const ANALYTICS_VISITOR_COOKIE = "pawjai_analytics_visitor";
 
 type ProductAnalyticsMetadataValue = boolean | number | string | null;
 

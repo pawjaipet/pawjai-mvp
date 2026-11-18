@@ -3,7 +3,6 @@ import DogFeedPage from "@/components/dogs/DogFeedPage";
 import JsonLd from "@/components/seo/JsonLd";
 import { webPageJsonLd } from "@/utils/json-ld";
 import { canonicalUrl } from "@/utils/seo";
-import { parseStudioPreview } from "@/utils/studio-experiment-model";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +20,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ focus_group_counts?: string; studio_preview?: string }> }) {
-  const params = await searchParams;
-  const sampleSaveCounts = params.focus_group_counts === "1";
-  // QA only: ?studio_preview=studio|control shows one photo version and is never measured.
-  const studioPreview = parseStudioPreview(params.studio_preview);
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ focus_group_counts?: string }> }) {
+  const sampleSaveCounts = (await searchParams).focus_group_counts === "1";
   return (
     <>
       <JsonLd
@@ -35,7 +31,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           path: "/",
         })}
       />
-      <DogFeedPage sampleSaveCounts={sampleSaveCounts} studioPreview={studioPreview} />
+      <DogFeedPage sampleSaveCounts={sampleSaveCounts} />
     </>
   );
 }

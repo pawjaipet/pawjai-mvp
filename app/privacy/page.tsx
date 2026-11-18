@@ -7,7 +7,7 @@ export const metadata = trustMetadata(title, description, "/privacy");
 
 export default function Page() {
   return (
-    <TrustPage title={title} description={description} path="/privacy" updatedDate="2026-11-18" sections={[
+    <TrustPage title={title} description={description} path="/privacy" updatedDate="2026-10-02" sections={[
       {
             "title": "About this policy",
             "body": "PawJai helps connect adopters and shelter partners in Thailand. This page describes our website’s operational privacy practices. It is not legal advice or a certification of legal compliance."
@@ -22,11 +22,7 @@ export default function Page() {
       },
       {
             "title": "Cookies, storage, and usage information",
-            "body": "The website uses cookies for sign-in and browser storage for preferences and session state. Product analytics records page visits and interactions, such as viewed dogs, swipes, and booking steps, with a session identifier, a first-party visitor cookie and, when signed in, an account identifier. Hosting and security services may also process technical request information. Clearing browser storage can reset preferences or sign you out; it does not delete records already held by PawJai."
-      },
-      {
-            "title": "Edited dog photo backgrounds",
-            "body": "Some feed photos show a dog with an edited, plain studio-style background in place of a cluttered shelter or yard background, marked “Edited background”. The background is replaced and the photo’s overall light and colour are adjusted to match it, as a photographer would; the dog itself is not retouched or redrawn, and the original photo stays on the dog’s profile. Every visitor sees the same version, so no cookie or analytics is used to choose it. A brief comparison of two versions in November 2026 was measured with PawJai’s own product analytics only; it was not sent to Google Analytics."
+            "body": "The website uses cookies for sign-in and browser storage for preferences and session state. Product analytics records page visits and interactions, such as viewed dogs, swipes, and booking steps, with a session identifier and, when signed in, an account identifier. Hosting and security services may also process technical request information. Clearing browser storage can reset preferences or sign you out; it does not delete records already held by PawJai."
       },
       {
             "title": "Optional Google Analytics",

@@ -42,7 +42,6 @@ function loadAnalyticsClient() {
   const storage = new Map();
   const timers = new Map();
   const beaconCalls = [];
-  const gaCalls = [];
   let timerId = 0;
   const document = {
     addEventListener() {},
@@ -58,11 +57,7 @@ function loadAnalyticsClient() {
     },
   };
   const context = {
-    require: (name) => {
-      if (name === "@/utils/google-analytics") return { trackGA(eventName) { gaCalls.push(eventName); } };
-      if (name === "@/utils/product-analytics-model") return loadAnalyticsModel();
-      throw new Error(name);
-    },
+    require: (name) => { if (name === "@/utils/google-analytics") return { trackGA() {} }; throw new Error(name); },
     Blob,
     clearTimeout: (id) => timers.delete(id),
     document,
@@ -83,7 +78,7 @@ function loadAnalyticsClient() {
     window,
   };
   new Script(outputText).runInNewContext(context);
-  return { beaconCalls, document, exports: module.exports, gaCalls, timers };
+  return { beaconCalls, document, exports: module.exports, timers };
 }
 
 test("product analytics tracks public adopter routes but excludes protected workspaces", () => {
@@ -208,44 +203,4 @@ test("analytics storage is server-only and the dashboard is PawJai-only", () => 
   assert.equal(dashboard.includes("!adminContext.isGlobalAdmin"), true);
   assert.equal(bookingAction.includes('eventName: "booking_failed"'), true);
   assert.equal(bookingAction.includes('eventName: "booking_succeeded"'), true);
-});
-
-test("photo experiment exposures stay first-party and never reach Google Analytics", () => {
-  const client = loadAnalyticsClient();
-  const dogId = "79cfcd26-7dfa-4870-b4ea-d1c42a390b17";
-
-  assert.equal(client.exports.sendProductAnalyticsEvent({ dogId, eventName: "dog_shared" }), true);
-  assert.equal(client.exports.sendProductAnalyticsEvent({
-    dedupeKey: `photo-exposure:studio-bg-v1:${dogId}`,
-    dogId,
-    eventName: "dog_photo_exposure",
-    metadata: { experiment: "studio-bg-v1", rendered: "studio", variant: "studio" },
-  }), true);
-  // dog_shared keeps its existing consent-gated GA path; the exposure never does.
-  assert.deepEqual(client.gaCalls, ["dog_shared"]);
-});
-
-test("repeated exposure renders in one tab session are suppressed by the dedupe key", () => {
-  const client = loadAnalyticsClient();
-  const dogId = "79cfcd26-7dfa-4870-b4ea-d1c42a390b17";
-  const event = {
-    dedupeKey: `photo-exposure:studio-bg-v1:${dogId}`,
-    dedupeWindowMs: 12 * 60 * 60 * 1000,
-    dogId,
-    eventName: "dog_photo_exposure",
-  };
-  assert.equal(client.exports.sendProductAnalyticsEvent(event), true);
-  assert.equal(client.exports.sendProductAnalyticsEvent(event), false);
-});
-
-test("experiment events are inserted apart from other events", () => {
-  const { partitionEventsForInsert, isProductAnalyticsEventName } = loadAnalyticsModel();
-  const { isolated, regular } = partitionEventsForInsert([
-    { eventName: "page_view" },
-    { eventName: "dog_photo_exposure" },
-    { eventName: "dog_profile_view" },
-  ]);
-  assert.deepEqual(isolated.map((event) => event.eventName), ["dog_photo_exposure"]);
-  assert.deepEqual(regular.map((event) => event.eventName), ["page_view", "dog_profile_view"]);
-  assert.equal(isProductAnalyticsEventName("dog_photo_exposure"), true);
 });

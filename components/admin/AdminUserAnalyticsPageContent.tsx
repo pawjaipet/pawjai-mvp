@@ -412,9 +412,6 @@ export async function AdminUserAnalyticsPageContent({
               <a className="rounded-full border border-[#cd8188] bg-white px-4 py-2 text-xs font-semibold text-[#b76d76] hover:bg-[#f8e8ea]" href={`/api/admin/analytics/export?range=${selectedRange}`}>
                 Download Excel report
               </a>
-              <a className="rounded-full border border-[#d6c8ad] bg-white px-4 py-2 text-xs font-semibold text-[#65584f] hover:bg-[#f8e8ea]" href="/api/admin/analytics/studio-experiment">
-                Studio photo test (.xlsx)
-              </a>
             </div>
           </div>
         </section>

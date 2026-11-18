@@ -696,7 +696,7 @@ export type Database = {
           appointment_id: string | null
           created_at: string
           dog_id: string | null
-          event_name: "page_view" | "dog_profile_view" | "dog_feed_impression" | "dog_shared" | "feed_session_summary" | "booking_started" | "booking_succeeded" | "booking_failed" | "subscription_limit_prompt" | "subscription_changed" | "dog_photo_exposure"
+          event_name: "page_view" | "dog_profile_view" | "dog_feed_impression" | "dog_shared" | "feed_session_summary" | "booking_started" | "booking_succeeded" | "booking_failed" | "subscription_limit_prompt" | "subscription_changed"
           id: string
           metadata: Json
           path: string
@@ -708,7 +708,7 @@ export type Database = {
           appointment_id?: string | null
           created_at?: string
           dog_id?: string | null
-          event_name: "page_view" | "dog_profile_view" | "dog_feed_impression" | "dog_shared" | "feed_session_summary" | "booking_started" | "booking_succeeded" | "booking_failed" | "subscription_limit_prompt" | "subscription_changed" | "dog_photo_exposure"
+          event_name: "page_view" | "dog_profile_view" | "dog_feed_impression" | "dog_shared" | "feed_session_summary" | "booking_started" | "booking_succeeded" | "booking_failed" | "subscription_limit_prompt" | "subscription_changed"
           id?: string
           metadata?: Json
           path: string
