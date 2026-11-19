@@ -13,6 +13,10 @@ import type { Ad } from "@/utils/ads";
 import { sendProductAnalyticsEvent } from "@/utils/product-analytics-client";
 import { buildSwipeFeed, isActiveDogFeedItem } from "@/utils/swipe-feed-model";
 import type { SubscriptionTier } from "@/utils/subscription-limits";
+import {
+  GUEST_SIGNUP_PROMPT_SESSION_KEY,
+  shouldShowGuestSignupPrompt,
+} from "@/utils/guest-signup-prompt";
 
 const CARD_W = "min(370px, calc(100vw - 32px))";
 const FEED_VIEWPORT_HEIGHT = "100svh";
@@ -20,6 +24,22 @@ const CARD_H = "min(590px, calc(100svh - 200px))";
 // Insert one live ad after every N dogs. The server shuffles active ads
 // daily so limited slots rotate fairly when ad inventory is larger.
 const AD_EVERY = 3;
+
+function guestSignupPromptShownThisVisit() {
+  try {
+    return window.sessionStorage.getItem(GUEST_SIGNUP_PROMPT_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function rememberGuestSignupPromptShown() {
+  try {
+    window.sessionStorage.setItem(GUEST_SIGNUP_PROMPT_SESSION_KEY, "1");
+  } catch {
+    // Storage can be blocked (private browsing); the invite then shows once per page load.
+  }
+}
 
 interface Props {
   sampleSaveCounts?: boolean;
@@ -50,12 +70,14 @@ export default function SwipeFeed({
   const checkingDogIdsRef = useRef(new Set<string>());
   const feedVisitIdRef = useRef<string | null>(null);
   const forwardFeedSwipesRef = useRef(0);
+  const guestSignupPromptShownRef = useRef(false);
   const seenDogIdsRef = useRef(new Set<string>());
   const settledIndexRef = useRef(0);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const visitStartedAtRef = useRef<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [showDogViewLimit, setShowDogViewLimit] = useState(false);
+  const [showGuestSignupPrompt, setShowGuestSignupPrompt] = useState(false);
   const [showFallbackNotice, setShowFallbackNotice] = useState(showNoFilterResultsNotice);
   const { openAuthModal } = useAuthModal();
   const { t } = useLanguage();
@@ -107,6 +129,18 @@ export default function SwipeFeed({
       seenDogIdsRef.current.size >= dailyDogViewsRemaining
     ) {
       setShowDogViewLimit(true);
+    }
+    if (
+      !guestSignupPromptShownRef.current
+      && shouldShowGuestSignupPrompt({
+        alreadyShown: guestSignupPromptShownThisVisit(),
+        dogsSeen: seenDogIdsRef.current.size,
+        isLoggedIn,
+      })
+    ) {
+      guestSignupPromptShownRef.current = true;
+      rememberGuestSignupPromptShown();
+      setShowGuestSignupPrompt(true);
     }
     sendProductAnalyticsEvent({
       dedupeKey: `feed-impression:${feedVisitId}:${item.dog.id}`,
@@ -220,12 +254,17 @@ export default function SwipeFeed({
     }
   }, [dailyDogViewLimit, dailyDogViewsRemaining]);
 
+  function closeFeedDialog() {
+    setShowDogViewLimit(false);
+    setShowGuestSignupPrompt(false);
+  }
+
   function openFeedSignup() {
     openAuthModal({
       nextPath: "/swipe",
-      reason: t("Sign in or create a free account to view more dogs."),
+      reason: t("Sign in or create a free account to save dogs and book shelter visits."),
     });
-    setShowDogViewLimit(false);
+    closeFeedDialog();
   }
 
   useEffect(() => {
@@ -339,10 +378,10 @@ export default function SwipeFeed({
         </div>
       )}
 
-      {showDogViewLimit && dailyDogViewLimit !== null && (
+      {((showDogViewLimit && dailyDogViewLimit !== null) || showGuestSignupPrompt) && (
         <div
           className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 px-[18px]"
-          onClick={() => setShowDogViewLimit(false)}
+          onClick={closeFeedDialog}
           style={{ paddingTop: "max(24px, env(safe-area-inset-top))", paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}
         >
           <div
@@ -352,7 +391,7 @@ export default function SwipeFeed({
             onClick={(event) => event.stopPropagation()}
           >
             <p className="text-[20px] font-extrabold text-[#65584f]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-              {isLoggedIn ? t("Daily dog-view limit reached") : t("Create an account to keep browsing")}
+              {isLoggedIn ? t("Daily dog-view limit reached") : t("Found a dog you like?")}
             </p>
             <p className="mt-[10px] text-[14px] leading-[1.55] text-[#65584f]/70" style={{ fontFamily: "Montserrat, sans-serif" }}>
               {isLoggedIn ? (
@@ -364,13 +403,7 @@ export default function SwipeFeed({
                   {t("dog views per day. Come back in 24 hours, or upgrade to keep browsing today.")}
                 </>
               ) : (
-                <>
-                  {t("Visitors can preview")}
-                  {" "}
-                  <strong className="font-bold text-[#65584f]">{dailyDogViewLimit}</strong>
-                  {" "}
-                  {t("dogs. Sign in or create a free account to view more profiles and save favorites.")}
-                </>
+                t("Create a free account to save favorites and book a shelter visit, or keep browsing for now.")
               )}
             </p>
             <div className="mt-[18px] flex flex-col gap-[10px]">
@@ -394,7 +427,7 @@ export default function SwipeFeed({
               )}
               <button
                 type="button"
-                onClick={() => setShowDogViewLimit(false)}
+                onClick={closeFeedDialog}
                 className="rounded-[14px] py-[10px] text-[13px] font-bold text-[#65584f]/68"
                 style={{ fontFamily: "Montserrat, sans-serif" }}
               >

@@ -102,3 +102,23 @@ export function isActiveDogFeedItem<Dog, Ad>(
 ) {
   return item.kind === "dog" && itemIndex === activeFeedIndex;
 }
+
+// Accounts on a plan with a daily dog-view limit keep the dogs they already
+// viewed today plus as many new dogs as the limit allows. Logged-out visitors
+// and unlimited plans see every available dog.
+export function selectVisibleFeedDogs<Dog extends { id: string }>({
+  dailyDogViewsRemaining,
+  dogs,
+  isLoggedIn,
+  viewedDogIds,
+}: {
+  dailyDogViewsRemaining: number | null;
+  dogs: Dog[];
+  isLoggedIn: boolean;
+  viewedDogIds: Set<string>;
+}): Dog[] {
+  if (!isLoggedIn || dailyDogViewsRemaining === null) return dogs;
+  return dogs
+    .filter((dog) => viewedDogIds.has(dog.id))
+    .concat(dogs.filter((dog) => !viewedDogIds.has(dog.id)).slice(0, dailyDogViewsRemaining));
+}

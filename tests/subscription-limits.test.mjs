@@ -22,9 +22,8 @@ function plain(value) {
 }
 
 test("subscription tiers match PawJai launch limits", () => {
-  const { ANONYMOUS_DOG_VIEW_LIMIT, getSubscriptionLimits } = loadSubscriptionLimits();
+  const { getSubscriptionLimits } = loadSubscriptionLimits();
 
-  assert.equal(ANONYMOUS_DOG_VIEW_LIMIT, 10);
   assert.deepEqual(plain(getSubscriptionLimits("free")), {
     advancedMatching: false,
     adFree: false,

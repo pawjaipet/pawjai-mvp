@@ -14,12 +14,8 @@ import {
 } from "@/utils/dog-preference-filter";
 import type { SwipeDog } from "@/components/SwipeDogCard";
 import SwipeFeed from "@/components/SwipeFeed";
-import { shuffleFeedDogs, spreadDogsAcrossShelters } from "@/utils/swipe-feed-model";
-import {
-  ANONYMOUS_DOG_VIEW_LIMIT,
-  getSubscriptionLimits,
-  type SubscriptionTier,
-} from "@/utils/subscription-limits";
+import { selectVisibleFeedDogs, shuffleFeedDogs, spreadDogsAcrossShelters } from "@/utils/swipe-feed-model";
+import { getSubscriptionLimits, type SubscriptionTier } from "@/utils/subscription-limits";
 import { resolveSubscriptionEntitlementForUser } from "@/utils/subscription-entitlements";
 import type { Database } from "@/types/database";
 import { hasSupabaseAuthCookies } from "@/utils/supabase/auth-cookies";
@@ -221,7 +217,8 @@ export default async function DogFeedPage({ sampleSaveCounts = false }: { sample
   let subscriptionTier: SubscriptionTier = "free";
   let viewedDogIds = new Set<string>();
   let dailyDogViewsRemaining: number | null = null;
-  let dogViewLimit: number | null = ANONYMOUS_DOG_VIEW_LIMIT;
+  // Logged-out visitors see every available dog; only plan limits apply to accounts.
+  let dogViewLimit: number | null = null;
   const cookieStore = await cookies();
 
   if (hasSupabaseAuthCookies(cookieStore.getAll())) {
@@ -266,7 +263,6 @@ export default async function DogFeedPage({ sampleSaveCounts = false }: { sample
 
   if (!isLoggedIn) {
     preference = readGuestPreferences(cookieStore.get(GUEST_FILTER_COOKIE)?.value);
-    dailyDogViewsRemaining = ANONYMOUS_DOG_VIEW_LIMIT;
   }
 
   const limits = getSubscriptionLimits(subscriptionTier);
@@ -274,12 +270,7 @@ export default async function DogFeedPage({ sampleSaveCounts = false }: { sample
     getDogFeed(preference, limits.advancedMatching),
     limits.adFree ? Promise.resolve([]) : fetchActiveAds(),
   ]);
-  const visibleDogs = isLoggedIn && dailyDogViewsRemaining !== null
-    ? dogs.filter((dog) => viewedDogIds.has(dog.id))
-      .concat(dogs.filter((dog) => !viewedDogIds.has(dog.id)).slice(0, dailyDogViewsRemaining))
-    : !isLoggedIn && dailyDogViewsRemaining !== null
-      ? dogs.slice(0, dailyDogViewsRemaining)
-    : dogs;
+  const visibleDogs = selectVisibleFeedDogs({ dailyDogViewsRemaining, dogs, isLoggedIn, viewedDogIds });
 
   // Only aggregate counts leave the server; saver identities remain private.
   const { data: counts } = visibleDogs.length

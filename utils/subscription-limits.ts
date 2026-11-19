@@ -16,7 +16,6 @@ export type SubscriptionTierConfig = SubscriptionLimits & {
 
 const TIER_ORDER: SubscriptionTier[] = ["free", "standard", "premium"];
 
-export const ANONYMOUS_DOG_VIEW_LIMIT = 10;
 export const LAUNCH_PREMIUM_GRANT_LIMIT = 200;
 
 export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, SubscriptionTierConfig> = {
